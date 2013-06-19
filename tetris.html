@@ -1,0 +1,420 @@
+
+<head>
+
+</head>
+<style>
+#canvas, #infoDiv {
+  border:1px solid black;
+  float:left;
+}
+#infoDiv {
+  margin-left:10px;
+}
+#gameTitle {
+font-size:40px;
+font-weight:bold;
+color:white;
+display:block;
+text-align:center;
+background-color:darkblue;
+}
+#scoreDiv,#linesDiv {
+  font-weight:bold;
+  padding-left:10px;
+}
+#score,#lines {
+font-weight:normal;
+color:blue;
+}
+
+</style>
+<!-- our status -->
+<div id='status'>
+  To start the game press Enter key. Left: A Right: D or Arrow keys: Rotate: S or Spacebar
+	</div>
+<!-- canvas the game will be running on -->
+<div id='wrap'>
+    <canvas id="canvas" width=200px height=460px>
+      Canvas Tetris
+    </canvas>
+    <div id='infoDiv'>
+      <div id='gameTitle'>
+       YounTris
+      </div>
+      <canvas id="infoCanvas" width=200px height=160px>
+       Info grid for Tetris
+      </canvas>
+      <div id='scoreDiv'>Score: <span id='score'>0</span></div>
+      <div id='linesDiv'>Number of lines: <span id='lines'>0</span></div>
+    </div>
+   </div>
+
+<script language=javascript>
+/* precomputed states of each pieces 
+   _ 4 digits per line, 0 is empty, 1 is full 
+   _ first array parameter is color followed by 4 states for each piece
+ */
+   pieces= {
+  	0 : ['black','0100010001000100', '0000111100000000', '0010001000100010', '0000000011110000'], //straight
+  	1 : ['blue','0100010011000000', '1000111000000000', '0110010001000000', '0000111000100000'], //reverse l
+  	2 : ['green','0000011001100000', '0000011001100000', '0000011001100000', '0000011001100000'], //square
+  	3 : ['purple','0000111001000000', '0100110001000000', '0100111000000000', '0100011001000000'], // T
+  	4 : ['grey','1000110001000000', '0110110000000000', '0100011000100000', '0000011011000000'],//leftstairs
+  	5 : ['cyan','0000110001100000','0100110010000000','1100011000000000','0010011001000000'], //rightstairs
+  	6 : ['red','0000111000100000','1100010001000000','0010111000000000','0100010001100000'] // L
+  }
+  
+  /*define a random piece */
+  function randomPiece() {
+  	 return Math.floor(Math.random()*(7))
+  }
+/* add keypress handling code */
+ 	if (document.addEventListener)
+ 		document.addEventListener("keydown",keydown,false);
+ 	else if(document.attachEvent)
+         document.attachEvent("onkeydown", keydown);
+    else
+    	document.onkeydown= keydown;
+  /*retrieve our canvas context */
+  canvas=document.getElementById('canvas');
+  ctx     = canvas.getContext('2d');
+  infoCanvas=document.getElementById('infoCanvas');
+  infoCtx     = infoCanvas.getContext('2d');
+
+  squareHeight=20;
+  squareWidth=20;
+  maxX=10;
+  maxY=22;
+  
+  
+  var currentX=0;
+  var currentY=0;
+  var currentState=1;
+  var gameActive=false;
+  var nextPiece=randomPiece() 
+  var currentPiece=randomPiece()  
+  var gameGrid=emptyGrid((maxX+1)*(maxY+1));	
+  var currentScore=0;
+  var currentLines=0;
+  var pauseMode=false; 
+  /** function gameLoop - main game loop, executed when a game is running */
+  function gameLoop() {
+    //first erase the current piece
+    drawPiece(ctx,currentPiece,currentX,currentY,-currentState) 
+    //if we can move it down, move the piece down
+    if(pauseMode==false) {
+    if(isValidPosition(currentX,currentY+1))
+      currentY=currentY+1
+    else { //if not
+      //if we are at the top, we lost
+      if(currentY<1) {
+        //deactivate game loop
+        gameActive=false;
+      }
+      //otherwise, save the piece to the grid
+      savePiece()
+      //check if we filled a line
+      checkGrid()
+      //draw the updated grid
+      drawGrid(ctx,gameGrid)
+      //pick a new piece and move it up
+      newPiece()
+    }
+    }
+    //if we are still playing, draw the piece in new location and call ourselves again
+    if(gameActive==true) {
+       drawPiece(ctx,currentPiece,currentX,currentY,currentState)
+       window.setTimeout(gameLoop, 1000/5 );
+  
+    }
+    else /*if we lost, update status */
+    {
+     document.getElementById("status").innerHTML = 'Game over. Please press enter or space to start';
+      infoCtx.clearRect(0, 0, infoCanvas.width, infoCanvas.height);
+    }
+  }
+  /* function newGame - handles new game initializations */
+  function newGame() {
+    currentScore=0;
+    currentLines=0;
+    updateScore();
+    gameGrid=emptyGrid((maxX+1)*(maxY+1));
+    nextPiece=randomPiece();
+    newPiece()
+  }
+  /* function newPiece - resets coordinates and gets a randomPiece */
+  function newPiece() {
+	  currentX=3;
+	  currentY=0;
+	  currentState=1;
+	  currentPiece=nextPiece
+    infoCtx.clearRect(0, 0, infoCanvas.width, infoCanvas.height);
+    nextPiece=randomPiece()   
+    drawPiece(infoCtx,nextPiece,3,2,1)
+  }
+  /* function emptyGrid - resets the grid array when we start a new game */
+  function emptyGrid(gridSize) {
+    var gameGrid=[];
+    var i=gridSize
+    while (i--) {
+      gameGrid[i] = 0;
+    }
+       ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, squareWidth*maxX, squareHeight*(maxY+1));
+   return gameGrid;
+  }
+
+ /*function keydown - handles keystroke events
+   parameters:
+      e - event containing the key code
+  */
+ function keydown(e)
+  {
+// document.getElementById("status").innerHTML = e.keyCode;
+	   if (!e) e= event;
+     //if no game is active, watch for spacebar
+     if(gameActive==false && (e.keyCode==32||e.keyCode==13||e.keyCode==10||e.keyCode==71)) {
+    document.getElementById("status").innerHTML = 'Have fun. left: a / right: D / rotate: s or spacebar or use arrow keys. esc to quit';
+        newGame()
+        newPiece()
+        gameActive=true;
+        gameLoop();
+     }
+     else if(pauseMode==true)
+     {
+        if(e.keyCode==80) {
+          pauseMode=false
+        }
+     }
+     else {//if a game is active, check for keystrokes
+       drawPiece(ctx,currentPiece,currentX,currentY,-currentState) 
+       switch(e.keyCode)
+       {
+        case 80:
+	  pauseMode=true;
+          break;
+        case 32:
+    if(isValidPosition(currentX,currentY+1))
+      currentY=currentY+1
+	break;
+        case 12: /* keystroke: rotation requested (space, 'd') */
+        case 38:
+        case 83:
+              currentState++;
+            if(currentState>4)
+              currentState=1;
+            var piece=pieces[currentPiece][currentState]
+            xCorrect=0;
+            /* make sure that the rotation does not throw us off grid */
+            for(var x=0;x<4;x++) {
+                 for(var y=0;y<4;y++) {
+                  if(parseInt(piece[x+y*4])) {
+                    if((x+currentX)>=maxX) 
+                      currentX=maxX-x-1
+                    if((x+currentX)<0) 
+                      currentX=x;
+                  }
+                }
+            }
+            break
+       case 40:
+              currentState--;
+            if(currentState<1)
+              currentState=4;
+            var piece=pieces[currentPiece][currentState]
+            xCorrect=0;
+            /* make sure that the rotation does not throw us off grid */
+            for(var x=0;x<4;x++) {
+                 for(var y=0;y<4;y++) {
+                  if(parseInt(piece[x+y*4])) {
+                    if((x+currentX)>=maxX)
+                      currentX=maxX-x-1
+                    if((x+currentX)<0)
+                      currentX=x;
+                  }
+                }
+            }
+            break
+
+        case 27: /* escape key = exit */
+          gameActive=false;
+         break;
+        case 68: /* right arrow or d - move right */
+        case 39:
+          if(isValidPosition(currentX+1,currentY) )
+            currentX++;         
+          break;
+          case 65: /*left arrow or a - move left */
+          case 37:
+          if(isValidPosition(currentX-1,currentY) )
+            currentX--;
+          break;
+       } 
+    
+     }
+     //prevent scrolling:
+if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+        e.preventDefault();
+    }
+     //if a game is active, draw the current piece after all moves were made
+     if(gameActive)
+	    drawPiece(ctx,currentPiece,currentX,currentY,currentState) 
+
+  }
+  /** function isValidPosition - collision check for a piece at a particular position we want to move to
+    * xPos - x position of where we want to move to
+    * yPos - y position of where we want to move to
+    */
+  function isValidPosition(xPos,yPos) {
+  	//by default, position is clear
+    isValid=true
+    //retrieve current piece
+  	piece=pieces[currentPiece][currentState]
+    //iterate through all possible piece bits 
+    for(var x=0;x<4;x++) {
+   	   	 for(var y=0;y<4;y++) {
+          //and if one is relevant
+   	   	 	if(parseInt(piece[x+y*4])) {
+            //make sure it is not off grid
+   	   	 		if((x+xPos)>=maxX) 
+   	   	 			isValid=false
+   	   	 		else if((x+xPos)<0) 
+   	   	 			isValid=false
+            //if it is on the grid, make sure that position is empty
+            else if(gameGrid[xPos+x+(yPos+y)*maxX])
+              isValid=false;
+   	   	 		else if((y+yPos)>maxY) 
+   	   	 			isValid=false
+   	   	 	}
+   	   	 }
+  	}
+    //if we hit not rule above, it is still a valid position, otherwise returns false	
+  	return isValid;
+  }
+ /*function drawPiece
+   usage: draws a piece on canvas in its respective color
+   parameters:
+       pieceId - which piece is requested
+       offsetX - where on the grid to draw it
+       offsetY - vertical position to draw it
+       state - which of the rotation we want. A negative state erases that piece (white)
+   	*/
+function drawPiece(ctx,pieceId,offsetX,offsetY,state) {
+ 	//are we drawing or erasing
+  if(state>-1)
+ 		color=pieces[pieceId][0]
+ 	else
+ 		color='white'
+
+  //fetch the piece
+ 	var piece=pieces[pieceId][Math.abs(state)]
+  
+  //iterate through grid
+  for(var x=0;x<4;x++) {
+	   	for(var y=0;y<4;y++) {
+        //if it is filled, draw it
+	   	 	if(parseInt(piece[x+y*4]))
+	   			drawSquare(ctx,x+offsetX,y+offsetY,color)
+	   	}
+  }
+}
+
+/** function savePiece - when a piece reaches the bottom, add it to the grid */
+function savePiece() {
+  var piece=pieces[currentPiece][Math.abs(currentState)]
+  var color=pieces[currentPiece][0]
+      for(var x=0;x<4;x++) {
+         for(var y=0;y<4;y++) {
+          if(parseInt(piece[x+y*4]))
+            gameGrid[((currentX+x)+(currentY+y)*maxX)]=color;
+         }
+       }
+}
+/** function drawSquare - draws each square on the provided grid
+  * myCtx - context to draw on
+  * x - x position we want to draw the square
+  * y - y position we want to draw the square
+  */
+function drawSquare( myCtx, x, y, squareColor) {
+    myCtx.fillStyle = squareColor;
+    myCtx.fillRect(x*squareWidth, y*squareHeight, squareWidth-1, squareHeight-1);
+};
+/** function checkgrid - checks if a line has been filled up and clears it */
+function checkGrid() {
+    var txtoutput='';
+    var lineCount=0;
+    for(var y=maxY+1;y>0;y--) {
+       var count=0;
+       for(x=0;x<maxX;x++) {
+          if(gameGrid[x+y*maxX])
+            count++;
+       }
+       if(count>=maxX)
+       {
+        clearLine(y)
+        lineCount++;
+        y=maxY+1
+        drawGrid(ctx,gameGrid)
+        count=0
+       }
+    }
+    switch(lineCount) {
+      case 1:
+        currentScore += 10;
+        break;
+      case 2: 
+        currentScore += 100;
+        break;
+      case 3:
+        currentScore += 500;
+        break;
+      case 4:
+        currentScore += 1000;
+        break;
+    }
+    currentLines += lineCount;
+    updateScore()
+}
+function updateScore() {
+     document.getElementById("score").innerHTML = currentScore;
+     document.getElementById("lines").innerHTML = currentLines;
+}
+  /** function clearLine - this function empties a line on the grid and shifts it down to make space
+    * parameters:
+      yComplete - line to clear
+    */
+  function clearLine(yComplete) {
+       for(y=yComplete;y>0;y--) {
+         for(x=0;x<maxX;x++) {
+            gameGrid[x+(y)*maxX] = gameGrid[x+(y-1)*maxX];
+         }           
+       }
+       for(x=0;x<maxX;x++) {
+          gameGrid[x]=null;
+       }
+  }
+  /** function drawGrid - Refreshes the full grid 
+    * parameters: 
+    *   myCtx - canvas context where we are drawing
+    *   myGrid - the actual grid to be drawn
+    */
+  function drawGrid(myCtx,myGrid) {
+  for(var x=0;x<=maxX;x++) {
+     for(var y=0;y<=maxY;y++) {
+
+        if(myGrid[x+y*maxX]) 
+          drawSquare(myCtx,x,y,myGrid[x+y*maxX]);
+        else
+          drawSquare(myCtx,x,y,'white');
+
+    }
+  }
+ }
+
+ function drawGridSquare( myCtx, x, y, squareColor) {
+      myCtx.fillStyle = squareColor;
+      myCtx.fillRect(x*squareWidth, y*squareHeight, squareWidth-1, squareHeight-1);
+  };
+  
+ </script>
+
