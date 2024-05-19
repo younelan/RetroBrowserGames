@@ -1,0 +1,598 @@
+    <style>
+        body {
+            text-align: center;
+        }
+        .gamecontainer {
+            display: inline-block;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+    <div class="gamecontainer">
+        <div>
+            <div id="message">&nbsp;</div>
+            <button id="restartButton">Restart</button>
+
+        </div>
+        <div>
+            <canvas id="gameCanvas" width="400" height="400"></canvas>
+        </div>
+    </div>
+
+    <script>
+const levels = [
+`
+WWWWWWWWWWWWWWWWWWWWCCCWWWWWWW
+WCCCWWCCWCCCCCCCCCCCCCCCCCCCCW
+WCCCWWWWWWWCCCCCCCCCCCCCCYYCCW
+WCCWWWWWWWCCCCCCCCCCCCCCYYYYCW
+WCCCCWWWWCCCCCCCCCCCCCCCYYYYCW
+WCCCCCCCCCCCCCCCCCCCCCCCCYYCCW
+WCCCCCCCCCCCCCCCCCCCCCCCCCCCCW
+WCCCCCCCCCCCCCCCCCCCCCCCCCCCCW
+WCCCCCCCCCCCCCCCCCCCCCCCCCCCCW
+WCCCCCCCCCCCCCCCCCCCCCCCCCCCCW
+WCCCCCCCCCBBBBBBBBBBCCCCCCCCCW
+WCBBBBBBBBBBBBBBBBBBBBBBBBBBCW
+WBBBBBBBBBBBBBB   BBBBBBBBBBBW
+WBBBBBBBBBBBBB....BBBBBBBBBBBW
+WGGGGGGGGG  ......... GGGGGGBW
+WGGGGGGGGG @......... GGGGGGGW
+WGGGGGGGGG  ........  GGGGGGGW
+WGGGGGGGGGG  ......  GGGGGGGGW
+WGGGGGGGGGGG        GGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WGGGGGGGGGGGGGGGGGGGGGGGGGGGGW
+WWWWWWWWWWWWWWWWWWWWWWWWWWWWWW`,
+
+// Level 1
+`MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM
+M                        YYY M
+M                       Y Y YM
+M          RRR RRRRRR   YYYYYM
+M                       Y YY M
+M Y  @          .   .   YY  YM
+M Y                      YYY M
+M Y . Y                      M
+M Y . Y  .      .            M
+M Y . Y                      M
+M Y . Y             O        M
+M Y . Y             O        M
+M Y   YYYYY         O        M
+M Y                 O  .     M
+M Y                 O        M
+M Y   OOOOOOOOOO    OO       M
+M Y   O           .  O .     M
+M     O              O       M
+M     O              O       M
+M                    O       M
+M     .      .       O .     M
+M                            M
+M                            M
+M                            M
+M        .                   M
+M    +             .         M
+M                            M
+M                            M
+M                            M
+MMMMMMMMMMMMMMMMMMMMMMMMMMMMMM`,
+`BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+B  G  G GGG    C  C   C      B
+B  GGGG  G    CCC C   C      B
+B  G  G GGG   C C CCC CCC    B
+B                            B
+B               .      .     B
+B                            B
+B     @                      B
+B        .      .            B
+B                            B
+B                            B
+B            YY              B
+B           YYYY             B
+B           YYYY       .     B
+B            YY              B
+B                            B
+B                 .    .     B
+B                            B
+B                            B
+B                            B
+B     .      .         .     B
+B                            B
+B                            B
+B                            B
+B        .                   B
+B    +             .         B
+B                            B
+B                            B
+B                            B
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
+    // Level 2 (example with different layout)
+    
+`BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+B                            B
+B        .      .            B
+B                            B
+B          .                 B
+B                      +     B
+B      .                     B
+B                            B
+B                            B
+B                            B
+B                            B
+B            @    .          B
+B                            B
+B                            B
+B        .      .            B
+B                            B
+B                            B
+B                            B
+B                            B
+B                            B
+B                            B
+B                            B
+B                            B
+B    C   CCCC  CC   CCC CCCC B
+B   C C  C    C  C C    C    B
+B   C C  CC   CCCC C    CC   B
+B   CC   C    C  C C    C    B
+B   C    CCCC C  C  CCC CCCC B
+B                            B
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`
+,
+`BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+B  R    RRR  R      R RRRR   B
+B  R   R   R  R    R  R      B
+B  R   R   R   R  R   RRR    B
+B  R   RRRRR    RR    R      B
+B  RRR  RRR     R     RRRR   B
+B           WWWWW            B
+B         WW    WW           B
+B           WWWWW            B
+B                            B
+B                            B
+B                            B
+B     .      .         .     B
+B                @           B
+B                            B
+B             .              B
+B        .                   B
+B    +             .  .      B
+B            .               B
+B                            B
+B            YY              B
+B           YYYY             B
+B           YYYY       .     B
+B     RR     YY              B
+B    R  R                    B
+B    R  RRR       .    .     B
+B    R     R                 B
+B    RRRRRR                  B
+B                            B
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`
+
+];
+const colors = {
+    'A': '#ff6347',
+    'B': 'blue',
+    'C': 'cyan',
+    'D': '#a9a9a9',
+    'E': '#ff1493',
+    'G': 'lightgreen',
+    'L': '#008080', 
+    'M': 'maroon',
+    'N': 'brown',
+    'O': 'orange',
+    'P': 'purple',
+    'R': 'red',
+    'S': '#ff8c00',
+    'T': '#696969',
+    'W': '#ffd700',
+    'Y': 'yellow',
+};
+
+</script>
+
+
+<script>
+class SnakeGame {
+    constructor(canvasId, messageDivId, restartButtonId, levels, colors) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.levels = levels.map(level => level.trim().split('\n')); // Split each level string into arrays of lines
+        this.colors = colors; // Assign imported colors
+        this.currentLevelIndex = 0;
+        this.snake = []; // Starting position of the snake (grid-based)
+        this.dots = []; // Array to store dot positions (grid-based)
+        this.monsters = []; // Array to store monster positions (grid-based)
+        this.dotSize = 0.5; // Size of each dot (grid-based)
+        this.monsterSize = 0.8; // Size of each monster (grid-based)
+        this.gameOver = false;
+        this.score = 0; // Score to keep track of dots eaten
+        this.speed = 5; // Game speed (higher is faster)
+        this.startingDirection = 'RIGHT'; // Starting direction of the snake
+        this.backgroundColor = 'black'; // Background color of the canvas
+        this.dotColor = 'white'; // Color of the dots
+        this.monsterColor = 'red'; // Color of the monsters
+        this.messageDiv = document.getElementById(messageDivId); // Reference to message div
+        this.restartButton = document.getElementById(restartButtonId); // Reference to restart button
+        this.touchStartX = 0; // Touch start position X
+        this.touchStartY = 0; // Touch start position Y
+
+        // Calculate cell size based on canvas size
+        this.cellSize = Math.min(this.canvas.width / this.levels[this.currentLevelIndex][0].length, this.canvas.height / this.levels[this.currentLevelIndex].length);
+
+        // Bind direction and touch functions to the instance
+        this.direction = this.direction.bind(this);
+        this.handleTouchStart = this.handleTouchStart.bind(this);
+        this.handleTouchMove = this.handleTouchMove.bind(this);
+        document.addEventListener('keydown', this.direction);
+        this.canvas.addEventListener('touchstart', this.handleTouchStart, false);
+        this.canvas.addEventListener('touchmove', this.handleTouchMove, false);
+
+        // Prevent default arrow key scrolling
+        window.addEventListener('keydown', function(e) {
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].indexOf(e.code) > -1) {
+                e.preventDefault();
+            }
+        }, false);
+
+        // Attach event listener to restart button
+        this.restartButton.addEventListener('click', () => {
+            this.restartGame();
+        });
+
+        // Attach event listener to canvas for restarting on click after losing
+        this.canvas.addEventListener('click', () => {
+            if (this.gameOver) {
+                this.restartGame();
+            }
+        });
+
+        // Start the game
+        this.start();
+    }
+
+    parseLevel() {
+        this.snake = [];
+        this.dots = [];
+        this.monsters = [];
+
+        let levelLayout = this.levels[this.currentLevelIndex];
+
+        for (let y = 0; y < levelLayout.length; y++) {
+            let line = levelLayout[y];
+            for (let x = 0; x < line.length; x++) {
+                let char = line[x];
+                if (this.colors[char]) {
+                    // It's a wall based on the colors object
+                    continue;
+                } else if (char === '@') {
+                    // Start the snake at the position of '@'
+                    this.snake.push({ x: x, y: y });
+                } else if (char === '.') {
+                    this.dots.push({ x: x, y: y });
+                } else if (char === '+') {
+                    // Initialize monsters at the position of '+'
+                    let initialDirection = this.getRandomDirection();
+                    this.monsters.push({ x: x, y: y, direction: initialDirection });
+                }
+            }
+        }
+    }
+
+    draw() {
+        if (this.gameOver) return;
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.drawBackground();
+
+        // Draw all visible dots as circles
+        this.ctx.fillStyle = this.dotColor;
+        for (let dot of this.dots) {
+            this.drawCircle(dot.x * this.cellSize + this.cellSize / 2, dot.y * this.cellSize + this.cellSize / 2, this.cellSize * this.dotSize / 2);
+        }
+
+        // Draw all visible monsters
+        this.ctx.fillStyle = this.monsterColor;
+        for (let monster of this.monsters) {
+            this.drawCircle(monster.x * this.cellSize + this.cellSize / 2, monster.y * this.cellSize + this.cellSize / 2, this.cellSize * this.monsterSize / 2);
+        }
+
+        // Draw the snake
+        this.ctx.fillStyle = 'green'; // Head color
+        for (let i = 0; i < this.snake.length; i++) {
+            let snakePart = this.snake[i];
+            this.ctx.fillRect(snakePart.x * this.cellSize, snakePart.y * this.cellSize, this.cellSize, this.cellSize);
+        }
+
+        // Move the snake based on current direction
+        let snakeHead = this.snake[0];
+        let snakeX = snakeHead.x;
+        let snakeY = snakeHead.y;
+
+        if (this.startingDirection === 'LEFT') snakeX -= 1;
+        if (this.startingDirection === 'UP') snakeY -= 1;
+        if (this.startingDirection === 'RIGHT') snakeX += 1;
+        if (this.startingDirection === 'DOWN') snakeY += 1;
+
+        // Check collision with walls and change direction
+        if (this.checkCollision(snakeX, snakeY)) {
+            this.gameOver = true;
+            this.messageDiv.innerHTML = 'Game Over! You collided with a wall or yourself.';
+            return;
+        }
+
+        // Check collision with monsters
+        for (let i = 0; i < this.monsters.length; i++) {
+            let monster = this.monsters[i];
+            if (snakeX === monster.x && snakeY === monster.y) {
+                // Game over if snake collides with a monster
+                this.gameOver = true;
+                this.messageDiv.innerHTML = 'Game Over! You collided with a monster.';
+                return;
+            }
+        }
+
+        // Check collision with dots and eat them
+        let ateDot = false;
+        for (let i = 0; i < this.dots.length; i++) {
+            let dot = this.dots[i];
+            // Check if snake's head overlaps with the dot
+            if (snakeX === dot.x && snakeY === dot.y) {
+                // Eat the dot
+                this.score++;
+                this.snake.unshift({ x: snakeX, y: snakeY });
+                // Remove the dot from the array
+                this.dots.splice(i, 1);
+                ateDot = true;
+                break;
+            }
+        }
+
+        // If dot was eaten, update score
+        if (ateDot) {
+            // Update score display
+            this.messageDiv.innerHTML = `Level ${this.currentLevelIndex + 1} - Score: ${this.score}`;
+        }
+
+        // If no dot was eaten, move the snake normally
+        if (!ateDot) {
+            let newHead = { x: snakeX, y: snakeY };
+            this.snake.unshift(newHead);
+            this.snake.pop();
+        }
+
+        // Move monsters in straight lines and change direction if hitting a wall
+        this.moveMonsters();
+
+        // Check if all dots are eaten
+        if (this.dots.length === 0) {
+            this.messageDiv.innerHTML = 'Level Cleared!'; // Update message
+            this.moveToNextLevel();
+        }
+    }
+
+    moveMonsters() {
+        for (let monster of this.monsters) {
+            let monsterX = monster.x;
+            let monsterY = monster.y;
+
+            switch (monster.direction) {
+                case 'LEFT':
+                    monsterX -= 1;
+                    break;
+                case 'UP':
+                    monsterY -= 1;
+                    break;
+                case 'RIGHT':
+                    monsterX += 1;
+                    break;
+                case 'DOWN':
+                    monsterY += 1;
+                    break;
+            }
+
+            // Check collision with walls and change direction
+            if (this.checkCollision(monsterX, monsterY)) {
+                monster.direction = this.getRandomDirection();
+            } else {
+                monster.x = monsterX;
+                monster.y = monsterY;
+            }
+        }
+    }
+
+    drawCircle(x, y, radius) {
+        // Utility method to draw a circle
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+
+    moveToNextLevel() {
+    // Reset everything before starting the next level
+    clearInterval(this.interval); // Stop the game loop
+    this.gameOver = false;
+    this.startingDirection = 'RIGHT'; // Reset starting direction
+    this.messageDiv.innerHTML = ''; // Clear any previous messages
+
+    // Increment current level index or set to -1 if reached the end
+    this.currentLevelIndex++;
+
+    if (this.currentLevelIndex >= this.levels.length) {
+        // If all levels are completed
+        this.currentLevelIndex = this.levels.length - 1; // Set index to last level
+        this.gameOver = true;
+        this.messageDiv.innerHTML = 'Congratulations! You completed all levels.';
+        return;
+    }
+
+    // Parse the new level layout
+    this.parseLevel();
+
+    // Redraw the background and start the game loop again
+    this.drawBackground();
+    this.interval = setInterval(() => {
+        this.draw();
+    }, 1000 / this.speed);
+}
+
+    restartGame() {
+        // Restart the game by resetting everything
+        clearInterval(this.interval); // Stop the game loop
+        this.gameOver = false;
+        this.score = 0;
+        this.startingDirection = 'RIGHT'; // Reset starting direction
+        this.messageDiv.innerHTML = ''; // Clear any previous messages
+
+        // Reset current level index to 0
+        this.currentLevelIndex = 0;
+
+        // Parse the first level layout
+        this.parseLevel();
+
+        // Redraw the background and start the game loop again
+        this.drawBackground();
+        this.interval = setInterval(() => {
+            this.draw();
+        }, 1000 / this.speed); // Adjust the interval based on the speed
+
+        // Update message div with current level and score
+        this.messageDiv.innerHTML = `Level ${this.currentLevelIndex + 1} - Score: ${this.score}`;
+    }
+
+    direction(event) {
+        // Change snake direction based on key input
+        if (event.keyCode === 37 && this.startingDirection !== 'RIGHT') {
+            this.startingDirection = 'LEFT';
+        } else if (event.keyCode === 38 && this.startingDirection !== 'DOWN') {
+            this.startingDirection = 'UP';
+        } else if (event.keyCode === 39 && this.startingDirection !== 'LEFT') {
+            this.startingDirection = 'RIGHT';
+        } else if (event.keyCode === 40 && this.startingDirection !== 'UP') {
+            this.startingDirection = 'DOWN';
+        }
+    }
+
+    handleTouchStart(event) {
+        // Handle touch start position
+        this.touchStartX = event.touches[0].clientX;
+        this.touchStartY = event.touches[0].clientY;
+    }
+
+    handleTouchMove(event) {
+        // Handle touch move direction
+        if (!this.touchStartX || !this.touchStartY) {
+            return;
+        }
+        event.preventDefault();
+
+        let touchEndX = event.touches[0].clientX;
+        let touchEndY = event.touches[0].clientY;
+
+        let deltaX = touchEndX - this.touchStartX;
+        let deltaY = touchEndY - this.touchStartY;
+
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            // Horizontal swipe
+            if (deltaX > 0 && this.startingDirection !== 'LEFT') {
+                this.startingDirection = 'RIGHT';
+            } else if (deltaX < 0 && this.startingDirection !== 'RIGHT') {
+                this.startingDirection = 'LEFT';
+            }
+        } else {
+            // Vertical swipe
+            if (deltaY > 0 && this.startingDirection !== 'UP') {
+                this.startingDirection = 'DOWN';
+            } else if (deltaY < 0 && this.startingDirection !== 'DOWN') {
+                this.startingDirection = 'UP';
+            }
+        }
+
+        // Reset touch start positions
+        this.touchStartX = 0;
+        this.touchStartY = 0;
+    }
+
+    checkCollision(x, y) {
+        // Check collision with walls and change direction
+        if (x < 0 || x >= this.levels[this.currentLevelIndex][0].length || y < 0 || y >= this.levels[this.currentLevelIndex].length) {
+            return true; // Out of bounds or collision with wall
+        }
+
+        let char = this.levels[this.currentLevelIndex][y][x];
+        if (this.colors[char]) {
+            return true; // Collision with wall
+        }
+
+        // Check if snake collides with itself
+        for (let i = 1; i < this.snake.length; i++) {
+            if (x === this.snake[i].x && y === this.snake[i].y) {
+                return true; // Collision with itself
+            }
+        }
+
+        return false;
+    }
+
+    getRandomDirection() {
+        // Get a random direction for monsters
+        let directions = ['LEFT', 'UP', 'RIGHT', 'DOWN'];
+        return directions[Math.floor(Math.random() * directions.length)];
+    }
+
+    getPossibleDirections() {
+        // Get possible directions for movement
+        let possibleDirections = [];
+        if (this.startingDirection !== 'LEFT') possibleDirections.push('RIGHT');
+        if (this.startingDirection !== 'UP') possibleDirections.push('DOWN');
+        if (this.startingDirection !== 'RIGHT') possibleDirections.push('LEFT');
+        if (this.startingDirection !== 'DOWN') possibleDirections.push('UP');
+        return possibleDirections;
+    }
+
+    drawBackground() {
+        // Draw the background for the current level
+        this.ctx.fillStyle = this.backgroundColor;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        let levelLayout = this.levels[this.currentLevelIndex];
+
+        for (let y = 0; y < levelLayout.length; y++) {
+            let line = levelLayout[y];
+            for (let x = 0; x < line.length; x++) {
+                let char = line[x];
+                if (this.colors[char]) {
+                    this.ctx.fillStyle = this.colors[char];
+                    this.ctx.fillRect(x * this.cellSize, y * this.cellSize, this.cellSize, this.cellSize);
+                }
+            }
+        }
+    }
+
+    start() {
+        // Start the game loop
+        this.interval = setInterval(() => {
+            this.draw();
+        }, 1000 / this.speed); // Adjust the interval based on the speed
+    }
+}
+
+
+const snakeGame = new SnakeGame('gameCanvas', 'message', 'restartButton', levels, colors);
+snakeGame.restartGame()
+</script>
+
