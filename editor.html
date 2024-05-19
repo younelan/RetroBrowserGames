@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Editor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .toolbar {
+            margin-bottom: 10px;
+        }
+        .toolbar button {
+            width: 30px;
+            height: 30px;
+            border: none;
+            margin-right: 5px;
+            cursor: pointer;
+            border: 1px solid black;
+        }
+        #mapOutput {
+            width: 100%;
+            height: 200px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            padding: 5px;
+            box-sizing: border-box;
+            white-space: pre-wrap;
+            overflow-y: scroll;
+        }
+
+        #editor {
+    display: grid;
+    gap: 0; /* Remove any gaps between grid cells */
+    border: 1px solid #ccc; /* Optional: Add a border around the grid */
+    max-width: 100%; /* Ensure the grid fills its container */
+    max-height: 100%; /* Ensure the grid fills its container */
+}
+
+.cell {
+    width: 100%; /* Ensure each cell takes up the full width of its grid column */
+    height: 100%; /* Ensure each cell takes up the full height of its grid row */
+    background-color: #ffffff; /* Default background color */
+    border: 1px solid #ddd; /* Optional: Add borders to cells for better visibility */
+    text-align: center; /* Center align text within cells */
+    font-size: 14px; /* Adjust font size as needed */
+    line-height: 1; /* Ensure line height is normal */
+}
+        
+
+    </style>
+</head>
+<body>
+    <div class="toolbar" id="toolbar"></div>
+    <div id="editor" class="editor"></div>
+    <div class="controls">
+        <input type="number" id="rowsInput" min="1" value="10" placeholder="Rows">
+        <input type="number" id="colsInput" min="1" value="20" placeholder="Columns">
+        <button id="generateMapBtn">Generate Map</button>
+    </div>
+
+    <textarea id="mapOutput" spellcheck="false"></textarea>
+
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function() {
+    const editor = document.getElementById('editor');
+    const rowsInput = document.getElementById('rowsInput');
+    const colsInput = document.getElementById('colsInput');
+    const generateMapBtn = document.getElementById('generateMapBtn');
+    const toolbar = document.getElementById('toolbar');
+    const mapOutput = document.getElementById('mapOutput');
+
+    let currentTool = ''; // Variable to store current selected tool
+    let numRows = parseInt(rowsInput.value) || 10; // Default rows if not set
+    let numCols = parseInt(colsInput.value) || 10; // Default cols if not set
+    let cells = []; // Array to store cell elements
+
+    // Define the tools with their corresponding characters and colors
+    const tools = [
+        { type: 'color', symbol: 'B', color: '#0000ff' },   // Blue
+        { type: 'color', symbol: 'Y', color: '#ffff00' },   // Yellow
+        { type: 'color', symbol: 'O', color: '#ffa500' },   // Orange
+        { type: 'color', symbol: 'P', color: '#ffc0cb' },   // Pink
+        { type: 'color', symbol: 'G', color: '#008000' },   // Green
+        { type: 'special', symbol: '@', color: '#ff0000' }, // Player
+        { type: 'special', symbol: '+', color: '#ffffff' }, // Monster
+        { type: 'special', symbol: '.', color: '#000000' }, // Dot
+        { type: 'color', symbol: 'R', color: '#ff4500' },   // Orange Red
+        { type: 'color', symbol: 'C', color: '#00ffff' },   // Cyan
+        { type: 'color', symbol: 'M', color: '#800080' },   // Purple
+        { type: 'color', symbol: 'D', color: '#a9a9a9' },   // Dark Gray
+        { type: 'color', symbol: 'S', color: '#ff8c00' },   // Dark Orange
+        { type: 'color', symbol: 'E', color: '#ff1493' },   // Deep Pink
+        { type: 'color', symbol: 'L', color: '#008080' },   // Teal
+        { type: 'color', symbol: 'N', color: '#4682b4' },   // Steel Blue
+        { type: 'color', symbol: 'A', color: '#ff6347' },   // Tomato
+        { type: 'color', symbol: 'T', color: '#696969' },   // Dim Gray
+        { type: 'color', symbol: 'W', color: '#ffd700' },   // Gold
+        { type: 'empty', symbol: ' ', color: '#ffffff' }    // Empty space (white)
+    ];
+
+    // Flag to track if mouse is currently pressed
+    let isMouseDown = false;
+
+    // Initialize editor grid based on textarea content or default dimensions
+    initializeEditor();
+
+    // Initialize toolbar
+    initializeToolbar();
+
+    // Event listener for generate map button click
+    generateMapBtn.addEventListener('click', function() {
+        updateGridFromTextarea();
+    });
+
+    // Event listener for rows and columns input change
+    rowsInput.addEventListener('input', function() {
+        numRows = parseInt(rowsInput.value) || 10;
+        updateGridDimensions();
+    });
+
+    colsInput.addEventListener('input', function() {
+        numCols = parseInt(colsInput.value) || 10;
+        updateGridDimensions();
+    });
+
+    // Event listener for textarea input change
+    mapOutput.addEventListener('input', function() {
+        updateGridFromTextarea();
+    });
+
+    // Event listeners for mouse actions on editor (mousedown, mousemove, mouseup)
+    editor.addEventListener('mousedown', function(event) {
+        isMouseDown = true;
+        event.preventDefault()
+        paintCell(event.target);
+    });
+
+    editor.addEventListener('mousemove', function(event) {
+        if (isMouseDown) {
+            event.preventDefault()
+            paintCell(event.target);
+        }
+    });
+
+    editor.addEventListener('mouseup', function() {
+        if( isMouseDown) {
+            event.preventDefault()
+        }
+        isMouseDown = false;
+    });
+
+    // Event listener for cut and paste events in textarea
+    mapOutput.addEventListener('cut', function(event) {
+        setTimeout(function() {
+            clearGrid();
+            updateGridFromTextarea();
+        }, 50); // Delay to ensure paste content is available
+    });
+
+    mapOutput.addEventListener('paste', function(event) {
+        setTimeout(function() {
+            clearGrid();
+            updateGridFromTextarea();
+        }, 50); // Delay to ensure paste content is available
+    });
+
+    // Function to initialize editor grid
+    function initializeEditor() {
+        cells = []; // Reset cells array
+        editor.innerHTML = ''; // Clear existing grid
+
+        // Initialize grid with specified rows and columns
+        for (let i = 0; i < numRows; i++) {
+            for (let j = 0; j < numCols; j++) {
+                let cell = createCell(' ');
+                cells.push(cell);
+                editor.appendChild(cell);
+            }
+        }
+
+        // Update editor dimensions and cell sizes
+        updateGridStyles();
+    }
+
+    // Function to update grid dimensions and cell sizes
+    function updateGridStyles() {
+        // Calculate cell size based on editor dimensions and numRows/numCols
+        let editorWidth = editor.clientWidth * 0.7; // Limit editor width to 70% of parent
+        let cellSize = Math.min(editorWidth / numCols, editor.clientHeight / numRows);
+
+        editor.style.gridTemplateColumns = `repeat(${numCols}, ${cellSize}px)`;
+        editor.style.gridTemplateRows = `repeat(${numRows}, ${cellSize}px)`;
+    }
+
+    // Function to update grid dimensions based on input values
+    function updateGridDimensions() {
+        initializeEditor();
+        updateGridFromTextarea();
+    }
+
+    // Function to initialize toolbar
+    function initializeToolbar() {
+        tools.forEach(tool => {
+            let button = document.createElement('button');
+            button.textContent = tool.symbol;
+            button.style.backgroundColor = tool.color;
+            button.addEventListener('click', function() {
+                currentTool = tool;
+            });
+            toolbar.appendChild(button);
+        });
+    }
+
+    // Function to update grid from textarea content
+    function updateGridFromTextarea() {
+        let mapText = mapOutput.value.trim();
+        let lines = mapText.split('\n');
+
+        // Initialize grid dimensions based on textarea content if necessary
+        if (lines.length > numRows) {
+            numRows = lines.length;
+            initializeEditor();
+        }
+
+        let newNumCols = 0;
+
+        // Determine maximum columns needed
+        lines.forEach(line => {
+            if (line.length > newNumCols) {
+                newNumCols = line.length;
+            }
+        });
+
+        // Adjust grid dimensions if pasted content exceeds current input values
+        if (newNumCols > numCols) {
+            numCols = newNumCols;
+            initializeEditor();
+        }
+
+        // Update cells with content from textarea
+        let index = 0;
+        for (let i = 0; i < numRows; i++) {
+            for (let j = 0; j < numCols; j++) {
+                if (j < lines[i].length) {
+                    let symbol = lines[i][j];
+                    cells[index].textContent = symbol;
+                    let tool = tools.find(tool => tool.symbol === symbol);
+                    cells[index].style.backgroundColor = tool ? tool.color : '#ffffff'; // White if not recognized
+                } else {
+                    // Handle the case where line length is shorter than numCols
+                    cells[index].textContent = '';
+                    cells[index].style.backgroundColor = '#ffffff';
+                }
+                index++;
+            }
+        }
+
+        // Clear remaining cells if necessary
+        for (let i = index; i < cells.length; i++) {
+            cells[i].textContent = '';
+            cells[i].style.backgroundColor = '#ffffff';
+        }
+
+        // Update rowsInput and colsInput values
+        rowsInput.value = numRows;
+        colsInput.value = numCols;
+
+        // Update editor dimensions based on new numRows and numCols
+        updateGridStyles();
+    }
+
+    // Function to create a cell element
+    function createCell(initialSymbol = ' ') {
+        let cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.textContent = initialSymbol;
+        cell.style.backgroundColor = '#ffffff'; // White space color
+        cell.addEventListener('mousedown', function() {
+            if (currentTool === tools[tools.length - 1]) { // Check for empty space tool
+                this.textContent = ' ';
+                this.style.backgroundColor = '#ffffff';
+                updateTextareaFromGrid();
+            } else {
+                paintCell(this);
+            }
+        });
+        return cell;
+    }
+
+    // Function to handle painting a cell
+    function paintCell(cell) {
+        if (currentTool && cell.textContent !== currentTool.symbol) {
+            cell.textContent = currentTool.symbol;
+            cell.style.backgroundColor = currentTool.color;
+            updateTextareaFromGrid();
+        }
+    }
+
+    // Function to update textarea from grid content
+    function updateTextareaFromGrid() {
+        let mapText = '';
+        let index = 0;
+
+        for (let i = 0; i < numRows; i++) {
+            let line = '';
+            for (let j = 0; j < numCols; j++) {
+                let symbol = cells[index].textContent.trim();
+                if (symbol === '') {
+                    symbol = ' '; // Ensure empty cells are represented as spaces
+                }
+                line += symbol;
+                index++;
+            }
+            mapText += line + '\n';
+        }
+
+        mapOutput.value = mapText.trim();
+    }
+
+    // Function to clear the grid
+    function clearGrid() {
+        editor.innerHTML = ''; // Clear all child elements
+        cells = []; // Reset cells array
+    }
+});
+
+
+
+
+</script>
+
+</body>
+</html>
