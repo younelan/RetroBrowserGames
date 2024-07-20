@@ -1,0 +1,616 @@
+<style>
+    canvas {
+        display: block;
+        margin: 0 auto;
+        background-color: black;
+    }
+
+    .game {
+        border: 1px solid red;
+        text-align: center;
+        display: inline-block;
+    }
+
+    .gameContainer {
+        display: block;
+        max-width: 100%;
+    }
+</style>
+
+<div id="gameContainer" style="">
+    <canvas id="gameCanvas" style="display: block; width: 100%;"></canvas>
+    <button id="startStopButton">Start</button>
+    <div id="message"></div>
+</div>
+
+<script>
+    const monsterCanva = document.getElementById('gameCanvas');
+    const monsterCtx = monsterCanva.getContext('2d');
+    const monsterSpeed = 1;
+
+    const playerOne = {
+        x: 75,
+        y: 75,
+        radius: 12,
+        speed: 2,
+        direction: 'right'
+    };
+
+    const defaultLevels = [
+`
+OOOOOOOOOOOOOOOOOOOO
+O@                 O
+O                  O
+O  O  DDDDDD       O
+O  O       D       O
+O  O       D     . O
+O  O  OOO. D  .    O
+O  O    O  D       O
+O  O .. O  D     . O
+O  OOOOOO  D       O
+O                  O
+O   +        .     O
+O          D       O
+O  OOOOOO. D    .  O
+O  O       D       O
+O  O       D       O
+O  O       D       O
+O  O       D   .  .O
+O          D       O
+OOOOOOOOOOOOOOOOOOOO
+`,
+
+`
+BBBBBBBBBBBBBBBBBBBB
+B    B        B    B
+B    B        B    B
+B    B        B    B
+B    B        B    B
+B                . B
+B        .         B
+B                  B
+B                . B
+B                  B
+B    BBBBBBBBB     B
+B                  B
+B          .       B
+B @                B
+B                  B
+B         B        B
+B         B      + B
+B         B       .B
+B         B        B
+BBBBBBBBBBBBBBBBBBBB
+`,
+`
+RRRRRRRRRRRRRRRRRRRR
+R    R        R    R
+R    R        R    R
+R             R    R
+R           RRR    R
+R    R           . R
+R    R .      .    R
+R    R    RRRRR    R
+R    R    R . R  . R
+R    R    R   R    R
+R    R    R        R
+R    R    R        R
+R    R   RR        R
+R @      R         R
+R        R         R
+R        RY O      R
+R        RYWO    + R
+R     +  RYWOG    .R
+R        RYWOG     R
+RRRRRRRRRRRRRRRRRRRR
+`,
+`
+MMMMMMMMMMMMMMMMMMMM
+M@                 M
+M                  M
+M  MMMMMMMMMM      M
+M  M        M      M
+M MM        M    . M
+M MM  MMM.  M .    M
+M MM    M          M
+M  M .. M  MMM   . M
+M  MMMMMM  MMMM    M
+M   MMM    MMMM    M
+M           MM  M  M
+M        MMMMMMMM  M
+M  MMMMMMMMMM   .  M
+M  M       MM      M
+M  M      MMMM     M
+M  M     MMMMM   + M
+M  M  + MMMMMMM.  .M
+M      MMMMMMMMM   M
+MMMMMMMMMMMMMMMMMMMM
+`,
+`
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+B        B            B     B
+B  .     B     .      B     B
+B        B     BBBBBBBB  .  B
+BBBBBBB  B                  B
+B           .          BBBB B
+B  .            @      B BBBB
+B        B                . B
+B  BBBBBB                   B
+B      B   YYYYYYYYYYY      B
+B      B  YYYYYYYYYYYYY  BBBB
+B  .   B   YYYYYYYYYYYY  .  B
+B      B YYYYYYYYYYYY       B
+B  .   B YYYYYYYYYYYY  .    B
+BBBBBBBB   YYYYYYYYYY  B    B
+B       B               B   B
+B          .            B   B
+B  .                    BB. B
+B  BBBBBB             B     B
+B     B   GGGGGGGGGG   BB   B
+B     B  GGGGGGGGGGGG   B  BB
+B  .  B GGGGGGGGGGGG  . B   B
+B     B  GGGGGGGGGGGG   B   B
+B     B GGGGGGGGGGGG  . B   B
+BBBB  B  GGGGGGGGGGGGB      B
+B  .     .  .  .     BBBB   B
+B          B                B
+B          B                B
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+`,
+
+`
+BGBYPGYPGYPGYPGYPGYBBBBBBBBBB
+B .  .  .  .  .  .  . B     B
+B .  B     B  .  .  . B     B
+B .  .  .  .  B     . B     B
+B .+ .BBBB .  .  .  . B     B
+B .  B  .BB.  .  B  . B     B
+B .  .  .  BB .  .  . B     B
+B .  .  .  .BBB     . B     B
+B .  B  .  .  .  .  . B     B
+B .  B  YYY.  .  .  . B     B
+B .  B  YYY   .  .  . B     B
+B .  B  .  .  B  .  . B     B
+BBBBBBBBBBBBBBB  @    B     B
+B ....  .. .. .  .  . B     B
+B .     .  BBBB  Y  . B     B
+B .  B  .  .  .  .  . B     B
+B .  .  .  Y  .  .  .       B
+B                     B     B
+B .  B  .  .  .  .  . B     B
+B    B                B     B
+B .  B  .  .  .  .  . B     B
+B    B                B     B
+B .  B  .  .  .  .  . B     B
+B    B                B     B
+B .  B  .  .  .  .  . B     B
+B    B                B     B
+B .  B  .  .  .  .  . B     B
+B .  .  .  .  B  .  .       B
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+`,
+
+`
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+B.............B....@........B
+B.B...B.B...B.B.G...M. ...B.B
+B.B.B.B.B.B.B.B.G.O.M. .W.B.B
+B.B.B.B.B.B.B.B.G.O.M.Y.W.B.B
+B.B.B.B. .B.B.B.G.O.M.Y.W.B.B
+B.B.B.B. .B.B.B.G.O.M.Y.W.B.B
+B.B.B.B.R.B. .B.G.O.M.Y.W.B.B
+B.B.B.B.R.B. .B.G.O.M.Y.W.B.B
+B.B.B.B.R.B.B.B.G.O.M.Y.W.B.B
+B.B.B.B.R.B.B.B. . . . . .B.B
+B.B.B.B.R.B. .B. . . ...B. .B
+B.B.B.B.R..+ ..... . ...B...B
+B.B.B.B.R. . . . . .RR..B. .B
+B.B.B.B.RRR. YYY . RRRR.B.B.B
+B.B.B.B.RRR.YYYYY.RRR R.B.B.B
+B.B.B.B. RR.YYYYY  R .R.B.B.B
+B. .B.B. .R .YYY..RR..R...B.B
+B...B.....RR . . RR. . . .B.B
+B.B.B. .   .   .   .B. .B.B.B
+B.B. . .OO . RRR.. .B. .B.B.B
+B.B. . .OOO. RRR.. .B.B.B.B.B
+B.B. .B.OOO. RRR.. .B.B. .B.B
+B.B.B.B.OO . RRR..B.B.B. .B.B
+B.B.B.B.O. . RRR..B.B.B.B.B.B
+B.B.B.B.O. . RRR..B.B.B.B.B.B
+B. .B.B.O.B.     . .B. . . .B
+B...B.B...B. . . ...B..... .B
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+`,
+ 
+    ];
+
+    levels = defaultLevels.slice();
+    //let totalDots = levels[currentLevel].flat().filter(cell => cell === 2).length;
+
+    // const colors = {
+    //     walls: ['blue', 'green', 'purple'],
+    //     dots: ['white', 'yellow', 'pink']
+    // };
+    //gameActive = true;
+
+
+    // export const cellSize = 30;
+    // export let score = 0;
+    // export let currentLevel = 0;
+    // export let totalDots = 0;
+    const cellSize = 30;
+    let score = 0;
+    let currentLevel = 0;
+    let totalDots = 0;
+
+
+    const colors = {
+        B: 'blue',
+        G: 'green',
+        R: 'red',
+        Y: 'yellow',
+        O: 'orange',
+        C: 'cyan',
+        P: 'purple',
+        M: 'magenta',
+        N: 'brown',
+        W: 'white',
+        "-": 'brown'
+    };
+
+    //export let gameActive = true;
+    //export let monsters = [];
+    let gameActive = true;
+    let monsters = [];
+
+
+    // import { monsterSpeed, playerOne, defaultLevels, cellSize, score, currentLevel, totalDots, colors, gameActive, monsters } from './variables.js';
+</script>
+<script>
+
+
+    class MonsterGame {
+        constructor(canvasId) {
+            this.monsterCanva = document.getElementById(canvasId);
+            this.monsterCtx = this.monsterCanva.getContext('2d');
+            this.container = document.getElementById('gameContainer');
+            this.levels = this.parseLevels(defaultLevels);
+            this.resizeCanvas();
+            this.initializeLevel();
+
+            window.addEventListener('resize', this.resizeCanvas.bind(this));
+            this.monsterCanva.addEventListener('touchstart', this.handleTouch.bind(this));
+            this.monsterCanva.addEventListener('touchmove', this.handleTouch.bind(this));
+            document.addEventListener('keydown', this.handleKeydown.bind(this));
+
+            this.lastUpdateTime = 0;
+            this.fixedTimeStep = 1000 / 60; // 60 updates per second
+        }
+        resizeCells() {
+            this.cellSize = this.monsterCanva.width / this.levels[currentLevel][0].length;
+            playerOne.radius = (this.cellSize - 2) / 2; // Adjust size to fit through walls
+            monsters.forEach(monster => {
+                monster.radius = (this.cellSize - 2) / 2; // Adjust size to fit through walls
+                monster.speed = 0.1; // Speed in cells per update
+            });
+
+        }
+        resizeCanvas() {
+            const containerWidth = this.container.clientWidth;
+            const containerHeight = this.container.clientHeight;
+            let size = containerWidth; // Use container's width for size
+            if (containerHeight<containerWidth) {
+                size=containerHeight
+            }
+            this.monsterCanva.style.width = `${size}px`;
+            this.monsterCanva.style.height = `${size}px`;
+            this.monsterCanva.width = size;
+            this.monsterCanva.height = size; // Maintain 1:1 aspect ratio
+
+            playerOne.speed = 0.1; // Speed in cells per update
+            this.resizeCells()
+            this.draw(); // Redraw the canvas after resizing
+        }
+
+        parseLevels(levelStrings) {
+            return levelStrings.map(levelString => {
+                return levelString.trim().split('\n').map(line => line.trim().split(''));
+            });
+        }
+
+        initializeLevel() {
+            monsters.length = 0;
+            totalDots = 0;
+            this.resizeCells()
+            for (let row = 0; row < this.levels[currentLevel].length; row++) {
+                for (let col = 0; col < this.levels[currentLevel][row].length; col++) {
+                    const cell = this.levels[currentLevel][row][col];
+                    if (cell === '+') {
+                        monsters.push({
+                            x: col * this.cellSize + this.cellSize / 2,
+                            y: row * this.cellSize + this.cellSize / 2,
+                            radius: (this.cellSize ) / 2-2,
+                            speed: 0.1, // Speed in cells per update
+                            direction: 'left'
+                        });
+                    } else if (cell === '@') {
+                        playerOne.x = col * this.cellSize + this.cellSize / 2;
+                        playerOne.y = row * this.cellSize + this.cellSize / 2+1;
+                    } else if (cell === '.') {
+                        totalDots++;
+                    }
+                }
+            }
+        }
+
+
+
+            drawPlayerOne() {
+                let startAngle, endAngle;
+
+                switch (playerOne.direction) {
+                    case 'right':
+                        startAngle = 0.2 * Math.PI;
+                        endAngle = 1.8 * Math.PI;
+                        break;
+                    case 'left':
+                        startAngle = 1.2 * Math.PI;
+                        endAngle = 0.8 * Math.PI;
+                        break;
+                    case 'up':
+                        startAngle = 1.7 * Math.PI;
+                        endAngle = 1.3 * Math.PI;
+                        break;
+                    case 'down':
+                        startAngle = 0.7 * Math.PI;
+                        endAngle = 0.3 * Math.PI;
+                        break;
+                    default:
+                        startAngle = 0.2 * Math.PI;
+                        endAngle = 1.8 * Math.PI;
+                }
+
+                this.monsterCtx.beginPath();
+                this.monsterCtx.arc(playerOne.x, playerOne.y, playerOne.radius, startAngle, endAngle);
+                this.monsterCtx.lineTo(playerOne.x, playerOne.y);
+                this.monsterCtx.fillStyle = 'yellow';
+                this.monsterCtx.fill();
+                this.monsterCtx.closePath();
+            }
+
+
+
+
+
+
+    
+
+        drawDots() {
+            for (let row = 0; row < this.levels[currentLevel].length; row++) {
+                for (let col = 0; col < this.levels[currentLevel][row].length; col++) {
+                    if (this.levels[currentLevel][row][col] === '.') {
+                        this.monsterCtx.beginPath();
+                        this.monsterCtx.arc(col * this.cellSize + this.cellSize / 2, row * this.cellSize + this.cellSize / 2, this.cellSize / 5, 0, 2 * Math.PI);
+                        this.monsterCtx.fillStyle = '#fff';
+                        this.monsterCtx.fill();
+                        this.monsterCtx.closePath();
+                    }
+                }
+            }
+        }
+
+        drawMonsters() {
+            monsters.forEach(monster => {
+                this.monsterCtx.beginPath();
+                this.monsterCtx.arc(monster.x, monster.y, monster.radius, 0, 2 * Math.PI);
+                this.monsterCtx.fillStyle = 'red';
+                this.monsterCtx.fill();
+                this.monsterCtx.closePath();
+            });
+        }
+
+        drawWalls() {
+            for (let row = 0; row < this.levels[currentLevel].length; row++) {
+                for (let col = 0; col < this.levels[currentLevel][row].length; col++) {
+                    const cell = this.levels[currentLevel][row][col];
+                    if (colors[cell]) {
+                        this.monsterCtx.fillStyle = colors[cell];
+                        this.monsterCtx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize, this.cellSize);
+                    }
+                }
+            }
+        }
+
+        drawScore() {
+            this.monsterCtx.font = '20px Arial';
+            this.monsterCtx.fillStyle = 'black';
+            this.monsterCtx.fillText('Score: ' + score, 10, this.monsterCanva.height - 30);
+            this.monsterCtx.fillText('Level: ' + (currentLevel + 1), 10, this.monsterCanva.height - 10);
+        }
+
+        update(deltaTime) {
+            let nextX = playerOne.x;
+            let nextY = playerOne.y;
+
+            if (playerOne.direction === 'right') nextX += playerOne.speed * this.cellSize * deltaTime;
+            if (playerOne.direction === 'left') nextX -= playerOne.speed * this.cellSize * deltaTime;
+            if (playerOne.direction === 'up') nextY -= playerOne.speed * this.cellSize * deltaTime;
+            if (playerOne.direction === 'down') nextY += playerOne.speed * this.cellSize * deltaTime;
+
+            if (!this.isCollidingWithWall(nextX, nextY, playerOne.radius)) {
+                playerOne.x = nextX;
+                playerOne.y = nextY;
+            }
+
+            monsters.forEach(monster => {
+                let nextMonsterX = monster.x;
+                let nextMonsterY = monster.y;
+
+                if (monster.direction === 'left') nextMonsterX -= monster.speed * this.cellSize * deltaTime;
+                if (monster.direction === 'right') nextMonsterX += monster.speed * this.cellSize * deltaTime;
+                if (monster.direction === 'up') nextMonsterY -= monster.speed * this.cellSize * deltaTime;
+                if (monster.direction === 'down') nextMonsterY += monster.speed * this.cellSize * deltaTime;
+
+                if (!this.isCollidingWithWall(nextMonsterX, nextMonsterY, monster.radius)) {
+                    monster.x = nextMonsterX;
+                    monster.y = nextMonsterY;
+                } else {
+                    this.changeMonsterDirection(monster);
+                }
+
+                // Keep monsters within screen boundaries
+                if (monster.x < 0) monster.x = this.monsterCanva.width;
+                if (monster.x > this.monsterCanva.width) monster.x = 0;
+                if (monster.y < 0) monster.y = this.monsterCanva.height;
+                if (monster.y > this.monsterCanva.height) monster.y = 0;
+            });
+
+            // Collision detection with dots
+            for (let row = 0; row < this.levels[currentLevel].length; row++) {
+                for (let col = 0; col < this.levels[currentLevel][row].length; col++) {
+                    if (this.levels[currentLevel][row][col] === '.') {
+                        const dotX = col * this.cellSize + this.cellSize / 2;
+                        const dotY = row * this.cellSize + this.cellSize / 2;
+                        const dist = Math.hypot(playerOne.x - dotX, playerOne.y - dotY);
+                        if (dist < playerOne.radius + this.cellSize / 10) {
+                            this.levels[currentLevel][row][col] = ' ';
+                            score++;
+                        }
+                    }
+                }
+            }
+
+            // Check for win condition
+            if (this.levels[currentLevel].flat().filter(cell => cell === '.').length === 0) {
+                if (currentLevel < this.levels.length - 1) {
+                    currentLevel++;
+                    totalDots = this.levels[currentLevel].flat().filter(cell => cell === '.').length;
+                    this.initializeLevel();
+                } else {
+                    this.displayEndScreen('You Win!', score);
+                }
+            }
+
+            // Collision detection with monsters
+            monsters.forEach(monster => {
+                const dist = Math.hypot(playerOne.x - monster.x, playerOne.y - monster.y);
+                if (dist < playerOne.radius + monster.radius) {
+                    this.displayEndScreen('Game Over!', score);
+                }
+            });
+
+            // Keep Monster Chaser within screen boundaries
+            if (playerOne.x < 0) playerOne.x = this.monsterCanva.width;
+            if (playerOne.x > this.monsterCanva.width) playerOne.x = 0;
+            if (playerOne.y < 0) playerOne.y = this.monsterCanva.height;
+            if (playerOne.y > this.monsterCanva.height) playerOne.y = 0;
+        }
+
+        isCollidingWithWall(x, y, radius) {
+            const col = Math.floor(x / this.cellSize);
+            const row = Math.floor(y / this.cellSize);
+            return this.levels[currentLevel][row][col] in colors ||
+                (this.levels[currentLevel][row][col + 1] in colors && x + radius > (col + 1) * this.cellSize) ||
+                (this.levels[currentLevel][row][col - 1] in colors && x - radius < col * this.cellSize-1) ||
+                (this.levels[currentLevel][row + 1][col] in colors && y + radius > (row + 1) * this.cellSize) ||
+                (this.levels[currentLevel][row - 1][col] in colors && y - radius < row * this.cellSize);
+        }
+
+        changeMonsterDirection(monster) {
+            const directions = ['left', 'right', 'up', 'down'];
+            monster.direction = directions[Math.floor(Math.random() * directions.length)];
+        }
+
+        draw() {
+            this.monsterCtx.clearRect(0, 0, this.monsterCanva.width, this.monsterCanva.height);
+            this.drawWalls();
+            this.drawDots();
+            this.drawPlayerOne();
+            this.drawMonsters();
+            this.drawScore();
+        }
+
+        gameLoop(timestamp) {
+            const deltaTime = (timestamp - this.lastUpdateTime) / this.fixedTimeStep;
+            this.lastUpdateTime = timestamp;
+
+            if (gameActive) {
+                this.update(deltaTime);
+                this.draw();
+            }
+            requestAnimationFrame(this.gameLoop.bind(this));
+        }
+
+        handleTouch(event) {
+            const touch = event.touches[0];
+            const touchX = touch.clientX - this.monsterCanva.offsetLeft;
+            const touchY = touch.clientY - this.monsterCanva.offsetTop;
+
+            const dx = touchX - playerOne.x;
+            const dy = touchY - playerOne.y;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0) playerOne.direction = 'right';
+                else playerOne.direction = 'left';
+            } else {
+                if (dy > 0) playerOne.direction = 'down';
+                else playerOne.direction = 'up';
+            }
+        }
+
+        handleKeydown(event) {
+            if (['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+                event.preventDefault(); // Prevent default scrolling behavior
+            }
+            if (event.key === 'ArrowRight') playerOne.direction = 'right';
+            if (event.key === 'ArrowLeft') playerOne.direction = 'left';
+            if (event.key === 'ArrowUp') playerOne.direction = 'up';
+            if (event.key === 'ArrowDown') playerOne.direction = 'down';
+        }
+
+        displayEndScreen(message, score) {
+            this.monsterCtx.clearRect(0, 0, this.monsterCanva.width, this.monsterCanva.height);
+            this.monsterCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.monsterCtx.fillRect(0, 0, this.monsterCanva.width, this.monsterCanva.height);
+            this.monsterCtx.font = '30px Arial';
+            this.monsterCtx.fillStyle = 'white';
+            this.monsterCtx.fillText(message, this.monsterCanva.width / 2 - 50, this.monsterCanva.height / 2 - 20);
+            this.monsterCtx.fillText('Score: ' + score, this.monsterCanva.width / 2 - 50, this.monsterCanva.height / 2 + 20);
+            gameActive = false;
+            alert(message);
+        }
+
+        toggleGame() {
+            gameActive = !gameActive;
+            const button = document.getElementById('startStopButton');
+            if (gameActive) {
+                document.getElementById('message').innerHTML = "Good Luck";
+                this.levels = this.parseLevels(defaultLevels);
+                button.textContent = "Stop";
+                score = 0;
+                currentLevel = 0;
+                this.initializeLevel();
+                this.gameLoop(performance.now());
+            } else {
+                button.textContent = "Start";
+                console.log("Game stopped.");
+            }
+        }
+
+        startGame() {
+            if (!gameActive) {
+                score = 0;
+                currentLevel = 0;
+                this.initializeLevel();
+                gameActive = true;
+                this.gameLoop(performance.now()); // Ensure the game loop starts
+            }
+        }
+    }
+
+    // Initialize the game
+    const game = new MonsterGame('gameCanvas');
+    game.gameLoop(performance.now());
+    document.getElementById('startStopButton').addEventListener('click', () => game.toggleGame());
+    document.getElementById('gameCanvas').addEventListener('click', () => game.startGame());
+</script>
