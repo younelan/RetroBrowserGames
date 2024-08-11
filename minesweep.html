@@ -269,6 +269,7 @@ function revealCell(r, c) {
 
     if (grid[r][c].count > 0) {
         cell.textContent = grid[r][c].count;
+        cell.dataset.count=  grid[r][c].count
         colorizeCell(cell);
         return;
     }
@@ -312,6 +313,7 @@ function hapticFeedback() {
 
 function colorizeCell(cell) {
     const count = parseInt(cell.dataset.count);
+    console.log(count)
     switch (count) {
         case 1: cell.style.color = 'blue'; break;
         case 2: cell.style.color = 'green'; break;
