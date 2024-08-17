@@ -1,350 +1,392 @@
-<html>
 
-<style>
-    .controls {
-        display: flex;
-        align-items: center;
-        margin: 10px;
-    }
+    <style>
 
-    .controls div,
-    .controls span,
-    .controls input {
-        margin: 0 10px;
-        font-size: 24px;
-        color: #f00;
-        font-family: 'LCD', monospace;
-    }
-
-    .controls .smiley {
-        cursor: pointer;
-        font-size: 36px;
-    }
-
-    #grid {
-        display: grid;
-        gap: 1px;
-        margin-bottom: 10px;
-    }
-
-    .cell {
-        width: 40px;
-        height: 40px;
-        border: 1px solid #ccc;
-        box-sizing: border-box;
-        text-align: center;
-        line-height: 40px;
-        font-size: 16px;
-        cursor: pointer;
-        position: relative;
-    }
-
-    .cell.revealed {
-        background-color: #ddd;
-    }
-
-    .cell.flagged {
-        background-color: #ff0;
-    }
-
-    .cell.mine {
-        background-color: red;
-    }
-
-    .cell:after {
-        content: '';
-        display: block;
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        border: 1px solid #000;
-        pointer-events: none;
-    }
-
-    @font-face {
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3,1fr);
+        }
+        .controls div, .controls input {
+            margin: 0 10px;
+            font-size: 2em;
+            color: #f00;
+            font-family: 'LCD', monospace;
+            font-weight: bold;
+        }
+        .controls div {
+            display: block;
+        }
+        .controls .smiley {
+            cursor: pointer;
+            font-size: 2em;
+        }
+        #grid {
+            margin-left: 20px;
+            display: grid;
+            gap: 1px;
+            margin-bottom: 10px;
+        }
+        @font-face {
         font-family: 'LCD';
-        src: url('lcd-font.woff') format('woff');
-    }
-
-    input[type='number'] {
+        src: URL('/{{sitepath}}/alarmclock.ttf') format('truetype');
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            font-weight: bold;
+            text-align: center;
+            line-height: 40px;
+            font-size: 1.5em;
+            cursor: pointer;
+            position: relative;
+        }
+        .cell.revealed {
+            background-color: #ddd;
+        }
+        .cell.flagged {
+            background-color: #ff0;
+        }
+        .cell.mine {
+            background-color: red;
+        }
+        .cell:after {
+            content: '';
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 1px solid #000;
+            pointer-events: none;
+        }
+        /* @font-face {
+            font-family: 'LCD';
+            src: url('lcd-font.woff') format('woff');
+        } */
+        input[type='number']{
         width: 2em;
+    } 
+    #sweepgame {
+        text-align: center;
+        display: block;
     }
-</style>
+    .gamediv {
+        display: inline-block;
+        text-align: center;
+    }
+
+    </style>
 </head>
-
-<body>
-    <div class="controls">
-        <div id="timer">00:00</div>
-        <div class="smiley" onclick="startGame()">😊</div>
-        <div id="mines">0</div>
+<div id="sweepgame">
+    <div class="gamediv">
+        <div class="controls">
+            <div id="timer">00:00</div>
+            <div class="smiley" onclick="startGame()">😊</div>
+            <div id="mines">0</div>
+        </div>
+        <div id="status"></div>
+        <div id="grid"></div>
+        <div class="controls">
+            <label><span id="rowLabel">Rows</span>
+                <input type="number" id="rows" value="8" min="1" max="20">
+            </label>
+            <label><span id=colLabel>Cols</span>
+                <input type="number" id="cols" value="8" min="1" max="20">
+            </label>
+            <label>Mines
+                <input type="number" id="mines-count" value="5" min="1">
+            </label>
+    
+        </div>
+        <div>
+            <button id="startbutton" onclick="startGame()">Start Game</button>
+        </div>
+    
     </div>
-    <div id="status"></div>
-    <div id="grid"></div>
-    <div class="controls">
-        <label>Rows
-            <input type="number" id="rows" value="8" min="1" max="20">
-        </label>
-        <label>Cols
-            <input type="number" id="cols" value="8" min="1" max="20">
-        </label>
-        <label>Mines
-            <input type="number" id="mines-count" value="5" min="1">
-        </label>
 
-    </div>
-    <div>
-        <button onclick="startGame()">Start Game</button>
-    </div>
-    <script>
-        let grid = [];
-        let mines = new Set();
-        let mineCount = 0;
-        let rows = 8;
-        let cols = 8;
-        let timer = 0;
-        let intervalId = null;
-        let revealedCount = 0;
-        let remainingMines = 0;
-        let flagTimeoutId = null;
+</div>
+<script>
+let grid = [];
+let mines = new Set();
+let mineCount = 0;
+let rows = 8;
+let cols = 8;
+let timer = 0;
+let intervalId = null;
+let revealedCount = 0;
+let remainingMines = 0;
+let flagTimeoutId = null;
 
-        const statusElement = document.getElementById('status');
-        const timerElement = document.getElementById('timer');
-        const mineCounterElement = document.getElementById('mines');
-        const gridElement = document.getElementById('grid');
+const statusElement = document.getElementById('status');
+const timerElement = document.getElementById('timer');
+const mineCounterElement = document.getElementById('mines');
+const gridElement = document.getElementById('grid');
 
-        function initGrid() {
-            gridElement.innerHTML = '';
-            gridElement.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
-            gridElement.style.gridTemplateRows = `repeat(${rows}, 40px)`;
+e18n = {
+    "mines must be less": "The number of mines must be less than the total number of cells.",
+    "click to start": 'Click a cell to start!',
+    "start game": "Start Game",
+    'you win': "You Win!",
+    "Rows":"Rows",
+    "Cols":"Cols",
+    "game over": "Game Over!"
+}
+i18n = {
+    "mines must be less": "Le nombre de mines doit etre moins que le total de cellules",
+    "click to start": "Cliquez une cellule pour commencer",
+    "start game": "Commencer Partie",
+    "you win": "Vous avez Gagné!",
+    "game over": "Vous avez Perdu!",
+    "Rows": "Rangées",
+    "Columns": "Colonnes"
 
-            grid = [];
-            revealedCount = 0;
-            remainingMines = mineCount;
+}
+const startElement = document.getElementById('startbutton');
+startElement.innerHTML=translate("start game")
+const rowElement = document.getElementById('rowLabel');
+rowElement.innerHTML=translate("Rows")
+const columnElement = document.getElementById('colLabel');
+columnElement.innerHTML=translate("Columns")
 
-            for (let r = 0; r < rows; r++) {
-                grid[r] = [];
-                for (let c = 0; c < cols; c++) {
-                    const cell = document.createElement('div');
-                    cell.classList.add('cell');
-                    cell.dataset.row = r;
-                    cell.dataset.col = c;
-                    cell.addEventListener('click', handleCellClick); // Handle left click
-                    cell.addEventListener('contextmenu', handleCellFlag); // Handle right-click for flagging
-                    cell.addEventListener('touchstart', handleTouchStart, { passive: true }); // Handle touch for mobile
-                    cell.addEventListener('touchend', handleTouchEnd, { passive: true });
-                    gridElement.appendChild(cell);
-                    grid[r][c] = { revealed: false, mine: false, count: 0, flagged: false };
-                }
+function translate(str, replacements = {}) {
+            let retval = i18n[str] || str;
+            if (Object.keys(replacements).length > 0) {
+                Object.keys(replacements).forEach((key) => {
+                    const value = replacements[key];
+                    retval = retval.replace('{' + key + '}', value);
+                });
             }
-
-            placeMines();
-            calculateCounts();
-            mineCounterElement.textContent = `${remainingMines}`;
+            return retval;
         }
+function initGrid() {
+    gridElement.innerHTML = '';
+    gridElement.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+    gridElement.style.gridTemplateRows = `repeat(${rows}, 40px)`;
 
-        function startGame() {
-            clearInterval(intervalId);
-            timer = 0;
-            timerElement.textContent = `00:00`;
-            statusElement.textContent = 'Click a cell to start!';
-            remainingMines = mineCount;
+    grid = [];
+    revealedCount = 0;
+    remainingMines = mineCount;
 
-            rows = parseInt(document.getElementById('rows').value);
-            cols = parseInt(document.getElementById('cols').value);
-            mineCount = parseInt(document.getElementById('mines-count').value);
-
-            if (rows * cols <= mineCount) {
-                alert("The number of mines must be less than the total number of cells.");
-                return;
-            }
-
-            initGrid();
-            startTimer();
+    for (let r = 0; r < rows; r++) {
+        grid[r] = [];
+        for (let c = 0; c < cols; c++) {
+            const cell = document.createElement('div');
+            cell.classList.add('cell');
+            cell.dataset.row = r;
+            cell.dataset.col = c;
+            cell.addEventListener('click', handleCellClick); // Handle left click
+            cell.addEventListener('contextmenu', handleCellFlag); // Handle right-click for flagging
+            cell.addEventListener('touchstart', handleTouchStart, {passive: true}); // Handle touch for mobile
+            cell.addEventListener('touchend', handleTouchEnd, {passive: true});
+            gridElement.appendChild(cell);
+            grid[r][c] = { revealed: false, mine: false, count: 0, flagged: false };
         }
+    }
 
-        function placeMines() {
-            mines.clear();
-            const totalCells = rows * cols;
+    placeMines();
+    calculateCounts();
+    mineCounterElement.textContent = `${remainingMines}`;
+}
 
-            while (mines.size < mineCount) {
-                const r = Math.floor(Math.random() * rows);
-                const c = Math.floor(Math.random() * cols);
-                const key = `${r},${c}`;
-                if (!mines.has(key)) {
-                    mines.add(key);
-                    grid[r][c].mine = true;
-                }
-            }
+function startGame() {
+    clearInterval(intervalId);
+    timer = 0;
+    timerElement.textContent = `00:00`;
+    statusElement.textContent = translate("click to start");
+    remainingMines = mineCount;
+
+    rows = parseInt(document.getElementById('rows').value);
+    cols = parseInt(document.getElementById('cols').value);
+    mineCount = parseInt(document.getElementById('mines-count').value);
+
+    if (rows * cols <= mineCount) {
+        alert(translate("mines must be less"));
+        return;
+    }
+
+    initGrid();
+    startTimer();
+}
+
+function placeMines() {
+    mines.clear();
+    const totalCells = rows * cols;
+
+    while (mines.size < mineCount) {
+        const r = Math.floor(Math.random() * rows);
+        const c = Math.floor(Math.random() * cols);
+        const key = `${r},${c}`;
+        if (!mines.has(key)) {
+            mines.add(key);
+            grid[r][c].mine = true;
         }
+    }
+}
 
-        function calculateCounts() {
-            for (let r = 0; r < rows; r++) {
-                for (let c = 0; c < cols; c++) {
-                    if (grid[r][c].mine) {
-                        continue;
-                    }
-                    let count = 0;
-                    for (let dr = -1; dr <= 1; dr++) {
-                        for (let dc = -1; dc <= 1; dc++) {
-                            const nr = r + dr;
-                            const nc = c + dc;
-                            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].mine) {
-                                count++;
-                            }
-                        }
-                    }
-                    grid[r][c].count = count;
-                }
-            }
-        }
-
-        function handleCellClick(event) {
-            event.preventDefault();
-            const cell = event.target;
-            const r = parseInt(cell.dataset.row);
-            const c = parseInt(cell.dataset.col);
-
-            if (grid[r][c].flagged || grid[r][c].revealed) {
-                return;
-            }
-
-            if (intervalId === null) {
-                startTimer();
-            }
-
+function calculateCounts() {
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
             if (grid[r][c].mine) {
-                cell.classList.add('mine');
-                revealAllMines();
-                statusElement.textContent = 'Game Over!';
-                clearInterval(intervalId);
-                return;
+                continue;
             }
-
-            revealCell(r, c);
-            checkWinCondition();
-        }
-
-        function handleCellFlag(event) {
-            event.preventDefault();
-            const cell = event.target;
-            const r = parseInt(cell.dataset.row);
-            const c = parseInt(cell.dataset.col);
-
-            if (grid[r][c].revealed) {
-                return;
-            }
-
-            if (flagTimeoutId) {
-                clearTimeout(flagTimeoutId);
-                flagTimeoutId = null;
-            }
-
-            if (grid[r][c].flagged) {
-                cell.classList.remove('flagged');
-                grid[r][c].flagged = false;
-                remainingMines++;
-            } else {
-                cell.classList.add('flagged');
-                grid[r][c].flagged = true;
-                remainingMines--;
-            }
-            mineCounterElement.textContent = `${remainingMines}`;
-            hapticFeedback();
-        }
-
-        function handleTouchStart(event) {
-            event.preventDefault();
-            flagTimeoutId = setTimeout(() => handleCellFlag(event), 500);
-        }
-
-        function handleTouchEnd(event) {
-            if (flagTimeoutId) {
-                clearTimeout(flagTimeoutId);
-                flagTimeoutId = null;
-            }
-        }
-
-        function revealCell(r, c) {
-            if (r < 0 || r >= rows || c < 0 || c >= cols || grid[r][c].revealed) {
-                return;
-            }
-
-            const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
-            if (grid[r][c].flagged || grid[r][c].revealed) {
-                return;
-            }
-
-            cell.classList.add('revealed');
-            grid[r][c].revealed = true;
-            revealedCount++;
-
-            if (grid[r][c].count > 0) {
-                cell.textContent = grid[r][c].count;
-                cell.dataset.count = grid[r][c].count
-                colorizeCell(cell);
-                return;
-            }
-
+            let count = 0;
             for (let dr = -1; dr <= 1; dr++) {
                 for (let dc = -1; dc <= 1; dc++) {
-                    revealCell(r + dr, c + dc);
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].mine) {
+                        count++;
+                    }
                 }
             }
+            grid[r][c].count = count;
         }
+    }
+}
 
-        function revealAllMines() {
-            mines.forEach(key => {
-                const [r, c] = key.split(',').map(Number);
-                const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
-                cell.classList.add('mine');
-            });
+function handleCellClick(event) {
+    event.preventDefault();
+    const cell = event.target;
+    const r = parseInt(cell.dataset.row);
+    const c = parseInt(cell.dataset.col);
+
+    if (grid[r][c].flagged || grid[r][c].revealed) {
+        return;
+    }
+
+    if (intervalId === null) {
+        startTimer();
+    }
+
+    if (grid[r][c].mine) {
+        cell.classList.add('mine');
+        revealAllMines();
+        statusElement.textContent = translate('game over');
+        clearInterval(intervalId);
+        return;
+    }
+
+    revealCell(r, c);
+    checkWinCondition();
+}
+
+function handleCellFlag(event) {
+    event.preventDefault();
+    const cell = event.target;
+    const r = parseInt(cell.dataset.row);
+    const c = parseInt(cell.dataset.col);
+
+    if (grid[r][c].revealed) {
+        return;
+    }
+
+    if (flagTimeoutId) {
+        clearTimeout(flagTimeoutId);
+        flagTimeoutId = null;
+    }
+
+    if (grid[r][c].flagged) {
+        cell.classList.remove('flagged');
+        grid[r][c].flagged = false;
+        remainingMines++;
+    } else {
+        cell.classList.add('flagged');
+        grid[r][c].flagged = true;
+        remainingMines--;
+    }
+    mineCounterElement.textContent = `${remainingMines}`;
+    hapticFeedback();
+}
+
+function handleTouchStart(event) {
+    event.preventDefault();
+    flagTimeoutId = setTimeout(() => handleCellFlag(event), 500);
+}
+
+function handleTouchEnd(event) {
+    if (flagTimeoutId) {
+        clearTimeout(flagTimeoutId);
+        flagTimeoutId = null;
+    }
+}
+
+function revealCell(r, c) {
+    if (r < 0 || r >= rows || c < 0 || c >= cols || grid[r][c].revealed) {
+        return;
+    }
+
+    const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+    if (grid[r][c].flagged || grid[r][c].revealed) {
+        return;
+    }
+
+    cell.classList.add('revealed');
+    grid[r][c].revealed = true;
+    revealedCount++;
+
+    if (grid[r][c].count > 0) {
+        cell.textContent = grid[r][c].count;
+        cell.dataset.count=  grid[r][c].count
+        colorizeCell(cell);
+        return;
+    }
+
+    for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+            revealCell(r + dr, c + dc);
         }
+    }
+}
 
-        function checkWinCondition() {
-            if (revealedCount + mineCount === rows * cols) {
-                statusElement.textContent = 'You Win!';
-                clearInterval(intervalId);
-            }
-        }
+function revealAllMines() {
+    mines.forEach(key => {
+        const [r, c] = key.split(',').map(Number);
+        const cell = document.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+        cell.classList.add('mine');
+    });
+}
 
-        function startTimer() {
-            intervalId = setInterval(() => {
-                timer++;
-                const minutes = Math.floor(timer / 60).toString().padStart(2, '0');
-                const seconds = (timer % 60).toString().padStart(2, '0');
-                timerElement.textContent = `${minutes}:${seconds}`;
-            }, 1000);
-        }
+function checkWinCondition() {
+    if (revealedCount + mineCount === rows * cols) {
+        statusElement.textContent = translate('you win');
+        clearInterval(intervalId);
+    }
+}
 
-        function hapticFeedback() {
-            if (navigator.vibrate) {
-                navigator.vibrate(50); // Vibrate for 50ms
-            }
-        }
+function startTimer() {
+    intervalId = setInterval(() => {
+        timer++;
+        const minutes = Math.floor(timer / 60).toString().padStart(2, '0');
+        const seconds = (timer % 60).toString().padStart(2, '0');
+        timerElement.textContent = `${minutes}:${seconds}`;
+    }, 1000);
+}
 
-        function colorizeCell(cell) {
-            const count = parseInt(cell.dataset.count);
-            console.log(count)
-            switch (count) {
-                case 1: cell.style.color = 'blue'; break;
-                case 2: cell.style.color = 'green'; break;
-                case 3: cell.style.color = 'red'; break;
-                case 4: cell.style.color = 'purple'; break;
-                case 5: cell.style.color = 'brown'; break;
-                case 6: cell.style.color = 'cyan'; break;
-                case 7: cell.style.color = 'magenta'; break;
-                case 8: cell.style.color = 'black'; break;
-                default: cell.style.color = 'black'; break;
-            }
-        }
+function hapticFeedback() {
+    if (navigator.vibrate) {
+        navigator.vibrate(50); // Vibrate for 50ms
+    }
+}
 
-        // Initialize the game on load
-        startGame();
+function colorizeCell(cell) {
+    const count = parseInt(cell.dataset.count);
+    console.log(count)
+    switch (count) {
+        case 1: cell.style.color = 'blue'; break;
+        case 2: cell.style.color = 'green'; break;
+        case 3: cell.style.color = 'red'; break;
+        case 4: cell.style.color = 'purple'; break;
+        case 5: cell.style.color = 'brown'; break;
+        case 6: cell.style.color = 'cyan'; break;
+        case 7: cell.style.color = 'magenta'; break;
+        case 8: cell.style.color = 'black'; break;
+        default: cell.style.color = 'black'; break;
+    }
+}
 
-    </script>
+// Initialize the game on load
+startGame();
 
-</body>
-
-</html>
+</script>
