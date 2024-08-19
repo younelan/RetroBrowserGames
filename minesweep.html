@@ -143,6 +143,17 @@ i18n = {
     "Columns": "Colonnes"
 
 }
+const colors = {
+        1: 'blue',
+        2: 'green',
+        3: 'red',
+        4: 'purple',
+        5: 'brown',
+        6: 'cyan',
+        7: 'magenta',
+        8: 'black',
+        'default': 'black'
+    }
 const startElement = document.getElementById('startbutton');
 startElement.innerHTML=translate("start game")
 const rowElement = document.getElementById('rowLabel');
@@ -369,20 +380,12 @@ function hapticFeedback() {
         navigator.vibrate(50); // Vibrate for 50ms
     }
 }
-
 function colorizeCell(cell) {
     const count = parseInt(cell.dataset.count);
-    console.log(count)
-    switch (count) {
-        case 1: cell.style.color = 'blue'; break;
-        case 2: cell.style.color = 'green'; break;
-        case 3: cell.style.color = 'red'; break;
-        case 4: cell.style.color = 'purple'; break;
-        case 5: cell.style.color = 'brown'; break;
-        case 6: cell.style.color = 'cyan'; break;
-        case 7: cell.style.color = 'magenta'; break;
-        case 8: cell.style.color = 'black'; break;
-        default: cell.style.color = 'black'; break;
+    if (count in colors) {
+        cell.style.color = colors[count]
+    } else {
+        cells.style.color = colors['default'];
     }
 }
 
