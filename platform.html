@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Platformer Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            background: #87CEEB;
+        }
+    </style>
+</head>
+
+<body>
+
+</body>
+
+</html>
+
+
+
+<script>
+    // Constants and Game Setup
+    const canvas = document.createElement('canvas');
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    const gravity = 0.8;
+    const friction = 0.9;
+    const jumpForce = 12;
+    const coinSize = 15;
+    const controlSize = 100;
+    const moveSpeed = 5;
+    const monsterSpeed = 2;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const levels = [
+
+        {
+            platforms: [
+                { x: 0, y: canvas.height - 20, width: canvas.width * 2, height: 20, type: 'ground' },
+                { x: 100, y: canvas.height - 60, width: 100, height: 20, type: 'platform' },
+                { x: 300, y: canvas.height - 120, width: 100, height: 20, type: 'platform' },
+                { x: canvas.width - 50, y: canvas.height - 70, width: 50, height: 20, type: 'end' },
+                { x: 150, y: canvas.height - 80, width: coinSize, height: coinSize, type: 'coin' },
+                { x: 300, y: canvas.height - 140, width: coinSize, height: coinSize, type: 'coin' }
+            ],
+            playerStart: { x: 50, y: canvas.height - 70, direction: 1 }
+        },
+        {
+            platforms: [
+                { x: 0, y: canvas.height - 20, width: canvas.width * 2, height: 20, type: 'ground' },
+                { x: 100, y: canvas.height - 60, width: 100, height: 20, type: 'platform' },
+                { x: 300, y: canvas.height - 120, width: 100, height: 20, type: 'platform' },
+                { x: canvas.width - 50, y: canvas.height - 70, width: 50, height: 20, type: 'end' },
+                { x: 150, y: canvas.height - 80, width: coinSize, height: coinSize, type: 'coin' },
+                { x: 350, y: canvas.height - 140, width: coinSize, height: coinSize, type: 'coin' },
+                { x: 400, y: canvas.height - 60, width: 20, height: 20, type: 'monster', direction: Math.random() < 0.5 ? 1 : -1 },
+                { x: 600, y: canvas.height - 60, width: 20, height: 20, type: 'monster', direction: Math.random() < 0.5 ? 1 : -1 }
+            ],
+            playerStart: { x: 50, y: canvas.height - 70, direction: 1 }
+        },
+
+    ];
+
+    const player = {
+        x: 0,
+        y: 0,
+        width: 30,
+        height: 30,
+        speed: moveSpeed,
+        velocityX: 0,
+        velocityY: 0,
+        jumping: false,
+        color: 'red',
+        direction: 1
+    };
+
+    const camera = {
+        x: 0,
+        y: 0,
+        width: canvas.width,
+        height: canvas.height
+    };
+
+    let score = 0;
+    let currentLevel = 0;
+    let gameWon = false;
+    let gameOver = false;
+    let levelComplete = false;
+
+    const controls = {
+        left: false,
+        right: false,
+        jump: false
+    };
+
+    function updateCamera() {
+        camera.x = Math.max(0, Math.min(player.x - camera.width / 2, canvas.width * 2 - camera.width));
+        camera.y = Math.max(0, Math.min(player.y - camera.height / 2, canvas.height * 2 - camera.height));
+    }
+
+    function drawPlayer() {
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x - camera.x, player.y - camera.y, player.width, player.height);
+    }
+
+    function drawPlatforms(platforms) {
+        for (const platform of platforms) {
+            if (platform.type === 'ground' || platform.type === 'platform') {
+                ctx.fillStyle = 'green';
+                ctx.fillRect(platform.x - camera.x, platform.y - camera.y, platform.width, platform.height);
+            } else if (platform.type === 'coin') {
+                ctx.fillStyle = 'gold';
+                ctx.beginPath();
+                ctx.arc(platform.x - camera.x + coinSize / 2, platform.y - camera.y + coinSize / 2, coinSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (platform.type === 'end') {
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(platform.x - camera.x, platform.y - camera.y, platform.width, platform.height);
+            } else if (platform.type === 'monster') {
+                ctx.fillStyle = 'black';
+                ctx.fillRect(platform.x - camera.x, platform.y - camera.y, platform.width, platform.height);
+            }
+        }
+    }
+
+    function updatePlayer(platforms) {
+        player.velocityY += gravity;
+        player.x += player.velocityX;
+        player.y += player.velocityY;
+
+        let onGround = false;
+
+        for (const platform of platforms) {
+            if (player.x < platform.x + platform.width &&
+                player.x + player.width > platform.x &&
+                player.y + player.height > platform.y &&
+                player.y < platform.y + platform.height) {
+
+                if (platform.type === 'coin') {
+                    platforms.splice(platforms.indexOf(platform), 1);
+                    score += 10;
+                }
+
+                if (platform.type === 'end') {
+                    levelComplete = true;
+                }
+
+                player.y = platform.y - player.height;
+                player.velocityY = 0;
+                player.jumping = false;
+                onGround = true;
+            }
+        }
+
+        if (player.y > canvas.height - player.height) {
+            player.y = canvas.height - player.height;
+            player.velocityY = 0;
+            player.jumping = false;
+            onGround = true;
+        }
+
+        if (player.x < 0) player.x = 0;
+        if (player.x > canvas.width * 2 - player.width) player.x = canvas.width * 2 - player.width;
+
+        player.velocityX *= friction;
+
+        if (!onGround && player.y < canvas.height - player.height) {
+            player.jumping = true;
+        }
+
+        if (controls.left) player.velocityX = -player.speed;
+        if (controls.right) player.velocityX = player.speed;
+        if (controls.jump && !player.jumping) {
+            player.velocityY = -jumpForce;
+            player.jumping = true;
+        }
+
+        player.direction = controls.right ? 1 : controls.left ? -1 : player.direction;
+    }
+
+    function updateMonsters(platforms) {
+        for (const platform of platforms) {
+            if (platform.type === 'monster') {
+                platform.velocityY = platform.velocityY || 0;
+                platform.velocityY += gravity;
+
+                platform.x += monsterSpeed * platform.direction;
+                platform.y += platform.velocityY;
+
+                let onGround = false;
+
+                for (const otherPlatform of platforms) {
+                    if (platform === otherPlatform) continue;
+
+                    if (platform.x < otherPlatform.x + otherPlatform.width &&
+                        platform.x + platform.width > otherPlatform.x &&
+                        platform.y + platform.height > otherPlatform.y &&
+                        platform.y < otherPlatform.y + otherPlatform.height) {
+
+                        if (platform.y + platform.height > otherPlatform.y) {
+                            platform.y = otherPlatform.y - platform.height;
+                            platform.velocityY = 0;
+                            onGround = true;
+                        }
+                    }
+                }
+
+                if (!onGround && platform.y > canvas.height - platform.height) {
+                    platform.y = canvas.height - platform.height;
+                    platform.velocityY = 0;
+                    onGround = true;
+                }
+
+                if (platform.x < 0 || platform.x + platform.width > canvas.width * 2) {
+                    platform.direction *= -1;
+                }
+            }
+        }
+    }
+
+    function checkMonsterCollisions(platforms) {
+        for (const platform of platforms) {
+            if (platform.type === 'monster') {
+                if (player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y < platform.y + platform.height &&
+                    player.y + player.height > platform.y) {
+                    gameOver = true;
+                    gameWon = false;
+                    showGameOver();
+                }
+            }
+        }
+    }
+
+    function resetGame() {
+        const level = levels[currentLevel];
+        player.x = level.playerStart.x;
+        player.y = level.playerStart.y;
+        player.velocityX = 0;
+        player.velocityY = 0;
+        player.direction = level.playerStart.direction;
+        controls.left = false;
+        controls.right = false;
+        controls.jump = false;
+        //score = 0;
+        levelComplete = false;
+        gameOver = false;
+        gameWon = false;
+        document.getElementById('gameOverText').style.display = 'none';
+        document.getElementById('restartButton').style.display = 'none';
+    }
+
+    function showGameOver() {
+        const gameOverText = document.getElementById('gameOverText');
+        gameOverText.style.display = 'block';
+        gameOverText.innerText = gameWon ? 'Congratulations! You won!' : 'Game Over!';
+        document.getElementById('restartButton').style.display = 'block';
+        cancelAnimationFrame(gameLoop);
+    }
+
+    function gameLoop() {
+        if (gameOver) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const level = levels[currentLevel];
+        updateCamera();
+        drawPlatforms(level.platforms);
+        drawPlayer();
+        updatePlayer(level.platforms);
+        updateMonsters(level.platforms);
+        checkMonsterCollisions(level.platforms);
+
+        if (levelComplete) {
+            if (currentLevel < levels.length - 1) {
+                currentLevel++;
+                resetGame();
+            } else {
+                gameWon = true;
+                showGameOver();
+                return;
+            }
+        }
+
+        ctx.fillStyle = 'black';
+        ctx.font = '20px Arial';
+        ctx.fillText('Score: ' + score + ' Level: ' + currentLevel, 10, 20);
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') controls.left = true;
+        if (e.key === 'ArrowRight') controls.right = true;
+        if (e.key === ' ' || e.key === 'Spacebar') controls.jump = true;
+    });
+
+    document.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowLeft') controls.left = false;
+        if (e.key === 'ArrowRight') controls.right = false;
+        if (e.key === ' ' || e.key === 'Spacebar') controls.jump = false;
+    });
+
+    function setupMobileControls() {
+        const controlPanel = document.createElement('div');
+        controlPanel.style.position = 'absolute';
+        controlPanel.style.bottom = '0';
+        controlPanel.style.left = '0';
+        controlPanel.style.width = '100%';
+        controlPanel.style.height = `${controlSize}px`;
+        controlPanel.style.display = 'flex';
+        controlPanel.style.justifyContent = 'space-between';
+        controlPanel.style.alignItems = 'center';
+        controlPanel.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+
+        controlPanel.innerHTML = `
+                <button id="leftButton" style="width: ${controlSize}px; height: ${controlSize}px; font-size: 24px; color: white; background: rgba(0, 0, 0, 0.7); border: none; border-radius: 50%; margin: 10px;">←</button>
+                <button id="rightButton" style="width: ${controlSize}px; height: ${controlSize}px; font-size: 24px; color: white; background: rgba(0, 0, 0, 0.7); border: none; border-radius: 50%; margin: 10px;">→</button>
+                <button id="jumpButton" style="width: ${controlSize * 2}px; height: ${controlSize}px; font-size: 24px; color: white; background: rgba(0, 0, 0, 0.7); border: none; border-radius: 10px; margin: 10px;">Jump</button>
+            `;
+
+        document.body.appendChild(controlPanel);
+
+        document.getElementById('leftButton').addEventListener('touchstart', () => controls.left = true);
+        document.getElementById('leftButton').addEventListener('touchend', () => controls.left = false);
+        document.getElementById('rightButton').addEventListener('touchstart', () => controls.right = true);
+        document.getElementById('rightButton').addEventListener('touchend', () => controls.right = false);
+        document.getElementById('jumpButton').addEventListener('touchstart', () => controls.jump = true);
+        document.getElementById('jumpButton').addEventListener('touchend', () => controls.jump = false);
+    }
+
+    let touchStartX, touchStartY, touchEndX, touchEndY;
+
+    document.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+    });
+
+    document.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].clientX;
+        touchEndY = e.changedTouches[0].clientY;
+
+        const xDiff = touchEndX - touchStartX;
+        const yDiff = touchEndY - touchStartY;
+
+        if (Math.abs(xDiff) > Math.abs(yDiff)) {
+            if (xDiff > 50) {
+                controls.right = true;
+                setTimeout(() => controls.right = false, 200);
+            } else if (xDiff < -50) {
+                controls.left = true;
+                setTimeout(() => controls.left = false, 200);
+            }
+        } else {
+            if (yDiff < -50) {
+                controls.jump = true;
+                setTimeout(() => controls.jump = false, 200);
+            }
+        }
+    });
+
+    function setupRestartButton() {
+        const restartButton = document.createElement('button');
+        restartButton.id = 'restartButton';
+        restartButton.innerText = 'Restart';
+        restartButton.style.position = 'absolute';
+        restartButton.style.top = '10px';
+        restartButton.style.right = '10px';
+        restartButton.style.padding = '10px 20px';
+        restartButton.style.fontSize = '18px';
+        restartButton.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+        restartButton.style.color = 'white';
+        restartButton.style.border = 'none';
+        restartButton.style.borderRadius = '5px';
+        restartButton.style.display = 'none';
+        restartButton.addEventListener('click', () => {
+            resetGame();
+            score = 0;
+            gameLoop();
+        });
+
+        document.body.appendChild(restartButton);
+    }
+
+    function setupGameOverText() {
+        const gameOverText = document.createElement('div');
+        gameOverText.id = 'gameOverText';
+        gameOverText.style.position = 'absolute';
+        gameOverText.style.top = '50%';
+        gameOverText.style.left = '50%';
+        gameOverText.style.transform = 'translate(-50%, -50%)';
+        gameOverText.style.fontSize = '30px';
+        gameOverText.style.color = 'white';
+        gameOverText.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+        gameOverText.style.padding = '20px';
+        gameOverText.style.borderRadius = '10px';
+        gameOverText.style.display = 'none';
+
+        document.body.appendChild(gameOverText);
+    }
+
+    setupMobileControls();
+    setupRestartButton();
+    setupGameOverText();
+    resetGame();
+    gameLoop();
+</script>
