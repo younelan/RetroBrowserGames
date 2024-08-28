@@ -1,18 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Space Invaders</title>
     <style>
-        canvas { background: black; display: block; margin: 0 auto; }
-        #gameOver { color: white; text-align: center; font-size: 2em; display: none; }
-        .controls { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); }
-        .control-button { background: rgba(255, 255, 255, 0.6); border: none; border-radius: 5px; padding: 10px; margin: 5px; font-size: 18px; }
+        canvas {
+            background: black;
+            display: block;
+            width: 100%;
+            height: 80vh;
+            margin: 0 auto;
+        }
+
+        #gameOver {
+            color: white;
+            text-align: center;
+            font-size: 2em;
+            display: none;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .control-button {
+            background: rgba(255, 255, 255, 0.6);
+            border: none;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px;
+            font-size: 18px;
+        }
     </style>
 </head>
+
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <canvas id="gameCanvas"></canvas>
     <div id="gameOver">Game Over</div>
     <div class="controls">
         <button id="leftButton" class="control-button">Left</button>
@@ -21,368 +49,416 @@
     </div>
     <script>
 
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-const playerWidth = 60, playerHeight = 40;
-const bulletWidth = 5, bulletHeight = 10;
-const shipWidth = 40, shipHeight = 30;
-const shieldWidth = 80, shieldHeight = 40;
-const monsterBulletWidth = 4, monsterBulletHeight = 8;
-let player = { x: canvas.width / 2 - playerWidth / 2, y: canvas.height - playerHeight - 10, width: playerWidth, height: playerHeight };
-let bullets = [];
-let monsterBullets = [];
-let enemies = [];
-let shields = [];
-let level = 0;
-let score = 0;
-let lives = 3;
-let lastEnemyFireTime = 0;
-let lifeLost = false;
-const levels = [
-    { enemyRows: 3, enemyColumns: 5, enemyTypes: 3, speed: 2, fireRate: 2000 },
-    { enemyRows: 4, enemyColumns: 6, enemyTypes: 3, speed: 3, fireRate: 1500 },
-    { enemyRows: 5, enemyColumns: 7, enemyTypes: 3, speed: 4, fireRate: 1000 }
+class SpaceInvaders {
+constructor(canvasId) {
+this.canvas = document.getElementById(canvasId);
+this.ctx = this.canvas.getContext('2d');
+this.canvasMargin = 20;
+this.touchControls = { left: false, right: false, shoot: false };
+this.lastFireTime = 0;
+this.lastEnemyFireTime = 0;
+this.lifeLost = false;
+this.lifeLostStart = 0;
+this.level = 0;
+this.score = 0;
+this.lives = 3;
+this.gameOver = false;
+this.moveDirection = 1; // 1 for right, -1 for left
+this.enemies = [];
+this.bullets = [];
+this.monsterBullets = [];
+this.shields = [];
+this.levels = [
+{ enemyRows: 2, enemyColumns: 5, enemyTypes: 3, speed: 2, fireRate: 3000 },
+{ enemyRows: 3, enemyColumns: 6, enemyTypes: 3, speed: 3, fireRate: 2500 },
+{ enemyRows: 4, enemyColumns: 7, enemyTypes: 3, speed: 4, fireRate: 2000 },
 ];
-let gameOver = false;
-let moveDirection = 0; // 1 for right, -1 for left, 0 for stationary
-let touchControls = { left: false, right: false, shoot: false };
-
-// Initialization
-function init() {
-    setupLevel();
-    document.addEventListener('keydown', handleKeydown);
-    document.addEventListener('keyup', handleKeyup);
-    document.getElementById('leftButton').addEventListener('touchstart', () => touchControls.left = true);
-    document.getElementById('rightButton').addEventListener('touchstart', () => touchControls.right = true);
-    document.getElementById('shootButton').addEventListener('touchstart', () => touchControls.shoot = true);
-    document.getElementById('leftButton').addEventListener('touchend', () => touchControls.left = false);
-    document.getElementById('rightButton').addEventListener('touchend', () => touchControls.right = false);
-    document.getElementById('shootButton').addEventListener('touchend', () => touchControls.shoot = false);
-    canvas.addEventListener('touchstart', handleTouchStart);
-    canvas.addEventListener('touchend', handleTouchEnd);
-    gameLoop();
+this.lastFrameTime = performance.now();
+this.resizeCanvas();
+window.addEventListener('resize', () => this.resizeCanvas());
+this.init();
 }
 
-function setupLevel() {
-    if (level < levels.length) {
-        setupShields();
-        setupEnemies();
-    } else {
-        gameOver = true;
-        document.getElementById('gameOver').textContent = 'You Win!';
-        document.getElementById('gameOver').style.display = 'block';
-    }
+resizeCanvas() {
+this.canvas.width = window.innerWidth;
+this.canvas.height = window.innerHeight * 0.8; // 80% of the window height
+
+this.playerWidth = this.canvas.width * 0.075; // 7.5% of canvas width
+this.playerHeight = this.canvas.height * 0.066; // 6.6% of canvas height
+this.player = { x: this.canvas.width / 2 - this.playerWidth / 2, y: this.canvas.height - this.playerHeight - this.canvasMargin, width: this.playerWidth, height: this.playerHeight };
+
+this.cellWidth = this.canvas.width / 13.33; // Adjust cell width
+this.cellHeight = this.canvas.height / 15.15; // Adjust cell height
+
+this.bulletWidth = this.canvas.width / 160; // 0.625% of canvas width
+this.bulletHeight = this.canvas.height / 60; // 1.66% of canvas height
+
+this.shipWidth = this.canvas.width / 20; // 5% of canvas width
+this.shipHeight = this.canvas.height / 20; // 5% of canvas height
+
+this.shieldWidth = this.canvas.width / 10; // 10% of canvas width
+this.shieldHeight = this.canvas.height / 15.15; // 6.6% of canvas height
+
+this.monsterBulletWidth = this.canvas.width / 200; // 0.5% of canvas width
+this.monsterBulletHeight = this.canvas.height / 75; // 1.33% of canvas height
+
+this.setupShields();
+this.setupEnemies();
 }
 
-function setupShields() {
-    shields = [
-        { x: 100, y: canvas.height - 150, width: shieldWidth, height: shieldHeight },
-        { x: 300, y: canvas.height - 150, width: shieldWidth, height: shieldHeight },
-        { x: 500, y: canvas.height - 150, width: shieldWidth, height: shieldHeight }
-    ];
+init() {
+this.setupLevel();
+document.addEventListener('keydown', (e) => this.handleKeydown(e));
+document.addEventListener('keyup', (e) => this.handleKeyup(e));
+this.canvas.addEventListener('touchstart', (e) => this.handleTouchStart(e));
+this.canvas.addEventListener('touchend', (e) => this.handleTouchEnd(e));
+this.gameLoop();
 }
 
-function setupEnemies() {
-    enemies = [];
-    const { enemyRows, enemyColumns, enemyTypes } = levels[level];
-    for (let i = 0; i < enemyColumns; i++) {
-        for (let j = 0; j < enemyRows; j++) {
-            enemies.push({
-                x: 100 + i * 60,
-                y: 50 + j * 40,
-                width: shipWidth,
-                height: shipHeight,
-                type: j % enemyTypes,
-                score: j % enemyTypes === 0 ? 10 : (j % enemyTypes === 1 ? 20 : 30),
-                canFire: Math.random() < 0.2, // Random chance to fire
-                fireRate: Math.random() * 2000 + 1000 // Random firing rate
-            });
-        }
-    }
+setupLevel() {
+if (this.level < this.levels.length) {
+this.setupShields();
+this.setupEnemies();
+} else {
+this.gameOver = true;
+this.showWinningScreen();
+}
 }
 
-function handleKeydown(e) {
-    if (e.code === 'ArrowLeft') touchControls.left = true;
-    if (e.code === 'ArrowRight') touchControls.right = true;
-    if (e.code === 'Space') touchControls.shoot = true;
+showWinningScreen() {
+this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+this.ctx.fillStyle = 'white';
+this.ctx.font = '40px Arial';
+this.ctx.fillText('You Win!', this.canvas.width / 2 - 80, this.canvas.height / 2);
+this.ctx.font = '20px Arial';
+this.ctx.fillText('Congratulations! You have completed all levels.', this.canvas.width / 2 - 180, this.canvas.height / 2 + 40);
+}
+setupShields() {
+this.shields = [
+{ x: this.canvas.width * 0.125, y: this.canvas.height - this.shieldHeight - 150 - this.canvasMargin, width: this.shieldWidth, height: this.shieldHeight },
+{ x: this.canvas.width * 0.375, y: this.canvas.height - this.shieldHeight - 150 - this.canvasMargin, width: this.shieldWidth, height: this.shieldHeight },
+{ x: this.canvas.width * 0.625, y: this.canvas.height - this.shieldHeight - 150 - this.canvasMargin, width: this.shieldWidth, height: this.shieldHeight }
+];
 }
 
-function handleKeyup(e) {
-    if (e.code === 'ArrowLeft') touchControls.left = false;
-    if (e.code === 'ArrowRight') touchControls.right = false;
-    if (e.code === 'Space') touchControls.shoot = false;
+setupEnemies() {
+this.enemies = [];
+const { enemyRows, enemyColumns, enemyTypes } = this.levels[this.level];
+const padding = this.canvas.width / 200; // Minimal padding
+
+for (let i = 0; i < enemyColumns; i++) {
+for (let j = 0; j < enemyRows; j++) {
+this.enemies.push({
+x: this.canvas.width * 0.125 + i * (this.cellWidth + padding),
+y: this.canvas.height * 0.1 + j * (this.cellHeight + padding),
+width: this.cellWidth * 0.9, // Occupying most of the grid
+height: this.cellHeight * 0.9, // Occupying most of the grid
+type: j % enemyTypes,
+score: j % enemyTypes === 0 ? 10 : (j % enemyTypes === 1 ? 20 : 30),
+canFire: Math.random() < 0.2,
+fireRate: Math.random() * 2000 + 1000
+});
+}
+}
 }
 
-function handleTouchStart(e) {
-    const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
-    if (touchX < canvas.width / 3) touchControls.left = true;
-    else if (touchX > canvas.width * 2 / 3) touchControls.right = true;
-    else touchControls.shoot = true;
+handleKeydown(e) {
+if (e.code === 'ArrowLeft') this.touchControls.left = true;
+if (e.code === 'ArrowRight') this.touchControls.right = true;
+if (e.code === 'Space') this.touchControls.shoot = true;
 }
 
-function handleTouchEnd(e) {
-    touchControls.left = false;
-    touchControls.right = false;
-    touchControls.shoot = false;
+handleKeyup(e) {
+if (e.code === 'ArrowLeft') this.touchControls.left = false;
+if (e.code === 'ArrowRight') this.touchControls.right = false;
+if (e.code === 'Space') this.touchControls.shoot = false;
 }
 
-function movePlayer() {
-    if (touchControls.right) {
-        player.x += 5;
-    }
-    if (touchControls.left) {
-        player.x -= 5;
-    }
-    if (touchControls.shoot) shoot();
-    player.x = Math.min(Math.max(0, player.x), canvas.width - playerWidth);
+handleTouchStart(e) {
+const canvasRect = this.canvas.getBoundingClientRect();
+const touchX = e.touches[0].clientX - canvasRect.left;
+
+const sectionWidth = this.canvas.width / 3;
+if (touchX < sectionWidth) {
+this.touchControls.left = true;
+} else if (touchX >= sectionWidth && touchX < sectionWidth * 2) {
+this.touchControls.shoot = true;
+} else {
+this.touchControls.right = true;
+}
 }
 
-function shoot() {
-    if (Date.now() - lastFireTime > 200) { // Prevent rapid firing
-        bullets.push({ x: player.x + playerWidth / 2 - bulletWidth / 2, y: player.y, width: bulletWidth, height: bulletHeight });
-        lastFireTime = Date.now();
-    }
+handleTouchEnd(e) {
+this.touchControls.left = false;
+this.touchControls.right = false;
+this.touchControls.shoot = false;
 }
 
-function drawPlayer() {
-    ctx.fillStyle = 'white';
-    ctx.beginPath();
-    ctx.moveTo(player.x + playerWidth / 2, player.y);
-    ctx.lineTo(player.x, player.y + playerHeight);
-    ctx.lineTo(player.x + playerWidth / 2 - 10, player.y + playerHeight);
-    ctx.lineTo(player.x + playerWidth / 2, player.y + playerHeight - 20);
-    ctx.lineTo(player.x + playerWidth / 2 + 10, player.y + playerHeight);
-    ctx.lineTo(player.x + playerWidth, player.y + playerHeight);
-    ctx.closePath();
-    ctx.fill();
+movePlayer(deltaTime) {
+const baseSpeed = 300; // Base speed in pixels per second
+const moveSpeed = baseSpeed * deltaTime; // Adjust speed based on deltaTime
+
+if (this.touchControls.right) {
+this.player.x += moveSpeed;
+}
+if (this.touchControls.left) {
+this.player.x -= moveSpeed;
+}
+if (this.touchControls.shoot) this.shoot();
+
+this.player.x = Math.min(Math.max(this.canvasMargin, this.player.x), this.canvas.width - this.player.width - this.canvasMargin);
 }
 
-function drawBullets() {
-    ctx.fillStyle = 'red';
-    bullets.forEach(bullet => ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height));
+shoot() {
+if (Date.now() - this.lastFireTime > 200) {
+this.bullets.push({ x: this.player.x + this.player.width / 2 - this.bulletWidth / 2, y: this.player.y, width: this.bulletWidth, height: this.bulletHeight });
+this.lastFireTime = Date.now();
+}
 }
 
-function drawMonsterBullets() {
-    ctx.fillStyle = 'yellow';
-    monsterBullets.forEach(bullet => ctx.fillRect(bullet.x, bullet.y, monsterBulletWidth, monsterBulletHeight));
+drawPlayer() {
+this.ctx.fillStyle = 'white';
+this.ctx.beginPath();
+this.ctx.moveTo(this.player.x + this.player.width / 2, this.player.y);
+this.ctx.lineTo(this.player.x, this.player.y + this.player.height);
+this.ctx.lineTo(this.player.x + this.player.width / 2 - 10, this.player.y + this.player.height);
+this.ctx.lineTo(this.player.x + this.player.width / 2, this.player.y + this.player.height - 20);
+this.ctx.lineTo(this.player.x + this.player.width / 2 + 10, this.player.y + this.player.height);
+this.ctx.lineTo(this.player.x + this.player.width, this.player.y + this.player.height);
+this.ctx.closePath();
+this.ctx.fill();
 }
 
-function drawEnemies() {
-    enemies.forEach(enemy => {
-        ctx.fillStyle = enemy.type === 0 ? 'green' : (enemy.type === 1 ? 'purple' : 'blue');
-        ctx.beginPath();
-        switch (enemy.type) {
-            case 0:
-                ctx.moveTo(enemy.x, enemy.y + enemy.height);
-                ctx.lineTo(enemy.x + enemy.width / 2, enemy.y);
-                ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height);
-                break;
-            case 1:
-                ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.width / 2, 0, Math.PI * 2);
-                break;
-            case 2:
-                ctx.moveTo(enemy.x, enemy.y + enemy.height);
-                ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height);
-                ctx.lineTo(enemy.x + enemy.width / 2, enemy.y);
-                break;
-        }
-        ctx.closePath();
-        ctx.fill();
-    });
+drawBullets() {
+this.ctx.fillStyle = 'red';
+this.bullets.forEach(bullet => this.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height));
 }
 
-function drawShields() {
-    ctx.fillStyle = 'blue';
-    shields.forEach(shield => {
-        ctx.beginPath();
-        ctx.arc(shield.x + shield.width / 2, shield.y + shield.height / 2, shield.width / 2, Math.PI, 0, false);
-        ctx.lineTo(shield.x + shield.width, shield.y + shield.height);
-        ctx.lineTo(shield.x, shield.y + shield.height);
-        ctx.closePath();
-        ctx.fill();
-    });
+drawMonsterBullets() {
+this.ctx.fillStyle = 'yellow';
+this.monsterBullets.forEach(bullet => this.ctx.fillRect(bullet.x, bullet.y, this.monsterBulletWidth, this.monsterBulletHeight));
 }
 
-function drawScore() {
-    ctx.fillStyle = 'white';
-    ctx.font = '20px Arial';
-    ctx.fillText('Score: ' + score, 10, 20);
-    ctx.fillText('Lives: ' + lives, canvas.width - 100, 20);
-    ctx.fillText('Level: ' + (level + 1), canvas.width / 2 - 30, 20);
+drawEnemies() {
+this.enemies.forEach(enemy => {
+this.ctx.fillStyle = enemy.type === 0 ? 'green' : (enemy.type === 1 ? 'purple' : 'blue');
+this.ctx.beginPath();
+switch (enemy.type) {
+case 0:
+this.ctx.moveTo(enemy.x, enemy.y + enemy.height);
+this.ctx.lineTo(enemy.x + enemy.width / 2, enemy.y);
+this.ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height);
+break;
+case 1:
+this.ctx.arc(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, enemy.width / 2.5, 0, Math.PI * 2); // Adjusted circle size
+break;
+case 2:
+this.ctx.moveTo(enemy.x, enemy.y + enemy.height);
+this.ctx.lineTo(enemy.x + enemy.width, enemy.y + enemy.height);
+this.ctx.lineTo(enemy.x + enemy.width / 2, enemy.y);
+break;
+}
+this.ctx.closePath();
+this.ctx.fill();
+});
 }
 
-function update() {
-    if (gameOver) return;
-
-    movePlayer();
-
-    // Move player bullets
-    bullets.forEach(bullet => bullet.y -= 5);
-
-    // Remove off-screen bullets
-    bullets = bullets.filter(bullet => bullet.y > 0);
-
-    // Move monster bullets
-    monsterBullets.forEach(bullet => bullet.y += 2);
-
-    // Remove off-screen monster bullets
-    monsterBullets = monsterBullets.filter(bullet => bullet.y < canvas.height);
-
-    // Move enemies
-    moveEnemies();
-
-    // Check for collisions
-    checkCollisions();
-
-    // Check if player has lost a life
-    if (lifeLost) {
-        if (Date.now() - lifeLostStart > 1000) {
-            lifeLost = false;
-        } else {
-            // Flash the screen or show an indicator
-            ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-    }
-
-    // Check for game over
-    if (lives <= 0) {
-        gameOver = true;
-        document.getElementById('gameOver').textContent = 'Game Over!';
-        document.getElementById('gameOver').style.display = 'block';
-    }
+drawShields() {
+this.ctx.fillStyle = 'blue';
+this.shields.forEach(shield => {
+this.ctx.beginPath();
+this.ctx.arc(shield.x + shield.width / 2, shield.y + shield.height / 2, shield.width / 2, Math.PI, 0, false);
+this.ctx.lineTo(shield.x + shield.width, shield.y + shield.height);
+this.ctx.lineTo(shield.x, shield.y + shield.height);
+this.ctx.closePath();
+this.ctx.fill();
+});
 }
 
-function moveEnemies() {
-    const { speed } = levels[level];
-    let hitEdge = false;
-
-    // Move enemies horizontally based on direction
-    enemies.forEach(enemy => {
-        enemy.x += speed * moveDirection;
-        if (enemy.x < 0 || enemy.x + enemy.width > canvas.width) {
-            hitEdge = true;
-        }
-    });
-
-    if (hitEdge) {
-        enemies.forEach(enemy => enemy.y += 10);
-        moveDirection *= -1;
-    }
-
-    // Monster firing
-    if (Date.now() - lastEnemyFireTime > levels[level].fireRate) {
-        enemies.forEach(enemy => {
-            if (enemy.canFire && Math.random() < 0.1) { // Random chance to fire
-                monsterBullets.push({
-                    x: enemy.x + enemy.width / 2 - monsterBulletWidth / 2,
-                    y: enemy.y + enemy.height,
-                    width: monsterBulletWidth,
-                    height: monsterBulletHeight
-                });
-            }
-        });
-        lastEnemyFireTime = Date.now();
-    }
-
-    // Check if all enemies are destroyed
-    if (enemies.length === 0) {
-        level++;
-        setupLevel();
-    }
+drawScore() {
+this.ctx.fillStyle = 'white';
+this.ctx.font = '20px Arial';
+this.ctx.fillText('Score: ' + this.score, 10, 20);
+this.ctx.fillText('Lives: ' + this.lives, this.canvas.width - 100, 20);
+this.ctx.fillText('Level: ' + (this.level + 1), this.canvas.width / 2 - 30, 20);
 }
 
-function checkCollisions() {
-    bullets.forEach(bullet => {
-        enemies.forEach((enemy, index) => {
-            if (bullet.x < enemy.x + enemy.width &&
-                bullet.x + bullet.width > enemy.x &&
-                bullet.y < enemy.y + enemy.height &&
-                bullet.y + bullet.height > enemy.y) {
-                score += enemy.score;
-                enemies.splice(index, 1);
-                bullets = bullets.filter(b => b !== bullet);
-            }
-        });
-    });
+update(deltaTime) {
+if (this.gameOver) return;
 
-    monsterBullets.forEach(bullet => {
-        if (bullet.x < player.x + player.width &&
-            bullet.x + bullet.width > player.x &&
-            bullet.y < player.y + player.height &&
-            bullet.y + bullet.height > player.y) {
-            lives--;
-            lifeLost = true;
-            lifeLostStart = Date.now();
-            monsterBullets = monsterBullets.filter(b => b !== bullet);
-        }
-    });
+this.movePlayer(deltaTime);
 
-    // Check shield collisions
-    bullets.forEach(bullet => {
-        shields.forEach(shield => {
-            if (bullet.x < shield.x + shield.width &&
-                bullet.x + bullet.width > shield.x &&
-                bullet.y < shield.y + shield.height &&
-                bullet.y + bullet.height > shield.y) {
-                shield.width -= 10; // Increased reduction for better visibility
-                shield.height -= 5; // Increased reduction for better visibility
-                bullets = bullets.filter(b => b !== bullet);
-                if (shield.width <= 0 || shield.height <= 0) {
-                    shields = shields.filter(s => s !== shield);
-                }
-            }
-        });
-    });
+// Move player bullets
+this.bullets.forEach(bullet => bullet.y -= 300 * deltaTime); // Fixed speed for bullets
 
-    // Check collisions with shields
-    monsterBullets.forEach(bullet => {
-        shields.forEach(shield => {
-            if (bullet.x < shield.x + shield.width &&
-                bullet.x + bullet.width > shield.x &&
-                bullet.y < shield.y + shield.height &&
-                bullet.y + bullet.height > shield.y) {
-                shield.width -= 10; // Increased reduction for better visibility
-                shield.height -= 5; // Increased reduction for better visibility
-                monsterBullets = monsterBullets.filter(b => b !== bullet);
-                if (shield.width <= 0 || shield.height <= 0) {
-                    shields = shields.filter(s => s !== shield);
-                }
-            }
-        });
-    });
+// Remove off-screen bullets
+this.bullets = this.bullets.filter(bullet => bullet.y > 0);
 
-    // Check collisions with player base
-    enemies.forEach((enemy, index) => {
-        if (enemy.y + enemy.height > canvas.height - playerHeight) {
-            lives--;
-            lifeLost = true;
-            lifeLostStart = Date.now();
-            enemies.splice(index, 1);
-            if (lives <= 0) gameOver = true;
-        }
-    });
+// Move monster bullets
+this.monsterBullets.forEach(bullet => bullet.y += 200 * deltaTime); // Fixed speed for monster bullets
+
+// Remove off-screen monster bullets
+this.monsterBullets = this.monsterBullets.filter(bullet => bullet.y < this.canvas.height);
+
+// Move enemies
+this.moveEnemies(deltaTime);
+
+// Check for collisions
+this.checkCollisions();
+
+// Check if player has lost a life
+if (this.lifeLost) {
+if (Date.now() - this.lifeLostStart > 1000) {
+this.lifeLost = false;
+} else {
+// Flash the screen or show an indicator
+this.ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+}
+}
 }
 
-function gameLoop() {
-    if (gameOver) return;
+moveEnemies(deltaTime) {
+const { fireRate } = this.levels[this.level];
+const totalDistance = this.canvas.width - this.canvasMargin * 2; // Total distance to travel
+const duration = 10; // Duration in seconds to move from one side to the other
+const baseSpeed = totalDistance / duration; // Speed in pixels per second
+const moveSpeed = baseSpeed * deltaTime; // Adjust speed based on deltaTime
+let hitEdge = false;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawPlayer();
-    drawBullets();
-    drawMonsterBullets();
-    drawEnemies();
-    drawShields();
-    drawScore();
-    update();
-    requestAnimationFrame(gameLoop);
+// Move enemies horizontally based on direction
+this.enemies.forEach(enemy => {
+enemy.x += moveSpeed * this.moveDirection;
+if (enemy.x < this.canvasMargin || enemy.x + enemy.width > this.canvas.width - this.canvasMargin) {
+hitEdge = true;
+}
+});
+
+if (hitEdge) {
+this.enemies.forEach(enemy => enemy.y += 10);
+this.moveDirection *= -1;
 }
 
-init();
+// Monster firing
+if (Date.now() - this.lastEnemyFireTime > fireRate) {
+this.enemies.forEach(enemy => {
+if (enemy.canFire && Math.random() < 0.1) { // Random chance to fire
+this.monsterBullets.push({
+x: enemy.x + enemy.width / 2 - this.monsterBulletWidth / 2,
+y: enemy.y + enemy.height,
+width: this.monsterBulletWidth,
+height: this.monsterBulletHeight
+});
+}
+});
+this.lastEnemyFireTime = Date.now();
+}
+
+// Check if all enemies are destroyed
+if (this.enemies.length === 0) {
+this.level++;
+this.setupLevel();
+}
+}
+
+checkCollisions() {
+// Player bullet collisions
+this.bullets.forEach(bullet => {
+this.enemies.forEach((enemy, index) => {
+if (bullet.x < enemy.x + enemy.width &&
+bullet.x + bullet.width > enemy.x &&
+bullet.y < enemy.y + enemy.height &&
+bullet.y + bullet.height > enemy.y) {
+this.score += enemy.score;
+this.enemies.splice(index, 1);
+this.bullets = this.bullets.filter(b => b !== bullet);
+}
+});
+});
+
+// Monster bullet collisions with player
+this.monsterBullets.forEach(bullet => {
+if (bullet.x < this.player.x + this.player.width &&
+bullet.x + bullet.width > this.player.x &&
+bullet.y < this.player.y + this.player.height &&
+bullet.y + bullet.height > this.player.y) {
+this.lives--;
+this.lifeLost = true;
+this.lifeLostStart = Date.now();
+this.monsterBullets = this.monsterBullets.filter(b => b !== bullet);
+if (this.lives <= 0) this.gameOver = true;
+}
+});
+
+// Player bullet collisions with shields
+this.bullets.forEach(bullet => {
+this.shields.forEach(shield => {
+if (bullet.x < shield.x + shield.width &&
+bullet.x + bullet.width > shield.x &&
+bullet.y < shield.y + shield.height &&
+bullet.y + bullet.height > shield.y) {
+shield.width -= 10;
+shield.height -= 5;
+this.bullets = this.bullets.filter(b => b !== bullet);
+if (shield.width <= 0 || shield.height <= 0) {
+this.shields = this.shields.filter(s => s !== shield);
+}
+}
+});
+});
+
+// Monster bullet collisions with shields
+this.monsterBullets.forEach(bullet => {
+this.shields.forEach(shield => {
+if (bullet.x < shield.x + shield.width &&
+bullet.x + bullet.width > shield.x &&
+bullet.y < shield.y + shield.height &&
+bullet.y + bullet.height > shield.y) {
+shield.width -= 10;
+shield.height -= 5;
+this.monsterBullets = this.monsterBullets.filter(b => b !== bullet);
+if (shield.width <= 0 || shield.height <= 0) {
+this.shields = this.shields.filter(s => s !== shield);
+}
+}
+});
+});
+
+// Enemies hitting the player base
+this.enemies.forEach((enemy, index) => {
+if (enemy.y + enemy.height > this.canvas.height - this.player.height - this.canvasMargin) {
+this.lives--;
+this.lifeLost = true;
+this.lifeLostStart = Date.now();
+this.enemies.splice(index, 1);
+if (this.lives <= 0) this.gameOver = true;
+}
+});
+}
+
+gameLoop() {
+if (this.gameOver) return;
+
+const timestamp = performance.now();
+const deltaTime = (timestamp - this.lastFrameTime) / 1000; // Convert to seconds
+this.lastFrameTime = timestamp;
+
+this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+this.drawPlayer();
+this.drawBullets();
+this.drawMonsterBullets();
+this.drawEnemies();
+this.drawShields();
+this.drawScore();
+this.update(deltaTime);
+requestAnimationFrame(() => this.gameLoop());
+}
+}
+
+const game = new SpaceInvaders('gameCanvas');
 
 
-        
     </script>
 </body>
+
 </html>
