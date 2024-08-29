@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+
+
+#game-board {
+    display: grid;
+    grid-template-columns: repeat(5, 80px);
+    grid-template-rows: repeat(5, 80px);
+    gap: 10px;
+    border: 1px solid black;
+}
+
+.cell {
+    width: 80px;
+    height: 80px;
+    background-color: #cdc1b4;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid black;
+    font-size: 24px;
+    color: #776e65;
+    font-weight: bold;
+    border-radius: 5px;
+}
+
+[data-value="2"] {
+    background-color: #eee4da;
+}
+
+[data-value="4"] {
+    background-color: #ede0c8;
+}
+
+[data-value="8"] {
+    background-color: #f2b179;
+    color: #f9f6f2;
+}
+
+[data-value="16"] {
+    background-color: #f59563;
+    color: #f9f6f2;
+}
+
+[data-value="32"] {
+    background-color: #f67c5f;
+    color: #f9f6f2;
+}
+
+[data-value="64"] {
+    background-color: #f65e3b;
+    color: #f9f6f2;
+}
+
+[data-value="128"] {
+    background-color: #edcf72;
+    color: #f9f6f2;
+}
+
+[data-value="256"] {
+    background-color: #edcc61;
+    color: #f9f6f2;
+}
+
+[data-value="512"] {
+    background-color: #edc850;
+    color: #f9f6f2;
+}
+
+[data-value="1024"] {
+    background-color: #edc53f;
+    color: #f9f6f2;
+}
+
+[data-value="2048"] {
+    background-color: #edc22e;
+    color: #f9f6f2;
+}
+
+</style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 5x5 Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-board"></div>
+
+<script>
+const boardSize = 5;
+const board = [];
+const gameBoard = document.getElementById('game-board');
+
+// Initialize the board with empty cells and start with one "2"
+function initializeBoard() {
+    for (let i = 0; i < boardSize; i++) {
+        board[i] = [];
+        for (let j = 0; j < boardSize; j++) {
+            board[i][j] = 0;
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `cell-${i}-${j}`;
+            gameBoard.appendChild(cell);
+        }
+    }
+    addNewTwo();
+    updateBoard();
+}
+
+// Add a new "2" in a random empty cell
+function addNewTwo() {
+    let emptyCells = [];
+    for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+            if (board[i][j] === 0) {
+                emptyCells.push({ x: i, y: j });
+            }
+        }
+    }
+    if (emptyCells.length > 0) {
+        const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+        board[randomCell.x][randomCell.y] = 2;
+    }
+}
+
+// Update the visual representation of the board
+function updateBoard() {
+    for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+            const cell = document.getElementById(`cell-${i}-${j}`);
+            const value = board[i][j];
+            cell.textContent = value > 0 ? value : '';
+            cell.dataset.value = value;
+        }
+    }
+}
+
+// Move the board in a specific direction
+function move(direction) {
+    let moved = false;
+    switch (direction) {
+        case 'up':
+            for (let j = 0; j < boardSize; j++) {
+                let column = [];
+                for (let i = 0; i < boardSize; i++) {
+                    if (board[i][j] !== 0) column.push(board[i][j]);
+                }
+                for (let i = 0; i < column.length - 1; i++) {
+                    if (column[i] === column[i + 1]) {
+                        column[i] *= 2;
+                        column.splice(i + 1, 1);
+                    }
+                }
+                for (let i = 0; i < boardSize; i++) {
+                    if (i < column.length) {
+                        if (board[i][j] !== column[i]) moved = true;
+                        board[i][j] = column[i];
+                    } else {
+                        if (board[i][j] !== 0) moved = true;
+                        board[i][j] = 0;
+                    }
+                }
+            }
+            break;
+        case 'down':
+            for (let j = 0; j < boardSize; j++) {
+                let column = [];
+                for (let i = boardSize - 1; i >= 0; i--) {
+                    if (board[i][j] !== 0) column.push(board[i][j]);
+                }
+                for (let i = 0; i < column.length - 1; i++) {
+                    if (column[i] === column[i + 1]) {
+                        column[i] *= 2;
+                        column.splice(i + 1, 1);
+                    }
+                }
+                for (let i = boardSize - 1; i >= 0; i--) {
+                    if (boardSize - 1 - i < column.length) {
+                        if (board[i][j] !== column[boardSize - 1 - i]) moved = true;
+                        board[i][j] = column[boardSize - 1 - i];
+                    } else {
+                        if (board[i][j] !== 0) moved = true;
+                        board[i][j] = 0;
+                    }
+                }
+            }
+            break;
+        case 'left':
+            for (let i = 0; i < boardSize; i++) {
+                let row = [];
+                for (let j = 0; j < boardSize; j++) {
+                    if (board[i][j] !== 0) row.push(board[i][j]);
+                }
+                for (let j = 0; j < row.length - 1; j++) {
+                    if (row[j] === row[j + 1]) {
+                        row[j] *= 2;
+                        row.splice(j + 1, 1);
+                    }
+                }
+                for (let j = 0; j < boardSize; j++) {
+                    if (j < row.length) {
+                        if (board[i][j] !== row[j]) moved = true;
+                        board[i][j] = row[j];
+                    } else {
+                        if (board[i][j] !== 0) moved = true;
+                        board[i][j] = 0;
+                    }
+                }
+            }
+            break;
+        case 'right':
+            for (let i = 0; i < boardSize; i++) {
+                let row = [];
+                for (let j = boardSize - 1; j >= 0; j--) {
+                    if (board[i][j] !== 0) row.push(board[i][j]);
+                }
+                for (let j = 0; j < row.length - 1; j++) {
+                    if (row[j] === row[j + 1]) {
+                        row[j] *= 2;
+                        row.splice(j + 1, 1);
+                    }
+                }
+                for (let j = boardSize - 1; j >= 0; j--) {
+                    if (boardSize - 1 - j < row.length) {
+                        if (board[i][j] !== row[boardSize - 1 - j]) moved = true;
+                        board[i][j] = row[boardSize - 1 - j];
+                    } else {
+                        if (board[i][j] !== 0) moved = true;
+                        board[i][j] = 0;
+                    }
+                }
+            }
+            break;
+    }
+    if (moved) {
+        addNewTwo();
+        updateBoard();
+        checkGameOver();
+    }
+}
+
+// Check if the game is over
+function checkGameOver() {
+    for (let i = 0; i < boardSize; i++) {
+        for (let j = 0; j < boardSize; j++) {
+            if (board[i][j] === 0) return;
+            if (i > 0 && board[i][j] === board[i - 1][j]) return;
+            if (i < boardSize - 1 && board[i][j] === board[i + 1][j]) return;
+            if (j > 0 && board[i][j] === board[i][j - 1]) return;
+            if (j < boardSize - 1 && board[i][j] === board[i][j + 1]) return;
+        }
+    }
+    alert('Game Over!');
+}
+
+// Handle key press events
+document.addEventListener('keydown', (event) => {
+    switch (event.key) {
+        case 'ArrowUp':
+            move('up');
+            break;
+        case 'ArrowDown':
+            move('down');
+            break;
+        case 'ArrowLeft':
+            move('left');
+            break;
+        case 'ArrowRight':
+            move('right');
+            break;
+    }
+});
+
+// Initialize the game
+initializeBoard();
+    
+</script>
+
+</body>
+</html>
