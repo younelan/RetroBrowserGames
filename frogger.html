@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frogger</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: lightblue;
+            overflow: hidden;
+        }
+
+        #game {
+            position: relative;
+            width: 720px;
+            /* 12 cells * 60px */
+            height: 720px;
+            /* 12 cells * 60px */
+            border: 2px solid black;
+            overflow: hidden;
+            background-color: lightgreen;
+        }
+
+        .road,
+        .river,
+        .safe-zone-bottom,
+        .safe-zone-middle,
+        .safe-zone-top {
+            position: absolute;
+            width: 100%;
+        }
+
+        .road {
+            background-color: black;
+            height: 60px;
+            top: 420px;
+        }
+
+        .river {
+            background-color: blue;
+            height: 60px;
+        }
+
+        .safe-zone-bottom {
+            background-color: lightgray;
+            height: 60px;
+            bottom: 0;
+        }
+
+        .safe-zone-middle {
+            background-color: lightblue;
+            height: 60px;
+            top: 360px;
+        }
+
+        .safe-zone-top {
+            background-color: darkgray;
+            height: 60px;
+            top: 0;
+        }
+
+        .top-safe-slot {
+            width: 60px;
+            /* Align with cell size */
+            height: 60px;
+            background-color: black;
+            position: absolute;
+        }
+
+        .frog {
+            width: 60px;
+            /* Align with cell size */
+            height: 60px;
+            background-color: green;
+            position: absolute;
+            z-index: 10;
+        }
+
+        .car {
+            width: 60px;
+            /* Align with cell size */
+            height: 60px;
+            background-color: orange;
+            position: absolute;
+            animation-timing-function: linear;
+        }
+
+        /* Animations */
+        @keyframes moveLeft {
+            from {
+                transform: translateX(100%);
+            }
+
+            to {
+                transform: translateX(-100%);
+            }
+        }
+
+        @keyframes moveRight {
+            from {
+                transform: translateX(-100%);
+            }
+
+            to {
+                transform: translateX(100%);
+            }
+        }
+
+        .log {
+            position: absolute;
+            width: 120px;
+            /* Adjust the width as needed */
+            height: 60px;
+            /* Align with cell size */
+            background-color: brown;
+            animation-timing-function: linear;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game"></div>
+    <script>
+        const gridSize = 12;
+        const cellSize = 60;    
+    </script>
+    <script>
+        class Frogger {
+            constructor(containerId, cellSize) {
+                this.cellSize = cellSize;
+                this.container = document.getElementById(containerId);
+                this.frogPosition = { x: Math.floor(gridSize / 2), y: gridSize - 1 };
+                this.topWallSlots = [];
+                this.logs = [];
+                this.currentLog = null;
+                this.initializeGame();
+            }
+
+            initializeGame() {
+                this.createTopWall();
+                this.createRiver();
+                this.createRoad();
+                this.createSafeZones();
+                this.createFrog();
+                this.handleControls();
+                this.createCars();
+                this.createLogs();
+                this.updateGame();
+            }
+
+            createLogs() {
+                const logConfigs = [
+                    { y: 60, speed: 5, direction: 'left', count: 3 },
+                    { y: 120, speed: 7, direction: 'right', count: 2 },
+                    { y: 180, speed: 6, direction: 'left', count: 4 },
+                    { y: 240, speed: 5, direction: 'right', count: 3 },
+                    { y: 300, speed: 7, direction: 'left', count: 2 }
+                ];
+
+                logConfigs.forEach(config => {
+                    for (let i = 0; i < config.count; i++) {
+                        const log = document.createElement('div');
+                        log.className = 'log';
+                        log.style.top = `${config.y}px`;
+                        log.style.left = `${i * this.cellSize * 2}px`; // Adjust spacing between logs
+                        this.container.appendChild(log);
+
+                        const animationName = config.direction === 'left' ? 'moveLeft' : 'moveRight';
+                        log.style.animation = `${animationName} ${config.speed}s linear infinite`;
+                        this.logs.push(log);
+                    }
+                });
+            }
+
+            moveLogs() {
+                this.logs.forEach(log => {
+                    const direction = log.style.animation.includes('moveLeft') ? -1 : 1;
+                    let left = parseFloat(log.style.left);
+                    const distance = this.container.offsetWidth;
+
+                    left += direction * 2;
+
+                    if (direction === 1 && left > distance) {
+                        left = -this.cellSize;
+                    } else if (direction === -1 && left < -this.cellSize) {
+                        left = distance;
+                    }
+
+                    log.style.left = `${left}px`;
+
+                    if (this.currentLog === log) {
+                        this.frogPosition.x += direction * 2 / this.cellSize;
+                        this.updateFrogPosition();
+                    }
+                });
+            }
+            createTopWall() {
+                const wall = document.createElement('div');
+                wall.className = 'safe-zone-top';
+                this.container.appendChild(wall);
+
+                // Create 12 slots (5 empty and 7 wall cells) with a fixed pattern
+                const pattern = 'WSWSWSWSWSWS'; // 5 empty spots, 7 wall cells
+                for (let i = 0; i < pattern.length; i++) {
+                    const slot = document.createElement('div');
+                    slot.className = 'top-safe-slot';
+                    slot.style.left = `${i * this.cellSize}px`;
+                    if (pattern[i] === 'W') {
+                        slot.style.backgroundColor = 'green'; // Wall cells are green
+                    } else {
+                        slot.style.backgroundColor = 'black'; // Empty slots are black
+                    }
+                    wall.appendChild(slot);
+                    this.topWallSlots.push(slot);
+                }
+            }
+
+            createRiver() {
+                for (let i = 0; i < 5; i++) {
+                    const river = document.createElement('div');
+                    river.className = 'river';
+                    river.style.top = `${this.cellSize + i * this.cellSize}px`;
+                    this.container.appendChild(river);
+                }
+            }
+
+            createRoad() {
+                for (let i = 0; i < 5; i++) {
+                    const road = document.createElement('div');
+                    road.className = 'road';
+                    road.style.top = `${420 + i * this.cellSize}px`;
+                    this.container.appendChild(road);
+                }
+            }
+
+            createSafeZones() {
+                const bottomSafeZone = document.createElement('div');
+                bottomSafeZone.className = 'safe-zone-bottom';
+                this.container.appendChild(bottomSafeZone);
+
+                const middleSafeZone = document.createElement('div');
+                middleSafeZone.className = 'safe-zone-middle';
+                this.container.appendChild(middleSafeZone);
+            }
+
+            createFrog() {
+                this.frog = document.createElement('div');
+                this.frog.className = 'frog';
+                this.updateFrogPosition();
+                this.container.appendChild(this.frog);
+            }
+
+            updateFrogPosition() {
+                this.frog.style.left = `${this.frogPosition.x * this.cellSize}px`;
+                this.frog.style.top = `${this.frogPosition.y * this.cellSize}px`;
+            }
+            handleControls() {
+                window.addEventListener('keydown', (event) => {
+                    switch (event.key) {
+                        case 'ArrowUp':
+                            this.moveFrog(0, -1);
+                            break;
+                        case 'ArrowDown':
+                            this.moveFrog(0, 1);
+                            break;
+                        case 'ArrowLeft':
+                            this.moveFrog(-1, 0);
+                            break;
+                        case 'ArrowRight':
+                            this.moveFrog(1, 0);
+                            break;
+                    }
+                });
+
+                // Touch support
+                let touchStartX = 0;
+                let touchStartY = 0;
+
+                window.addEventListener('touchstart', (event) => {
+                    touchStartX = event.touches[0].clientX;
+                    touchStartY = event.touches[0].clientY;
+                });
+
+                window.addEventListener('touchend', (event) => {
+                    const touchEndX = event.changedTouches[0].clientX;
+                    const touchEndY = event.changedTouches[0].clientY;
+                    const dx = touchEndX - touchStartX;
+                    const dy = touchEndY - touchStartY;
+
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        // Horizontal swipe
+                        if (dx > 0) {
+                            this.moveFrog(1, 0); // Swipe right
+                        } else {
+                            this.moveFrog(-1, 0); // Swipe left
+                        }
+                    } else {
+                        // Vertical swipe
+                        if (dy > 0) {
+                            this.moveFrog(0, 1); // Swipe down
+                        } else {
+                            this.moveFrog(0, -1); // Swipe up
+                        }
+                    }
+                });
+            }
+            moveFrog(dx, dy) {
+                const newX = this.frogPosition.x + dx;
+                const newY = this.frogPosition.y + dy;
+                if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize) {
+                    const newPosition = { x: newX, y: newY };
+                    const targetSlot = document.elementFromPoint(newX * this.cellSize + this.cellSize / 2, newY * this.cellSize + this.cellSize / 2);
+
+                    if (targetSlot && targetSlot.classList.contains('top-safe-slot')) {
+                        if (targetSlot.style.backgroundColor === 'green') {
+                            this.loseGame();
+                            return;
+                        }
+                        targetSlot.style.backgroundColor = 'green';
+                        this.resetFrog();
+                        this.checkWinCondition();
+                    } else if (targetSlot && targetSlot.classList.contains('car')) {
+                        this.loseGame();
+                    } else {
+                        this.frogPosition = newPosition;
+                        this.updateFrogPosition();
+                        this.currentLog = null; // Reset current log when frog moves
+                    }
+                }
+            }
+            moveFrog(dx, dy) {
+                const newX = this.frogPosition.x + dx;
+                const newY = this.frogPosition.y + dy;
+                if (newX >= 0 && newX < gridSize && newY >= 0 && newY < gridSize) {
+                    const newPosition = { x: newX, y: newY };
+                    const targetSlot = document.elementFromPoint(newX * this.cellSize + this.cellSize / 2, newY * this.cellSize + this.cellSize / 2);
+
+                    if (targetSlot && targetSlot.classList.contains('top-safe-slot')) {
+                        if (targetSlot.style.backgroundColor === 'green') {
+                            this.loseGame();
+                            return;
+                        }
+                        targetSlot.style.backgroundColor = 'green';
+                        this.resetFrog();
+                        this.checkWinCondition();
+                    } else if (targetSlot && targetSlot.classList.contains('car')) {
+                        this.loseGame();
+                    } else {
+                        this.frogPosition = newPosition;
+                        this.updateFrogPosition();
+                        this.currentLog = null; // Reset current log when frog moves
+                    }
+                }
+            }
+
+            resetFrog() {
+                this.frogPosition = { x: Math.floor(gridSize / 2), y: gridSize - 1 };
+                this.updateFrogPosition();
+                this.currentLog = null; // Ensure the frog is no longer riding a log
+            }
+
+
+            createCars() {
+                const carConfigs = [
+                    { y: 420, speed: 10, direction: 'left', count: 6 }, // Adjusted speed and count
+                    { y: 480, speed: 12, direction: 'right', count: 4 }, // Adjusted speed and count
+                    { y: 540, speed: 8, direction: 'left', count: 3 }   // Adjusted speed and count
+                ];
+
+                carConfigs.forEach(config => {
+                    for (let i = 0; i < config.count; i++) {
+                        const car = document.createElement('div');
+                        car.className = 'car';
+                        car.style.top = `${config.y}px`;
+                        car.style.left = `${i * this.cellSize}px`;
+                        this.container.appendChild(car);
+
+                        // Ensure car moves smoothly off-screen
+                        const animationName = config.direction === 'left' ? 'moveLeft' : 'moveRight';
+                        car.style.animation = `${animationName} ${config.speed}s linear infinite`;
+                    }
+                });
+            }
+
+            moveCars() {
+                const cars = document.querySelectorAll('.car');
+                cars.forEach(car => {
+                    const direction = car.style.animation.includes('moveLeft') ? -1 : 1;
+                    let left = parseFloat(car.style.left);
+                    const distance = this.container.offsetWidth;
+
+                    // Update position based on direction
+                    left += direction * 2; // Adjust for controlled speed
+
+                    // Handle cars moving off-screen and resetting position
+                    if (direction === 1 && left > distance) {
+                        left = -this.cellSize; // Reset to just off-screen on the left
+                    } else if (direction === -1 && left < -this.cellSize) {
+                        left = distance; // Reset to just off-screen on the right
+                    }
+
+                    car.style.left = `${left}px`;
+                });
+            }
+            checkCollision() {
+                const frogRect = this.frog.getBoundingClientRect();
+                const cars = document.querySelectorAll('.car');
+                let onLog = false;
+
+                cars.forEach(car => {
+                    const carRect = car.getBoundingClientRect();
+                    if (frogRect.left < carRect.right &&
+                        frogRect.right > carRect.left &&
+                        frogRect.top < carRect.bottom &&
+                        frogRect.bottom > carRect.top) {
+                        this.loseGame();
+                    }
+                });
+
+                this.logs.forEach(log => {
+                    const logRect = log.getBoundingClientRect();
+                    if (frogRect.left < logRect.right &&
+                        frogRect.right > logRect.left &&
+                        frogRect.top < logRect.bottom &&
+                        frogRect.bottom > logRect.top) {
+                        onLog = true;
+                        this.currentLog = log;
+                    }
+                });
+
+                if (!onLog && this.frogPosition.y < 5) { // Assuming river is in the top 5 rows
+                    this.loseGame();
+                }
+            } s
+
+            checkWinCondition() {
+                const filledSlots = Array.from(this.topWallSlots).filter(slot => slot.style.backgroundColor === 'green').length;
+                if (filledSlots === this.topWallSlots.length) { // Check if all slots are filled
+                    alert('You win!');
+                    window.location.reload();
+                }
+            }
+            loseGame() {
+                alert('Game Over!');
+                window.location.reload();
+            }
+
+            updateGame() {
+                setInterval(() => {
+                    this.moveCars();
+                    this.moveLogs();
+                    this.checkCollision();
+                }, 1000 / 60);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new Frogger('game', cellSize);
+        });
+
+    </script>
+</body>
+
+</html>
