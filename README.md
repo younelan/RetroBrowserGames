@@ -9,3 +9,6 @@ This repo contains simple javascript games, most recreation of classic retro gam
 - **Monster Chaser** - Somewhere between Labyrinth and Pacman, I wrote this game first as a kid on the apple 2. I was given a creativity award at the time
 - **breakout** - Simple Arkanoid like breakout implementation
 - **frogger** - Simple frogger like implementation
+- **platform** - Simple platformer like mario with coin and enemy
+- **invaders** - space invaders like shoot them up
+
