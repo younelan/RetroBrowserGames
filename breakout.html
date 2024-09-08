@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arkanoid Game</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; background: #eee; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+<script>
+    const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Game settings
+const paddleHeight = 10;
+const ballRadius = 10;
+const coinRadius = 10;
+const initialLives = 10;
+const headerHeight = 50; // Adjust according to your header height
+const footerHeight = 50; // Adjust according to your footer height
+const verticalMargin = 1.5; // Space below the paddle in landscape mode
+const verticalMarginMobile = 3; // Space below the paddle in portrait mode
+const bevelSize = 5; // Bevel size for the 3D effect
+
+// Level data
+const levels = [
+    {
+        tiles: [
+            "    YYYYYY ",
+            "   YYDYYDYY", 
+            "   YYYYYYYY",
+            "   YDYYYYDY",
+            "    YDDDDYY ",
+            
+        ],
+        speed: 1
+    },
+    {
+        tiles: [
+            "222222+2222222",
+            "RRRR RRRR RRRR",
+            "BBBB BBBB BBBB",
+            "CCCC CCCC CCCC",
+            "     +      +"
+        ],
+        speed: 1
+    },
+    // Add more levels here
+];
+
+let currentLevelIndex = 0;
+let currentLevel = levels[currentLevelIndex];
+
+// Game state
+let paddleX;
+let paddleWidth;
+let tileWidth;
+let tileHeight;
+let tileMargin = 0; // No gap between tiles
+let ballX;
+let ballY;
+let ballDX = 2;
+let ballDY = -2;
+let score = 0;
+let lives = initialLives;
+let tiles = [];
+let tileRows = 5; // Fixed number of rows
+let tileCols;
+let coin = null;
+let coinFallSpeed = 2;
+let gameStarted = false;
+let lastTouchX = 0;
+
+// Resize canvas and reset game setup
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight - headerHeight - footerHeight;
+    updateTileSize();
+    resetGame();
+}
+
+// Adjust tile size based on canvas width
+function updateTileSize() {
+    const numCols = Math.max(...currentLevel.tiles.map(row => row.length)); // Maximum number of columns based on the level data
+    tileCols = numCols;
+
+    const totalWidth = canvas.width; // Width available for tiles
+    tileWidth = Math.floor(totalWidth / numCols);
+    tileHeight = tileWidth / 2; // Keep tiles rectangular, with height half of the width
+
+    // Default paddle width (10% of canvas width)
+    paddleWidth = Math.floor(canvas.width / 10);
+
+    if (canvas.width < canvas.height) { // Portrait mode
+        paddleWidth = Math.floor(canvas.width * 0.2); // 20% of canvas width in portrait mode
+    }
+}
+
+// Reset the game setup
+function resetGame() {
+    paddleWidth = Math.floor(canvas.width / 10); // Default paddle width (10% of canvas width)
+    if (canvas.width < canvas.height) { // Portrait mode
+        paddleWidth = Math.floor(canvas.width * 0.2); // 20% of canvas width in portrait mode
+    }
+    paddleX = (canvas.width - paddleWidth) / 2;
+    // Add space below the paddle
+    let margin = canvas.width < canvas.height ? verticalMarginMobile : verticalMargin;
+    ballX = canvas.width / 2;
+    ballY = canvas.height - paddleHeight - ballRadius - (tileHeight + tileMargin) * margin;
+    createTiles();
+}
+
+// Create tiles based on the level data
+function createTiles() {
+    tiles = [];
+    let rows = currentLevel.tiles.length;
+    let cols = tileCols; // Use calculated number of columns
+
+    for (let r = 0; r < rows; r++) {
+        tiles[r] = [];
+        for (let c = 0; c < cols; c++) {
+            let tileChar = currentLevel.tiles[r][c] || ' ';
+            let x = c * tileWidth;
+            let y = r * tileHeight + (canvas.width < canvas.height ? verticalMarginMobile * tileHeight : verticalMargin * tileHeight);
+            let tile = { x, y, status: 1, hitsRemaining: 0, color: '#000', isPlusTile: false, graphic: null };
+
+            if (tileChar === '+') {
+                tile.isPlusTile = true;
+                tile.color = '#AAA'; // Color for the plus tile
+            } else if (tileChar >= '1' && tileChar <= '9') {
+                tile.hitsRemaining = parseInt(tileChar);
+                tile.color = '#00F'; // Default color for hit tiles
+            } else if (tileChar === 'R') {
+                tile.color = '#F00';
+            } else if (tileChar==='D') {
+                tile.color ='#000'
+            } else if (tileChar === 'B') {
+                tile.color = '#00F';
+            } else if (tileChar === 'Y') {
+                tile.color = '#FF0';
+            } else if (tileChar === 'G') {
+                tile.color = '#0F0';
+            } else if (tileChar === 'W') {
+                tile.color = '#FFF';
+            } else {
+                continue; // Skip empty tiles
+            }
+
+            tiles[r][c] = tile;
+        }
+    }
+}
+
+// Draw the paddle
+function drawPaddle() {
+    ctx.beginPath();
+    ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+    ctx.fillStyle = '#0095DD';
+    ctx.fill();
+    ctx.closePath();
+}
+
+// Draw the ball
+function drawBall() {
+    ctx.beginPath();
+    ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+    ctx.fillStyle = '#0095DD';
+    ctx.fill();
+    ctx.closePath();
+}
+
+
+// Draw the tiles with a 3D bevel effect
+function drawTiles() {
+    // Dynamically adjust bevel size based on canvas width
+    const dynamicBevelSize = Math.max(1, Math.floor(canvas.width / 200)); // Adjust for different devices
+    
+    for (let r = 0; r < tileRows; r++) {
+        for (let c = 0; c < tileCols; c++) {
+            let tile = tiles[r][c];
+            if (tile && tile.status === 1) {
+                let x = tile.x;
+                let y = tile.y;
+
+                // Draw tile
+                ctx.beginPath();
+                ctx.rect(x, y, tileWidth, tileHeight);
+                ctx.fillStyle = tile.color;
+                ctx.fill();
+                ctx.closePath();
+
+                // Draw bevel effect
+                ctx.lineWidth = dynamicBevelSize;
+                ctx.strokeStyle = '#aaa'; // Light color for bevel
+                ctx.beginPath();
+                // Top bevel
+                ctx.moveTo(x + dynamicBevelSize, y + dynamicBevelSize);
+                ctx.lineTo(x + tileWidth - dynamicBevelSize, y + dynamicBevelSize);
+                ctx.lineTo(x + tileWidth - dynamicBevelSize, y);
+                ctx.lineTo(x + dynamicBevelSize, y);
+                ctx.closePath();
+                ctx.stroke();
+                
+                ctx.strokeStyle = '#555'; // Dark color for bevel
+                ctx.beginPath();
+                // Right bevel
+                ctx.moveTo(x + tileWidth, y);
+                ctx.lineTo(x + tileWidth, y + tileHeight);
+                ctx.lineTo(x + tileWidth - dynamicBevelSize, y + tileHeight);
+                ctx.lineTo(x + tileWidth - dynamicBevelSize, y + dynamicBevelSize);
+                ctx.closePath();
+                ctx.stroke();
+                
+                ctx.beginPath();
+                // Bottom bevel
+                ctx.moveTo(x + tileWidth, y + tileHeight);
+                ctx.lineTo(x, y + tileHeight);
+                ctx.lineTo(x, y + tileHeight - dynamicBevelSize);
+                ctx.lineTo(x + tileWidth - dynamicBevelSize, y + tileHeight - dynamicBevelSize);
+                ctx.closePath();
+                ctx.stroke();
+            }
+        }
+    }
+}
+
+
+// Draw the coin
+function drawCoin() {
+    if (coin) {
+        ctx.beginPath();
+        ctx.arc(coin.x, coin.y, coinRadius, 0, Math.PI * 2);
+        ctx.fillStyle = coin.color;
+        ctx.fill();
+        ctx.closePath();
+    }
+}
+
+// Draw the score and lives
+function drawScoreLives() {
+    ctx.font = '16px Arial';
+    ctx.fillStyle = '#0095DD';
+    ctx.fillText('Score: ' + score, 8, 20);
+    ctx.fillText('Lives: ' + lives, canvas.width - 80, 20);
+}
+
+// Handle collisions with tiles
+function collisionDetection() {
+    for (let r = 0; r < tileRows; r++) {
+        for (let c = 0; c < tileCols; c++) {
+            let tile = tiles[r][c];
+            if (tile && tile.status === 1) {
+                if (ballX > tile.x && ballX < tile.x + tileWidth && ballY > tile.y && ballY < tile.y + tileHeight) {
+                    ballDY = -ballDY;
+                    tile.hitsRemaining -= 1;
+
+                    if (tile.hitsRemaining <= 0) {
+                        tile.status = 0;
+                        score += 10;
+                        if (tile.isPlusTile) {
+                            spawnCoin(tile.x + tileWidth / 2, tile.y);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Spawn a coin when a special tile is hit
+function spawnCoin(x, y) {
+    let colors = ['#FF0', '#F00', '#0F0', '#00F'];
+    let color = colors[Math.floor(Math.random() * colors.length)];
+    coin = { x, y, color };
+}
+
+
+// Update the game state
+function update() {
+    if (!gameStarted) return;
+
+    ballX += ballDX;
+    ballY += ballDY;
+
+    // Ball collision with walls
+    if (ballX + ballDX > canvas.width - ballRadius || ballX + ballDX < ballRadius) {
+        ballDX = -ballDX;
+    }
+
+    if (ballY + ballDY < ballRadius) {
+        ballDY = -ballDY;
+    } else if (ballY + ballDY > canvas.height - ballRadius) {
+        if (ballX > paddleX && ballX < paddleX + paddleWidth) {
+            ballDY = -ballDY;
+            ballDX = (ballX - paddleX - paddleWidth / 2) * 0.5; // Adjust angle based on where it hit the paddle
+        } else {
+            lives -= 1;
+            if (lives <= 0) {
+                displayGameOver();
+                return;
+            }
+            resetBall();
+        }
+    }
+
+    // Coin logic
+    if (coin) {
+        coin.y += coinFallSpeed;
+        if (coin.y > canvas.height) {
+            coin = null;
+        } else if (coin && coin.y + coinRadius > canvas.height - paddleHeight && coin.x > paddleX && coin.x < paddleX + paddleWidth) {
+            score += 50;
+            coin = null;
+        }
+    }
+
+    // Tile collision detection
+    collisionDetection();
+
+    // Check if all tiles are cleared
+    let allTilesCleared = tiles.every(row => row.every(tile => tile.status === 0));
+    if (allTilesCleared) {
+        currentLevelIndex += 1;
+        if (currentLevelIndex < levels.length) {
+            currentLevel = levels[currentLevelIndex];
+            resetGame();
+        } else {
+            displayWin();
+        }
+    }
+}
+
+// Display game over screen
+function displayGameOver() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '40px Arial';
+    ctx.fillStyle = '#FF0000';
+    ctx.textAlign = 'center';
+    ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2);
+    ctx.font = '20px Arial';
+    ctx.fillText('Press Space or Click to Restart', canvas.width / 2, canvas.height / 2 + 40);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === ' ' || e.key === 'Enter') {
+            document.location.reload();
+        }
+    });
+    canvas.addEventListener('mousedown', function() {
+        document.location.reload();
+    });
+}
+
+// Display win screen
+function displayWin() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = '40px Arial';
+    ctx.fillStyle = '#00FF00';
+    ctx.textAlign = 'center';
+    ctx.fillText('You Win!', canvas.width / 2, canvas.height / 2);
+    ctx.font = '20px Arial';
+    ctx.fillText('Press Space or Click to Restart', canvas.width / 2, canvas.height / 2 + 40);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === ' ' || e.key === 'Enter') {
+            document.location.reload();
+        }
+    });
+    canvas.addEventListener('mousedown', function() {
+        document.location.reload();
+    });
+}
+
+// Reset the ball to its starting position
+function resetBall() {
+    let margin = canvas.width < canvas.height ? verticalMarginMobile : verticalMargin;
+    ballX = canvas.width / 2;
+    ballY = canvas.height - paddleHeight - ballRadius - (tileHeight + tileMargin) * margin;
+    ballDX = 2;
+    ballDY = -2;
+}
+
+// Event listeners for paddle movement and game start
+document.addEventListener('keydown', function(e) {
+    if (e.key === ' ' || e.key === 'Enter') {
+        if (!gameStarted) {
+            gameStarted = true;
+            resetBall(); // Start the ball movement on pressing Space or Enter
+        }
+    }
+});
+
+// Event listener for mouse click to start the game
+canvas.addEventListener('mousedown', function(e) {
+    if (!gameStarted) {
+        gameStarted = true;
+        resetBall(); // Start the ball movement on click
+    }
+    movePaddle(e.clientX);
+});
+
+// Event listener for mouse move to control the paddle
+canvas.addEventListener('mousemove', function(e) {
+    movePaddle(e.clientX);
+});
+
+// Event listeners for touch controls on mobile
+canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    lastTouchX = e.touches[0].clientX;
+    if (!gameStarted) {
+        gameStarted = true;
+        resetBall(); // Start the ball movement on touch
+    }
+    movePaddle(lastTouchX);
+});
+
+canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    let touchX = e.touches[0].clientX;
+    movePaddle(touchX);
+});
+
+// Move paddle based on x position
+function movePaddle(x) {
+    let rect = canvas.getBoundingClientRect();
+    let relativeX = x - rect.left;
+
+    if (relativeX < paddleWidth / 2) {
+        paddleX = 0;
+    } else if (relativeX > canvas.width - paddleWidth / 2) {
+        paddleX = canvas.width - paddleWidth;
+    } else {
+        paddleX = relativeX - paddleWidth / 2;
+    }
+}
+
+// Main game loop
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawTiles();
+    drawBall();
+    drawPaddle();
+    drawScoreLives();
+    drawCoin();
+    update();
+    requestAnimationFrame(draw);
+}
+
+// Initialize the game
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+draw();
+    
+</script>
+</body>
+</html>
