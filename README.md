@@ -11,4 +11,7 @@ This repo contains simple javascript games, most recreation of classic retro gam
 - **frogger** - Simple frogger like implementation
 - **platform** - Simple platformer like mario with coin and enemy
 - **invaders** - space invaders like shoot them up
-
+- **minesweeper** - Classic Mine Sweeper game
+- **memory** - Classic memory game, match 2 similar cards
+- **2048** - Classic 2048 game
+- **Ronda** - Morocco's Classic Game of Ronda using spanish cards
