@@ -15,3 +15,5 @@ This repo contains simple javascript games, most recreation of classic retro gam
 - **memory** - Classic memory game, match 2 similar cards
 - **2048** - Classic 2048 game
 - **Ronda** - Morocco's Classic Game of Ronda using spanish cards
+- **editor** - Simple Level editor to make level creation easier
+- **missile** - Missile Defender in the style of classic game Missile Command
