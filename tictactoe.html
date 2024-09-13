@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe</title>
+    <style>
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+        .cell {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100px;
+            height: 100px;
+            background-color: #fff;
+            border: 2px solid #333;
+            font-size: 2em;
+            cursor: pointer;
+            user-select: none;
+        }
+        .cell.X {
+            color: blue;
+        }
+        .cell.O {
+            color: red;
+        }
+        .cell:hover {
+            background-color: #eee;
+        }
+        .message {
+            font-size: 1.5em;
+        }
+        .restart-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+        .restart-button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="board" id="board"></div>
+    <div class="message" id="message">Player X's turn</div>
+    <button class="restart-button" id="restartButton">Restart Game</button>
+
+    <script>
+        const boardElement = document.getElementById('board');
+        const messageElement = document.getElementById('message');
+        const restartButton = document.getElementById('restartButton');
+        let currentPlayer = 'X';
+        let board = ['', '', '', '', '', '', '', '', ''];
+        let gameActive = true;
+
+        function createBoard() {
+            boardElement.innerHTML = '';
+            board.forEach((cell, index) => {
+                const cellElement = document.createElement('div');
+                cellElement.classList.add('cell');
+                if (board[index]) { // Add class only if cell is not empty
+                    cellElement.classList.add(board[index]);
+                }
+                cellElement.textContent = board[index];
+                cellElement.addEventListener('click', () => handleClick(index));
+                boardElement.appendChild(cellElement);
+            });
+        }
+
+        function handleClick(index) {
+            if (board[index] === '' && gameActive && currentPlayer === 'X') {
+                board[index] = currentPlayer;
+                if (checkWinner()) {
+                    messageElement.textContent = `Player ${currentPlayer} wins!`;
+                    gameActive = false;
+                } else if (board.every(cell => cell !== '')) {
+                    messageElement.textContent = 'It\'s a tie!';
+                    gameActive = false;
+                } else {
+                    currentPlayer = 'O';
+                    messageElement.textContent = `Player ${currentPlayer}'s turn`;
+                    setTimeout(computerMove, 500);
+                }
+                createBoard();
+            }
+        }
+
+        function computerMove() {
+            if (gameActive) {
+                let moveMade = false;
+
+                // Check for a winning move for 'O'
+                moveMade = makeBestMove('O');
+
+                // If no winning move, block 'X' from winning
+                if (!moveMade) {
+                    moveMade = makeBestMove('X');
+                }
+
+                // If no winning or blocking move, pick a random move
+                if (!moveMade) {
+                    let availableMoves = board.map((cell, index) => cell === '' ? index : null).filter(index => index !== null);
+                    let randomMove = availableMoves[Math.floor(Math.random() * availableMoves.length)];
+                    board[randomMove] = 'O';
+                }
+
+                if (checkWinner()) {
+                    messageElement.textContent = `Player O wins!`;
+                    gameActive = false;
+                } else if (board.every(cell => cell !== '')) {
+                    messageElement.textContent = 'It\'s a tie!';
+                    gameActive = false;
+                } else {
+                    currentPlayer = 'X';
+                    messageElement.textContent = `Player ${currentPlayer}'s turn`;
+                }
+                createBoard();
+            }
+        }
+
+        function makeBestMove(player) {
+            // Check all possible moves
+            for (let i = 0; i < 9; i++) {
+                if (board[i] === '') {
+                    board[i] = player;
+                    if (checkWinner()) {
+                        // If this move is a winning move for the player
+                        board[i] = 'O'; // or player
+                        return true;
+                    }
+                    board[i] = ''; // Reset the move
+                }
+            }
+            return false;
+        }
+
+        function checkWinner() {
+            const winningCombinations = [
+                [0, 1, 2],
+                [3, 4, 5],
+                [6, 7, 8],
+                [0, 3, 6],
+                [1, 4, 7],
+                [2, 5, 8],
+                [0, 4, 8],
+                [2, 4, 6]
+            ];
+            return winningCombinations.some(combination => {
+                const [a, b, c] = combination;
+                return board[a] && board[a] === board[b] && board[a] === board[c];
+            });
+        }
+
+        function restartGame() {
+            currentPlayer = 'X';
+            board = ['', '', '', '', '', '', '', '', ''];
+            gameActive = true;
+            messageElement.textContent = `Player ${currentPlayer}'s turn`;
+            createBoard();
+        }
+
+        restartButton.addEventListener('click', restartGame);
+
+        createBoard();
+    </script>
+</body>
+</html>
