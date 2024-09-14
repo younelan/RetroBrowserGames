@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipe Mania</title>
+    <style>
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #main-content {
+            display: flex;
+            flex-direction: row;
+        }
+
+        #game-board {
+            border: 1px solid black;
+        }
+
+        .piece-canvas {
+            border: 1px solid black;
+            margin: 5px;
+        }
+
+        @media (max-width: 600px) {
+            #main-content {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="game-board" width="500" height="500"></canvas>
+        <div id="next-pieces">
+            <!-- <h3>Next Pieces</h3> -->
+            <div id="piece-queue-container">
+                <canvas class="piece-canvas" width="50" height="50"></canvas>
+                <canvas class="piece-canvas" width="50" height="50"></canvas>
+                <canvas class="piece-canvas" width="50" height="50"></canvas>
+                <canvas class="piece-canvas" width="50" height="50"></canvas>
+                <canvas class="piece-canvas" width="50" height="50"></canvas>
+            </div>
+            <div id="timer-display"></div>
+        </div>
+    </div>
+    <script>
+        class PipeGame {
+            constructor(containerId) {
+                this.container = document.getElementById(containerId);
+                this.gameBoard = this.container.querySelector('#game-board');
+                this.pieceQueueCanvases = this.container.querySelectorAll('.piece-canvas');
+                this.timerDisplay = this.container.querySelector('#timer-display');
+                this.boardCtx = this.gameBoard.getContext('2d');
+                this.queueCtxs = Array.from(this.pieceQueueCanvases).map(canvas => canvas.getContext('2d'));
+                this.gridSize = 10;
+                this.cellSize = 50;
+                this.nextPieces = [];
+                this.timer = 90;
+                this.waterFlowing = false;
+                this.grid = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(null));
+                this.pipeTypes = [
+                    'straight-horizontal', 'straight-vertical',
+                    'turn-left-top', 'turn-top-right', 'turn-left-bottom', 'turn-bottom-right',
+                    'plus'
+                ];
+                this.waterFlowed = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(false));
+                this.init();
+            }
+
+            init() {
+                this.placeStartEndTiles();
+                this.initializeNextPieces();
+                this.updateNextPieces();
+                this.drawGrid();
+                this.gameBoard.addEventListener('click', (event) => this.handleBoardClick(event));
+                this.countdown();
+            }
+
+            drawGrid() {
+                this.boardCtx.fillStyle = 'black';
+
+                this.boardCtx.clearRect(0, 0, this.gameBoard.width, this.gameBoard.height);
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        this.boardCtx.strokeRect(x * this.cellSize, y * this.cellSize, this.cellSize, this.cellSize);
+                        if (this.grid[y][x]) {
+                            this.drawPipe(this.boardCtx, x, y, this.grid[y][x]);
+                        }
+                    }
+                }
+            }
+
+            drawPipe(ctx, x, y, type) {
+                ctx.save();
+                ctx.translate(x * this.cellSize + this.cellSize / 2, y * this.cellSize + this.cellSize / 2);
+                switch (type) {
+                    case 'straight-horizontal':
+                        ctx.fillRect(-this.cellSize / 2, -10, this.cellSize, 20);
+                        break;
+                    case 'straight-vertical':
+                        ctx.fillRect(-10, -this.cellSize / 2, 20, this.cellSize);
+                        break;
+                    case 'turn-left-top':
+                        ctx.beginPath();
+                        ctx.arc(-this.cellSize / 2, -this.cellSize / 2, this.cellSize / 2, 0, Math.PI / 2);
+                        ctx.lineWidth = 20;
+                        ctx.stroke();
+                        break;
+                    case 'turn-top-right':
+                        ctx.beginPath();
+                        ctx.arc(this.cellSize / 2, -this.cellSize / 2, this.cellSize / 2, Math.PI / 2, Math.PI);
+                        ctx.lineWidth = 20;
+                        ctx.stroke();
+                        break;
+                    case 'turn-left-bottom':
+                        ctx.beginPath();
+                        ctx.arc(-this.cellSize / 2, this.cellSize / 2, this.cellSize / 2, -Math.PI / 2, 0);
+                        ctx.lineWidth = 20;
+                        ctx.stroke();
+                        break;
+                    case 'turn-bottom-right':
+                        ctx.beginPath();
+                        ctx.arc(this.cellSize / 2, this.cellSize / 2, this.cellSize / 2, Math.PI, 3 * Math.PI / 2);
+                        ctx.lineWidth = 20;
+                        ctx.stroke();
+                        break;
+                    case 'plus':
+                        ctx.fillRect(-this.cellSize / 2, -10, this.cellSize, 20); // Horizontal part
+                        ctx.fillRect(-10, -this.cellSize / 2, 20, this.cellSize); // Vertical part
+                        break;
+                    case 'start-right':
+                        this.drawStartEndTile(ctx, 'green', 0, 0, -this.cellSize / 2, -10, this.cellSize / 2, 20, false);
+                        break;
+                    case 'start-left':
+                        this.drawStartEndTile(ctx, 'green', 0, 0, 0, -10, this.cellSize / 2, 20, false);
+                        break;
+                    case 'start-bottom':
+                        this.drawStartEndTile(ctx, 'green', 0, 0, -10, -this.cellSize / 2, 20, this.cellSize / 2, true);
+                        break;
+                    case 'start-right':
+                        this.drawStartEndTile(ctx, 'green', 0, 0, -10, 0, 20, this.cellSize / 2, true);
+                        break;
+                    case 'end-left':
+                        this.drawStartEndTile(ctx, 'red', 0, 0, -this.cellSize / 2, -10, this.cellSize / 2, 20, false);
+                        break;
+                    case 'end-right':
+                        this.drawStartEndTile(ctx, 'red', 0, 0, 0, -10, this.cellSize / 2, 20, false);
+                        break;
+                    case 'end-top':
+                        this.drawStartEndTile(ctx, 'red', 0, 0, -10, -this.cellSize / 2, 20, this.cellSize / 2, true);
+                        break;
+                    case 'end-bottom':
+                        this.drawStartEndTile(ctx, 'red', 0, 0, -10, 0, 20, this.cellSize / 2, true);
+                        break;
+                }
+                ctx.restore();
+            }
+
+            
+            
+            drawStartEndTile(ctx, color, terminatorX, terminatorY, pipeX, pipeY, pipeWidth, pipeHeight, isVertical) {
+                ctx.fillStyle = color;
+                if (isVertical) {
+                    ctx.fillRect(terminatorX - 15, terminatorY - 5, 30, 10); // Wider horizontal terminator
+                } else {
+                    ctx.fillRect(terminatorX - 5, terminatorY - 15, 10, 30); // Taller vertical terminator
+                }
+                ctx.fillStyle = 'black';
+                ctx.fillRect(pipeX, pipeY, pipeWidth, pipeHeight);
+            }
+
+            placeStartEndTiles() {
+                const startTypes = ['start-left', 'start-right', 'start-top', 'start-bottom'];
+                const endTypes = ['end-left', 'end-right', 'end-top', 'end-bottom'];
+
+                // Randomly place start tile
+                let startX, startY;
+                do {
+                    startX = Math.floor(Math.random() * (this.gridSize - 2)) + 1;
+                    startY = Math.floor(Math.random() * (this.gridSize - 2)) + 1;
+                } while (this.grid[startY][startX]);
+                this.startTile = startTypes[Math.floor(Math.random() * startTypes.length)];
+                this.grid[startY][startX] = this.startTile;
+
+                // Randomly place end tile
+                let endX, endY;
+                do {
+                    endX = Math.floor(Math.random() * (this.gridSize - 2)) + 1;
+                    endY = Math.floor(Math.random() * (this.gridSize - 2)) + 1;
+                } while (this.grid[endY][endX] || (endX === startX && endY === startY));
+                this.endTile = endTypes[Math.floor(Math.random() * endTypes.length)];
+                this.grid[endY][endX] = this.endTile;
+            }
+
+            initializeNextPieces() {
+                for (let i = 0; i < 5; i++) {
+                    this.nextPieces.push(this.pipeTypes[Math.floor(Math.random() * this.pipeTypes.length)]);
+                }
+            }
+
+            updateNextPieces() {
+                this.queueCtxs.forEach(ctx => ctx.clearRect(0, 0, 50, 50));
+                this.nextPieces.shift();
+                const newPiece = this.pipeTypes[Math.floor(Math.random() * this.pipeTypes.length)];
+                this.nextPieces.push(newPiece);
+                for (let i = 0; i < this.nextPieces.length; i++) {
+                    this.drawPipe(this.queueCtxs[i], 0, 0, this.nextPieces[i]);
+                }
+            }
+
+            handleBoardClick(event) {
+                //if (this.waterFlowing) return;
+                const rect = this.gameBoard.getBoundingClientRect();
+                const x = Math.floor((event.clientX - rect.left) / this.cellSize);
+                const y = Math.floor((event.clientY - rect.top) / this.cellSize);
+                if (x >= 0 && x < this.gridSize && y >= 0 && y < this.gridSize && !this.waterFlowed[y][x] && !['start-left', 'start-right', 'start-top', 'start-bottom', 'end-left', 'end-right', 'end-top', 'end-bottom'].includes(this.grid[y][x])) {
+                    this.grid[y][x] = this.nextPieces[0];
+                    this.updateNextPieces();
+                    this.drawGrid();
+                }
+            }
+            countdown() {
+                if (this.timer > 0) {
+                    this.timer--;
+                    this.timerDisplay.innerText = `Time left: ${this.timer}s`;
+                    setTimeout(() => this.countdown(), 1000);
+                } else {
+                    this.startWaterFlow();
+                }
+            }
+
+            startWaterFlow() {
+                this.waterFlowing = true;
+                this.timerDisplay.innerText = "Water Flowing";
+                const start = this.findStartTile();
+                if (start) {
+                    this.flowWater(start.x, start.y, start.direction, 0);
+                }
+            }
+
+            findStartTile() {
+                for (let y = 0; y < this.gridSize; y++) {
+                    for (let x = 0; x < this.gridSize; x++) {
+                        if (this.grid[y][x] && this.grid[y][x].startsWith('start')) {
+                            let direction;
+                            switch (this.grid[y][x]) {
+                                case 'start-left':
+                                    direction = 'right';
+                                    break;
+                                case 'start-right':
+                                    direction = 'left';
+                                    break;
+                                case 'start-top':
+                                    direction = 'down';
+                                    break;
+                                case 'start-bottom':
+                                    direction = 'up';
+                                    break;
+                            }
+                            return { x, y, direction };
+                        }
+                    }
+                }
+                return null;
+            }
+
+showWinScreen() {
+    this.boardCtx.restore();
+    alert("Congrats, you won")
+}        
+checkWaterFlow() {
+    const end = this.findEndTile();
+    if (end && this.waterFlowed[end.y][end.x]) {
+        this.timerDisplay.innerText = "You win!";
+    } else {
+        this.timerDisplay.innerText = "Game Over!";
+    }
+}
+flowWater(x, y, direction, depth = 0) {
+    if (depth > 100) return; // Prevent infinite loop
+    // Get the cell type
+    const cellType = this.grid[y][x];
+
+    // Check if the current cell is within bounds and not already filled
+    if (x < 0 || x >= this.gridSize || y < 0 || y >= this.gridSize || (this.waterFlowed[y][x] && cellType !== 'plus')) {
+        return;
+    }
+
+    // Determine if it's a starting cell
+    const isStartCell = depth === 0;
+
+    // Debugging information
+    console.log(`Processing cell at (${x}, ${y}), Direction: ${direction}, Depth: ${depth}`);
+    this.drawCell(x, y, direction, isStartCell);
+
+    // Mark the current cell as processed
+    this.waterFlowed[y][x] = true;
+
+    // Determine the next cell and direction
+    let nextX = x, nextY = y;
+    let nextDirection = direction;
+
+
+    if (cellType && cellType.includes('turn')) {
+        switch (cellType) {
+            case 'turn-left-top':
+                if (direction === 'up') {
+                    // nextDirection = 'left';
+                    // nextX = x - 1;
+                    // nextY = y;
+                } else if (direction === 'right') {
+                    nextDirection = 'up';
+                    nextX = x;
+                    nextY = y - 1;
+                } else if (direction === 'down') {
+                    nextDirection = 'left';
+                    nextX = x - 1;
+                    nextY = y;
+                } else if (direction === 'left') {
+                    nextDirection = 'down';
+                    nextX = x;
+                    nextY = y + 1;
+                }
+                break;
+
+            case 'turn-top-right':
+                if (direction === 'up') {
+                    // nextDirection = 'left';
+                    // nextX = x ;
+                    // nextY = y-1;
+                } else if (direction === 'right') {
+                    // nextDirection = 'down';
+                    // nextX = x;
+                    // nextY = y + 1;
+                } else if (direction === 'down') {
+                    nextDirection = 'right';
+                    nextX = x + 1;
+                    nextY = y;
+                } else if (direction === 'left') {
+                    nextDirection = 'up';
+                    nextX = x;
+                    nextY = y - 1;
+                }
+                break;
+
+            case 'turn-left-bottom':
+                if (direction === 'down') {
+                    // nextDirection = 'right';
+                    // nextX = x + 1;
+                    // nextY = y;
+                } else if (direction === 'right') {
+                    nextDirection = 'down';
+                    nextX = x;
+                    nextY = y + 1;
+                } else if (direction === 'up') {
+                    nextDirection = 'left';
+                    nextX = x - 1;
+                    nextY = y;
+                } else if (direction === 'left') {
+                    // nextDirection = 'up';
+                    // nextX = x;
+                    // nextY = y - 1;
+                }
+                break;
+
+            case 'turn-bottom-right':
+                if (direction === 'down') {
+                    nextDirection = 'right';
+                    nextX = x + 1;
+                    nextY = y;
+                } else if (direction === 'left') {
+                    nextDirection = 'down';
+                    nextX = x;
+                    nextY = y + 1;
+                } else if (direction === 'up') {
+                    nextDirection = 'right';
+                    nextX = x + 1;
+                    nextY = y;
+                } else if (direction === 'right') {
+                    // nextDirection = 'up';
+                    // nextX = x;
+                    // nextY = y - 1;
+                }
+                break;
+            case "plus":
+                console.log("++++++++++++++");
+                break;
+            case "end-top":
+            case "end-bottom": 
+            case "end-left":
+            case "end-right":
+                this.showWinScreen(); 
+                break;
+
+            default:
+                console.error(`Unknown turn cell type: ${cellType}`);
+                return; // Stop processing if unknown type
+        }
+        console.log(`--- ${cellType} ----Moving: ${direction} --- Next Dir ${nextDirection} `)
+
+    } else if (cellType === 'plus') {
+        switch (direction) {
+            case 'up':
+                nextDirection = 'up';
+                nextX = x;
+                nextY = y - 1; // Continue vertically
+                break;
+            case 'down':
+                nextDirection = 'down';
+                nextX = x;
+                nextY = y + 1; // Continue vertically
+                break;
+            case 'left':
+                nextDirection = 'left';
+                nextX = x - 1; // Continue horizontally
+                nextY = y;
+                break;
+            case 'right':
+                nextDirection = 'right';
+                nextX = x + 1; // Continue horizontally
+                nextY = y;
+                break;
+            default:
+                console.log("plusseee");
+        }
+    } else {
+        // Determine the next cell and direction for straight pipes
+        switch (direction) {
+            case 'right':
+                nextX = x + 1;
+                break;
+            case 'left':
+                nextX = x - 1;
+                break;
+            case 'up':
+                nextY = y - 1;
+                break;
+            case 'down':
+                nextY = y + 1;
+                break;
+        }
+    }
+
+    // Log next cell details
+    console.log(`Moving to next cell at (${nextX}, ${nextY}), Direction: ${nextDirection}`);
+    if (nextX >= 0 && nextX < this.gridSize && nextY >= 0 && nextY < this.gridSize) {
+        const nextCellType = this.grid[nextY][nextX];
+        console.log(`Next cell type: ${nextCellType}`);
+        if (nextCellType) {
+            // If the next cell is a valid pipe, continue flowing
+            console.log(`and we have a winner at ${nextX} , ${nextY}`)
+            this.flowWater(nextX, nextY, nextDirection, depth + 1);
+        } else {
+            console.log(`no cell type for ${nextX} , ${nextY}`)
+        }
+    }
+}
+
+
+drawCell(x, y, direction, isStartCell) {
+    const cx = x * this.cellSize + this.cellSize / 2;
+    const cy = y * this.cellSize + this.cellSize / 2;
+    const halfCellSize = this.cellSize / 2;
+    const fullCellSize = this.cellSize;
+
+    this.boardCtx.strokeStyle = 'blue';
+    this.boardCtx.lineWidth = 10;
+    this.boardCtx.beginPath();
+
+    // Debugging information
+    console.log(`Drawing cell at (${x}, ${y}), Direction: ${direction}, Is start cell: ${isStartCell}`);
+
+    if (isStartCell) {
+        // Draw half-size line for starting cell
+        switch (direction) {
+            case 'up':
+                console.log(`Drawing half-size line up from (${cx}, ${cy})`);
+                this.boardCtx.moveTo(cx, cy);
+                this.boardCtx.lineTo(cx, cy - halfCellSize);
+                break;
+            case 'down':
+                console.log(`Drawing half-size line down from (${cx}, ${cy})`);
+                this.boardCtx.moveTo(cx, cy);
+                this.boardCtx.lineTo(cx, cy + halfCellSize);
+                break;
+            case 'left':
+                console.log(`Drawing half-size line left from (${cx}, ${cy})`);
+                this.boardCtx.moveTo(cx, cy);
+                this.boardCtx.lineTo(cx - halfCellSize, cy);
+                break;
+            case 'right':
+                console.log(`Drawing half-size line right from (${cx}, ${cy})`);
+                this.boardCtx.moveTo(cx, cy);
+                this.boardCtx.lineTo(cx + halfCellSize, cy);
+                break;
+        }
+    } else {
+        // Draw full-size line for non-starting cells
+        const cellType = this.grid[y][x];
+        switch (cellType) {
+            case 'straight-horizontal':
+                console.log(`Drawing full-size horizontal line at (${cx}, ${cy})`);
+                this.boardCtx.moveTo(cx + fullCellSize / 2, cy);
+                this.boardCtx.lineTo(cx - fullCellSize / 2, cy);
+                // if (direction === 'left') {
+                //     this.boardCtx.moveTo(cx + fullCellSize / 2, cy);
+                //     this.boardCtx.lineTo(cx - fullCellSize / 2, cy);
+                // } else if (direction === 'right') {
+                //     this.boardCtx.moveTo(cx - fullCellSize / 2, cy);
+                //     this.boardCtx.lineTo(cx + fullCellSize / 2, cy);
+                // }
+                break;
+            case 'straight-vertical':
+                console.log(`Drawing full-size vertical line at (${cx}, ${cy})`);
+                this.boardCtx.moveTo(cx, cy + fullCellSize / 2);
+                this.boardCtx.lineTo(cx, cy - fullCellSize / 2);
+                // if (direction === 'up') {
+                //     this.boardCtx.moveTo(cx, cy + fullCellSize / 2);
+                //     this.boardCtx.lineTo(cx, cy - fullCellSize / 2);
+                // } else if (direction === 'down') {
+                //     this.boardCtx.moveTo(cx, cy - fullCellSize / 2);
+                //     this.boardCtx.lineTo(cx, cy + fullCellSize / 2);
+                // }
+                break;
+            case 'turn-left-top':
+                console.log(`Drawing turn-left-top at (${cx}, ${cy})`);
+                if (direction === 'up') {
+                    this.boardCtx.arc(cx - halfCellSize, cy - halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
+                } else if (direction === 'right') {
+                    this.boardCtx.arc(cx + halfCellSize, cy - halfCellSize, halfCellSize, Math.PI, 1.5 * Math.PI);
+                }
+                break;
+            case 'turn-top-right':
+                console.log(`Drawing turn-top-right at (${cx}, ${cy})`);
+                    this.boardCtx.arc(cx +halfCellSize , cy -halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
+                
+                if (direction === 'up') {
+                    //this.boardCtx.arc(cx + halfCellSize, cy + halfCellSize, halfCellSize, 0, 0.5 * Math.PI);
+                } else if (direction === 'left') {
+                    //this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
+                }
+                break;
+            case 'turn-left-bottom':
+                console.log(`Drawing turn-left-bottom at (${cx}, ${cy})`);
+                this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
+
+                // if (direction === 'down') {
+                //     this.boardCtx.arc(cx + halfCellSize, cy + halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
+                //     console.log("hi")
+                //     //this.boardCtx.arc(cx - halfCellSize, cy - halfCellSize, halfCellSize, 0, 0.5 * Math.PI);
+                // } else if (direction === 'right') {
+                //     console.log("ho");
+                //     this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
+                // }
+                break;
+            case 'turn-bottom-right':
+                console.log(`Drawing turn-bottom-right at (${cx}, ${cy})`);
+                this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
+
+                // if (direction === 'down') {
+                //     this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
+                // } else if (direction === 'left') {
+                //     this.boardCtx.arc(cx + halfCellSize, cy - halfCellSize, halfCellSize, Math.PI, 1.5 * Math.PI);
+                // }
+                break;
+            case 'plus':
+                console.log(`Drawing plus at (${cx}, ${cy})`);
+                // this.boardCtx.moveTo(cx - fullCellSize / 2, cy);
+                // this.boardCtx.lineTo(cx + fullCellSize / 2, cy);
+                if (direction === 'left' || direction === 'right') {
+                    this.boardCtx.moveTo(cx - fullCellSize / 2, cy);
+                    this.boardCtx.lineTo(cx + fullCellSize / 2, cy);
+                }
+                if (direction === 'up' || direction === 'down') {
+                    this.boardCtx.moveTo(cx, cy - fullCellSize / 2);
+                    this.boardCtx.lineTo(cx, cy + fullCellSize / 2);
+                }
+                break;
+            case "end-top":
+            case "end-bottom": 
+            case "end-left":
+            case "end-right":
+                this.showWinScreen(); 
+                break;
+            default:
+                console.error(`Unknown cell type: ${cellType}`);
+                break;
+        }
+    }
+
+    this.boardCtx.stroke();
+}
+
+
+findEndTile() {
+    for (let y = 0; y < this.gridSize; y++) {
+        for (let x = 0; x < this.gridSize; x++) {
+            if (this.grid[y][x] && this.grid[y][x].startsWith('end')) {
+                return { x, y };
+            }
+        }
+    }
+    return null;
+}
+
+resetGame() {
+    this.grid = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(null));
+    this.waterFlowed = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(false));
+    this.timer = 30;
+    this.updateNextPieces();
+    this.placeStartEndTiles();
+    this.drawGrid();
+}
+  
+
+        }
+
+        // Initialize the game
+        document.addEventListener('DOMContentLoaded', () => {
+            new PipeGame('game-container');
+        });
+
+    </script>
+</body>
+
+</html>
