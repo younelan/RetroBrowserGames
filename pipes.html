@@ -50,7 +50,15 @@
         </div>
     </div>
     <script>
-        const defaultTimer = 150
+        const defaultTimer = 30
+        cell_types = {
+            'straight-horizontal' : {
+                isStartCell: false,
+                isEndCell:false,
+                startDirection: false,
+                allowedDirections: ['left','right'],
+            }
+        }
         class PipeGame {
             constructor(containerId) {
                 this.container = document.getElementById(containerId);
@@ -62,6 +70,9 @@
                 this.gridSize = 10;
                 this.cellSize = 50;
                 this.nextPieces = [];
+                this.startTypes = ['start-left', 'start-right', 'start-top', 'start-bottom'];
+                this.endTypes = ['end-left', 'end-right', 'end-top', 'end-bottom'];
+
                 this.timer = defaultTimer;
                 this.waterFlowing = false;
                 this.grid = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(null));
@@ -177,16 +188,13 @@
             }
 
             placeStartEndTiles() {
-                const startTypes = ['start-left', 'start-right', 'start-top', 'start-bottom'];
-                const endTypes = ['end-left', 'end-right', 'end-top', 'end-bottom'];
-
                 // Randomly place start tile
                 let startX, startY;
                 do {
                     startX = Math.floor(Math.random() * (this.gridSize - 2)) + 1;
                     startY = Math.floor(Math.random() * (this.gridSize - 2)) + 1;
                 } while (this.grid[startY][startX]);
-                this.startTile = startTypes[Math.floor(Math.random() * startTypes.length)];
+                this.startTile = this.startTypes[Math.floor(Math.random() * this.startTypes.length)];
                 this.grid[startY][startX] = this.startTile;
 
                 // Randomly place end tile
@@ -195,7 +203,7 @@
                     endX = Math.floor(Math.random() * (this.gridSize - 2)) + 1;
                     endY = Math.floor(Math.random() * (this.gridSize - 2)) + 1;
                 } while (this.grid[endY][endX] || (endX === startX && endY === startY));
-                this.endTile = endTypes[Math.floor(Math.random() * endTypes.length)];
+                this.endTile = this.endTypes[Math.floor(Math.random() * this.endTypes.length)];
                 this.grid[endY][endX] = this.endTile;
             }
 
@@ -506,80 +514,33 @@ drawCell(x, y, direction, isStartCell) {
         const cellType = this.grid[y][x];
         switch (cellType) {
             case 'straight-horizontal':
-                console.log(`Drawing full-size horizontal line at (${cx}, ${cy})`);
+                //console.log(`Drawing full-size horizontal line at (${cx}, ${cy})`);
                 this.boardCtx.moveTo(cx + fullCellSize / 2, cy);
                 this.boardCtx.lineTo(cx - fullCellSize / 2, cy);
-                // if (direction === 'left') {
-                //     this.boardCtx.moveTo(cx + fullCellSize / 2, cy);
-                //     this.boardCtx.lineTo(cx - fullCellSize / 2, cy);
-                // } else if (direction === 'right') {
-                //     this.boardCtx.moveTo(cx - fullCellSize / 2, cy);
-                //     this.boardCtx.lineTo(cx + fullCellSize / 2, cy);
-                // }
                 break;
             case 'straight-vertical':
-                console.log(`Drawing full-size vertical line at (${cx}, ${cy})`);
+                // console.log(`Drawing full-size vertical line at (${cx}, ${cy})`);
                 this.boardCtx.moveTo(cx, cy + fullCellSize / 2);
                 this.boardCtx.lineTo(cx, cy - fullCellSize / 2);
-                // if (direction === 'up') {
-                //     this.boardCtx.moveTo(cx, cy + fullCellSize / 2);
-                //     this.boardCtx.lineTo(cx, cy - fullCellSize / 2);
-                // } else if (direction === 'down') {
-                //     this.boardCtx.moveTo(cx, cy - fullCellSize / 2);
-                //     this.boardCtx.lineTo(cx, cy + fullCellSize / 2);
-                // }
                 break;
             case 'turn-left-top':
-                console.log(`Drawing turn-left-top at (${cx}, ${cy})`);
-                //ctx.arc(-this.cellSize / 2, -this.cellSize / 2, this.cellSize / 2, 0, Math.PI / 2);
-
+                // console.log(`Drawing turn-left-top at (${cx}, ${cy})`);
                 this.boardCtx.arc(cx - halfCellSize, cy - halfCellSize, halfCellSize, 0,  Math.PI / 2);
-                    
-                // if (direction === 'up') {
-                //     this.boardCtx.arc(cx - halfCellSize, cy - halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
-                // } else if (direction === 'right') {
-                //     this.boardCtx.arc(cx + halfCellSize, cy - halfCellSize, halfCellSize, Math.PI, 1.5 * Math.PI);
-                // }
                 break;
             case 'turn-top-right':
-                console.log(`Drawing turn-top-right at (${cx}, ${cy})`);
-                    this.boardCtx.arc(cx +halfCellSize , cy -halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
-                
-                if (direction === 'up') {
-                    //this.boardCtx.arc(cx + halfCellSize, cy + halfCellSize, halfCellSize, 0, 0.5 * Math.PI);
-                } else if (direction === 'left') {
-                    //this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
-                }
+                //console.log(`Drawing turn-top-right at (${cx}, ${cy})`);
+                this.boardCtx.arc(cx +halfCellSize , cy -halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
                 break;
             case 'turn-left-bottom':
-                console.log(`Drawing turn-left-bottom at (${cx}, ${cy})`);
+                //console.log(`Drawing turn-left-bottom at (${cx}, ${cy})`);
                 this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
-
-                // if (direction === 'down') {
-                //     this.boardCtx.arc(cx + halfCellSize, cy + halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
-                //     console.log("hi")
-                //     //this.boardCtx.arc(cx - halfCellSize, cy - halfCellSize, halfCellSize, 0, 0.5 * Math.PI);
-                // } else if (direction === 'right') {
-                //     console.log("ho");
-                //     this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
-                // }
                 break;
             case 'turn-bottom-right':
-                console.log(`Drawing turn-bottom-right at (${cx}, ${cy})`);
-                //ctx.arc(this.cellSize / 2, this.cellSize / 2, this.cellSize / 2, Math.PI, 3 * Math.PI / 2);
-
+                //console.log(`Drawing turn-bottom-right at (${cx}, ${cy})`);
                 this.boardCtx.arc(cx + halfCellSize, cy + halfCellSize, halfCellSize, Math.PI, 3*Math.PI/2);
-
-                // if (direction === 'down') {
-                //     this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
-                // } else if (direction === 'left') {
-                //     this.boardCtx.arc(cx + halfCellSize, cy - halfCellSize, halfCellSize, Math.PI, 1.5 * Math.PI);
-                // }
                 break;
             case 'plus':
-                console.log(`Drawing plus at (${cx}, ${cy})`);
-                // this.boardCtx.moveTo(cx - fullCellSize / 2, cy);
-                // this.boardCtx.lineTo(cx + fullCellSize / 2, cy);
+                //console.log(`Drawing plus at (${cx}, ${cy})`);
                 if (direction === 'left' || direction === 'right') {
                     this.boardCtx.moveTo(cx - fullCellSize / 2, cy);
                     this.boardCtx.lineTo(cx + fullCellSize / 2, cy);
@@ -590,9 +551,23 @@ drawCell(x, y, direction, isStartCell) {
                 }
                 break;
             case "end-top":
+                this.boardCtx.moveTo(cx, cy);
+                this.boardCtx.lineTo(cx, cy - halfCellSize);
+                this.showWinScreen();
+                break;
             case "end-bottom": 
+                this.showWinScreen();
+                this.boardCtx.moveTo(cx, cy);
+                this.boardCtx.lineTo(cx, cy + halfCellSize);
+                break;
             case "end-left":
+                this.boardCtx.moveTo(cx, cy);
+                this.boardCtx.lineTo(cx - halfCellSize, cy);
+                this.showWinScreen();
+                break;
             case "end-right":
+                this.boardCtx.moveTo(cx, cy);
+                this.boardCtx.lineTo(cx + halfCellSize, cy);
                 this.showWinScreen(); 
                 break;
             default:
