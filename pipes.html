@@ -50,6 +50,7 @@
         </div>
     </div>
     <script>
+        const defaultTimer = 150
         class PipeGame {
             constructor(containerId) {
                 this.container = document.getElementById(containerId);
@@ -61,7 +62,7 @@
                 this.gridSize = 10;
                 this.cellSize = 50;
                 this.nextPieces = [];
-                this.timer = 90;
+                this.timer = defaultTimer;
                 this.waterFlowing = false;
                 this.grid = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(null));
                 this.pipeTypes = [
@@ -530,11 +531,15 @@ drawCell(x, y, direction, isStartCell) {
                 break;
             case 'turn-left-top':
                 console.log(`Drawing turn-left-top at (${cx}, ${cy})`);
-                if (direction === 'up') {
-                    this.boardCtx.arc(cx - halfCellSize, cy - halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
-                } else if (direction === 'right') {
-                    this.boardCtx.arc(cx + halfCellSize, cy - halfCellSize, halfCellSize, Math.PI, 1.5 * Math.PI);
-                }
+                //ctx.arc(-this.cellSize / 2, -this.cellSize / 2, this.cellSize / 2, 0, Math.PI / 2);
+
+                this.boardCtx.arc(cx - halfCellSize, cy - halfCellSize, halfCellSize, 0,  Math.PI / 2);
+                    
+                // if (direction === 'up') {
+                //     this.boardCtx.arc(cx - halfCellSize, cy - halfCellSize, halfCellSize, 1.5 * Math.PI, 2 * Math.PI);
+                // } else if (direction === 'right') {
+                //     this.boardCtx.arc(cx + halfCellSize, cy - halfCellSize, halfCellSize, Math.PI, 1.5 * Math.PI);
+                // }
                 break;
             case 'turn-top-right':
                 console.log(`Drawing turn-top-right at (${cx}, ${cy})`);
@@ -561,7 +566,9 @@ drawCell(x, y, direction, isStartCell) {
                 break;
             case 'turn-bottom-right':
                 console.log(`Drawing turn-bottom-right at (${cx}, ${cy})`);
-                this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
+                //ctx.arc(this.cellSize / 2, this.cellSize / 2, this.cellSize / 2, Math.PI, 3 * Math.PI / 2);
+
+                this.boardCtx.arc(cx + halfCellSize, cy + halfCellSize, halfCellSize, Math.PI, 3*Math.PI/2);
 
                 // if (direction === 'down') {
                 //     this.boardCtx.arc(cx - halfCellSize, cy + halfCellSize, halfCellSize, 0.5 * Math.PI, Math.PI);
@@ -612,7 +619,7 @@ findEndTile() {
 resetGame() {
     this.grid = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(null));
     this.waterFlowed = Array.from({ length: this.gridSize }, () => Array(this.gridSize).fill(false));
-    this.timer = 30;
+    this.timer = defaultTimer;
     this.updateNextPieces();
     this.placeStartEndTiles();
     this.drawGrid();
