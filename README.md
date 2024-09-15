@@ -17,3 +17,4 @@ This repo contains simple javascript games, most recreation of classic retro gam
 - **Ronda** - Morocco's Classic Game of Ronda using spanish cards
 - **editor** - Simple Level editor to make level creation easier
 - **missile** - Missile Defender in the style of classic game Missile Command
+- **Pipes** - Simple Flowing pipes classic game like pipe mania, pipe dream and others
