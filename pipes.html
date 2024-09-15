@@ -19,21 +19,24 @@
 
         #game-board {
             border: 1px solid black;
+
         }
-        #controls {
-            display: flex;
-            gap: 1ch;
+
+        #controls>div {
+            display: inline-block;
+            margin-right: 10px;
         }
+
         .piece-canvas {
             border: 1px solid black;
             margin: 5px;
         }
 
-        @media (max-width: 600px) {
+        /* @media (max-width: 600px) {
             #main-content {
                 flex-direction: column;
             }
-        }
+        } */
     </style>
 </head>
 
@@ -50,7 +53,9 @@
                 <canvas class="piece-canvas" width="50" height="50"></canvas>
             </div>
             <div id="controls">
-                <div id="timer-display"></div><div id="buttons"><button id='release'>Release</button></div>
+                <div id="timer-display"></div>
+                <div id="buttons"><button id='release'>Release Water</button></div>
+                <div id="buttons"><button id='restart'>Restart</button></div>
             </div>
         </div>
     </div>
@@ -100,7 +105,14 @@
                 document.getElementById('release').addEventListener('click', () => {
                     this.releaseWater();
                 });
+                document.getElementById('restart').addEventListener('click', () => {
+                    this.restartGame();
+                });
+
             }
+            restartGame() {
+                location.reload();
+                }
             releaseWater() {
                 this.timer = 0; // Set timer to 0 to release water immediately
             }
@@ -115,11 +127,37 @@
             resizeGrid() {
                 // Get the available screen size
                 const screenWidth = window.innerWidth;
-                const canvasSize = this.cellSize * this.gridSize;
                 const screenHeight = window.innerHeight;
+                if(this.gameBoard.width>screenWidth) {
+                // Determine the maximum available size for the grid (smallest between width and height)
+                const availableSize = Math.min(screenWidth, screenHeight);
+
+                // Calculate new cellSize to fit the grid into the available space
+                this.cellSize = Math.floor(availableSize / this.gridSize);
+
+                // Resize the canvas to fit the new grid size
+                const canvasSize = this.cellSize * this.gridSize;
+                this.gameBoard.width = canvasSize;
+                this.gameBoard.height = canvasSize;
+                // Redraw the entire grid with the new size
+                this.drawGrid();
+
+                }
+
+            }
+
+            badresizeGrid() {
+                // Get the available screen size
+                const canvasSize = this.cellSize * this.gridSize;
+                const screenWidth = window.innerWidth;
+
                 if (canvasSize > screenWidth) {
+                    const screenWidth = window.innerWidth;
+                    const canvasSize = this.cellSize * this.gridSize;
+                    const screenHeight = window.innerHeight;
                     // Determine the maximum available size for the grid (smallest between width and height)
                     const availableSize = Math.min(screenWidth, screenHeight);
+                    console.log(`${screenWidth}  height: ${screenHeight} available: ${availableSize}`)
 
                     // Calculate new cellSize to fit the grid into the available space
                     this.cellSize = Math.floor(availableSize / this.gridSize);
