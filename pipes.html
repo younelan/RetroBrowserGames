@@ -20,7 +20,10 @@
         #game-board {
             border: 1px solid black;
         }
-
+        #controls {
+            display: flex;
+            gap: 1ch;
+        }
         .piece-canvas {
             border: 1px solid black;
             margin: 5px;
@@ -46,7 +49,9 @@
                 <canvas class="piece-canvas" width="50" height="50"></canvas>
                 <canvas class="piece-canvas" width="50" height="50"></canvas>
             </div>
-            <div id="timer-display"></div>
+            <div id="controls">
+                <div id="timer-display"></div><div id="buttons"><button id='release'>Release</button></div>
+            </div>
         </div>
     </div>
     <script>
@@ -92,8 +97,13 @@
                 this.init();
                 this.resizeGrid();
                 window.addEventListener('resize', this.resizeGrid);
+                document.getElementById('release').addEventListener('click', () => {
+                    this.releaseWater();
+                });
             }
-
+            releaseWater() {
+                this.timer = 0; // Set timer to 0 to release water immediately
+            }
             init() {
                 this.placeStartEndTiles();
                 this.initializeNextPieces();
