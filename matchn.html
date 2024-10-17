@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match-3 Game</title>
+    <style>
+        #game {
+            display: grid;
+            grid-template-columns: repeat(8, 50px);
+            grid-gap: 2px;
+        }
+
+        .tile {
+            width: 50px;
+            height: 50px;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: white;
+            transition: opacity 0.5s;
+        }
+
+        .fading {
+            opacity: 0;
+        }
+
+        .falling {
+            transition: transform 0.5s;
+            position: relative;
+        }
+
+        .standard-red {
+            background-color: red;
+        }
+
+        .standard-blue {
+            background-color: blue;
+        }
+
+        .standard-green {
+            background-color: green;
+        }
+
+        .standard-yellow {
+            background-color: yellow;
+        }
+
+        .standard-purple {
+            background-color: purple;
+        }
+
+        .striped-red {
+            background: repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 10px,
+                    red 10px,
+                    red 20px);
+        }
+
+        .striped-blue {
+            background: repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 10px,
+                    blue 10px,
+                    blue 20px);
+        }
+
+        .striped-green {
+            background: repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 10px,
+                    green 10px,
+                    green 20px);
+        }
+
+        .striped-vertical {
+            transform: rotate(90deg);
+            /* Rotate the tile */
+            position: relative;
+
+        }
+
+        .striped-yellow {
+            background: repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 10px,
+                    yellow 10px,
+                    yellow 20px);
+        }
+
+        .striped-purple {
+            background: repeating-linear-gradient(45deg,
+                    transparent,
+                    transparent 10px,
+                    purple 10px,
+                    purple 20px);
+        }
+
+        .color-bomb {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: radial-gradient(circle, white 30%, black 70%);
+            position: relative;
+        }
+
+        .color-dot {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game"></div>
+    <script>
+        class Match3Game {
+            constructor(rows, cols, colors) {
+                this.rows = rows;
+                this.cols = cols;
+                this.colors = colors;
+                this.board = [];
+                this.tileElements = [];
+                this.selectedTile = null;
+                this.startX = 0;
+                this.startY = 0;
+                this.initBoard();
+            }
+
+            
+            initBoard() {
+        console.log("Initializing board...");
+        for (let r = 0; r < this.rows; r++) {
+            this.board[r] = [];
+            for (let c = 0; c < this.cols; c++) {
+                this.board[r][c] = this.createTileObject(this.getRandomColor());
+                this.createTile(r, c);
+            }
+        }
+        this.refreshBoard();
+        this.checkAndRemoveMatches(); // Initial match check
+    }
+            
+    createTileObject(color, cell_type = 'standard', direction = null) {
+        return {
+            color: color,
+            cell_type: cell_type,
+            direction: direction,
+            classes: [`${cell_type}-${color}`, direction ? `${cell_type}-${direction}` : `${cell_type}`]
+        };
+    }
+
+
+    handleTileDown(e, r, c) {
+        this.startX = e.clientX || e.touches[0].clientX;
+        this.startY = e.clientY || e.touches[0].clientY;
+        this.selectedTile = { row: r, col: c };
+    }
+
+            handleTileMove(e) {
+                if (this.selectedTile) {
+                    const currentX = e.clientX || e.touches[0].clientX;
+                    const currentY = e.clientY || e.touches[0].clientY;
+                    const deltaX = currentX - this.startX;
+                    const deltaY = currentY - this.startY;
+
+                    // Determine if drag is horizontal or vertical
+                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                        if (deltaX > 0) {
+                            this.swapTiles(this.selectedTile.row, this.selectedTile.col, this.selectedTile.row, this.selectedTile.col + 1);
+                        } else {
+                            this.swapTiles(this.selectedTile.row, this.selectedTile.col, this.selectedTile.row, this.selectedTile.col - 1);
+                        }
+                    } else {
+                        if (deltaY > 0) {
+                            this.swapTiles(this.selectedTile.row, this.selectedTile.col, this.selectedTile.row + 1, this.selectedTile.col);
+                        } else {
+                            this.swapTiles(this.selectedTile.row, this.selectedTile.col, this.selectedTile.row - 1, this.selectedTile.col);
+                        }
+                    }
+
+                    // Reset selected tile
+                    this.selectedTile = null;
+                }
+            }
+
+            handleTileUp() {
+                this.selectedTile = null;
+            }
+
+            getRandomColor() {
+                return this.colors[Math.floor(Math.random() * this.colors.length)];
+            }
+
+            checkAndRemoveMatches() {
+        let anyMatches = false;
+
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                if (this.board[r][c]) {
+                    // Check horizontal match
+                    const horizontalLength = this.getHorizontalMatchLength(r, c);
+                    if (horizontalLength >= 3) {
+                        anyMatches = true;
+                        this.removeTiles(r, c, horizontalLength, 'horizontal');
+                    }
+
+                    // Check vertical match
+                    const verticalLength = this.getVerticalMatchLength(r, c);
+                    if (verticalLength >= 3) {
+                        anyMatches = true;
+                        this.removeTiles(r, c, verticalLength, 'vertical');
+                    }
+                }
+            }
+        }
+
+        if (anyMatches) {
+            this.applyGravity();
+            this.addNewTiles();
+            this.checkAndRemoveMatches(); // Check again after adding new tiles
+        } else {
+            console.log("No matches found.");
+        }
+    }
+
+            getHorizontalMatchLength(r, c) {
+                if (!this.board[r][c]) return 0;
+                const color = this.board[r][c].color;
+                let length = 0;
+
+                while (c + length < this.cols && this.board[r][c + length] && this.board[r][c + length].color === color) {
+                    length++;
+                }
+                return length;
+            }
+
+            getVerticalMatchLength(r, c) {
+                if (!this.board[r][c]) return 0;
+                const color = this.board[r][c].color;
+                let length = 0;
+
+                while (r + length < this.rows && this.board[r + length][c] && this.board[r + length][c].color === color) {
+                    length++;
+                }
+                return length;
+            }
+
+            applyGravity() {
+                console.log("Applying gravity...");
+                for (let c = 0; c < this.cols; c++) {
+                    for (let r = this.rows - 1; r >= 0; r--) {
+                        if (this.board[r][c] === null) {
+                            for (let rr = r - 1; rr >= 0; rr--) {
+                                if (this.board[rr][c] !== null) {
+                                    this.board[r][c] = this.board[rr][c];
+                                    this.board[rr][c] = null;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            addNewTiles() {
+                console.log("Adding new tiles...");
+                for (let c = 0; c < this.cols; c++) {
+                    for (let r = 0; r < this.rows; r++) {
+                        if (this.board[r][c] === null) {
+                            this.board[r][c] = this.createTileObject(this.getRandomColor());
+                            console.log(`New tile added at (${r}, ${c})`);
+                        }
+                    }
+                }
+                this.refreshBoard();
+            }
+
+            swapTiles(r1, c1, r2, c2) {
+                if (r2 < 0 || r2 >= this.rows || c2 < 0 || c2 >= this.cols) {
+                    console.log("Swap out of bounds");
+                    return; // Out of bounds
+                }
+
+                const temp = this.board[r1][c1];
+                this.board[r1][c1] = this.board[r2][c2];
+                this.board[r2][c2] = temp;
+                console.log(`Swapped tiles: (${r1}, ${c1}) <=> (${r2}, ${c2})`);
+                this.refreshBoard();
+
+                // Check for color bomb after swap
+                this.checkForColorBomb(r1, c1, r2, c2);
+                this.checkAndRemoveMatches(); // Check for matches after swap
+            }
+
+            checkForColorBomb(r1, c1, r2, c2) {
+                if (!this.board[r1][c1] || !this.board[r2][c2]) return;
+                const cellType1 = this.board[r1][c1].cell_type;
+                const cellType2 = this.board[r2][c2].cell_type;
+                const color1 = this.board[r1][c1].color;
+                const color2 = this.board[r2][c2].color;
+
+                if (cellType1 === 'color-bomb' && cellType2 === 'color-bomb') {
+                    // Clear the entire board row by row from the bottom with animation
+                    for (let r = this.rows - 1; r >= 0; r--) {
+                        setTimeout(() => {
+                            for (let c = 0; c < this.cols; c++) {
+                                this.board[r][c] = null;
+                                const tileIndex = this.tileElements.findIndex(tile => tile.dataset.row == r && tile.dataset.col == c);
+                                if (tileIndex !== -1) {
+                                    this.tileElements[tileIndex].classList.add('fading');
+                                }
+                            }
+                            if (r === 0) {
+                                setTimeout(() => {
+                                    this.applyGravity();
+                                    this.addNewTiles();
+                                    this.checkAndRemoveMatches();
+                                }, 500); // Match animation duration
+                            }
+                        }, (this.rows - r) * 100); // Delay for each row
+                    }
+                } else if (cellType1 === 'color-bomb' || cellType2 === 'color-bomb') {
+                    const colorToRemove = cellType1 === 'color-bomb' ? color2 : color1;
+                    const bombRow = cellType1 === 'color-bomb' ? r1 : r2;
+                    const bombCol = cellType1 === 'color-bomb' ? c1 : c2;
+
+                    // Remove the color bomb itself
+                    this.board[bombRow][bombCol] = null;
+
+                    // Remove the cells of the matched color
+                    this.removeColorCells(colorToRemove);
+                }
+            }
+
+            removeColorCells(color) {
+                console.log(`Removing all ${color} cells...`);
+                const cellsToRemove = [];
+
+                // Identify all cells with the specified color
+                for (let r = 0; r < this.rows; r++) {
+                    for (let c = 0; c < this.cols; c++) {
+                        if (this.board[r][c] && this.board[r][c].color === color) {
+                            cellsToRemove.push({ r, c });
+                            this.board[r][c] = null; // Mark for removal
+                        }
+                    }
+                }
+
+                // Apply gravity and add new tiles
+                this.applyGravity();
+                this.addNewTiles();
+
+                // Check for matches again after gravity is applied
+                this.checkAndRemoveMatches();
+            }
+
+            removeTiles(r, c, length, direction) {
+                if (!this.board[r][c]) return;
+                const color = this.board[r][c].color;
+                let stripedTileClasses = [];
+                const specialTileQueue = []; // Queue for special tiles
+
+                console.log(`Removing ${length} tiles from ${direction} at (${r}, ${c})`);
+                // Animate removal
+                let tilesToFade = [];
+                for (let i = 0; i < length; i++) {
+                    let currentTile;
+                    if (direction === 'horizontal') {
+                        currentTile = this.board[r][c+i];
+                        if(this.isSpecialTile(currentTile)) {
+                            currentTile.row = r;
+                            currentTile.col = c;
+                            specialTileQueue.push(currentTile)
+                        }
+
+                        tilesToFade.push({ r, c: c + i });
+                        this.board[r][c + i] = null;
+                    } else {
+                        currentTile = this.board[r+i][c];
+                        if(this.isSpecialTile(currentTile)) {
+                            currentTile.row = r;
+                            currentTile.col = c;
+                            specialTileQueue.push(currentTile)
+                        }
+                        tilesToFade.push({ r: r + i, c });
+                        this.board[r + i][c] = null;
+                    }
+
+                    console.log(currentTile)
+                }
+                console.log('special tiles')
+                console.log(specialTileQueue)
+                // Create a striped tile or a color bomb
+                if (length === 4) {
+                    const targetRow = direction === 'horizontal' ? r : r + length - 1;
+                    const targetCol = direction === 'horizontal' ? c + Math.floor(length / 2) : c;
+
+                    stripedTileClasses.push(`striped-${color}`, `striped-${direction === 'horizontal' ? 'horizontal' : 'vertical'}`);
+                    this.board[targetRow][targetCol] = this.createTileObject(color, 'striped', direction); // Store classes as an array
+                } else if (length >= 5) {
+                    const targetRow = direction === 'horizontal' ? r : r + length - 1;
+                    const targetCol = direction === 'horizontal' ? c + Math.floor(length / 2) : c;
+
+                    // Create color bomb
+                    this.board[targetRow][targetCol] = this.createTileObject('black', 'color-bomb'); // Use a single class for color bombs
+                }
+
+                // Animate fading out tiles
+                setTimeout(() => {
+                    tilesToFade.forEach(({ r, c }) => {
+                        const tileIndex = this.tileElements.findIndex(tile => tile.dataset.row == r && tile.dataset.col == c);
+                        if (tileIndex !== -1) {
+                            this.tileElements[tileIndex].classList.add('fading');
+                        }
+                    });
+                    setTimeout(() => {
+                        this.refreshBoard(); // Refresh the board
+                        this.processSpecialTiles(specialTileQueue);
+
+                    }, 500); // Match animation duration
+                }, 0);
+            }
+            processSpecialTiles(specialTileQueue) {
+                while (specialTileQueue.length > 0) {
+                    const specialTile = specialTileQueue.shift(); // Get the first special tile
+                    const direction = specialTile.direction;
+                    const row = specialTile.row;
+                    const col = specialTile.col;
+                    console.log(`Processing ${specialTile.cell_type} tile at ${specialTile.row} ${specialTile.col} in ${direction}`);
+
+                    if (specialTile.cell_type === 'striped') {
+                        if (direction === 'horizontal') {
+                            this.removeRow(row); // Remove the entire row
+                        } else {
+                            this.removeColumn(col); // Remove the entire column
+                        }
+                    } else if (specialTile.cell_type === 'color-bomb') {
+                        this.removeColorCells(specialTile.color); // Clear all cells of that color
+                    }
+                }                
+            }
+
+
+
+
+
+            // Create a striped tile with a specific color and direction
+            createStripedTile(color, direction) {
+                console.log(`striped tile: ${color} ${direction}`)
+                return { cell_type: 'striped', color: color, direction: direction }; // Store color and direction
+            }
+
+            // Create a color bomb
+            createColorBomb() {
+                console.log("Created color bomb")
+                return { cell_type: 'color-bomb' }; // Color bomb representation
+            }
+
+            // Check if the tile is special
+            isSpecialTile(tile) {
+                if(tile) {
+                    return tile.cell_type === 'striped' || tile.cell_type === 'color-bomb';
+
+                } else {
+                    console.log("tile undefined on isSpecialTile")
+                    return false;
+                }
+            }
+
+            // Method to remove an entire row
+            removeRow(r) {
+                for (let c = 0; c < this.cols; c++) {
+                    this.board[r][c] = null; // Clear the tile
+                    console.log(`removeRow: row ${r} col ${c}`);
+                }
+                this.applyGravity();
+                this.refreshBoard();
+            }
+
+            // Method to remove an entire column
+            removeColumn(c) {
+                for (let r = 0; r < this.rows; r++) {
+                    this.board[r][c] = null; // Clear the tile
+                    console.log(`removeCol: row ${r} col ${c}`);
+                }
+                this.refreshBoard();
+                this.applyGravity();
+            }
+
+
+
+
+
+            refreshBoard() {
+                console.log("Refreshing board...");
+                this.tileElements.forEach(tile => tile.remove());
+                this.tileElements = [];
+
+                for (let r = 0; r < this.rows; r++) {
+                    for (let c = 0; c < this.cols; c++) {
+                        if (this.board[r][c]) {
+                            this.createTile(r, c);
+                        }
+                    }
+                }
+
+                // Apply falling class to tiles to trigger slide-down effect
+                setTimeout(() => {
+                    this.tileElements.forEach(tile => {
+                        tile.classList.add('falling');
+                    });
+                }, 0);
+            }
+
+            createTile(r, c) {
+                const game = document.getElementById('game');
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+
+                // Get the tile data (object)
+                const tileData = this.board[r][c];
+
+                // Ensure tileData is not null
+                if (tileData) {
+                    // Add each class for the tile
+                    tileData.classes.forEach(cls => tile.classList.add(cls));
+                }
+
+                tile.dataset.row = r;
+                tile.dataset.col = c;
+                tile.innerText = '●';
+                tile.addEventListener('mousedown', (e) => this.handleTileDown(e, r, c));
+                tile.addEventListener('touchstart', (e) => this.handleTileDown(e, r, c));
+                tile.addEventListener('mousemove', (e) => this.handleTileMove(e));
+                tile.addEventListener('touchmove', (e) => this.handleTileMove(e));
+                tile.addEventListener('mouseup', () => this.handleTileUp());
+                tile.addEventListener('touchend', () => this.handleTileUp());
+                game.appendChild(tile);
+                this.tileElements.push(tile);
+            }
+        }
+
+        // Initialize the game
+        const game = new Match3Game(8, 8, ['red', 'blue', 'green', 'yellow', 'purple']);
+
+
+    </script>
+</body>
+
+</html>
