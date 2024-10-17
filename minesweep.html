@@ -9,7 +9,7 @@
             margin: 0 10px;
             font-size: 2em;
             color: #f00;
-            font-family: 'LCD', monospace;
+            font-family: monospace;
             font-weight: bold;
         }
         .controls div {
@@ -24,10 +24,6 @@
             display: grid;
             gap: 1px;
             margin-bottom: 10px;
-        }
-        @font-face {
-        font-family: 'LCD';
-        src: URL('/{{sitepath}}/alarmclock.ttf') format('truetype');
         }
         .cell {
             width: 40px;
@@ -83,7 +79,7 @@
     <div class="gamediv">
         <div class="controls">
             <div id="timer">00:00</div>
-            <div class="smiley" onclick="startGame()">😊</div>
+            <div class="smiley" onclick="startGame()">Restart</div>
             <div id="mines">0</div>
         </div>
         <div id="status"></div>
@@ -134,13 +130,6 @@ e18n = {
     "game over": "Game Over!"
 }
 i18n = {
-    "mines must be less": "Le nombre de mines doit etre moins que le total de cellules",
-    "click to start": "Cliquez une cellule pour commencer",
-    "start game": "Commencer Partie",
-    "you win": "Vous avez Gagné!",
-    "game over": "Vous avez Perdu!",
-    "Rows": "Rangées",
-    "Columns": "Colonnes"
 
 }
 const colors = {
