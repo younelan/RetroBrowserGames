@@ -1,10 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pipe Mania</title>
     <style>
         #game-container {
             display: flex;
@@ -40,7 +33,7 @@
     </style>
 </head>
 
-<body>
+
     <div id="game-container">
         <canvas id="game-board" width="500" height="500"></canvas>
         <div id="next-pieces">
@@ -60,7 +53,52 @@
         </div>
     </div>
     <script>
-        const defaultTimer = 90
+        const translations = {
+                    "Lives": "Vies",
+                    "Level Complete": "Niveau Terminé",
+                    "Memory Game": "Jeu de Mémoire",
+                    "Time": "Temps",
+                    "Score": "Score",
+                    "Level": "Niveau",
+                    "Total Rays": "Enemis",
+                    "Missiles": "Missiles",
+                    "Remaining Missiles": "Missiles Restants",
+                    "Remaining Cities": "Villes Restantes",
+                    "Bonus": "Bonus",
+                    "Time left": "Temps restan",
+                    "Total Score": "Score Total",
+                    "Click or Press Enter to Continue": "Cliquer pour continuer",
+                    "Click or Press Enter to Restart": "Cliquer pour redémarrer",
+                    "Round": "Coup",
+                    "You Won": "Vous Avez Gagné",
+                    "You Lost": "Vous Avez Perdu",
+                    "Final Score": "Score Final",
+                    "Game Over": "Partie Perdue",
+                    "Final Score": "Score Final",
+                    "High Score": "Score Maximum",
+                    "Final Level": "Niveau Final",
+                    "Restart": "Redémarrer",
+                    "Release Water": "Lacher L'eau",
+                    "Water Flowing": "L'eau Coule",
+                    "Restart Game": "Redémarrer la Partie",
+                    "Lives": "Vies",
+                    "Next Piece": "Prochaine Pièce",
+                    "Restart": "Redémarrer",
+                    "Left": "Gauche",
+                    "Right": "Droite",
+                    "Rotate": "Rotation",
+                    "Drop": "Tomber"
+                }
+        function translate(str) {
+            return translations[str] || str;
+        }
+        function replace_text(div,text) {
+            const element = document.getElementById(div);
+            element.innerHTML = text;
+        }
+        replace_text("restart",translate("Restart"));
+        replace_text("release",translate("Release Water"))
+        const defaultTimer = 190
         cell_types = {
             'straight-horizontal': {
                 isStartCell: false,
@@ -74,7 +112,7 @@
                 this.header = options.header || null;
                 this.footer = options.footer || null;
                 let containerId = options.container || 'game-container';
-                console.log(`Container: ${containerId} : ${this.header} ${this.footer}`);
+                //console.log(`Container: ${containerId} : ${this.header} ${this.footer}`);
                 const headerElement = document.querySelector('header'); // Optional
                 const footerElement = document.querySelector('footer'); // Optional
 
@@ -157,7 +195,7 @@
                     const screenHeight = window.innerHeight;
                     // Determine the maximum available size for the grid (smallest between width and height)
                     const availableSize = Math.min(screenWidth, screenHeight);
-                    console.log(`${screenWidth}  height: ${screenHeight} available: ${availableSize}`)
+                    //console.log(`${screenWidth}  height: ${screenHeight} available: ${availableSize}`)
 
                     // Calculate new cellSize to fit the grid into the available space
                     this.cellSize = Math.floor(availableSize / this.gridSize);
@@ -284,8 +322,8 @@
                     this.grid[endY][endX] || // Ensure the end tile is not overwritten
                     (Math.abs(endX - startX) < minDistance && Math.abs(endY - startY) < minDistance) // Ensure minDistance between start and end both horizontally and vertically
                 );
-                console.log(`startX: ${startX} endY: ${startY} startTile: ${this.startTile}`)
-                console.log(`endX: ${endX} endY: ${endY}`)
+                //console.log(`startX: ${startX} endY: ${startY} startTile: ${this.startTile}`)
+                //console.log(`endX: ${endX} endY: ${endY}`)
                 this.endTile = this.endTypes[Math.floor(Math.random() * this.endTypes.length)];
                 this.grid[endY][endX] = this.endTile;
             }
@@ -321,7 +359,7 @@
             countdown() {
                 if (this.timer > 0) {
                     this.timer--;
-                    this.timerDisplay.innerText = `Time left: ${this.timer}s`;
+                    this.timerDisplay.innerText = `${translate("Time left")}: ${this.timer}s`;
                     setTimeout(() => this.countdown(), 1000);
                 } else {
                     this.startWaterFlow();
@@ -330,7 +368,7 @@
 
             startWaterFlow() {
                 this.waterFlowing = true;
-                this.timerDisplay.innerText = "Water Flowing";
+                this.timerDisplay.innerText = translate("Water Flowing");
                 const start = this.findStartTile();
                 if (start) {
                     this.flowWater(start.x, start.y, start.direction, 0);
@@ -365,14 +403,14 @@
 
             showWinScreen() {
                 this.boardCtx.restore();
-                alert("Congrats, you won")
+                alert(translate("You Won"))
             }
             checkWaterFlow() {
                 const end = this.findEndTile();
                 if (end && this.waterFlowed[end.y][end.x]) {
-                    this.timerDisplay.innerText = "You win!";
+                    this.timerDisplay.innerText = translate("You won");
                 } else {
-                    this.timerDisplay.innerText = "Game Over!";
+                    this.timerDisplay.innerText = translate("Game Over");
                 }
             }
             flowWater(x, y, direction, depth = 0) {
@@ -389,7 +427,7 @@
                 const isStartCell = depth === 0;
 
                 // Debugging information
-                console.log(`Processing cell at (${x}, ${y}), Direction: ${direction}, Depth: ${depth}`);
+                //console.log(`Processing cell at (${x}, ${y}), Direction: ${direction}, Depth: ${depth}`);
                 this.drawCell(x, y, direction, isStartCell);
 
                 // Mark the current cell as processed
@@ -482,7 +520,7 @@
                             }
                             break;
                         case "plus":
-                            console.log("++++++++++++++");
+                            //console.log("++++++++++++++");
                             break;
                         case "end-top":
                         case "end-bottom":
@@ -495,7 +533,7 @@
                             console.error(`Unknown turn cell type: ${cellType}`);
                             return; // Stop processing if unknown type
                     }
-                    console.log(`--- ${cellType} ----Moving: ${direction} --- Next Dir ${nextDirection} `)
+                    //console.log(`--- ${cellType} ----Moving: ${direction} --- Next Dir ${nextDirection} `)
 
                 } else if (cellType === 'plus') {
                     switch (direction) {
@@ -520,7 +558,7 @@
                             nextY = y;
                             break;
                         default:
-                            console.log("plusseee");
+                            //console.log("plusseee");
                     }
                 } else {
                     // Determine the next cell and direction for straight pipes
@@ -541,16 +579,16 @@
                 }
 
                 // Log next cell details
-                console.log(`Moving to next cell at (${nextX}, ${nextY}), Direction: ${nextDirection}`);
+                //console.log(`Moving to next cell at (${nextX}, ${nextY}), Direction: ${nextDirection}`);
                 if (nextX >= 0 && nextX < this.gridSize && nextY >= 0 && nextY < this.gridSize) {
                     const nextCellType = this.grid[nextY][nextX];
-                    console.log(`Next cell type: ${nextCellType}`);
+                    //console.log(`Next cell type: ${nextCellType}`);
                     if (nextCellType) {
                         // If the next cell is a valid pipe, continue flowing
-                        console.log(`and we have a winner at ${nextX} , ${nextY}`)
+                        //console.log(`and we have a winner at ${nextX} , ${nextY}`)
                         this.flowWater(nextX, nextY, nextDirection, depth + 1);
                     } else {
-                        console.log(`no cell type for ${nextX} , ${nextY}`)
+                        //console.log(`no cell type for ${nextX} , ${nextY}`)
                     }
                 }
             }
@@ -567,28 +605,28 @@
                 this.boardCtx.beginPath();
 
                 // Debugging information
-                console.log(`Drawing cell at (${x}, ${y}), Direction: ${direction}, Is start cell: ${isStartCell}`);
+                //console.log(`Drawing cell at (${x}, ${y}), Direction: ${direction}, Is start cell: ${isStartCell}`);
 
                 if (isStartCell) {
                     // Draw half-size line for starting cell
                     switch (direction) {
                         case 'up':
-                            console.log(`Drawing half-size line up from (${cx}, ${cy})`);
+                            //console.log(`Drawing half-size line up from (${cx}, ${cy})`);
                             this.boardCtx.moveTo(cx, cy);
                             this.boardCtx.lineTo(cx, cy - halfCellSize);
                             break;
                         case 'down':
-                            console.log(`Drawing half-size line down from (${cx}, ${cy})`);
+                            //console.log(`Drawing half-size line down from (${cx}, ${cy})`);
                             this.boardCtx.moveTo(cx, cy);
                             this.boardCtx.lineTo(cx, cy + halfCellSize);
                             break;
                         case 'left':
-                            console.log(`Drawing half-size line left from (${cx}, ${cy})`);
+                            //console.log(`Drawing half-size line left from (${cx}, ${cy})`);
                             this.boardCtx.moveTo(cx, cy);
                             this.boardCtx.lineTo(cx - halfCellSize, cy);
                             break;
                         case 'right':
-                            console.log(`Drawing half-size line right from (${cx}, ${cy})`);
+                            //console.log(`Drawing half-size line right from (${cx}, ${cy})`);
                             this.boardCtx.moveTo(cx, cy);
                             this.boardCtx.lineTo(cx + halfCellSize, cy);
                             break;
@@ -655,7 +693,7 @@
                             this.showWinScreen();
                             break;
                         default:
-                            console.error(`Unknown cell type: ${cellType}`);
+                            //console.error(`Unknown cell type: ${cellType}`);
                             break;
                     }
                 }
@@ -699,6 +737,3 @@
         });
 
     </script>
-</body>
-
-</html>
