@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ronda Game</title>
+<style>
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #e0e0e0;
+    color: #333;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+.hand, .table-cards {
+    margin: 1rem 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    padding: 0.5rem;
+}
+
+.card {
+    width: 6rem;
+    height: 8rem;
+    padding: 0.5rem;
+    margin: 0.5rem;
+    border: 0.4rem solid #ddd;
+    border-radius: 0.5rem;
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 1.2rem;
+    box-shadow: 0 0.4rem 0.6rem rgba(0, 0, 0, 0.2);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transform: perspective(1000px) rotateX(0deg);
+    transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s, background-color 0.3s;
+}
+
+.card:hover {
+    background-color: #f0f0f0;
+    transform: perspective(1000px) rotateX(5deg);
+    box-shadow: 0 0.5rem 0.8rem rgba(0, 0, 0, 0.3);
+    border-color: #aaa;
+}
+
+.card.clubs { background-color: #b6d5fd; }
+.card.coins { background-color: #f7d794; }
+.card.swords { background-color: #cef8e0; }
+.card.cups { background-color: #f894b7; }
+
+.card.clubs:hover { background-color: #a0c4f4; }
+.card.coins:hover { background-color: #e8c77b; }
+.card.swords:hover { background-color: #b4f2cb; }
+.card.cups:hover { background-color: #f77a9e; }
+
+#table {
+    border: 0.2rem solid #333;
+    padding: 1rem;
+    background-color: #f1dec0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+    gap: 0.1rem;
+    justify-content: center;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+#history {
+    margin-top: 1.5rem;
+    text-align: left;
+    max-width: 40rem;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#handContainer {
+    display: none;
+}
+
+#deal-button {
+    display: none;
+}
+.outcome {
+    color:black;
+    background-color: red;
+}
+.cardvalue {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #c9310c;
+    text-shadow: 3px 3px 5px #ffffff;
+}
+.cardsuit {
+    font-weight: bold;
+    color: white;
+    text-shadow: 2px 2px 6px #934444;
+}
+.highlight {
+    color: yellow;
+}
+.scorehandle {
+    font-weight: 600;
+    color: rgb(233, 163, 163);
+    font-size: 1.5em;
+}
+.scorevalue {
+    font-weight: bold;
+    font-size: 1.6em;
+}
+@media (max-width: 48rem) { /* 768px */
+    .card {
+        width: 4.8rem; /* Slightly smaller cards on mobile */
+        height: 7rem;
+        font-size: 1rem; /* Slightly smaller font size */
+        margin: 0px;
+    }
+    .hand .card {
+        margin: 3px;
+    }
+
+    .hand, .table-cards {
+        justify-content: center; /* Center align items */
+    }
+
+    #table {
+        grid-template-columns: repeat(4, 1fr); /* Limit to 4 cards per row on mobile */
+        gap: 0.1rem; /* Smaller gap on mobile */
+    }
+}
+
+@media (min-width: 48rem) { /* 769px and up */
+    .card {
+        width: 6rem;
+        height: 8rem;
+        font-size: 1.2rem;
+    }
+
+    #table {
+        grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+        gap: 0.5rem;
+    }
+}
+
+</style>
+</head>
+<body>
+<h1>Ronda Game</h1>
+<button id="deal-button">Deal Cards</button>
+<div id="score"></div>
+<div id="table" class="table-cards"></div>
+<div id="humanContainer">
+    <!--<h2>Human Player's Hand</h2>-->
+    <div id="human-hand" class="hand"></div>
+</div>
+<div id="handContainer">
+    <h2>Computer Player's Hand</h2>
+    <div id="computer-hand" class="hand"></div>
+</div>
+<div id="history"></div>
+
+</body>
+</html>
+
+
+<script>
+cardDetails = {
+  1: { short: '0', name: 'As' },
+  2: { short: '1', name: 'Dos' },
+  3: { short: '2', name: 'Tres' },
+  4: { short: '3', name: 'Quatro' },
+  5: { short: '4', name: 'Cinco' },
+  6: { short: '5', name: 'Sies' },
+  7: { short: '6', name: 'Siete' },
+  10: { short: '7', name: 'Sauta' },
+  11: { short: '8', name: 'Cabal' },
+  12: { short: '9', name: 'Rey' }
+};
+class Deck {
+    constructor() {
+        this.suits = ['Dehb', 'Guebbas', 'Khel', 'Shbada'];
+        this.values = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12];
+        this.cards = [];
+
+        // Initialize the deck
+        for (let suit of this.suits) {
+            for (let value of this.values) {
+                this.cards.push({ value, suit });
+            }
+        }
+    }
+
+    shuffle() {
+        for (let i = this.cards.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [this.cards[i], this.cards[j]] = [this.cards[j], this.cards[i]];
+        }
+    }
+
+    deal(numPlayers, numCards) {
+        const hands = [];
+        for (let i = 0; i < numPlayers; i++) {
+            hands.push([]);
+        }
+
+        for (let i = 0; i < numCards; i++) {
+            for (let j = 0; j < numPlayers; j++) {
+                hands[j].push(this.cards.pop());
+            }
+        }
+
+        return hands;
+    }
+    detectRondasAndTringas(hand) {
+        const cardCount = {};
+        hand.forEach(card => {
+            cardCount[card.value] = (cardCount[card.value] || 0) + 1;
+        });
+
+        const rondas = [];
+        const tringas = [];
+
+        for (let value in cardCount) {
+            if (cardCount[value] === 3) {
+                tringas.push(value);
+            } else if (cardCount[value] === 2) {
+                rondas.push(value);
+            }
+        }
+
+        return { rondas, tringas };
+    }
+}
+
+class Player {
+    constructor() {
+        this.hand = [];
+        this.score = 0;
+        this.pile = [];
+    }
+
+    receiveCard(card) {
+        this.hand.push(card);
+    }
+
+    showHand() {
+        return this.hand.map(card => `${card.value} <br/><br/> ${card.suit}`).sort((a, b) => {
+            const valueA = parseInt(a.split(' ')[0]);
+            const valueB = parseInt(b.split(' ')[0]);
+            return valueA - valueB;
+        }).join(', ');
+    }
+
+    playCard(index) {
+        return this.hand.splice(index, 1)[0];
+    }
+
+    addScore(points) {
+        this.score += points;
+    }
+    addToPile(cards) {
+        this.pile.push(...cards);
+    }
+    detectRondasAndTringas() {
+        return deck.detectRondasAndTringas(this.hand);
+    }
+}
+
+function displayHand(player, elementId) {
+    const handElement = document.getElementById(elementId);
+    handElement.innerHTML = '';
+    player.hand.sort((a, b) => a.value - b.value).forEach((card, index) => {
+        const cardElement = document.createElement('div');
+        cardElement.className = `card ${getCardClass(card.suit)}`;
+        cardElement.innerHTML = `<div class="cardvalue">${card.value}</div>  <div class="cardsuit">${card.suit}</div>`;
+        cardElement.addEventListener('click', () => playTurn(player, index));
+        handElement.appendChild(cardElement);
+    });
+}
+
+function displayTable(cards) {
+    const tableElement = document.getElementById('table');
+    tableElement.innerHTML = '';
+    cards.sort((a, b) => a.value - b.value).forEach(card => {
+        const cardElement = document.createElement('div');
+        cardElement.className = `card ${getCardClass(card.suit)}`;
+        cardElement.innerHTML = `<div class="cardvalue">${card.value}</div>  <div class="cardsuit">${card.suit}</div>`;
+        tableElement.appendChild(cardElement);
+    });
+}
+
+function updateScore(humanPlayer, computerPlayer) {
+    const scoreElement = document.getElementById('score');
+    scoreElement.innerHTML = `<span class='scorehandle'>Human:</span> <span class='scorevalue'>${humanPlayer.score}</span> &nbsp;&nbsp; <span class='scorehandle'>Computer:</span> <span class='scorevalue'>${computerPlayer.score}</span>`;
+}
+
+let historyCounter = 1;
+
+function logHistory(message) {
+    const historyElement = document.getElementById('history');
+    const logEntry = document.createElement('div');
+    logEntry.innerHTML = `${historyCounter++}. ${message}`;
+    historyElement.prepend(logEntry); // Add new log entry at the top
+}
+
+
+
+function playTurn(player, cardIndex) {
+    const card = player.playCard(cardIndex);
+    const previousCard = tableCards.length > 0 ? tableCards[tableCards.length - 1] : null;
+    const eatenCards = eatCards(card);
+    const pointsEarned = calculatePoints(card, eatenCards);
+    player.addToPile([card, ...eatenCards]);
+
+    if (eatenCards.length > 0) {
+        player.addScore(pointsEarned);
+        logHistory(`Human played ${card.value} of ${card.suit} and ate ${eatenCards.length} cards: ${eatenCards.map(c => `${c.value} of ${c.suit}`).join(', ')}, earning ${pointsEarned} points`);
+        if (tableCards.length === 0) {
+            player.addScore(1); // Missa point
+            logHistory('Human did <span class="highlight">MISSA</span!');
+        }
+    } else {
+        tableCards.push(card);
+        //logHistory(`Human played ${card.value} of ${card.suit} but ate no cards`);
+    }
+
+    displayHand(humanPlayer, 'human-hand');
+    displayTable(tableCards);
+
+    // Check for bwa7ed
+    if (previousCard && previousCard.value === card.value && !isDifferentTurn) {
+        player.addScore(1);
+        logHistory('Human did <span class="highlight">BWA7ED</span>!');
+    }
+
+    // Computer's turn
+    setTimeout(() => {
+        const computerCard = computerPlayer.playCard(0);
+        const previousCard = tableCards.length > 0 ? tableCards[tableCards.length - 1] : null;
+        const computerEatenCards = eatCards(computerCard);
+        const computerPointsEarned = calculatePoints(computerCard, computerEatenCards);
+        computerPlayer.addToPile([computerCard, ...computerEatenCards]);
+
+        if (computerEatenCards.length > 0) {
+            computerPlayer.addScore(computerPointsEarned);
+            logHistory(`Computer played ${computerCard.value} of ${computerCard.suit} and ate ${computerEatenCards.length} cards: ${computerEatenCards.map(c => `${c.value} of ${c.suit}`).join(', ')}, earning ${computerPointsEarned} points`);
+            if (tableCards.length === 0) {
+                computerPlayer.addScore(1); // Missa point
+                logHistory('Computer did <span class="highlight">MISSA</span>!');
+            }
+        } else {
+            tableCards.push(computerCard);
+            //logHistory(`Computer played ${computerCard.value} of ${computerCard.suit} but ate no cards`);
+        }
+
+        displayHand(computerPlayer, 'computer-hand');
+        displayTable(tableCards);
+
+        // Check for bwa7ed
+        if (previousCard && previousCard.value === computerCard.value && !isDifferentTurn) {
+            computerPlayer.addScore(1);
+            logHistory('Computer did <span class="highlight">BWAHED</span>!');
+        }
+
+        // Check if the deck is empty and deal new cards if necessary
+        if (humanPlayer.hand.length === 0 && computerPlayer.hand.length === 0 && deck.cards.length > 0) {
+            const hands = deck.deal(2, 4);
+            hands[0].forEach(card => humanPlayer.receiveCard(card));
+            hands[1].forEach(card => computerPlayer.receiveCard(card));
+            determineWinnerAndAwardPoints([humanPlayer, computerPlayer]);
+            displayHand(humanPlayer, 'human-hand');
+            displayHand(computerPlayer, 'computer-hand');
+            isDifferentTurn = true;
+        } else if (humanPlayer.hand.length === 0 && computerPlayer.hand.length === 0 ) {
+            isGameOver = true
+            //logHistory(`Computer played ${computerCard.value} of ${computerCard.suit} but ate no cards`);
+            if(humanPlayer.score>computerPlayer.score) {
+                logHistory(`<h2><span class="game outcome">Congrat! Human Won the Game</span></h2>`);
+
+            } else if(humanPlayer.score<computerPlayer.score) {
+                logHistory(`<h2><span class="game outcome">The Computer Won this round</span></h2>`);
+
+            } else {
+                logHistory(`<h2><span class="game outcome">Game Over. It ended with an Equal Score</span></h2>`);
+
+            }
+
+        } else {
+            isDifferentTurn = false;
+        }
+
+        // Update score
+        updateScore(humanPlayer, computerPlayer);
+    }, 1000); // Adding delay to simulate computer thinking time
+}
+
+
+function eatCards(card) {
+    const eatenCards = [];
+    const tableCardValues = tableCards.map(c => c.value);
+    let valueToCheck = card.value;
+
+    // Check if the card can eat other cards on the table
+    while (tableCardValues.includes(valueToCheck)) {
+        const cardIndex = tableCardValues.indexOf(valueToCheck);
+        if (cardIndex !== -1) {
+            eatenCards.push(tableCards.splice(cardIndex, 1)[0]);
+            tableCardValues.splice(cardIndex, 1); // Remove the eaten card value from the list
+            valueToCheck++;
+            if (valueToCheck==8) {
+                valueToCheck=10;
+            }
+        } else {
+            break;
+        }
+    }
+
+    // Add the played card to the eaten pile if any cards were eaten
+    if (eatenCards.length > 0) {
+        eatenCards.unshift(card); // Add the played card to the pile
+    }
+
+    return eatenCards;
+}
+
+
+function calculatePoints(card, eatenCards) {
+    let points = 0;
+
+    if (eatenCards.length > 0) {
+        // Points for each card eaten
+        points += eatenCards.length; // 1 point per card
+
+        // Points for the card played
+        points += 1;
+
+        // Check for bwa7ed (same card played immediately before)
+        if (tableCards.length > 0 && tableCards[tableCards.length - 1].value === card.value) {
+            points += 1;
+        }
+
+        // Check for missa
+        if (tableCards.length === 0) {
+            points += 1;
+        }
+    }
+
+    return points;
+}
+
+function getCardClass(suit) {
+    switch (suit) {
+        case 'Guebbas': return 'cups';
+        case 'Khel': return 'clubs';
+        case 'Shbada': return 'swords';
+        case 'Dehb': return 'coins';
+        case 'Clubs': return 'clubs';
+        case 'Coins': return 'coins';
+        case 'Swords': return 'swords';
+        case 'Cups': return 'cups';
+        default: return '';
+    }
+}
+
+const deck = new Deck();
+deck.shuffle();
+
+const humanPlayer = new Player();
+const computerPlayer = new Player();
+const tableCards = [];
+let isDifferentTurn = false;
+
+function determineWinnerAndAwardPoints() {
+    const humanResults = deck.detectRondasAndTringas(humanPlayer.hand);
+    const computerResults = deck.detectRondasAndTringas(computerPlayer.hand);
+
+    const humanTringas = humanResults.tringas;
+    const humanRondas = humanResults.rondas;
+    const computerTringas = computerResults.tringas;
+    const computerRondas = computerResults.rondas;
+
+    // Determine the highest tringa value and ronda value for each player
+    const humanMaxTringa = humanTringas.length > 0 ? Math.max(...humanTringas) : 0;
+    const computerMaxTringa = computerTringas.length > 0 ? Math.max(...computerTringas) : 0;
+
+    const humanMaxRonda = humanRondas.length > 0 ? Math.max(...humanRondas) : 0;
+    const computerMaxRonda = computerRondas.length > 0 ? Math.max(...computerRondas) : 0;
+
+    // Calculate total points
+    const humanTotalPoints = (humanTringas.length > 0 ? 5 *humanTringas.length : 0) +
+                             (humanRondas.length > 0 ? humanRondas.length : 0);
+
+    const computerTotalPoints = (computerTringas.length > 0 ? 5 * computerTringas.length : 0) +
+                                (computerRondas.length > 0 ? computerRondas.length : 0);
+    const combinedTotalPoints = humanTotalPoints+computerTotalPoints
+    // Determine the winner and award points
+    if (humanMaxTringa > computerMaxTringa) {
+        // Human has the highest tringa
+        humanPlayer.addScore(combinedTotalPoints);
+        logHistory(`<span class="highlight">TRINGA!</span>Human wins ${combinedTotalPoints} points`);
+    } else if (computerMaxTringa > humanMaxTringa) {
+        // Computer has the highest tringa
+        computerPlayer.addScore(combinedTotalPoints);
+        logHistory(`<span class="highlight">TRINGA!</span>Computer wins ${combinedTotalPoints} points`);
+    } else {
+        // No tringa or both have the same tringa
+        if (humanMaxRonda > computerMaxRonda) {
+            // Human has the highest ronda
+            humanPlayer.addScore(combinedTotalPoints);
+            logHistory(`<span class="highlight">RONDA!</span> Human wins ${combinedTotalPoints}`);
+        } else if (computerMaxRonda > humanMaxRonda) {
+            // Computer has the highest ronda
+            computerPlayer.addScore(combinedTotalPoints);
+            logHistory(`<span class="highlight">RONDA!</span> Computer wins ${combinedTotalPoints}`);
+        } else {
+            // Both players have the same ronda or no tringa
+            if (humanTotalPoints > computerTotalPoints) {
+                humanPlayer.addScore(combinedTotalPoints);
+                logHistory(`<span class="highlight">RONDA!</span> Human wins ${combinedTotalPoints} points`);
+            } else if (computerTotalPoints > humanTotalPoints) {
+                computerPlayer.addScore(combinedTotalPoints);
+                logHistory(`<span class="highlight">RONDA!</span> Computer wins ${combinedTotalPoints} points`);
+            } else {
+                // Both players have equal points
+                //logHistory('It\'s a tie with equal points for both players');
+            }
+        }
+    }
+}
+
+function startGame() {
+    const hands = deck.deal(2, 4);
+    hands[0].forEach(card => humanPlayer.receiveCard(card));
+    hands[1].forEach(card => computerPlayer.receiveCard(card));
+
+    displayHand(humanPlayer, 'human-hand');
+    displayHand(computerPlayer, 'computer-hand');
+    determineWinnerAndAwardPoints([humanPlayer, computerPlayer]);
+    logHistory("<span class='highlight'>Human</span> Plays first, click on a card to play.")
+    logHistory("Welcome to <span class='highlight'>Ronda</span>.");
+
+    displayTable(tableCards);
+    updateScore(humanPlayer, computerPlayer);
+
+}
+
+document.getElementById('deal-button').addEventListener('click', () => {
+startGame();
+});
+
+startGame();
+    
+</script>
