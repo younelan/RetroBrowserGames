@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris</title>
+    <style>
+        #game {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        canvas {
+            background: #000;
+            border: 2px solid #fff;
+        }
+        
+        #info {
+            margin-top: 10px;
+            text-align: center;
+        }
+                
+            </style>
+</head>
+<body>
+    <div id="game">
+        <canvas id="tetris" width="300" height="600"></canvas>
+        <div id="info">
+            <div id="next-piece-container"><div>Next Piece:</div> 
+                <canvas id="next-piece" width="120" height="120"></canvas>
+            </div>
+            <div id="level">Level: 1</div>
+            <div id="score">Score: 0</div>
+            <div id="time">Time: 0</div>
+        </div>
+    </div>
+<script>
+class FallingBlocks {
+    constructor(canvasId, nextPieceCanvasId, levelId, scoreId, timeId) {
+        this.canvas = document.getElementById(canvasId);
+        this.nextPieceCanvas = document.getElementById(nextPieceCanvasId);
+        this.levelElement = document.getElementById(levelId);
+        this.scoreElement = document.getElementById(scoreId);
+        this.timeElement = document.getElementById(timeId);
+
+        this.ctx = this.canvas.getContext('2d');
+        this.nextCtx = this.nextPieceCanvas.getContext('2d');
+        
+        // Constants
+        this.ROWS = 20;
+        this.COLS = 10;
+        this.BLOCK_SIZE = 30;
+        this.SPEED_INCREASE_INTERVAL = 5000; // Time in ms for speed increase
+        this.INITIAL_SPEED = 500; // Initial fall speed in ms
+
+        // Initialize variables
+        this.level = 1;
+        this.colors = {
+            "R": "red",
+            "G": "green",
+            "B": "blue",
+            "Y": "yellow",
+            "O": "orange",
+            "P": "purple",
+            "C": "cyan",
+            "L": "orange",
+            "J": "blue"
+        };
+        this.defaultTileColor = "grey";
+        this.defaultBackgroundColor = "#000";
+        this.pieces = {
+            "I": ["RRRR"],
+            "Q": ["BBB"," B "],
+            "T": ["RTR", "RRR"],
+            "O": ["YY", "YY"],
+            "S": [" GG", "GG "],
+            "Z": ["ZZ ", " ZZ"],
+            "L": ["L  ", "LLL"],
+            "J": ["  J", "JJJ"]
+        };
+        
+        this.startGame();
+        this.addControls();
+        this.addClickListener();
+        document.addEventListener('keydown', (e) => this.handleKey(e));
+        document.addEventListener('touchstart', (e) => this.handleTouch(e));
+    }
+
+    drawBlock(x, y, color) {
+        this.ctx.fillStyle = color;
+        this.ctx.fillRect(x * this.BLOCK_SIZE, y * this.BLOCK_SIZE, this.BLOCK_SIZE, this.BLOCK_SIZE);
+        this.ctx.strokeStyle = '#000';
+        this.ctx.strokeRect(x * this.BLOCK_SIZE, y * this.BLOCK_SIZE, this.BLOCK_SIZE, this.BLOCK_SIZE);
+    }
+
+    drawBoard() {
+        this.ctx.fillStyle = this.defaultBackgroundColor;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.board.forEach((row, y) => row.forEach((cell, x) => {
+            if (cell !== null) { // Ensure the cell is not null
+                this.drawBlock(x, y, this.colors[cell] || this.defaultTileColor);
+            }
+        }));
+    }
+
+    drawPiece() {
+        if (this.currentPiece) {
+            const shape = this.currentPiece.shape;
+            shape.forEach((row, y) => row.split('').forEach((cell, x) => {
+                if (cell !== ' ' && this.pieceY + y >= 0) {
+                    this.drawBlock(this.pieceX + x, this.pieceY + y, this.colors[cell] || this.defaultTileColor);
+                }
+            }));
+        }
+    }
+
+    drawNextPiece() {
+        this.nextCtx.clearRect(0, 0, this.nextPieceCanvas.width, this.nextPieceCanvas.height);
+
+        if (this.nextPiece) {
+            const shape = this.nextPiece.shape;
+            const maxRowLength = Math.max(...shape.map(row => row.length));
+            const pieceHeight = shape.length;
+            const pieceWidth = maxRowLength;
+
+            const offsetX = (this.nextPieceCanvas.width - pieceWidth * this.BLOCK_SIZE) / 2;
+            const offsetY = (this.nextPieceCanvas.height - pieceHeight * this.BLOCK_SIZE) / 2;
+
+            shape.forEach((row, y) => row.split('').forEach((cell, x) => {
+                if (cell !== ' ') {
+                    this.nextCtx.fillStyle = this.colors[cell] || this.defaultTileColor;
+                    this.nextCtx.fillRect(offsetX + x * this.BLOCK_SIZE, offsetY + y * this.BLOCK_SIZE, this.BLOCK_SIZE, this.BLOCK_SIZE);
+                    this.nextCtx.strokeStyle = '#000';
+                    this.nextCtx.strokeRect(offsetX + x * this.BLOCK_SIZE, offsetY + y * this.BLOCK_SIZE, this.BLOCK_SIZE, this.BLOCK_SIZE);
+                }
+            }));
+        }
+    }
+
+    newPiece() {
+        if (this.nextPiece) {
+            this.currentPiece = this.nextPiece;
+        } else {
+            const keys = Object.keys(this.pieces);
+            const type = keys[Math.floor(Math.random() * keys.length)];
+            this.currentPiece = { shape: this.pieces[type] };
+        }
+
+        this.pieceX = Math.floor(this.COLS / 2) - Math.floor(this.currentPiece.shape[0].length / 2);
+        this.pieceY = 0;
+
+        // Generate the next piece
+        const keys = Object.keys(this.pieces);
+        const nextType = keys[Math.floor(Math.random() * keys.length)];
+        this.nextPiece = { shape: this.pieces[nextType] };
+
+        if (this.collision(this.pieceX, this.pieceY, this.currentPiece.shape)) {
+            this.gameOver = true;
+            clearInterval(this.gameInterval);
+            this.gameOverScreen(); // Display game over screen
+        }
+        this.drawNextPiece();
+    }
+
+    collision(x, y, shape) {
+        return shape.some((row, dy) => row.split('').some((cell, dx) => {
+            if (cell !== ' ') {
+                const boardX = x + dx;
+                const boardY = y + dy;
+                return (
+                    boardX < 0 ||
+                    boardX >= this.COLS ||
+                    boardY >= this.ROWS ||
+                    (boardY >= 0 && this.board[boardY][boardX])
+                );
+            }
+            return false;
+        }));
+    }
+
+    rotatePiece(clockwise = true) {
+        const shape = this.currentPiece.shape;
+        const numRows = shape.length;
+        const numCols = shape[0].length;
+
+        const newShape = Array.from({ length: numCols }, (_, i) =>
+            Array.from({ length: numRows }, (_, j) =>
+                shape[clockwise ? numRows - 1 - j : j][clockwise ? i : numCols - 1 - i]
+            ).join('')
+        );
+
+        if (!this.collision(this.pieceX, this.pieceY, newShape)) {
+            this.currentPiece.shape = newShape;
+        }
+    }
+
+    movePiece(dir) {
+        const newX = this.pieceX + dir;
+        if (!this.collision(newX, this.pieceY, this.currentPiece.shape)) {
+            this.pieceX = newX;
+        }
+    }
+
+    dropPiece() {
+        const newY = this.pieceY + 1;
+        if (!this.collision(this.pieceX, newY, this.currentPiece.shape)) {
+            this.pieceY = newY;
+        } else {
+            this.mergePiece();
+            this.clearLines();
+            this.newPiece();
+        }
+    }
+
+    mergePiece() {
+        const shape = this.currentPiece.shape;
+        shape.forEach((row, y) => row.split('').forEach((cell, x) => {
+            if (cell !== ' ') this.board[this.pieceY + y][this.pieceX + x] = cell;
+        }));
+    }
+
+    calculateScore(linesCleared) {
+        const levelMultiplier = this.level;
+        switch (linesCleared) {
+            case 1:
+                return 100 * levelMultiplier; // Single
+            case 2:
+                return 300 * levelMultiplier; // Double
+            case 3:
+                return 500 * levelMultiplier; // Triple
+            case 4:
+                return 800 * levelMultiplier; // Tetris
+            default:
+                return 0;
+        }
+    }
+
+    updateLevel() {
+        // Update level based on total lines cleared
+        this.level = Math.floor(this.totalLinesCleared / 10) + 1;
+        this.levelElement.textContent = `Level: ${this.level}`;
+    }
+
+    clearLines() {
+        let linesToClear = [];
+        this.board.forEach((row, y) => {
+            if (row.every(cell => cell)) {
+                linesToClear.push(y);
+            }
+        });
+
+        if (linesToClear.length > 0) {
+            linesToClear.forEach(y => {
+                this.board.splice(y, 1);
+                this.board.unshift(Array(this.COLS).fill(null));
+            });
+
+            const linesClearedThisTurn = linesToClear.length;
+            this.totalLinesCleared += linesClearedThisTurn;
+
+            // Calculate score based on the number of lines cleared this turn
+            this.score += this.calculateScore(linesClearedThisTurn);
+            this.scoreElement.textContent = `Score: ${this.score}`;
+
+            // Update level based on the total lines cleared
+            this.updateLevel();
+        }
+    }
+
+    updateTime() {
+        const now = Date.now();
+        const elapsedTime = Math.floor((now - this.globalStartTime) / 1000);
+        this.timeElement.textContent = `Time: ${elapsedTime}`;
+
+        // Adjust the speed based on elapsed time
+        const timeElapsed = now - this.lastDropTime;
+        if (timeElapsed > this.speed) {
+            this.lastDropTime = now;
+            this.dropPiece();
+        }
+    }
+
+    addControls() {
+        const controls = document.createElement('div');
+        controls.id = 'controls';
+        controls.innerHTML = `
+            <button id="left">Left</button>
+            <button id="rotate">Rotate</button>
+            <button id="right">Right</button>
+            <button id="drop">Drop</button>
+            <button id="pause">Pause</button>
+        `;
+        this.levelElement.parentElement.appendChild(controls);
+
+        document.getElementById('left').addEventListener('click', () => this.movePiece(-1));
+        document.getElementById('right').addEventListener('click', () => this.movePiece(1));
+        document.getElementById('rotate').addEventListener('click', () => this.rotatePiece(true));
+        document.getElementById('drop').addEventListener('click', () => {
+            this.fastDrop = true;
+            this.dropPiece();
+        });
+        document.getElementById('pause').addEventListener('click', () => this.togglePause());
+    }
+
+    addClickListener() {
+        window.addEventListener('click', () => {
+            if (this.gameOver) {
+                this.startGame();
+            }
+        });
+    }
+
+    addClickListener() {
+        window.addEventListener('click', () => {
+            if (this.gameOver) {
+                this.startGame();
+            }
+        });
+    }
+
+    gameLoop() {
+        if (this.paused) return;
+        
+        if (this.fastDrop) {
+            while (!this.collision(this.pieceX, this.pieceY + 1, this.currentPiece.shape)) {
+                this.pieceY++;
+            }
+            this.fastDrop = false;
+            this.dropPiece();
+        }
+        if (!this.gameOver) {
+            this.drawBoard();
+            this.drawPiece();
+            this.drawNextPiece();
+            this.updateTime();
+        }
+    }
+
+
+    gameOverScreen() {
+        // Clear the game board
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Display the game over screen with level and score
+        this.ctx.fillStyle = '#FFF';
+        this.ctx.font = '30px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('Game Over', this.canvas.width / 2, this.canvas.height / 2 - 60);
+        this.ctx.font = '20px Arial';
+        this.ctx.fillText(`Level: ${this.level}`, this.canvas.width / 2, this.canvas.height / 2 - 20);
+        this.ctx.fillText(`Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+
+        // Retrieve and display high score
+        const highScore = localStorage.getItem('highScore') || 0;
+        this.ctx.fillText(`High Score: ${highScore}`, this.canvas.width / 2, this.canvas.height / 2 + 60);
+
+        // Update high score if necessary
+        if (this.score > highScore) {
+            localStorage.setItem('highScore', this.score);
+        }
+    }
+
+
+    startGame() {
+        this.board = Array.from({ length: this.ROWS }, () => Array(this.COLS).fill(null));
+        this.score = 0;
+        this.level = 1;
+        this.totalLinesCleared = 0;
+        this.globalStartTime = Date.now();
+        this.speed = this.INITIAL_SPEED;
+        this.lastDropTime = Date.now();
+        this.gameOver = false;
+        this.paused = false; // Initialize paused state
+        this.currentPiece = null;
+        this.nextPiece = null;
+        this.newPiece();
+        this.gameInterval = setInterval(() => this.gameLoop(), 20);
+    }
+
+
+    handleKey(e) {
+        if (this.gameOver) return;
+        switch (e.key) {
+            case 'ArrowLeft':
+                this.movePiece(-1);
+                break;
+            case 'ArrowRight':
+                this.movePiece(1);
+                break;
+            case 'ArrowDown':
+                this.dropPiece();
+                break;
+            case 'ArrowUp':
+                this.rotatePiece(true); // Clockwise
+                break;
+            case ' ':
+                this.fastDrop = true;
+                break;
+        }
+    }
+
+    handleTouch(e) {
+        const touch = e.touches[0];
+        const touchX = touch.clientX;
+        const touchY = touch.clientY;
+        const canvasRect = this.canvas.getBoundingClientRect();
+
+        const touchXRelative = touchX - canvasRect.left;
+        const touchYRelative = touchY - canvasRect.top;
+
+        const sectionWidth = this.canvas.width / 3;
+        const sectionHeight = this.canvas.height / 2;
+
+        if (touchXRelative < sectionWidth) {
+            this.movePiece(-1); // Move left
+        } else if (touchXRelative > (sectionWidth * 2)) {
+            this.movePiece(1); // Move right
+        } else if (touchYRelative > sectionHeight) {
+            this.dropPiece(); // Drop piece
+        } else {
+            this.rotatePiece(true); // Rotate piece
+        }
+    }    
+
+    togglePause() {
+        if (this.gameOver) return; // No pause if game is over
+        this.paused = !this.paused;
+        if (this.paused) {
+            clearInterval(this.gameInterval);
+        } else {
+            this.gameInterval = setInterval(() => this.gameLoop(), 20);
+        }
+    }
+
+}
+
+// Initialize the game
+window.onload = () => {
+    new FallingBlocks('tetris', 'next-piece', 'level', 'score', 'time');
+};
+
+    
+</script>
+
+</body>
+</html>
