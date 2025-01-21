@@ -6,13 +6,16 @@ export class Collectible {
         this.width = type === 'fuel' ? 20 : 15;
         this.height = this.width;
         this.segment = segment; // Add segment reference
+        this.speed = type === 'fuel' ? 0 : (Math.random() - 0.5) * 240; // Speed in units per second
     }
 
-    update() {
-        this.y += this.segment.game.scrollSpeed;
-        // Fuel cells do not move left or right
+    update(dt) {
+        this.y += this.segment.game.scrollSpeed * dt;
+        
+        // Points collectibles move side to side
         if (this.type !== 'fuel') {
-            this.x += this.speed;
+            this.x += this.speed * dt;
+            
             // Keep within corridor bounds
             if (this.x < this.segment.leftWall || 
                 this.x + this.width > this.segment.leftWall + this.segment.width) {

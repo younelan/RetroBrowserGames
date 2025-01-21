@@ -11,16 +11,12 @@ export class Game {
         
         this.width = 0;
         this.height = 0;
-        this.scrollSpeed = 2;
+        this.scrollSpeed = 120; // Units per second
         this.score = 0;
         this.distance = 0;
         this.gameOver = false;
         this.gameWon = false;
         this.targetDistance = 5000;
-
-        this.player = new Player(this);
-        this.corridorManager = new CorridorManager(this);
-        this.inputManager = new InputManager(this);
 
         this.resizeGame = this.resizeGame.bind(this);
         window.addEventListener('resize', this.resizeGame);
@@ -30,14 +26,26 @@ export class Game {
         this.levelDistance = 2000; // Increase distance needed per level
         this.levelCompleted = false;
 
+        this.lastTime = performance.now();
+        this.fixedTimeStep = 1000 / 60; // Target 60 FPS
+
         this.init();
     }
 
     init() {
+        // Set initial size before creating other objects
         this.resizeGame();
+        
+        // Initialize game objects after canvas size is set
+        this.player = new Player(this);
+        this.corridorManager = new CorridorManager(this);
+        this.inputManager = new InputManager(this);
+        
         this.corridorManager.initCorridor();
         this.highScore = localStorage.getItem('rivergame') || 0;
-        this.gameLoop();
+        
+        // Start game loop
+        requestAnimationFrame(this.gameLoop);
 
         // Add touch event listeners for the game canvas
         this.canvas.addEventListener('touchstart', this.handleGameTouch.bind(this));
@@ -75,14 +83,17 @@ export class Game {
         this.player?.resetPosition();
     }
 
-    update() {
+    update(deltaTime) {
         if (this.gameOver || this.gameWon) return;
 
-        this.player.update();
-        this.corridorManager.update();
+        // Convert deltaTime to seconds and clamp it
+        const dt = Math.min(deltaTime, 100) / 1000; // Cap at 100ms to prevent huge jumps
         
-        // Only update distance, level completion is handled in CorridorManager
-        this.distance += this.scrollSpeed;
+        this.player.update(dt);
+        this.corridorManager.update(dt);
+        
+        // Update distance using deltaTime
+        this.distance += this.scrollSpeed * dt;
     }
 
     draw() {
@@ -103,9 +114,14 @@ export class Game {
         
         this.ctx.fillText(`Level: ${this.currentLevel}/${this.maxLevels}`, 10, 30);
         this.ctx.fillText(`Lives: ${this.player.lives}`, 10, 60);
-        this.ctx.fillText(`Fuel: ${Math.ceil(this.player.fuel)}%`, 10, 90);
+        
+        // Fix NaN displays
+        const fuelDisplay = Math.max(0, Math.min(100, Math.ceil(this.player.fuel)));
+        const progressDisplay = Math.max(0, Math.min(100, Math.floor((this.distance % this.levelDistance) / this.levelDistance * 100)));
+        
+        this.ctx.fillText(`Fuel: ${fuelDisplay}%`, 10, 90);
         this.ctx.fillText(`Score: ${this.score}`, 10, 120);
-        this.ctx.fillText(`Progress: ${Math.floor((this.distance % this.levelDistance) / this.levelDistance * 100)}%`, 10, 150);
+        this.ctx.fillText(`Progress: ${progressDisplay}%`, 10, 150);
 
         if (this.gameOver || this.gameWon) {
             this.ctx.fillStyle = '#fff';
@@ -152,7 +168,7 @@ export class Game {
         this.score = 0;
         this.distance = 0;
         this.currentLevel = 1;
-        this.scrollSpeed = 2;
+        this.scrollSpeed = 120; // Units per second instead of per frame
         this.player = new Player(this);
         this.corridorManager = new CorridorManager(this);
         this.levelCompleted = false;
@@ -192,9 +208,19 @@ export class Game {
         this.inputManager.handleGameAreaTouch(horizontalSection, verticalSection);
     }
 
-    gameLoop = () => {
-        this.update();
+    gameLoop = (currentTime) => {
+        if (!this.lastTime) {
+            this.lastTime = currentTime;
+            requestAnimationFrame(this.gameLoop);
+            return;
+        }
+
+        const deltaTime = Math.min(currentTime - this.lastTime, 100);
+        this.lastTime = currentTime;
+
+        this.update(deltaTime);
         this.draw();
+        
         requestAnimationFrame(this.gameLoop);
     }
 }

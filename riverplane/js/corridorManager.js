@@ -6,8 +6,10 @@ export class CorridorManager {
         this.game = game;
         this.segments = [];
         this.segmentHeight = 100;
-        this.minWidth = 200;
-        this.maxWidth = 400;
+        // For mobile, adjust corridor width
+        const isMobile = window.innerWidth <= 768;
+        this.minWidth = isMobile ? this.game.width * 0.4 : 200;
+        this.maxWidth = isMobile ? this.game.width * 0.8 : 400;
         this.currentDirection = 1;
         this.directionChangeChance = 0.02;
     }
@@ -99,12 +101,16 @@ export class CorridorManager {
         );
     }
 
-    update() {
-        // Scroll segments
+    update(dt) {
+        // Scroll segments with deltaTime
         this.segments.forEach(segment => {
-            segment.y += this.game.scrollSpeed;
-            segment.enemies.forEach(enemy => enemy.update());
-            segment.collectibles.forEach(collectible => collectible.update());
+            segment.y += this.game.scrollSpeed * dt;
+            segment.enemies.forEach(enemy => enemy.update(dt));
+            segment.collectibles.forEach(collectible => {
+                if (collectible.update) {
+                    collectible.update(dt);
+                }
+            });
 
             // Check collisions with player
             const playerHitbox = this.game.player.getHitbox();
@@ -249,33 +255,9 @@ export class CorridorManager {
             });
         });
 
-        // Check for level completion
+        // Remove duplicate bridge creation and simplify level completion logic
         if (this.game.distance >= this.game.levelDistance * this.game.currentLevel && 
             !this.segments.some(seg => seg.isFinishLine)) {
-            // Add a bridge at the end of the level
-            const lastSegment = this.segments[this.segments.length - 1];
-            const bridgeSegment = {
-                leftWall: lastSegment.leftWall,
-                width: lastSegment.width,
-                y: lastSegment.y - this.segmentHeight,
-                collectibles: [],
-                enemies: [],
-                game: this.game,
-                isFinishLine: true
-            };
-            this.segments.push(bridgeSegment);
-        }
-
-        // Remove all game over checks here and only keep lives check
-        if (this.game.player.lives <= 0) {
-            this.game.gameOver = true;
-            return;
-        }
-
-        // Check for level completion and add bridge
-        if (this.game.distance >= this.game.levelDistance * this.game.currentLevel && 
-            !this.segments.some(seg => seg.isFinishLine)) {
-            
             // Add bridge segment at current position
             const lastSegment = this.segments[this.segments.length - 1];
             const bridgeSegment = {
@@ -297,6 +279,7 @@ export class CorridorManager {
                 if (this.game.player.getHitbox().y < segment.y + this.segmentHeight &&
                     this.game.player.getHitbox().y + this.game.player.height > segment.y) {
                     this.game.player.lives--;
+                    segment.isFinishLine = false; // Remove bridge after collision
                     this.handleLevelComplete();
                 }
 
@@ -305,6 +288,7 @@ export class CorridorManager {
                     if (bullet.y < segment.y + this.segmentHeight &&
                         bullet.x > segment.leftWall &&
                         bullet.x < segment.leftWall + segment.width) {
+                        segment.isFinishLine = false; // Remove bridge after being shot
                         this.handleLevelComplete();
                         return false;
                     }
@@ -312,22 +296,34 @@ export class CorridorManager {
                 });
             }
         });
+
+        // Only check for game over condition
+        if (this.game.player.lives <= 0) {
+            this.game.gameOver = true;
+        }
     }
 
     handleLevelComplete() {
+        this.game.score += 200; // Add points for completing level
+        
         if (this.game.currentLevel >= this.game.maxLevels) {
             this.game.gameWon = true;
         } else {
             this.game.currentLevel++;
-            this.game.score += 200;
-            this.game.scrollSpeed += 0.5;
+            this.game.scrollSpeed += 30; // Increase speed for next level
             this.initCorridor();
             this.game.player.resetPosition();
         }
     }
 
     draw() {
+        // Clear any transform
+        this.game.ctx.setTransform(1, 0, 0, 1, 0, 0);
+        
         this.segments.forEach(segment => {
+            // Ensure segment exists and has valid properties
+            if (!segment || typeof segment.leftWall === 'undefined') return;
+
             // Draw river (corridor)
             this.game.ctx.fillStyle = '#00f';
             this.game.ctx.fillRect(
@@ -347,20 +343,7 @@ export class CorridorManager {
                 this.segmentHeight
             );
 
-            // Draw finish line
-            if (segment.isFinishLine) {
-                this.game.ctx.fillStyle = '#f00';
-                for (let i = 0; i < 3; i++) {
-                    this.game.ctx.fillRect(
-                        segment.leftWall,
-                        segment.y + (i * this.segmentHeight/3),
-                        segment.width,
-                        this.segmentHeight/9
-                    );
-                }
-            }
-
-            // Draw bridge (finish line)
+            // Draw bridge if it's a finish line
             if (segment.isFinishLine) {
                 // Dark red top line
                 this.game.ctx.fillStyle = '#800000';
@@ -390,9 +373,9 @@ export class CorridorManager {
                 );
             }
 
-            // Draw collectibles and enemies
-            segment.collectibles.forEach(collectible => collectible.draw(this.game.ctx));
-            segment.enemies.forEach(enemy => enemy.draw(this.game.ctx));
+            // Draw collectibles and enemies last
+            segment.collectibles?.forEach(collectible => collectible?.draw(this.game.ctx));
+            segment.enemies?.forEach(enemy => enemy?.draw(this.game.ctx));
         });
     }
 }

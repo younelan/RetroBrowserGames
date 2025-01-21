@@ -4,13 +4,15 @@ export class Enemy {
         this.y = y;
         this.width = 25;
         this.height = 25;
-        this.speed = (Math.random() - 0.5) * 4;
+        this.speed = (Math.random() - 0.5) * 240; // Units per second
         this.segment = segment;
     }
 
-    update() {
-        this.y += this.segment.game.scrollSpeed;
-        this.x += this.speed;
+    update(dt) {
+        if (!dt) return; // Guard against undefined dt
+        
+        this.y += this.segment.game.scrollSpeed * dt;
+        this.x += this.speed * dt;
         
         // Keep within corridor bounds
         if (this.x < this.segment.leftWall || 
