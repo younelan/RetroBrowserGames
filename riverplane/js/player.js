@@ -45,6 +45,20 @@ export class Player {
         this.x = Math.max(0, Math.min(this.game.width - this.width, this.x));
         this.y = Math.max(0, Math.min(this.game.height - this.height, this.y));
 
+        // Check collision with corridor walls
+        const currentSegment = this.game.corridorManager.getCurrentSegment(this.y);
+        if (currentSegment) {
+            if (this.x < currentSegment.leftWall || 
+                this.x + this.width > currentSegment.leftWall + currentSegment.width) {
+                this.lives--;
+                if (this.lives <= 0) {
+                    this.game.gameOver = true;
+                } else {
+                    this.resetPosition();
+                }
+            }
+        }
+
         // Update shooting cooldown
         if (this.shootCooldown > 0) {
             this.shootCooldown--;

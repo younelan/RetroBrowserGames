@@ -21,7 +21,7 @@ export class CorridorManager {
     addSegment() {
         const lastSegment = this.segments[this.segments.length - 1];
         let leftWall, width;
-        
+
         if (!lastSegment) {
             width = this.minWidth + (this.maxWidth - this.minWidth) / 2;
             leftWall = (this.game.width - width) / 2;
@@ -29,12 +29,12 @@ export class CorridorManager {
             if (Math.random() < this.directionChangeChance) {
                 this.currentDirection *= -1;
             }
-            
+
             const movement = this.currentDirection * 30;
             width = lastSegment.width + (Math.random() - 0.5) * 20;
             width = Math.max(this.minWidth, Math.min(this.maxWidth, width));
             leftWall = lastSegment.leftWall + movement;
-            
+
             if (leftWall + width > this.game.width - 50) {
                 this.currentDirection = -1;
                 leftWall = this.game.width - width - 50;
@@ -47,9 +47,9 @@ export class CorridorManager {
         const segment = {
             leftWall,
             width,
-            y: this.segments.length ? 
-               this.segments[this.segments.length - 1].y - this.segmentHeight : 
-               0,
+            y: this.segments.length ?
+                this.segments[this.segments.length - 1].y - this.segmentHeight :
+                0,
             collectibles: [],
             enemies: [],
             game: this.game  // Add game reference to segment
@@ -58,7 +58,7 @@ export class CorridorManager {
         // Add collectibles and enemies
         this.addCollectibles(segment);
         this.addEnemies(segment);
-        
+
         this.segments.push(segment);
     }
 
@@ -70,7 +70,7 @@ export class CorridorManager {
                 'fuel'
             ));
         }
-        
+
         if (Math.random() < 0.2) {  // Points
             segment.collectibles.push(new Collectible(
                 segment.leftWall + Math.random() * (segment.width - 15),
@@ -91,7 +91,7 @@ export class CorridorManager {
     }
 
     getCurrentSegment(y) {
-        return this.segments.find(seg => 
+        return this.segments.find(seg =>
             seg.y <= y && seg.y + this.segmentHeight > y
         );
     }
@@ -101,10 +101,10 @@ export class CorridorManager {
         this.segments.forEach(segment => {
             segment.y += this.game.scrollSpeed;
             segment.enemies.forEach(enemy => enemy.update());
-            
+
             // Check collisions with player
             const playerHitbox = this.game.player.getHitbox();
-            
+
             segment.collectibles = segment.collectibles.filter(collectible => {
                 if (collectible.checkCollision(playerHitbox)) {
                     collectible.collect(this.game);
@@ -112,7 +112,7 @@ export class CorridorManager {
                 }
                 return true;
             });
-            
+
             segment.enemies = segment.enemies.filter(enemy => {
                 if (enemy.checkCollision(playerHitbox)) {
                     this.game.player.lives--;
@@ -124,12 +124,13 @@ export class CorridorManager {
                 return true;
             });
         });
-        
+
         // Remove off-screen segments and add new ones
         if (this.segments[0].y > this.game.height) {
             this.segments.shift();
             this.addSegment();
         }
+
         // Check bullet collisions with enemies
         this.segments.forEach(segment => {
             segment.enemies = segment.enemies.filter(enemy => {
@@ -144,6 +145,41 @@ export class CorridorManager {
                 return !enemyHit;
             });
         });
+
+        // Check collision with corridor walls
+        const playerHitbox = this.game.player.getHitbox();
+        const currentSegment = this.getCurrentSegment(this.game.player.y);
+        if (currentSegment) {
+            const player = this.game.player;
+            if (player.x < currentSegment.leftWall || 
+                player.x + player.width > currentSegment.leftWall + currentSegment.width) {
+                this.game.player.lives--;
+                if (this.game.player.lives <= 0) {
+                    this.game.gameOver = true;
+                } else {
+                    this.game.player.resetPosition();
+                }
+            }
+        }
+
+        // Check if player collected fuel
+        this.segments.forEach(segment => {
+            segment.collectibles = segment.collectibles.filter(collectible => {
+                if (collectible.type === 'fuel' && collectible.checkCollision(playerHitbox)) {
+                    this.game.player.fuel = Math.min(100, this.game.player.fuel + 30);
+                    return false;
+                }
+                return true;
+            });
+        });
+
+        // Check for level completion
+        if (this.game.score >= this.game.levelTarget) {
+            this.game.level++;
+            this.game.score = 0;
+            this.game.levelTarget += 200;
+            this.game.scrollSpeed += 0.5;
+        }
     }
 
     draw() {
@@ -161,12 +197,12 @@ export class CorridorManager {
             this.game.ctx.fillStyle = '#0a0';
             this.game.ctx.fillRect(0, segment.y, segment.leftWall, this.segmentHeight);
             this.game.ctx.fillRect(
-                segment.leftWall + segment.width, 
-                segment.y, 
-                this.game.width - (segment.leftWall + segment.width), 
+                segment.leftWall + segment.width,
+                segment.y,
+                this.game.width - (segment.leftWall + segment.width),
                 this.segmentHeight
             );
-            
+
             // Draw collectibles and enemies
             segment.collectibles.forEach(collectible => collectible.draw(this.game.ctx));
             segment.enemies.forEach(enemy => enemy.draw(this.game.ctx));

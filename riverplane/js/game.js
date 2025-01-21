@@ -27,7 +27,7 @@ export class Game {
 
         this.currentLevel = 1;
         this.maxLevels = 3;
-        this.levelDistance = 1000; // Distance needed per level
+        this.levelDistance = 2000; // Increase distance needed per level
         this.levelCompleted = false;
 
         this.init();
