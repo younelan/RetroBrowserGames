@@ -21,6 +21,9 @@ export class InputManager {
             shoot: false
         };
 
+        this.lastShootTime = 0;
+        this.shootCooldown = 100; // Milliseconds between shots
+
         this.initListeners();
     }
 
@@ -64,8 +67,12 @@ export class InputManager {
         // Reset touch controls
         this.resetTouchControls();
 
-        // Always shoot in any zone
-        this.touchControls.shoot = true;
+        // Add shoot cooldown check
+        const currentTime = performance.now();
+        if (currentTime - this.lastShootTime >= this.shootCooldown) {
+            this.touchControls.shoot = true;
+            this.lastShootTime = currentTime;
+        }
 
         // Horizontal controls
         if (horizontalSection === 0) {

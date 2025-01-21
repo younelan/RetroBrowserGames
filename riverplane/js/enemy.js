@@ -4,9 +4,10 @@ export class Enemy {
         this.y = y;
         this.width = 25;
         this.height = 25;
-        // Scale enemy speed relative to corridor width for consistent movement
-        const baseSpeed = 60; // Base speed units per second
-        this.speed = (Math.random() - 0.5) * (baseSpeed * (segment.width / 300));
+        // Adjust speed range to be more consistent
+        const minSpeed = segment.game.corridorManager.stepSize * 2;
+        const maxSpeed = segment.game.corridorManager.stepSize * 4;
+        this.speed = (Math.random() * (maxSpeed - minSpeed) + minSpeed) * (Math.random() < 0.5 ? 1 : -1);
         this.segment = segment;
     }
 
