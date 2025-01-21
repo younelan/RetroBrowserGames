@@ -362,16 +362,32 @@ export class CorridorManager {
 
             // Draw bridge (finish line)
             if (segment.isFinishLine) {
-                // Draw red and white striped bridge
-                for (let i = 0; i < 6; i++) {
-                    this.game.ctx.fillStyle = i % 2 === 0 ? '#f00' : '#fff';
-                    this.game.ctx.fillRect(
-                        segment.leftWall,
-                        segment.y + (i * this.segmentHeight/6),
-                        segment.width,
-                        this.segmentHeight/6
-                    );
-                }
+                // Dark red top line
+                this.game.ctx.fillStyle = '#800000';
+                this.game.ctx.fillRect(
+                    segment.leftWall,
+                    segment.y,
+                    segment.width,
+                    this.segmentHeight/4
+                );
+                
+                // Light gray middle section
+                this.game.ctx.fillStyle = '#D3D3D3';
+                this.game.ctx.fillRect(
+                    segment.leftWall,
+                    segment.y + this.segmentHeight/4,
+                    segment.width,
+                    this.segmentHeight/2
+                );
+                
+                // Dark red bottom line
+                this.game.ctx.fillStyle = '#800000';
+                this.game.ctx.fillRect(
+                    segment.leftWall,
+                    segment.y + (this.segmentHeight * 3/4),
+                    segment.width,
+                    this.segmentHeight/4
+                );
             }
 
             // Draw collectibles and enemies
