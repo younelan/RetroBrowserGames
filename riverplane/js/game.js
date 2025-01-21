@@ -36,6 +36,7 @@ export class Game {
     init() {
         this.resizeGame();
         this.corridorManager.initCorridor();
+        this.highScore = localStorage.getItem('rivergame') || 0;
         this.gameLoop();
     }
 
@@ -113,12 +114,20 @@ export class Game {
             this.ctx.font = '24px Arial';
             this.ctx.fillText(`Final Score: ${this.score}`, this.width / 2, this.height / 2 + 50);
 
+            // Check and update high score
+            if (this.score > this.highScore) {
+                this.highScore = this.score;
+                localStorage.setItem('rivergame', this.highScore);
+            }
+            this.ctx.fillStyle = this.score >= this.highScore ? '#ff0' : '#fff'; // Yellow for new high score
+            this.ctx.fillText(`High Score: ${this.highScore}`, this.width / 2, this.height / 2 + 100);
+
             // Draw restart button
             this.ctx.fillStyle = '#444';
-            this.ctx.fillRect(this.width / 2 - 75, this.height / 2 + 100, 150, 50);
+            this.ctx.fillRect(this.width / 2 - 75, this.height / 2 + 150, 150, 50);
             this.ctx.fillStyle = '#fff';
             this.ctx.font = '20px Arial';
-               this.ctx.fillText('RESTART', this.width / 2, this.height / 2 + 135);
+            this.ctx.fillText('RESTART', this.width / 2, this.height / 2 + 185);
 
             // Add event listener for restart button
             this.canvas.addEventListener('click', this.handleRestartClick.bind(this));

@@ -154,6 +154,7 @@ export class CorridorManager {
                         this.game.player.bullets.splice(bulletIndex, 1);
                         if (collectible.type === 'fuel') {
                             this.game.player.fuel = Math.min(100, this.game.player.fuel + 30);
+                            this.game.score += 50; // Add points for shooting fuel
                         } else {
                             this.game.score += 100;
                         }
@@ -186,6 +187,7 @@ export class CorridorManager {
             segment.collectibles = segment.collectibles.filter(collectible => {
                 if (collectible.type === 'fuel' && collectible.checkCollision(playerHitbox)) {
                     this.game.player.fuel = Math.min(100, this.game.player.fuel + 30);
+                    this.game.score += 50; // Add points for collecting fuel
                     return false;
                 }
                 return true;
