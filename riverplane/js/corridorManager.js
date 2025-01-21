@@ -91,7 +91,7 @@ export class CorridorManager {
     addEnemies(segment) {
         if (Math.random() < 0.3) {
             segment.enemies.push(new Enemy(
-                segment.leftWall + Math.random() * (segment.width - 25),
+                segment.leftWall + Math.random() * (segment.width - 40), // Account for wider enemies
                 segment.y,
                 segment
             ));

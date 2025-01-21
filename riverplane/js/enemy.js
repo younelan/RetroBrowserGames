@@ -9,6 +9,9 @@ export class Enemy {
         const maxSpeed = segment.game.corridorManager.stepSize * 4;
         this.speed = (Math.random() * (maxSpeed - minSpeed) + minSpeed) * (Math.random() < 0.5 ? 1 : -1);
         this.segment = segment;
+        this.type = Math.random() < 0.5 ? 'boat' : 'helicopter';
+        // Animation for helicopter blades
+        this.rotorAngle = 0;
     }
 
     update(dt) {
@@ -45,7 +48,16 @@ export class Enemy {
             ctx.scale(-1, 1);
         }
 
-        // Draw boat
+        if (this.type === 'boat') {
+            this.drawBoat(ctx);
+        } else {
+            this.drawHelicopter(ctx);
+        }
+
+        ctx.restore();
+    }
+
+    drawBoat(ctx) {
         // Hull (dark brown)
         ctx.fillStyle = '#8B4513';
         ctx.beginPath();
@@ -79,8 +91,36 @@ export class Enemy {
                 windowHeight
             );
         }
+    }
 
+    drawHelicopter(ctx) {
+        // Body (dark gray)
+        ctx.fillStyle = '#404040';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.width/3, this.height/2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Tail boom
+        ctx.fillStyle = '#505050';
+        ctx.fillRect(-this.width/2, -this.height/6, this.width/2, this.height/3);
+
+        // Tail rotor
+        ctx.fillStyle = '#303030';
+        ctx.save();
+        ctx.translate(-this.width/2, 0);
+        ctx.rotate(this.rotorAngle * 2);
+        ctx.fillRect(-this.height/3, -this.height/8, this.height/1.5, this.height/4);
         ctx.restore();
+
+        // Main rotor
+        ctx.save();
+        ctx.rotate(this.rotorAngle);
+        ctx.fillStyle = '#202020';
+        ctx.fillRect(-this.width/1.5, -this.height/8, this.width * 1.5, this.height/4);
+        ctx.restore();
+
+        // Update rotor animation
+        this.rotorAngle += 0.2;
     }
 
     checkCollision(rect) {
