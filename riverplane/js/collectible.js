@@ -5,23 +5,24 @@ export class Collectible {
         this.type = type;
         this.width = type === 'fuel' ? 20 : 15;
         this.height = this.width;
-        this.speed = (Math.random() - 0.5) * 4;
         this.segment = segment; // Add segment reference
     }
 
     update() {
         this.y += this.segment.game.scrollSpeed;
-        this.x += this.speed;
-        
-        // Keep within corridor bounds
-        if (this.x < this.segment.leftWall || 
-            this.x + this.width > this.segment.leftWall + this.segment.width) {
-            this.speed *= -1;
-            // Keep collectible within bounds after speed reversal
-            if (this.x < this.segment.leftWall) {
-                this.x = this.segment.leftWall;
-            } else if (this.x + this.width > this.segment.leftWall + this.segment.width) {
-                this.x = this.segment.leftWall + this.segment.width - this.width;
+        // Fuel cells do not move left or right
+        if (this.type !== 'fuel') {
+            this.x += this.speed;
+            // Keep within corridor bounds
+            if (this.x < this.segment.leftWall || 
+                this.x + this.width > this.segment.leftWall + this.segment.width) {
+                this.speed *= -1;
+                // Keep collectible within bounds after speed reversal
+                if (this.x < this.segment.leftWall) {
+                    this.x = this.segment.leftWall;
+                } else if (this.x + this.width > this.segment.leftWall + this.segment.width) {
+                    this.x = this.segment.leftWall + this.segment.width - this.width;
+                }
             }
         }
     }
