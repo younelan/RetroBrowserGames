@@ -31,8 +31,27 @@ export class Collectible {
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.type === 'fuel' ? '#ff0' : '#f00'; // Yellow for fuel, red for points
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        if (this.type === 'fuel') {
+            // Draw split-colored fuel cell
+            // Top half - white
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(this.x, this.y, this.width, this.height/2);
+            
+            // Bottom half - pink
+            ctx.fillStyle = '#ffb6c1'; // Light pink
+            ctx.fillRect(this.x, this.y + this.height/2, this.width, this.height/2);
+            
+            // Draw 'F' letter
+            ctx.fillStyle = '#000';
+            ctx.font = `${this.width * 0.8}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('F', this.x + this.width/2, this.y + this.height/2);
+        } else {
+            // Points collectible remains red
+            ctx.fillStyle = '#f00';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
     }
 
     checkCollision(rect) {
