@@ -1,14 +1,33 @@
 export class Collectible {
-    constructor(x, y, type) {
+    constructor(x, y, type, segment) {
         this.x = x;
         this.y = y;
         this.type = type;
         this.width = type === 'fuel' ? 20 : 15;
         this.height = this.width;
+        this.speed = (Math.random() - 0.5) * 4;
+        this.segment = segment; // Add segment reference
+    }
+
+    update() {
+        this.y += this.segment.game.scrollSpeed;
+        this.x += this.speed;
+        
+        // Keep within corridor bounds
+        if (this.x < this.segment.leftWall || 
+            this.x + this.width > this.segment.leftWall + this.segment.width) {
+            this.speed *= -1;
+            // Keep collectible within bounds after speed reversal
+            if (this.x < this.segment.leftWall) {
+                this.x = this.segment.leftWall;
+            } else if (this.x + this.width > this.segment.leftWall + this.segment.width) {
+                this.x = this.segment.leftWall + this.segment.width - this.width;
+            }
+        }
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.type === 'fuel' ? '#0f0' : '#ff0';
+        ctx.fillStyle = this.type === 'fuel' ? '#ff0' : '#f00'; // Yellow for fuel, red for points
         ctx.fillRect(this.x, this.y, this.width, this.height);
     }
 

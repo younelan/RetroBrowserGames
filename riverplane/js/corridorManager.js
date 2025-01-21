@@ -67,15 +67,17 @@ export class CorridorManager {
             segment.collectibles.push(new Collectible(
                 segment.leftWall + Math.random() * (segment.width - 20),
                 segment.y,
-                'fuel'
+                'fuel',
+                segment // Pass segment reference
             ));
         }
 
         if (Math.random() < 0.2) {  // Points
             segment.collectibles.push(new Collectible(
                 segment.leftWall + Math.random() * (segment.width - 15),
-                segment.y,
-                'points'
+                segment.y - this.segmentHeight / 2,
+                'points',
+                segment // Pass segment reference
             ));
         }
     }
@@ -101,6 +103,7 @@ export class CorridorManager {
         this.segments.forEach(segment => {
             segment.y += this.game.scrollSpeed;
             segment.enemies.forEach(enemy => enemy.update());
+            segment.collectibles.forEach(collectible => collectible.update());
 
             // Check collisions with player
             const playerHitbox = this.game.player.getHitbox();
@@ -131,7 +134,7 @@ export class CorridorManager {
             this.addSegment();
         }
 
-        // Check bullet collisions with enemies
+        // Check bullet collisions with enemies and collectibles
         this.segments.forEach(segment => {
             segment.enemies = segment.enemies.filter(enemy => {
                 const enemyHit = this.game.player.bullets.some((bullet, bulletIndex) => {
@@ -143,6 +146,22 @@ export class CorridorManager {
                     return false;
                 });
                 return !enemyHit;
+            });
+
+            segment.collectibles = segment.collectibles.filter(collectible => {
+                const collectibleHit = this.game.player.bullets.some((bullet, bulletIndex) => {
+                    if (collectible.checkCollision(bullet)) {
+                        this.game.player.bullets.splice(bulletIndex, 1);
+                        if (collectible.type === 'fuel') {
+                            this.game.player.fuel = Math.min(100, this.game.player.fuel + 30);
+                        } else {
+                            this.game.score += 100;
+                        }
+                        return true;
+                    }
+                    return false;
+                });
+                return !collectibleHit;
             });
         });
 
