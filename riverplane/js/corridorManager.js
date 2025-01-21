@@ -12,6 +12,7 @@ export class CorridorManager {
         this.maxWidth = isMobile ? this.game.width * 0.8 : 400;
         this.currentDirection = 1;
         this.directionChangeChance = 0.02;
+        this.stepSize = 30; // Define consistent step size for walls and enemies
     }
 
     initCorridor() {
@@ -32,17 +33,19 @@ export class CorridorManager {
                 this.currentDirection *= -1;
             }
 
-            const movement = this.currentDirection * 30;
-            width = lastSegment.width + (Math.random() - 0.5) * 20;
+            // Use consistent step size
+            const movement = this.currentDirection * this.stepSize;
+            width = lastSegment.width + (Math.random() - 0.5) * this.stepSize;
             width = Math.max(this.minWidth, Math.min(this.maxWidth, width));
             leftWall = lastSegment.leftWall + movement;
 
-            if (leftWall + width > this.game.width - 50) {
+            // Use consistent step size for boundaries
+            if (leftWall + width > this.game.width - this.stepSize) {
                 this.currentDirection = -1;
-                leftWall = this.game.width - width - 50;
-            } else if (leftWall < 50) {
+                leftWall = this.game.width - width - this.stepSize;
+            } else if (leftWall < this.stepSize) {
                 this.currentDirection = 1;
-                leftWall = 50;
+                leftWall = this.stepSize;
             }
         }
 

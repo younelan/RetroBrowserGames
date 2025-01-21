@@ -64,6 +64,9 @@ export class InputManager {
         // Reset touch controls
         this.resetTouchControls();
 
+        // Always shoot in any zone
+        this.touchControls.shoot = true;
+
         // Horizontal controls
         if (horizontalSection === 0) {
             this.touchControls.left = true;
@@ -76,11 +79,6 @@ export class InputManager {
             this.touchControls.up = true;
         } else if (verticalSection === 2) {
             this.touchControls.down = true;
-        }
-
-        // Center section shoots
-        if (horizontalSection === 1) {
-            this.touchControls.shoot = true;
         }
     }
 
