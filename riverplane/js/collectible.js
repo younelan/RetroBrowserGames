@@ -42,6 +42,7 @@ export class Collectible {
     collect(game) {
         if (this.type === 'fuel') {
             game.player.fuel = Math.min(100, game.player.fuel + 30);
+            game.score += 50; // Add points for collecting fuel
         } else {
             game.score += 100;
         }
