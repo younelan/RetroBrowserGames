@@ -104,19 +104,49 @@ export class Game {
         this.ctx.fillText(`Score: ${this.score}`, 10, 120);
         this.ctx.fillText(`Progress: ${Math.floor((this.distance % this.levelDistance) / this.levelDistance * 100)}%`, 10, 150);
 
-        if (this.gameOver) {
+        if (this.gameOver || this.gameWon) {
             this.ctx.fillStyle = '#fff';
             this.ctx.font = '40px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('GAME OVER', this.width/2, this.height/2);
-        } else if (this.gameWon) {
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '40px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText('YOU WIN!', this.width/2, this.height/2);
+            this.ctx.fillText(this.gameOver ? 'GAME OVER' : 'YOU WIN!', this.width / 2, this.height / 2);
             this.ctx.font = '24px Arial';
-            this.ctx.fillText(`Final Score: ${this.score}`, this.width/2, this.height/2 + 50);
+            this.ctx.fillText(`Final Score: ${this.score}`, this.width / 2, this.height / 2 + 50);
+
+            // Draw restart button
+            this.ctx.fillStyle = '#444';
+            this.ctx.fillRect(this.width / 2 - 75, this.height / 2 + 100, 150, 50);
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '20px Arial';
+            this.ctx.fillText('RESTART', this.width / 2, this.height / 2 + 135);
+
+            // Add event listener for restart button
+            this.canvas.addEventListener('click', this.handleRestartClick.bind(this));
         }
+    }
+
+    handleRestartClick(event) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        if (x >= this.width / 2 - 75 && x <= this.width / 2 + 75 &&
+            y >= this.height / 2 + 100 && y <= this.height / 2 + 150) {
+            this.restartGame();
+        }
+    }
+
+    restartGame() {
+        this.gameOver = false;
+        this.gameWon = false;
+        this.score = 0;
+        this.distance = 0;
+        this.currentLevel = 1;
+        this.scrollSpeed = 2;
+        this.player = new Player(this);
+        this.corridorManager = new CorridorManager(this);
+        this.corridorManager.initCorridor();
+        this.player.resetPosition();
+        this.canvas.removeEventListener('click', this.handleRestartClick.bind(this));
     }
 
     drawControls() {
