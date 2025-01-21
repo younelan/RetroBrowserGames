@@ -11,25 +11,21 @@ body {
 
 #gameContainer {
     position: relative;
-    display: flex;
-    flex-direction: column;
-    max-width: 100vw;
-    max-height: 100vh;
+    aspect-ratio: 1;
+    width: 100%;
+    max-width: 100vmin;
 }
 
 @media (orientation: landscape) {
     #gameContainer {
-        flex-direction: row;
+        max-width: 50vw;
     }
 }
 
-canvas {
+#gameCanvas {
+    width: 100%;
+    height: 100%;
     background: #111;
-}
-
-#controls {
-    position: relative;
-    background: #222;
     touch-action: none;
 }
 

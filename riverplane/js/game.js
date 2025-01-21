@@ -3,11 +3,9 @@ import { CorridorManager } from './corridorManager.js';
 import { InputManager } from './inputManager.js';
 
 export class Game {
-    constructor(canvasId, controlsId) {
+    constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
-        this.controlsCanvas = document.getElementById(controlsId);
         this.ctx = this.canvas.getContext('2d');
-        this.ctrlCtx = this.controlsCanvas.getContext('2d');
         
         this.width = 0;
         this.height = 0;
@@ -63,26 +61,10 @@ export class Game {
     }
 
     resizeGame() {
-        const isMobile = window.innerWidth <= 768;
-        const isLandscape = window.innerWidth > window.innerHeight;
-        
-        if (isMobile) {
-            // On mobile, use full width
-            this.width = window.innerWidth;
-            this.height = this.width;
-            this.controlsCanvas.width = this.width;
-            this.controlsCanvas.height = Math.min(200, window.innerHeight - this.height);
-        } else if (isLandscape) {
-            this.width = Math.min(window.innerHeight, window.innerWidth * 0.7);
-            this.height = this.width;
-            this.controlsCanvas.width = window.innerWidth - this.width;
-            this.controlsCanvas.height = this.height;
-        } else {
-            this.width = Math.min(window.innerWidth, window.innerHeight * 0.7);
-            this.height = this.width;
-            this.controlsCanvas.width = this.width;
-            this.controlsCanvas.height = window.innerHeight - this.height;
-        }
+        // Make the game canvas square
+        const size = Math.min(window.innerWidth, window.innerHeight);
+        this.width = size;
+        this.height = size;
         
         this.canvas.width = this.width;
         this.canvas.height = this.height;
@@ -111,7 +93,6 @@ export class Game {
         this.corridorManager.draw();
         this.player.draw();
         this.drawHUD();
-        this.drawControls();
     }
 
     drawHUD() {
@@ -131,6 +112,10 @@ export class Game {
         this.ctx.fillText(`Progress: ${progressDisplay}%`, 10, 150);
 
         if (this.gameOver || this.gameWon) {
+            // Add semi-transparent background
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.width, this.height);
+
             // Center message
             const messageY = this.height * 0.4;
             this.ctx.fillStyle = '#fff';
@@ -238,23 +223,6 @@ export class Game {
             this.canvas.removeEventListener('click', this.handleRestartClick.bind(this));
             this.canvas.removeEventListener('touchend', this.handleRestartTouch.bind(this));
             this.restartListenersAdded = false;
-        }
-    }
-
-    drawControls() {
-        this.ctrlCtx.fillStyle = '#222';
-        this.ctrlCtx.fillRect(0, 0, this.controlsCanvas.width, this.controlsCanvas.height);
-        
-        this.ctrlCtx.fillStyle = '#444';
-        this.ctrlCtx.font = '20px Arial';
-        this.ctrlCtx.textAlign = 'center';
-        
-        const isVertical = this.controlsCanvas.width < this.controlsCanvas.height;
-        if (isVertical) {
-            this.ctrlCtx.fillText('← LEFT', this.controlsCanvas.width * 0.25, this.controlsCanvas.height/2);
-            this.ctrlCtx.fillText('RIGHT →', this.controlsCanvas.width * 0.75, this.controlsCanvas.height/2);
-        } else {
-            this.ctrlCtx.fillText('← LEFT | RIGHT →', this.controlsCanvas.width/2, this.controlsCanvas.height/2);
         }
     }
 

@@ -8,11 +8,6 @@ export class InputManager {
             ArrowDown: false,
             Space: false
         };
-        this.touch = {
-            moving: false,
-            x: 0,
-            y: 0
-        };
         this.touchControls = {
             left: false,
             right: false,
@@ -43,24 +38,7 @@ export class InputManager {
             }
         });
         
-        // Touch controls
-        this.game.controlsCanvas.addEventListener('touchstart', this.handleTouch.bind(this));
-        this.game.controlsCanvas.addEventListener('touchmove', this.handleTouch.bind(this));
-        this.game.controlsCanvas.addEventListener('touchend', () => {
-            this.touch.moving = false;
-        });
-    }
-
-    handleTouch(e) {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const rect = this.game.controlsCanvas.getBoundingClientRect();
-        this.touch.moving = true;
-        this.touch.x = touch.clientX - rect.left;
-
-        const horizontalSection = Math.floor((touch.clientX - rect.left) / (rect.width / 3));
-        const verticalSection = Math.floor((touch.clientY - rect.top) / (rect.height / 3));
-        this.handleGameAreaTouch(horizontalSection, verticalSection);
+        // Touch controls now handled directly by game canvas
     }
 
     handleGameAreaTouch(horizontalSection, verticalSection) {
