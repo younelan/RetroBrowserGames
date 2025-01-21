@@ -26,7 +26,7 @@ export class Game {
         window.addEventListener('resize', this.resizeGame);
 
         this.currentLevel = 1;
-        this.maxLevels = 3;
+        this.maxLevels = 5;
         this.levelDistance = 2000; // Increase distance needed per level
         this.levelCompleted = false;
 
