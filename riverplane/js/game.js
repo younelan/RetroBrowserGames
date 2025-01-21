@@ -70,6 +70,7 @@ export class Game {
         this.distance += this.scrollSpeed;
         if (this.distance >= this.levelDistance * this.currentLevel) {
             this.levelCompleted = true;
+            this.score += 200; // Add points for passing a level
             if (this.currentLevel >= this.maxLevels) {
                 this.gameWon = true;
             } else {
@@ -117,7 +118,7 @@ export class Game {
             this.ctx.fillRect(this.width / 2 - 75, this.height / 2 + 100, 150, 50);
             this.ctx.fillStyle = '#fff';
             this.ctx.font = '20px Arial';
-            this.ctx.fillText('RESTART', this.width / 2, this.height / 2 + 135);
+               this.ctx.fillText('RESTART', this.width / 2, this.height / 2 + 135);
 
             // Add event listener for restart button
             this.canvas.addEventListener('click', this.handleRestartClick.bind(this));
