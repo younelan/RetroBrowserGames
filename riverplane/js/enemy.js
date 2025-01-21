@@ -2,8 +2,8 @@ export class Enemy {
     constructor(x, y, segment) {
         this.x = x;
         this.y = y;
-        this.width = 25;
-        this.height = 25;
+        this.width = 40; // Wider than before
+        this.height = 20; // Shorter than before
         // Adjust speed range to be more consistent
         const minSpeed = segment.game.corridorManager.stepSize * 2;
         const maxSpeed = segment.game.corridorManager.stepSize * 4;
@@ -35,8 +35,52 @@ export class Enemy {
     }
 
     draw(ctx) {
-        ctx.fillStyle = '#f00';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        // Save context state
+        ctx.save();
+        
+        // Move to enemy position and flip based on direction
+        ctx.translate(this.x + this.width/2, this.y + this.height/2);
+        const facingLeft = this.speed < 0;
+        if (facingLeft) {
+            ctx.scale(-1, 1);
+        }
+
+        // Draw boat
+        // Hull (dark brown)
+        ctx.fillStyle = '#8B4513';
+        ctx.beginPath();
+        ctx.moveTo(-this.width/2, this.height/3);
+        ctx.lineTo(-this.width/3, this.height/2);
+        ctx.lineTo(this.width/3, this.height/2);
+        ctx.lineTo(this.width/2, this.height/3);
+        ctx.lineTo(this.width/3, 0);
+        ctx.lineTo(-this.width/3, 0);
+        ctx.closePath();
+        ctx.fill();
+
+        // Cabin (lighter brown)
+        ctx.fillStyle = '#DEB887';
+        ctx.beginPath();
+        ctx.rect(-this.width/4, -this.height/3, this.width/2, this.height/3);
+        ctx.fill();
+
+        // Windows (black)
+        ctx.fillStyle = '#000';
+        const windowWidth = this.width/8;
+        const windowHeight = this.height/6;
+        const windowSpacing = windowWidth * 1.5;
+        const startX = -windowSpacing;
+        
+        for (let i = 0; i < 3; i++) {
+            ctx.fillRect(
+                startX + (i * windowSpacing),
+                -this.height/4,
+                windowWidth,
+                windowHeight
+            );
+        }
+
+        ctx.restore();
     }
 
     checkCollision(rect) {
