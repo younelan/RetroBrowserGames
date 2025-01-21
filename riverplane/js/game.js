@@ -165,6 +165,11 @@ export class Game {
     }
 
     handleRestartClick(event) {
+        // Only process restart click if game is over
+        if (!this.gameOver && !this.gameWon) {
+            return;
+        }
+
         const rect = this.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
@@ -181,6 +186,11 @@ export class Game {
     }
 
     handleRestartTouch(event) {
+        // Only process restart touch if game is over
+        if (!this.gameOver && !this.gameWon) {
+            return;
+        }
+
         event.preventDefault();
         const rect = this.canvas.getBoundingClientRect();
         const touch = event.changedTouches[0];
@@ -227,6 +237,11 @@ export class Game {
     }
 
     handleGameTouch(e) {
+        // Don't process game touches if game is over
+        if (this.gameOver || this.gameWon) {
+            return;
+        }
+
         e.preventDefault();
         const touch = e.touches[0];
         const rect = this.canvas.getBoundingClientRect();
