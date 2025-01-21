@@ -52,7 +52,8 @@ export class CorridorManager {
                 0,
             collectibles: [],
             enemies: [],
-            game: this.game  // Add game reference to segment
+            game: this.game,  // Add game reference to segment
+            isFinishLine: false
         };
 
         // Add collectibles and enemies
@@ -126,6 +127,40 @@ export class CorridorManager {
                 }
                 return true;
             });
+
+            // Check collision with finish line
+            if (segment.isFinishLine && segment.y + this.segmentHeight > this.game.player.y) {
+                if (this.game.player.getHitbox().y < segment.y + this.segmentHeight) {
+                    this.game.player.lives--;
+                    if (this.game.player.lives <= 0) {
+                        this.game.gameOver = true;
+                    } else {
+                        this.game.player.resetPosition();
+                    }
+                }
+            }
+
+            // Check bullet collision with finish line (bridge)
+            if (segment.isFinishLine) {
+                this.game.player.bullets.forEach((bullet, bulletIndex) => {
+                    if (bullet.y < segment.y + this.segmentHeight && 
+                        bullet.x > segment.leftWall && 
+                        bullet.x < segment.leftWall + segment.width) {
+                        this.game.player.bullets.splice(bulletIndex, 1);
+                        segment.isFinishLine = false; // Bridge is destroyed
+                        this.game.score += 200; // Add points for completing level
+                        
+                        if (this.game.currentLevel >= this.game.maxLevels) {
+                            this.game.gameWon = true;
+                        } else {
+                            this.game.currentLevel++;
+                            this.game.corridorManager.initCorridor();
+                            this.game.player.resetPosition();
+                            this.game.scrollSpeed += 0.5;
+                        }
+                    }
+                });
+            }
         });
 
         // Remove off-screen segments and add new ones
@@ -164,6 +199,26 @@ export class CorridorManager {
                 });
                 return !collectibleHit;
             });
+
+            // Check bullet collision with finish line
+            if (segment.isFinishLine) {
+                const finishLineHit = this.game.player.bullets.some((bullet, bulletIndex) => {
+                    if (bullet.y < segment.y + this.segmentHeight) {
+                        this.game.player.bullets.splice(bulletIndex, 1);
+                        segment.isFinishLine = false;
+                        this.game.score += 200; // Add points for passing a level
+                        if (this.game.currentLevel >= this.game.maxLevels) {
+                            this.game.gameWon = true;
+                        } else {
+                            this.game.currentLevel++;
+                            this.game.player.resetPosition();
+                            this.game.scrollSpeed += 0.5;
+                        }
+                        return true;
+                    }
+                    return false;
+                });
+            }
         });
 
         // Check collision with corridor walls
@@ -195,11 +250,79 @@ export class CorridorManager {
         });
 
         // Check for level completion
-        if (this.game.score >= this.game.levelTarget) {
-            this.game.level++;
-            this.game.score = 0;
-            this.game.levelTarget += 200;
+        if (this.game.distance >= this.game.levelDistance * this.game.currentLevel && 
+            !this.segments.some(seg => seg.isFinishLine)) {
+            // Add a bridge at the end of the level
+            const lastSegment = this.segments[this.segments.length - 1];
+            const bridgeSegment = {
+                leftWall: lastSegment.leftWall,
+                width: lastSegment.width,
+                y: lastSegment.y - this.segmentHeight,
+                collectibles: [],
+                enemies: [],
+                game: this.game,
+                isFinishLine: true
+            };
+            this.segments.push(bridgeSegment);
+        }
+
+        // Remove all game over checks here and only keep lives check
+        if (this.game.player.lives <= 0) {
+            this.game.gameOver = true;
+            return;
+        }
+
+        // Check for level completion and add bridge
+        if (this.game.distance >= this.game.levelDistance * this.game.currentLevel && 
+            !this.segments.some(seg => seg.isFinishLine)) {
+            
+            // Add bridge segment at current position
+            const lastSegment = this.segments[this.segments.length - 1];
+            const bridgeSegment = {
+                leftWall: lastSegment.leftWall,
+                width: lastSegment.width,
+                y: lastSegment.y - this.segmentHeight,
+                collectibles: [],
+                enemies: [],
+                game: this.game,
+                isFinishLine: true
+            };
+            this.segments.push(bridgeSegment);
+        }
+
+        // Handle bridge collision and shooting
+        this.segments.forEach(segment => {
+            if (segment.isFinishLine) {
+                // Check player collision with bridge
+                if (this.game.player.getHitbox().y < segment.y + this.segmentHeight &&
+                    this.game.player.getHitbox().y + this.game.player.height > segment.y) {
+                    this.game.player.lives--;
+                    this.handleLevelComplete();
+                }
+
+                // Check bullets hitting bridge
+                this.game.player.bullets = this.game.player.bullets.filter(bullet => {
+                    if (bullet.y < segment.y + this.segmentHeight &&
+                        bullet.x > segment.leftWall &&
+                        bullet.x < segment.leftWall + segment.width) {
+                        this.handleLevelComplete();
+                        return false;
+                    }
+                    return true;
+                });
+            }
+        });
+    }
+
+    handleLevelComplete() {
+        if (this.game.currentLevel >= this.game.maxLevels) {
+            this.game.gameWon = true;
+        } else {
+            this.game.currentLevel++;
+            this.game.score += 200;
             this.game.scrollSpeed += 0.5;
+            this.initCorridor();
+            this.game.player.resetPosition();
         }
     }
 
@@ -223,6 +346,33 @@ export class CorridorManager {
                 this.game.width - (segment.leftWall + segment.width),
                 this.segmentHeight
             );
+
+            // Draw finish line
+            if (segment.isFinishLine) {
+                this.game.ctx.fillStyle = '#f00';
+                for (let i = 0; i < 3; i++) {
+                    this.game.ctx.fillRect(
+                        segment.leftWall,
+                        segment.y + (i * this.segmentHeight/3),
+                        segment.width,
+                        this.segmentHeight/9
+                    );
+                }
+            }
+
+            // Draw bridge (finish line)
+            if (segment.isFinishLine) {
+                // Draw red and white striped bridge
+                for (let i = 0; i < 6; i++) {
+                    this.game.ctx.fillStyle = i % 2 === 0 ? '#f00' : '#fff';
+                    this.game.ctx.fillRect(
+                        segment.leftWall,
+                        segment.y + (i * this.segmentHeight/6),
+                        segment.width,
+                        this.segmentHeight/6
+                    );
+                }
+            }
 
             // Draw collectibles and enemies
             segment.collectibles.forEach(collectible => collectible.draw(this.game.ctx));

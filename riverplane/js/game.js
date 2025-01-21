@@ -67,21 +67,8 @@ export class Game {
         this.player.update();
         this.corridorManager.update();
         
-        // Update distance and check level completion
+        // Only update distance, level completion is handled in CorridorManager
         this.distance += this.scrollSpeed;
-        if (this.distance >= this.levelDistance * this.currentLevel) {
-            this.levelCompleted = true;
-            this.score += 200; // Add points for passing a level
-            if (this.currentLevel >= this.maxLevels) {
-                this.gameWon = true;
-            } else {
-                this.currentLevel++;
-                this.corridorManager.initCorridor(this.currentLevel);
-                this.player.resetPosition();
-                // Increase difficulty with each level
-                this.scrollSpeed += 0.5;
-            }
-        }
     }
 
     draw() {
@@ -154,6 +141,7 @@ export class Game {
         this.scrollSpeed = 2;
         this.player = new Player(this);
         this.corridorManager = new CorridorManager(this);
+        this.levelCompleted = false;
         this.corridorManager.initCorridor();
         this.player.resetPosition();
         this.canvas.removeEventListener('click', this.handleRestartClick.bind(this));
