@@ -29,6 +29,13 @@ export class Game {
         this.lastTime = performance.now();
         this.fixedTimeStep = 1000 / 60; // Target 60 FPS
 
+        this.buttonArea = {
+            x: 0,
+            y: 0,
+            width: 150,
+            height: 50
+        };
+
         this.init();
     }
 
@@ -124,30 +131,51 @@ export class Game {
         this.ctx.fillText(`Progress: ${progressDisplay}%`, 10, 150);
 
         if (this.gameOver || this.gameWon) {
+            // Center message
+            const messageY = this.height * 0.4;
             this.ctx.fillStyle = '#fff';
-            this.ctx.font = '40px Arial';
+            this.ctx.font = Math.floor(this.width * 0.08) + 'px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(this.gameOver ? 'GAME OVER' : 'YOU WIN!', this.width / 2, this.height / 2);
-            this.ctx.font = '24px Arial';
-            this.ctx.fillText(`Final Score: ${this.score}`, this.width / 2, this.height / 2 + 50);
+            this.ctx.fillText(this.gameOver ? 'GAME OVER' : 'YOU WIN!', this.width / 2, messageY);
 
-            // Check and update high score
+            // Score
+            this.ctx.font = Math.floor(this.width * 0.05) + 'px Arial';
+            this.ctx.fillText(`Final Score: ${this.score}`, this.width / 2, messageY + 50);
+
+            // High score
             if (this.score > this.highScore) {
                 this.highScore = this.score;
                 localStorage.setItem('rivergame', this.highScore);
             }
-            this.ctx.fillStyle = this.score >= this.highScore ? '#ff0' : '#fff'; // Yellow for new high score
-            this.ctx.fillText(`High Score: ${this.highScore}`, this.width / 2, this.height / 2 + 100);
+            this.ctx.fillStyle = this.score >= this.highScore ? '#ff0' : '#fff';
+            this.ctx.fillText(`High Score: ${this.highScore}`, this.width / 2, messageY + 100);
 
-            // Draw restart button
+            // Draw restart button - scale with screen size
+            this.buttonArea = {
+                width: Math.min(150, this.width * 0.4),
+                height: Math.min(50, this.height * 0.1)
+            };
+            this.buttonArea.x = this.width / 2 - this.buttonArea.width / 2;
+            this.buttonArea.y = messageY + 150;
+
             this.ctx.fillStyle = '#444';
-            this.ctx.fillRect(this.width / 2 - 75, this.height / 2 + 150, 150, 50);
-            this.ctx.fillStyle = '#fff';
-            this.ctx.font = '20px Arial';
-            this.ctx.fillText('RESTART', this.width / 2, this.height / 2 + 185);
+            this.ctx.fillRect(
+                this.buttonArea.x,
+                this.buttonArea.y,
+                this.buttonArea.width,
+                this.buttonArea.height
+            );
 
-            // Add event listener for restart button
-            this.canvas.addEventListener('click', this.handleRestartClick.bind(this));
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = Math.floor(this.width * 0.04) + 'px Arial';
+            this.ctx.fillText('RESTART', this.width / 2, this.buttonArea.y + this.buttonArea.height * 0.65);
+
+            // Add event listeners if not already added
+            if (!this.restartListenersAdded) {
+                this.canvas.addEventListener('click', this.handleRestartClick.bind(this));
+                this.canvas.addEventListener('touchend', this.handleRestartTouch.bind(this));
+                this.restartListenersAdded = true;
+            }
         }
     }
 
@@ -155,11 +183,41 @@ export class Game {
         const rect = this.canvas.getBoundingClientRect();
         const x = event.clientX - rect.left;
         const y = event.clientY - rect.top;
+        
+        // Scale coordinates to canvas
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        const canvasX = x * scaleX;
+        const canvasY = y * scaleY;
 
-        if (x >= this.width / 2 - 75 && x <= this.width / 2 + 75 &&
-            y >= this.height / 2 + 100 && y <= this.height / 2 + 150) {
+        if (this.isInsideButton(canvasX, canvasY)) {
             this.restartGame();
         }
+    }
+
+    handleRestartTouch(event) {
+        event.preventDefault();
+        const rect = this.canvas.getBoundingClientRect();
+        const touch = event.changedTouches[0];
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+        
+        // Scale coordinates to canvas
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        const canvasX = x * scaleX;
+        const canvasY = y * scaleY;
+
+        if (this.isInsideButton(canvasX, canvasY)) {
+            this.restartGame();
+        }
+    }
+
+    isInsideButton(x, y) {
+        return x >= this.buttonArea.x &&
+               x <= this.buttonArea.x + this.buttonArea.width &&
+               y >= this.buttonArea.y &&
+               y <= this.buttonArea.y + this.buttonArea.height;
     }
 
     restartGame() {
@@ -174,7 +232,13 @@ export class Game {
         this.levelCompleted = false;
         this.corridorManager.initCorridor();
         this.player.resetPosition();
-        this.canvas.removeEventListener('click', this.handleRestartClick.bind(this));
+        
+        // Remove event listeners
+        if (this.restartListenersAdded) {
+            this.canvas.removeEventListener('click', this.handleRestartClick.bind(this));
+            this.canvas.removeEventListener('touchend', this.handleRestartTouch.bind(this));
+            this.restartListenersAdded = false;
+        }
     }
 
     drawControls() {
