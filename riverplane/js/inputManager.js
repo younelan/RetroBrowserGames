@@ -13,6 +13,13 @@ export class InputManager {
             x: 0,
             y: 0
         };
+        this.touchControls = {
+            left: false,
+            right: false,
+            up: false,
+            down: false,
+            shoot: false
+        };
 
         this.initListeners();
     }
@@ -35,7 +42,7 @@ export class InputManager {
         
         // Touch controls
         this.game.controlsCanvas.addEventListener('touchstart', this.handleTouch.bind(this));
-this.game.controlsCanvas.addEventListener('touchmove', this.handleTouch.bind(this));
+        this.game.controlsCanvas.addEventListener('touchmove', this.handleTouch.bind(this));
         this.game.controlsCanvas.addEventListener('touchend', () => {
             this.touch.moving = false;
         });
@@ -47,26 +54,59 @@ this.game.controlsCanvas.addEventListener('touchmove', this.handleTouch.bind(thi
         const rect = this.game.controlsCanvas.getBoundingClientRect();
         this.touch.moving = true;
         this.touch.x = touch.clientX - rect.left;
+
+        const horizontalSection = Math.floor((touch.clientX - rect.left) / (rect.width / 3));
+        const verticalSection = Math.floor((touch.clientY - rect.top) / (rect.height / 3));
+        this.handleGameAreaTouch(horizontalSection, verticalSection);
+    }
+
+    handleGameAreaTouch(horizontalSection, verticalSection) {
+        // Reset touch controls
+        this.resetTouchControls();
+
+        // Horizontal controls
+        if (horizontalSection === 0) {
+            this.touchControls.left = true;
+        } else if (horizontalSection === 2) {
+            this.touchControls.right = true;
+        }
+
+        // Vertical controls
+        if (verticalSection === 0) {
+            this.touchControls.up = true;
+        } else if (verticalSection === 2) {
+            this.touchControls.down = true;
+        }
+
+        // Center section shoots
+        if (horizontalSection === 1) {
+            this.touchControls.shoot = true;
+        }
+    }
+
+    resetTouchControls() {
+        Object.keys(this.touchControls).forEach(key => {
+            this.touchControls[key] = false;
+        });
     }
 
     isMovingLeft() {
-        return this.keys.ArrowLeft || 
-               (this.touch.moving && this.touch.x < this.game.controlsCanvas.width / 2);
+        return this.keys.ArrowLeft || this.touchControls.left;
     }
 
     isMovingRight() {
-        return this.keys.ArrowRight || 
-               (this.touch.moving && this.touch.x >= this.game.controlsCanvas.width / 2);
+        return this.keys.ArrowRight || this.touchControls.right;
     }
+
     isMovingUp() {
-        return this.keys.ArrowUp;
+        return this.keys.ArrowUp || this.touchControls.up;
     }
 
     isMovingDown() {
-        return this.keys.ArrowDown;
+        return this.keys.ArrowDown || this.touchControls.down;
     }
 
     isShooting() {
-        return this.keys.Space;
+        return this.keys.Space || this.touchControls.shoot;
     }
 }

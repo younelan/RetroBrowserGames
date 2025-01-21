@@ -38,12 +38,26 @@ export class Game {
         this.corridorManager.initCorridor();
         this.highScore = localStorage.getItem('rivergame') || 0;
         this.gameLoop();
+
+        // Add touch event listeners for the game canvas
+        this.canvas.addEventListener('touchstart', this.handleGameTouch.bind(this));
+        this.canvas.addEventListener('touchmove', this.handleGameTouch.bind(this));
+        this.canvas.addEventListener('touchend', () => {
+            this.inputManager.resetTouchControls();
+        });
     }
 
     resizeGame() {
+        const isMobile = window.innerWidth <= 768;
         const isLandscape = window.innerWidth > window.innerHeight;
         
-        if (isLandscape) {
+        if (isMobile) {
+            // On mobile, use full width
+            this.width = window.innerWidth;
+            this.height = this.width;
+            this.controlsCanvas.width = this.width;
+            this.controlsCanvas.height = Math.min(200, window.innerHeight - this.height);
+        } else if (isLandscape) {
             this.width = Math.min(window.innerHeight, window.innerWidth * 0.7);
             this.height = this.width;
             this.controlsCanvas.width = window.innerWidth - this.width;
@@ -162,6 +176,20 @@ export class Game {
         } else {
             this.ctrlCtx.fillText('← LEFT | RIGHT →', this.controlsCanvas.width/2, this.controlsCanvas.height/2);
         }
+    }
+
+    handleGameTouch(e) {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const rect = this.canvas.getBoundingClientRect();
+        const x = touch.clientX - rect.left;
+        const y = touch.clientY - rect.top;
+
+        // Calculate which third of the screen was touched
+        const horizontalSection = Math.floor(x / (this.width / 3));
+        const verticalSection = Math.floor(y / (this.height / 3));
+
+        this.inputManager.handleGameAreaTouch(horizontalSection, verticalSection);
     }
 
     gameLoop = () => {

@@ -33,3 +33,19 @@ canvas {
     touch-action: none;
 }
 
+@media (max-width: 768px) {
+    #gameContainer {
+        width: 100vw;
+        flex-direction: column;
+    }
+
+    canvas {
+        width: 100%;
+        height: auto;
+    }
+
+    #controls {
+        height: 150px;
+    }
+}
+
