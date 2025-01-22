@@ -78,6 +78,7 @@ export class GameUI {
         if (!this.game.gameActive && (this.game.lives <= 0 || this.game.checkLevelComplete())) {
             this.game.resetGame();
             this.game.initialize();
+            this.game.start();  // Add this line to start the game
             return;
         }
 
