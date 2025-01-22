@@ -383,5 +383,15 @@ export class MonsterGame {
         
         // Reset level data
         this.levels = this.parseLevels(this.originalLevels);  // We need to add originalLevels property
+        
+        // Update button text back to Start
+        const button = document.getElementById('startStopButton');
+        button.textContent = this.translator.translate("Start");
+        
+        // Clear any existing message
+        document.getElementById('message').innerHTML = "";
+        
+        // Initialize the level
+        this.initializeLevel();
     }
 }

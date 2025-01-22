@@ -3,6 +3,7 @@ export class GameUI {
         this.game = game;
         this.canvas = game.canvas;
         this.ctx = game.ctx;
+        this.endScreenHandler = null; // Add this line to track the handler
     }
 
     initialize() {
@@ -72,8 +73,16 @@ export class GameUI {
 
     handleMove(e) {
         e.preventDefault();
-        if (!this.game.gameActive || !this.isDragging) return;
+        
+        // Check if game is in end state and handle restart
+        if (!this.game.gameActive && (this.game.lives <= 0 || this.game.checkLevelComplete())) {
+            this.game.resetGame();
+            this.game.initialize();
+            return;
+        }
 
+        // Handle normal game movement
+        if (!this.game.gameActive || !this.isDragging) return;
         const coords = this.getEventCoordinates(e);
         this.updateDirection(coords.x, coords.y);
     }
@@ -252,15 +261,8 @@ export class GameUI {
         this.ctx.font = '24px Arial';
         this.ctx.fillText(`Score: ${this.game.score}`, this.canvas.width / 2, this.canvas.height / 2);
         this.ctx.fillText(`Levels Completed: ${this.game.currentLevel + 1}`, this.canvas.width / 2, this.canvas.height / 2 + 30);
-        this.ctx.fillText('Click to Restart', this.canvas.width / 2, this.canvas.height / 2 + 60);
+        this.ctx.fillText('Tap Anywhere to Restart', this.canvas.width / 2, this.canvas.height / 2 + 60);
 
         this.ctx.restore();
-
-        // Add event listener for restarting the game
-        this.canvas.addEventListener('click', () => {
-            this.game.resetGame();
-            this.game.initialize();
-            this.game.toggleGame();  // This will set gameActive to true and start the game
-        }, { once: true });
     }
 }
