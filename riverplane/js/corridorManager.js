@@ -5,7 +5,8 @@ export class CorridorManager {
     constructor(game) {
         this.game = game;
         this.segments = [];
-        this.segmentHeight = 100;
+        this.segmentHeight = 102; // Slightly increased to prevent gaps
+        this.segmentOverlap = 2;  // Amount of overlap between segments
         // For mobile, adjust corridor width
         const isMobile = window.innerWidth <= 768;
         this.minWidth = isMobile ? this.game.width * 0.4 : 200;
@@ -54,7 +55,7 @@ export class CorridorManager {
             leftWall,
             width,
             y: this.segments.length ?
-                this.segments[this.segments.length - 1].y - this.segmentHeight :
+                this.segments[this.segments.length - 1].y - (this.segmentHeight - this.segmentOverlap) : // Subtract overlap
                 0,
             collectibles: [],
             enemies: [],
@@ -342,6 +343,7 @@ export class CorridorManager {
         this.segments.forEach(segment => {
             if (!segment || typeof segment.leftWall === 'undefined') return;
 
+            // Draw elements with full segment height including overlap
             // Draw river first
             this.game.ctx.fillStyle = '#00f';
             this.game.ctx.fillRect(
