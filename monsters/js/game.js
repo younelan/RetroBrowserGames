@@ -17,10 +17,45 @@ document.addEventListener('DOMContentLoaded', () => {
     game.initialize();
     game.start();
     
-    // Set up canvas click handler
-    canvas.addEventListener('click', (e) => {
-        console.log('Canvas clicked');
-        game.ui.handleClick(e);
+    // Set up canvas event handlers
+    canvas.addEventListener('mousedown', (e) => {
+        console.log('Canvas mousedown');
+        game.ui.isDragging = true;
+        game.ui.handleMove(e);
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (game.ui.isDragging) {
+            game.ui.handleMove(e);
+        }
+    });
+
+    canvas.addEventListener('mouseup', (e) => {
+        game.ui.handleEnd(e);
+    });
+
+    canvas.addEventListener('mouseleave', (e) => {
+        game.ui.handleEnd(e);
+    });
+
+    canvas.addEventListener('touchstart', (e) => {
+        console.log('Canvas touchstart');
+        game.ui.isDragging = true;
+        game.ui.handleMove(e);
+    });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (game.ui.isDragging) {
+            game.ui.handleMove(e);
+        }
+    });
+
+    canvas.addEventListener('touchend', (e) => {
+        game.ui.handleEnd(e);
+    });
+
+    canvas.addEventListener('touchcancel', (e) => {
+        game.ui.handleEnd(e);
     });
 
     // Set up button

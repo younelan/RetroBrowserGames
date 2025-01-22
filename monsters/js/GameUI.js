@@ -47,7 +47,6 @@ export class GameUI {
     }
 
     setupTouchControls() {
-        this.handleClick = this.handleClick.bind(this);
         this.handleMove = this.handleMove.bind(this);
         this.handleEnd = this.handleEnd.bind(this);
         this.isDragging = false;
@@ -55,7 +54,7 @@ export class GameUI {
         // Mouse events
         this.canvas.addEventListener('mousedown', (e) => {
             this.isDragging = true;
-            this.handleClick(e);
+            this.handleMove(e);  // Change direction immediately
         });
         
         this.canvas.addEventListener('mousemove', (e) => {
@@ -70,7 +69,7 @@ export class GameUI {
         // Touch events
         this.canvas.addEventListener('touchstart', (e) => {
             this.isDragging = true;
-            this.handleClick(e);
+            this.handleMove(e);  // Change direction immediately
         });
         
         this.canvas.addEventListener('touchmove', (e) => {
@@ -86,14 +85,6 @@ export class GameUI {
     handleMove(e) {
         e.preventDefault();
         if (!this.game.gameActive || !this.isDragging) return;
-
-        const coords = this.getEventCoordinates(e);
-        this.updateDirection(coords.x, coords.y);
-    }
-
-    handleClick(e) {
-        e.preventDefault();
-        if (!this.game.gameActive) return;
 
         const coords = this.getEventCoordinates(e);
         this.updateDirection(coords.x, coords.y);
@@ -137,11 +128,11 @@ export class GameUI {
     }
 
     removeEventListeners() {
-        this.canvas.removeEventListener('touchstart', this.handleClick);
+        this.canvas.removeEventListener('touchstart', this.handleMove);
         this.canvas.removeEventListener('touchmove', this.handleMove);
         this.canvas.removeEventListener('touchend', this.handleEnd);
         this.canvas.removeEventListener('touchcancel', this.handleEnd);
-        this.canvas.removeEventListener('mousedown', this.handleClick);
+        this.canvas.removeEventListener('mousedown', this.handleMove);
         this.canvas.removeEventListener('mousemove', this.handleMove);
         this.canvas.removeEventListener('mouseup', this.handleEnd);
         this.canvas.removeEventListener('mouseleave', this.handleEnd);
