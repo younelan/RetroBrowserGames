@@ -7,6 +7,7 @@ export class Monster {
         this.direction = 'left';
         this.lastX = x;  // Add last position tracking like Player
         this.lastY = y;
+        this.eyeOffsetStep = 0;  // For eye animation
     }
 
     move(deltaTime, cellSize) {
@@ -23,6 +24,9 @@ export class Monster {
 
         this.x = nextX;
         this.y = nextY;
+
+        // Update eye animation step
+        this.eyeOffsetStep = (this.eyeOffsetStep + 1) % 120;  // Slower eye animation
     }
 
     changeDirection() {
@@ -31,34 +35,47 @@ export class Monster {
     }
 
     draw(ctx) {
-        // Main body
+        // Main body with 3D effect
+        const bodyGradient = ctx.createRadialGradient(
+            this.x - this.radius * 0.3,
+            this.y - this.radius * 0.3,
+            0,
+            this.x,
+            this.y,
+            this.radius
+        );
+        bodyGradient.addColorStop(0, '#ff0000');
+        bodyGradient.addColorStop(0.7, '#cc0000');
+        bodyGradient.addColorStop(1, '#990000');
+
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
-        ctx.fillStyle = '#FF0000';  // Bright red
+        ctx.fillStyle = bodyGradient;
         ctx.fill();
         
-        // Eyes
+        // Eyes with animation
         const eyeRadius = this.radius * 0.2;
         const eyeOffsetX = this.radius * 0.3;
         const eyeOffsetY = -this.radius * 0.2;
+        const eyeAnimationOffset = Math.sin(this.eyeOffsetStep / 20) * eyeRadius * 0.5;  // Slower eye animation
         
         // Left eye
         ctx.beginPath();
-        ctx.arc(this.x - eyeOffsetX, this.y + eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
+        ctx.arc(this.x - eyeOffsetX + eyeAnimationOffset, this.y + eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
         ctx.fillStyle = 'white';
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(this.x - eyeOffsetX, this.y + eyeOffsetY, eyeRadius * 0.5, 0, 2 * Math.PI);
+        ctx.arc(this.x - eyeOffsetX + eyeAnimationOffset, this.y + eyeOffsetY, eyeRadius * 0.5, 0, 2 * Math.PI);
         ctx.fillStyle = 'black';
         ctx.fill();
 
         // Right eye
         ctx.beginPath();
-        ctx.arc(this.x + eyeOffsetX, this.y + eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
+        ctx.arc(this.x + eyeOffsetX + eyeAnimationOffset, this.y + eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
         ctx.fillStyle = 'white';
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(this.x + eyeOffsetX, this.y + eyeOffsetY, eyeRadius * 0.5, 0, 2 * Math.PI);
+        ctx.arc(this.x + eyeOffsetX + eyeAnimationOffset, this.y + eyeOffsetY, eyeRadius * 0.5, 0, 2 * Math.PI);
         ctx.fillStyle = 'black';
         ctx.fill();
 

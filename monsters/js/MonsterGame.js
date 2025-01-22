@@ -220,7 +220,7 @@ export class MonsterGame {
                 const cell = this.levels[this.currentLevel][row][col];
                 if (colors[cell]) {
                     this.ctx.fillStyle = colors[cell];
-                    this.ctx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize, this.cellSize);
+                    this.ctx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize + 1, this.cellSize + 1);
                 }
             }
         }
@@ -240,11 +240,56 @@ export class MonsterGame {
         for (let row = 0; row < this.levels[this.currentLevel].length; row++) {
             for (let col = 0; col < this.levels[this.currentLevel][row].length; col++) {
                 if (this.levels[this.currentLevel][row][col] === '.') {
+                    const dotX = col * this.cellSize + this.cellSize / 2;
+                    const dotY = row * this.cellSize + this.cellSize / 2;
+                    const dotRadius = this.cellSize / 5;
+
+                    // Draw shadow
+                    const shadowGradient = this.ctx.createRadialGradient(
+                        dotX + dotRadius * 0.2,
+                        dotY + dotRadius * 0.2,
+                        0,
+                        dotX + dotRadius * 0.2,
+                        dotY + dotRadius * 0.2,
+                        dotRadius * 1.5
+                    );
+                    shadowGradient.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+                    shadowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
                     this.ctx.beginPath();
-                    this.ctx.arc(col * this.cellSize + this.cellSize / 2, row * this.cellSize + this.cellSize / 2, this.cellSize / 5, 0, 2 * Math.PI);
-                    this.ctx.fillStyle = '#fff';
+                    this.ctx.arc(dotX + dotRadius * 0.2, dotY + dotRadius * 0.2, dotRadius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = shadowGradient;
                     this.ctx.fill();
-                    this.ctx.closePath();
+
+                    // Draw main dot with stark 3D effect
+                    const gradient = this.ctx.createRadialGradient(
+                        dotX - dotRadius * 0.3,
+                        dotY - dotRadius * 0.3,
+                        0,
+                        dotX,
+                        dotY,
+                        dotRadius
+                    );
+                    gradient.addColorStop(0, '#ffffff');
+                    gradient.addColorStop(0.5, '#f0f0f0');
+                    gradient.addColorStop(1, '#808080');
+
+                    this.ctx.beginPath();
+                    this.ctx.arc(dotX, dotY, dotRadius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.fill();
+
+                    // Add bright highlight
+                    this.ctx.beginPath();
+                    this.ctx.arc(
+                        dotX - dotRadius * 0.2,
+                        dotY - dotRadius * 0.2,
+                        dotRadius * 0.4,
+                        0,
+                        Math.PI * 2
+                    );
+                    this.ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+                    this.ctx.fill();
                 }
             }
         }
