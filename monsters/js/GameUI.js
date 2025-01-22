@@ -219,10 +219,10 @@ export class GameUI {
         }
 
         const width = this.canvas.width;
-        const y = this.canvas.height - 5; // Move closer to bottom
+        const y = this.canvas.height - 10; // Move closer to bottom
         const shadowOffset = 2;
 
-        this.ctx.font = `${this.game.cellSize / 2}px Arial`;
+        this.ctx.font = `${this.game.cellSize / 1.5}px Arial`;  // Larger font size
 
         // Draw shadow layer first
         this.ctx.fillStyle = 'black';
