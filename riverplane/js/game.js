@@ -56,6 +56,7 @@ export class Game {
         this.canvas.addEventListener('touchstart', this.handleGameTouch.bind(this));
         this.canvas.addEventListener('touchmove', this.handleGameTouch.bind(this));
         this.canvas.addEventListener('touchend', () => {
+            this.inputManager.lastTouch.active = false;
             this.inputManager.resetTouchControls();
         });
     }
@@ -97,20 +98,61 @@ export class Game {
 
     drawHUD() {
         this.ctx.fillStyle = '#fff';
-        this.ctx.font = '20px Arial';
+        this.ctx.font = '16px Arial';
         this.ctx.textAlign = 'left';
         
-        this.ctx.fillText(`Level: ${this.currentLevel}/${this.maxLevels}`, 10, 30);
-        this.ctx.fillText(`Lives: ${this.player.lives}`, 10, 60);
+        const progressOffset = 8; // Offset to align bars with text vertically
         
-        // Fix NaN displays
-        const fuelDisplay = Math.max(0, Math.min(100, Math.ceil(this.player.fuel)));
-        const progressDisplay = Math.max(0, Math.min(100, Math.floor((this.distance % this.levelDistance) / this.levelDistance * 100)));
+        // Level number and Progress bar
+        this.ctx.fillText(`${this.currentLevel}`, 10, 10);
         
-        this.ctx.fillText(`Fuel: ${fuelDisplay}%`, 10, 90);
-        this.ctx.fillText(`Score: ${this.score}`, 10, 120);
-        this.ctx.fillText(`Progress: ${progressDisplay}%`, 10, 150);
+        // Progress bar aligned with level text
+        const progressPercent = Math.max(0, Math.min(100, 
+            Math.floor((this.distance % this.levelDistance) / this.levelDistance * 100)));
+        const progressBarWidth = this.width * 0.4 - 40;
+        const progressBarHeight = 15;
+        const progressX = 30;
+        const progressY = 10 - progressBarHeight + progressOffset;
 
+        // Progress bar background
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillRect(progressX, progressY, progressBarWidth, progressBarHeight);
+
+        // Progress bar fill
+        this.ctx.fillStyle = '#fff';
+        this.ctx.fillRect(progressX, progressY, progressBarWidth * (progressPercent / 100), progressBarHeight);
+
+        // Fuel label and bar
+        this.ctx.fillText('F', this.width * 0.4, 10);
+        
+        const fuelLevel = Math.max(0, Math.min(100, Math.ceil(this.player.fuel)));
+        const fuelBarWidth = this.width * 0.4 - 40;
+        const fuelBarHeight = 15;
+        const fuelX = this.width * 0.4 + 20;
+        const fuelY = 10 - fuelBarHeight + progressOffset;
+
+        // Fuel bar background
+        this.ctx.fillStyle = '#333';
+        this.ctx.fillRect(fuelX, fuelY, fuelBarWidth, fuelBarHeight);
+
+        // Fuel bar fill with color based on level
+        if (fuelLevel > 60) {
+            this.ctx.fillStyle = '#2ecc71';
+        } else if (fuelLevel > 25) {
+            this.ctx.fillStyle = '#f39c12';
+        } else {
+            this.ctx.fillStyle = '#e74c3c';
+        }
+        this.ctx.fillRect(fuelX, fuelY, fuelBarWidth * (fuelLevel / 100), fuelBarHeight);
+
+        // Score
+        this.ctx.fillText(`${this.score}`, this.width * 0.8, 10);
+
+        // Lives
+        this.ctx.fillText('❤️', 10, this.height - 20);
+        this.ctx.fillText(`${this.player.lives}`, 30, this.height - 20);
+
+        // Game over screen
         if (this.gameOver || this.gameWon) {
             // Add semi-transparent background
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -237,22 +279,23 @@ export class Game {
     }
 
     handleGameTouch(e) {
-        // Don't process game touches if game is over
-        if (this.gameOver || this.gameWon) {
-            return;
-        }
+        if (this.gameOver || this.gameWon) return;
 
         e.preventDefault();
         const touch = e.touches[0];
         const rect = this.canvas.getBoundingClientRect();
-        const x = touch.clientX - rect.left;
-        const y = touch.clientY - rect.top;
+        
+        // Calculate grid sections using proper scaling
+        const scaleX = this.canvas.width / rect.width;
+        const scaleY = this.canvas.height / rect.height;
+        const canvasX = (touch.clientX - rect.left) * scaleX;
+        const canvasY = (touch.clientY - rect.top) * scaleY;
+        
+        const horizontalSection = Math.floor(canvasX / (this.width / 3));
+        const verticalSection = Math.floor(canvasY / (this.height / 3));
 
-        // Calculate which third of the screen was touched
-        const horizontalSection = Math.floor(x / (this.width / 3));
-        const verticalSection = Math.floor(y / (this.height / 3));
-
-        this.inputManager.handleGameAreaTouch(horizontalSection, verticalSection);
+        const isMove = e.type === 'touchmove';
+        this.inputManager.handleGameAreaTouch(horizontalSection, verticalSection, touch, isMove);
     }
 
     gameLoop = (currentTime) => {
