@@ -31,10 +31,60 @@ export class Monster {
     }
 
     draw(ctx) {
+        // Main body
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
-        ctx.fillStyle = 'red';
+        ctx.fillStyle = '#FF0000';  // Bright red
         ctx.fill();
-        ctx.closePath();
+        
+        // Eyes
+        const eyeRadius = this.radius * 0.2;
+        const eyeOffsetX = this.radius * 0.3;
+        const eyeOffsetY = -this.radius * 0.2;
+        
+        // Left eye
+        ctx.beginPath();
+        ctx.arc(this.x - eyeOffsetX, this.y + eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x - eyeOffsetX, this.y + eyeOffsetY, eyeRadius * 0.5, 0, 2 * Math.PI);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+
+        // Right eye
+        ctx.beginPath();
+        ctx.arc(this.x + eyeOffsetX, this.y + eyeOffsetY, eyeRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x + eyeOffsetX, this.y + eyeOffsetY, eyeRadius * 0.5, 0, 2 * Math.PI);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+
+        // Angry mouth
+        ctx.beginPath();
+        ctx.arc(this.x, this.y + this.radius * 0.2, this.radius * 0.4, 0.2 * Math.PI, 0.8 * Math.PI);
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = this.radius * 0.1;
+        ctx.stroke();
+
+        // Small fangs
+        const fangSize = this.radius * 0.2;
+        ctx.fillStyle = 'white';
+        
+        // Left fang
+        ctx.beginPath();
+        ctx.moveTo(this.x - this.radius * 0.3, this.y + this.radius * 0.2);
+        ctx.lineTo(this.x - this.radius * 0.2, this.y + this.radius * 0.4);
+        ctx.lineTo(this.x - this.radius * 0.1, this.y + this.radius * 0.2);
+        ctx.fill();
+        
+        // Right fang
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.radius * 0.3, this.y + this.radius * 0.2);
+        ctx.lineTo(this.x + this.radius * 0.2, this.y + this.radius * 0.4);
+        ctx.lineTo(this.x + this.radius * 0.1, this.y + this.radius * 0.2);
+        ctx.fill();
     }
 }
