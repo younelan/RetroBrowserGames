@@ -83,7 +83,40 @@ export class CorridorManager {
             segment.collectibles.push(decoration);
         }
 
-        this.segments.push(segment);
+        // Add bridge segment with roads when at level end
+        if (this.game.distance >= this.game.levelDistance * this.game.currentLevel && 
+            !this.segments.some(seg => seg.isFinishLine)) {
+            const bridgeSegment = {
+                leftWall: lastSegment.leftWall,
+                width: lastSegment.width,
+                y: lastSegment.y - this.segmentHeight + this.segmentOverlap,
+                collectibles: [],
+                enemies: [],
+                game: this.game,
+                isFinishLine: true
+            };
+
+            // Add roads on both sides of the bridge
+            // Left road
+            bridgeSegment.collectibles.push(new Collectible(
+                0, // Start from left edge
+                bridgeSegment.y + this.segmentHeight/4,
+                'road',
+                bridgeSegment
+            ));
+            
+            // Right road
+            bridgeSegment.collectibles.push(new Collectible(
+                bridgeSegment.leftWall + bridgeSegment.width, // Start from right side of river
+                bridgeSegment.y + this.segmentHeight/4,
+                'road',
+                bridgeSegment
+            ));
+
+            this.segments.push(bridgeSegment);
+        } else {
+            this.segments.push(segment);
+        }
     }
 
     addCollectibles(segment) {
@@ -182,7 +215,6 @@ export class CorridorManager {
                         } else {
                             this.game.currentLevel++;
                             this.game.corridorManager.initCorridor();
-                            this.game.player.resetPosition();
                             this.game.scrollSpeed += 0.5;
                         }
                     }
@@ -238,7 +270,6 @@ export class CorridorManager {
                             this.game.gameWon = true;
                         } else {
                             this.game.currentLevel++;
-                            this.game.player.resetPosition();
                             this.game.scrollSpeed += 0.5;
                         }
                         return true;
@@ -333,7 +364,6 @@ export class CorridorManager {
             this.game.currentLevel++;
             this.game.scrollSpeed += 30; // Increase speed for next level
             this.initCorridor();
-            this.game.player.resetPosition();
         }
     }
 
@@ -343,7 +373,6 @@ export class CorridorManager {
         this.segments.forEach(segment => {
             if (!segment || typeof segment.leftWall === 'undefined') return;
 
-            // Draw elements with full segment height including overlap
             // Draw river first
             this.game.ctx.fillStyle = '#00f';
             this.game.ctx.fillRect(
@@ -353,12 +382,9 @@ export class CorridorManager {
                 this.segmentHeight
             );
 
-            // Draw terrain and decorations
-            // Left bank
+            // Draw terrain
             this.game.ctx.fillStyle = '#0a0';
             this.game.ctx.fillRect(0, segment.y, segment.leftWall, this.segmentHeight);
-            
-            // Right bank
             this.game.ctx.fillRect(
                 segment.leftWall + segment.width,
                 segment.y,
@@ -396,9 +422,22 @@ export class CorridorManager {
                 );
             }
 
-            // Draw collectibles and enemies last
-            segment.collectibles?.forEach(collectible => collectible?.draw(this.game.ctx));
+            // Draw all collectibles EXCEPT roads
+            segment.collectibles?.forEach(collectible => {
+                if (collectible.type !== 'road') {
+                    collectible.draw(this.game.ctx);
+                }
+            });
+
+            // Draw enemies
             segment.enemies?.forEach(enemy => enemy?.draw(this.game.ctx));
+
+            // Draw roads last
+            segment.collectibles?.forEach(collectible => {
+                if (collectible.type === 'road') {
+                    collectible.draw(this.game.ctx);
+                }
+            });
         });
     }
 }

@@ -3,8 +3,17 @@ export class Collectible {
         this.x = x;
         this.y = y;
         this.type = type;
-        // Different sizes for decorations
-        if (type === 'decoration') {
+        if (type === 'road') {
+            // For left bank road
+            if (x === 0) {
+                this.width = segment.leftWall;
+            } 
+            // For right bank road
+            else {
+                this.width = segment.game.width - (segment.leftWall + segment.width);
+            }
+            this.height = segment.game.corridorManager.segmentHeight/2;
+        } else if (type === 'decoration') {
             this.isTree = Math.random() < 0.6; // 60% chance for trees
             this.width = this.isTree ? 15 : 30; // Trees thinner than houses
         } else {
@@ -36,7 +45,10 @@ export class Collectible {
     }
 
     draw(ctx) {
-        if (this.type === 'decoration') {
+        if (this.type === 'road') {
+            ctx.fillStyle = '#808080'; // Medium gray
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        } else if (this.type === 'decoration') {
             if (this.isTree) {
                 // Thin tree trunk
                 ctx.fillStyle = '#8B4513'; // Saddle brown
@@ -46,9 +58,9 @@ export class Collectible {
                 ctx.fillStyle = '#90EE90'; // Light green
                 // Draw three triangles for fuller tree
                 for (let i = 0; i < 3; i++) {
-                    ctx.beginPath();
                     const yOffset = i * 5;
                     const width = this.width - (i * 3); // Gets narrower at top
+                    ctx.beginPath();
                     ctx.moveTo(this.x + this.width/2 - width/2, this.y + 5 - yOffset);
                     ctx.lineTo(this.x + this.width/2 + width/2, this.y + 5 - yOffset);
                     ctx.lineTo(this.x + this.width/2, this.y - 8 - yOffset);
@@ -110,6 +122,10 @@ export class Collectible {
     }
 
     collect(game) {
+        if (this.type === 'road') {
+            // Roads can't be collected or destroyed
+            return;
+        }
         if (this.type === 'decoration') {
             game.score += 75; // Points for shooting decorations
         } else if (this.type === 'fuel') {
