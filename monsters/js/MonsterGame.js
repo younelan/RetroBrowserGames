@@ -29,6 +29,7 @@ export class MonsterGame {
         this.translator = new Translator();
 
         this.setupEventListeners();
+        console.log('Game initialized'); // Debug
     }
 
     initialize() {
@@ -68,11 +69,6 @@ export class MonsterGame {
         // Button controls
         const button = document.getElementById('startStopButton');
         button.addEventListener('click', () => this.toggleGame());
-        
-        // Canvas click to start
-        this.canvas.addEventListener('click', () => {
-            if (!this.gameActive) this.start();
-        });
     }
 
     start() {
@@ -214,45 +210,44 @@ export class MonsterGame {
         
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw level
-        const currentLevel = this.levels[this.currentLevel];
-        for (let row = 0; row < currentLevel.length; row++) {
-            for (let col = 0; col < currentLevel[row].length; col++) {
-                const cell = currentLevel[row][col];
-                // Draw walls
+        // Draw UI elements including debug info
+        this.ui.draw();
+    }
+
+    drawWalls() {
+        for (let row = 0; row < this.levels[this.currentLevel].length; row++) {
+            for (let col = 0; col < this.levels[this.currentLevel][row].length; col++) {
+                const cell = this.levels[this.currentLevel][row][col];
                 if (colors[cell]) {
                     this.ctx.fillStyle = colors[cell];
-                    this.ctx.fillRect(
-                        col * this.cellSize,
-                        row * this.cellSize,
-                        this.cellSize,
-                        this.cellSize
-                    );
-                }
-                // Draw dots
-                if (cell === '.') {
-                    this.ctx.beginPath();
-                    this.ctx.fillStyle = 'white';
-                    this.ctx.arc(
-                        col * this.cellSize + this.cellSize / 2,
-                        row * this.cellSize + this.cellSize / 2,
-                        this.cellSize / 5,
-                        0,
-                        Math.PI * 2
-                    );
-                    this.ctx.fill();
+                    this.ctx.fillRect(col * this.cellSize, row * this.cellSize, this.cellSize, this.cellSize);
                 }
             }
         }
+    }
 
-        // Draw entities
-        if (this.gameActive) {
-            this.player.draw(this.ctx);
-            this.monsters.forEach(monster => monster.draw(this.ctx));
+    drawMonsters() {
+        this.monsters.forEach(monster => {
+            monster.draw(this.ctx);
+        });
+    }
+
+    drawPlayerOne() {
+        this.player.draw(this.ctx);
+    }
+
+    drawDots() {
+        for (let row = 0; row < this.levels[this.currentLevel].length; row++) {
+            for (let col = 0; col < this.levels[this.currentLevel][row].length; col++) {
+                if (this.levels[this.currentLevel][row][col] === '.') {
+                    this.ctx.beginPath();
+                    this.ctx.arc(col * this.cellSize + this.cellSize / 2, row * this.cellSize + this.cellSize / 2, this.cellSize / 5, 0, 2 * Math.PI);
+                    this.ctx.fillStyle = '#fff';
+                    this.ctx.fill();
+                    this.ctx.closePath();
+                }
+            }
         }
-
-        // Draw UI
-        this.ui.drawScore();
     }
 
     isCollidingWithWall(x, y, radius) {

@@ -11,61 +11,150 @@ export class GameUI {
         this.setupTouchControls();
     }
 
-    setupTouchControls() {
-        const handleInput = (e) => {
-            e.preventDefault();
-            if (!this.game.gameActive) return;  // Only handle input if game is active
-            
-            const rect = this.canvas.getBoundingClientRect();
-            const scale = this.canvas.width / rect.width; // Calculate scale factor
-            
-            // Get coordinates, handling both touch and mouse events
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            
-            // Convert to canvas space
-            const x = (clientX - rect.left) * scale;
-            const y = (clientY - rect.top) * scale;
-
-            // Use quadrants to determine direction
-            const centerX = this.canvas.width / 2;
-            const centerY = this.canvas.height / 2;
-            
-            const dx = x - centerX;
-            const dy = y - centerY;
-            
-            // Use absolute comparison to determine primary direction
-            if (Math.abs(dx) > Math.abs(dy)) {
-                // Horizontal movement
-                this.game.player.direction = dx > 0 ? 'right' : 'left';
-            } else {
-                // Vertical movement
-                this.game.player.direction = dy > 0 ? 'down' : 'up';
-            }
-        };
-
-        // Add all event listeners
-        this.canvas.addEventListener('touchstart', handleInput, { passive: false });
-        this.canvas.addEventListener('touchmove', handleInput, { passive: false });
-        this.canvas.addEventListener('mousedown', handleInput);
-        this.canvas.addEventListener('mousemove', (e) => {
-            if (e.buttons === 1) { // Only if mouse button is pressed
-                handleInput(e);
-            }
-        });
+    draw() {
+        // Draw touch zones first
+        this.drawTouchZones();
+        
+        // Draw game elements
+        this.game.drawWalls();
+        this.game.drawMonsters();
+        this.game.drawPlayerOne();
+        this.game.drawDots();
+        this.drawScore();
+        
+        // Always show debug info while game is active
+        if (this.game.gameActive) {
+            this.drawDebugInfo();
+        }
     }
 
-    // Remove the old updatePlayerDirection method as it's now integrated into handleInput
+    drawDebugInfo() {
+        // Display debug info on canvas
+        this.ctx.save();
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '14px Arial';
+        this.ctx.globalAlpha = 0.8;
+        
+        // Show current player direction
+        this.ctx.fillText(`Direction: ${this.game.player.direction}`, 10, 20);
+        
+        // Show touch coordinates if available
+        if (this._lastTouch) {
+            this.ctx.fillText(`Touch: (${Math.round(this._lastTouch.x)}, ${Math.round(this._lastTouch.y)})`, 10, 40);
+        }
+        
+        this.ctx.restore();
+    }
 
-    // Optional: Draw touch zones for debugging
+    setupTouchControls() {
+        this.handleClick = this.handleClick.bind(this);
+        this.handleMove = this.handleMove.bind(this);
+        this.handleEnd = this.handleEnd.bind(this);
+        this.isDragging = false;
+        
+        // Mouse events
+        this.canvas.addEventListener('mousedown', (e) => {
+            this.isDragging = true;
+            this.handleClick(e);
+        });
+        
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (this.isDragging) {
+                this.handleMove(e);
+            }
+        });
+        
+        this.canvas.addEventListener('mouseup', this.handleEnd);
+        this.canvas.addEventListener('mouseleave', this.handleEnd);
+        
+        // Touch events
+        this.canvas.addEventListener('touchstart', (e) => {
+            this.isDragging = true;
+            this.handleClick(e);
+        });
+        
+        this.canvas.addEventListener('touchmove', (e) => {
+            if (this.isDragging) {
+                this.handleMove(e);
+            }
+        });
+        
+        this.canvas.addEventListener('touchend', this.handleEnd);
+        this.canvas.addEventListener('touchcancel', this.handleEnd);
+    }
+
+    handleMove(e) {
+        e.preventDefault();
+        if (!this.game.gameActive || !this.isDragging) return;
+
+        const coords = this.getEventCoordinates(e);
+        this.updateDirection(coords.x, coords.y);
+    }
+
+    handleClick(e) {
+        e.preventDefault();
+        if (!this.game.gameActive) return;
+
+        const coords = this.getEventCoordinates(e);
+        this.updateDirection(coords.x, coords.y);
+    }
+
+    handleEnd() {
+        this.isDragging = false;
+    }
+
+    getEventCoordinates(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        return {
+            x: (clientX - rect.left) * (this.canvas.width / rect.width),
+            y: (clientY - rect.top) * (this.canvas.height / rect.height)
+        };
+    }
+
+    updateDirection(x, y) {
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        
+        const fromCenterX = x - centerX;
+        const fromCenterY = y - centerY;
+        
+        let newDirection;
+        if (Math.abs(fromCenterX) > Math.abs(fromCenterY)) {
+            newDirection = fromCenterX > 0 ? 'right' : 'left';
+        } else {
+            newDirection = fromCenterY > 0 ? 'down' : 'up';
+        }
+
+        if (newDirection !== this.game.player.direction) {
+            console.log('Direction changed to:', newDirection);
+            this.game.player.direction = newDirection;
+        }
+
+        this._lastTouch = { x, y, direction: newDirection };
+    }
+
+    removeEventListeners() {
+        this.canvas.removeEventListener('touchstart', this.handleClick);
+        this.canvas.removeEventListener('touchmove', this.handleMove);
+        this.canvas.removeEventListener('touchend', this.handleEnd);
+        this.canvas.removeEventListener('touchcancel', this.handleEnd);
+        this.canvas.removeEventListener('mousedown', this.handleClick);
+        this.canvas.removeEventListener('mousemove', this.handleMove);
+        this.canvas.removeEventListener('mouseup', this.handleEnd);
+        this.canvas.removeEventListener('mouseleave', this.handleEnd);
+    }
+
     drawTouchZones() {
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
         
         this.ctx.save();
-        this.ctx.globalAlpha = 0.1;
+        this.ctx.globalAlpha = 0.2;  // Make zones more visible
         
-        // Draw four triangles
+        // Draw the four triangles
         // Left triangle
         this.ctx.beginPath();
         this.ctx.moveTo(centerX, centerY);
