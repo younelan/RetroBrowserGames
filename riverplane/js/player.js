@@ -91,16 +91,58 @@ export class Player {
     }    
 
     draw() {
-        // Draw player
-        this.game.ctx.fillStyle = '#0f0';
+        // Save context state
+        this.game.ctx.save();
+        this.game.ctx.translate(this.x + this.width/2, this.y + this.height/2);
+
+        // Draw plane body (white)
+        this.game.ctx.fillStyle = '#fff';
         this.game.ctx.beginPath();
-        this.game.ctx.moveTo(this.x + this.width / 2, this.y);
-        this.game.ctx.lineTo(this.x + this.width, this.y + this.height);
-        this.game.ctx.lineTo(this.x, this.y + this.height);
+        this.game.ctx.moveTo(0, -this.height/2); // Nose
+        this.game.ctx.lineTo(this.width/4, -this.height/4); // Right nose taper
+        this.game.ctx.lineTo(this.width/4, this.height/3); // Right side
+        this.game.ctx.lineTo(0, this.height/2); // Tail
+        this.game.ctx.lineTo(-this.width/4, this.height/3); // Left side
+        this.game.ctx.lineTo(-this.width/4, -this.height/4); // Left nose taper
+        this.game.ctx.closePath();
+        this.game.ctx.fill();
+
+        // Draw lower wings (slightly darker white)
+        this.game.ctx.fillStyle = '#f0f0f0';
+        // Right lower wing
+        this.game.ctx.beginPath();
+        this.game.ctx.moveTo(this.width/4, 0);
+        this.game.ctx.lineTo(this.width/2, this.height/4);
+        this.game.ctx.lineTo(this.width/4, this.height/2);
+        this.game.ctx.closePath();
+        this.game.ctx.fill();
+        // Left lower wing
+        this.game.ctx.beginPath();
+        this.game.ctx.moveTo(-this.width/4, 0);
+        this.game.ctx.lineTo(-this.width/2, this.height/4);
+        this.game.ctx.lineTo(-this.width/4, this.height/2);
+        this.game.ctx.closePath();
+        this.game.ctx.fill();
+
+        // Draw upper wings (light gray for depth)
+        this.game.ctx.fillStyle = '#e0e0e0';
+        // Right upper wing (wider)
+        this.game.ctx.beginPath();
+        this.game.ctx.moveTo(this.width/4, -this.height/4);
+        this.game.ctx.lineTo(this.width/1.5, 0);
+        this.game.ctx.lineTo(this.width/4, this.height/4);
+        this.game.ctx.closePath();
+        this.game.ctx.fill();
+        // Left upper wing (wider)
+        this.game.ctx.beginPath();
+        this.game.ctx.moveTo(-this.width/4, -this.height/4);
+        this.game.ctx.lineTo(-this.width/1.5, 0);
+        this.game.ctx.lineTo(-this.width/4, this.height/4);
         this.game.ctx.closePath();
         this.game.ctx.fill();
 
         // Draw bullets
+        this.game.ctx.restore(); // Restore context for bullets
         this.game.ctx.fillStyle = '#ff0';
         this.bullets.forEach(bullet => {
             this.game.ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);

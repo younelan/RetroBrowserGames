@@ -13,6 +13,7 @@ export class CorridorManager {
         this.currentDirection = 1;
         this.directionChangeChance = 0.02;
         this.stepSize = 30; // Define consistent step size for walls and enemies
+        this.decorations = []; // Add decorations array
     }
 
     initCorridor() {
@@ -64,6 +65,22 @@ export class CorridorManager {
         // Add collectibles and enemies
         this.addCollectibles(segment);
         this.addEnemies(segment);
+
+        // Add decorations as collectibles on the banks, well outside the river
+        if (Math.random() < 0.2) {  // 20% chance
+            const isLeftSide = Math.random() < 0.5;
+            const padding = 30; // Space from edge and river
+            
+            const decoration = new Collectible(
+                isLeftSide ? 
+                    padding + Math.random() * (segment.leftWall - padding * 2) : // Left bank
+                    segment.leftWall + segment.width + padding + Math.random() * (this.game.width - (segment.leftWall + segment.width) - padding * 2), // Right bank
+                segment.y + this.segmentHeight * 0.7, // Place lower in segment
+                'decoration',
+                segment
+            );
+            segment.collectibles.push(decoration);
+        }
 
         this.segments.push(segment);
     }
@@ -320,14 +337,12 @@ export class CorridorManager {
     }
 
     draw() {
-        // Clear any transform
         this.game.ctx.setTransform(1, 0, 0, 1, 0, 0);
         
         this.segments.forEach(segment => {
-            // Ensure segment exists and has valid properties
             if (!segment || typeof segment.leftWall === 'undefined') return;
 
-            // Draw river (corridor)
+            // Draw river first
             this.game.ctx.fillStyle = '#00f';
             this.game.ctx.fillRect(
                 segment.leftWall,
@@ -336,9 +351,12 @@ export class CorridorManager {
                 this.segmentHeight
             );
 
-            // Draw walls (green terrain)
+            // Draw terrain and decorations
+            // Left bank
             this.game.ctx.fillStyle = '#0a0';
             this.game.ctx.fillRect(0, segment.y, segment.leftWall, this.segmentHeight);
+            
+            // Right bank
             this.game.ctx.fillRect(
                 segment.leftWall + segment.width,
                 segment.y,
@@ -346,7 +364,7 @@ export class CorridorManager {
                 this.segmentHeight
             );
 
-            // Draw bridge if it's a finish line
+            // Draw bridge if present
             if (segment.isFinishLine) {
                 // Dark red top line
                 this.game.ctx.fillStyle = '#800000';

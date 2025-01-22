@@ -3,27 +3,32 @@ export class Collectible {
         this.x = x;
         this.y = y;
         this.type = type;
-        this.width = type === 'fuel' ? 20 : 15;
+        // Different sizes for decorations
+        if (type === 'decoration') {
+            this.isTree = Math.random() < 0.6; // 60% chance for trees
+            this.width = this.isTree ? 15 : 30; // Trees thinner than houses
+        } else {
+            this.width = type === 'fuel' ? 20 : 15;
+        }
         this.height = this.width;
-        this.segment = segment; // Add segment reference
-        this.speed = type === 'fuel' ? 0 : (Math.random() - 0.5) * 240; // Speed in units per second
+        this.segment = segment;
+        this.speed = type === 'points' ? (Math.random() - 0.5) * 240 : 0;
     }
 
     update(dt) {
         this.y += this.segment.game.scrollSpeed * dt;
         
-        // Points collectibles move side to side
-        if (this.type !== 'fuel') {
+        // Only points collectibles move side to side
+        if (this.type === 'points') {
             this.x += this.speed * dt;
             
             // Keep within corridor bounds
             if (this.x < this.segment.leftWall || 
                 this.x + this.width > this.segment.leftWall + this.segment.width) {
                 this.speed *= -1;
-                // Keep collectible within bounds after speed reversal
                 if (this.x < this.segment.leftWall) {
                     this.x = this.segment.leftWall;
-                } else if (this.x + this.width > this.segment.leftWall + this.segment.width) {
+                } else {
                     this.x = this.segment.leftWall + this.segment.width - this.width;
                 }
             }
@@ -31,7 +36,50 @@ export class Collectible {
     }
 
     draw(ctx) {
-        if (this.type === 'fuel') {
+        if (this.type === 'decoration') {
+            if (this.isTree) {
+                // Thin tree trunk
+                ctx.fillStyle = '#8B4513'; // Saddle brown
+                ctx.fillRect(this.x + this.width/2 - 2, this.y + 5, 3, 12);
+                
+                // Tree foliage (lighter than bank green)
+                ctx.fillStyle = '#90EE90'; // Light green
+                // Draw three triangles for fuller tree
+                for (let i = 0; i < 3; i++) {
+                    ctx.beginPath();
+                    const yOffset = i * 5;
+                    const width = this.width - (i * 3); // Gets narrower at top
+                    ctx.moveTo(this.x + this.width/2 - width/2, this.y + 5 - yOffset);
+                    ctx.lineTo(this.x + this.width/2 + width/2, this.y + 5 - yOffset);
+                    ctx.lineTo(this.x + this.width/2, this.y - 8 - yOffset);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            } else {
+                // Wider house
+                // House base
+                ctx.fillStyle = '#DEB887';
+                ctx.fillRect(this.x, this.y, this.width, 15);
+                
+                // Roof
+                ctx.fillStyle = '#8B0000';
+                ctx.beginPath();
+                ctx.moveTo(this.x - 3, this.y);
+                ctx.lineTo(this.x + this.width + 3, this.y);
+                ctx.lineTo(this.x + this.width/2, this.y - 10);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Door
+                ctx.fillStyle = '#654321';
+                ctx.fillRect(this.x + this.width/2 - 2, this.y + 5, 4, 10);
+                
+                // Windows
+                ctx.fillStyle = '#ADD8E6';
+                ctx.fillRect(this.x + 4, this.y + 3, 5, 5);
+                ctx.fillRect(this.x + this.width - 9, this.y + 3, 5, 5);
+            }
+        } else if (this.type === 'fuel') {
             // Draw split-colored fuel cell
             // Top half - white
             ctx.fillStyle = '#fff';
@@ -62,7 +110,9 @@ export class Collectible {
     }
 
     collect(game) {
-        if (this.type === 'fuel') {
+        if (this.type === 'decoration') {
+            game.score += 75; // Points for shooting decorations
+        } else if (this.type === 'fuel') {
             game.player.fuel = Math.min(100, game.player.fuel + 30);
             game.score += 50; // Add points for collecting fuel
         } else {
