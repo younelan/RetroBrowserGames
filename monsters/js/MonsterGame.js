@@ -9,10 +9,12 @@ export class MonsterGame {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.container = document.getElementById('gameContainer');
+        this.originalLevels = levelStrings;  // Store original level data
         this.levels = this.parseLevels(levelStrings);
         this.currentLevel = 0;
         this.score = 0;
-        this.lives = 10;
+        this.startingLives = 3;
+        this.lives = this.startingLives;
         this.gameActive = false;
         this.highScoreItem = "monster_highScore";
         this.fixedTimeStep = 1000 / 60;
@@ -40,7 +42,7 @@ export class MonsterGame {
         
         // Initialize game state
         this.score = 0;
-        this.lives = 10;
+        this.lives = this.startingLives;
         this.currentLevel = 0;
         this.gameActive = false;
         
@@ -72,11 +74,7 @@ export class MonsterGame {
     }
 
     start() {
-        this.score = 0;
-        this.lives = 10;
-        this.currentLevel = 0;
         this.gameActive = true;
-        this.initializeLevel();
         this.lastUpdateTime = performance.now();
         this.gameLoop(this.lastUpdateTime);
         
@@ -350,8 +348,7 @@ export class MonsterGame {
 
     endGame(win) {
         this.gameActive = false;
-        const message = win ? 'You Win!' : 'Game Over';
-        alert(this.translator.translate(message));
+        this.ui.drawEndScreen(win);
     }
 
     checkLevelComplete() {
@@ -374,5 +371,17 @@ export class MonsterGame {
             const rows = levelString.trim().split('\n');
             return rows.map(row => row.trim().split(''));
         });
+    }
+
+    resetGame() {
+        this.score = 0;
+        this.lives = this.startingLives;
+        this.currentLevel = 0;  // Ensure we start from first level
+        this.gameActive = false;
+        this.monsters = [];
+        this.player = new Player();
+        
+        // Reset level data
+        this.levels = this.parseLevels(this.originalLevels);  // We need to add originalLevels property
     }
 }

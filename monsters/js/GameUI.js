@@ -22,28 +22,16 @@ export class GameUI {
         this.game.drawDots();
         this.drawScore();
         
-        // Always show debug info while game is active
-        if (this.game.gameActive) {
-            this.drawDebugInfo();
+        // Draw end screen if game is over
+        if (!this.game.gameActive && this.game.lives <= 0) {
+            this.drawEndScreen(false);
+        } else if (!this.game.gameActive && this.game.checkLevelComplete()) {
+            this.drawEndScreen(true);
         }
     }
 
     drawDebugInfo() {
-        // Display debug info on canvas
-        this.ctx.save();
-        this.ctx.fillStyle = 'white';
-        this.ctx.font = '14px Arial';
-        this.ctx.globalAlpha = 0.8;
-        
-        // Show current player direction
-        this.ctx.fillText(`Direction: ${this.game.player.direction}`, 10, 20);
-        
-        // Show touch coordinates if available
-        if (this._lastTouch) {
-            this.ctx.fillText(`Touch: (${Math.round(this._lastTouch.x)}, ${Math.round(this._lastTouch.y)})`, 10, 40);
-        }
-        
-        this.ctx.restore();
+        // Removed debug info
     }
 
     setupTouchControls() {
@@ -249,5 +237,30 @@ export class GameUI {
         // Score
         this.ctx.fillStyle = this.game.score > highScore ? 'yellow' : 'white';
         this.ctx.fillText(`${this.game.score}`, width * 0.85, y);
+    }
+
+    drawEndScreen(win) {
+        this.ctx.save();
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.fillStyle = 'white';
+        this.ctx.font = '48px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(win ? 'You Win!' : 'Game Over', this.canvas.width / 2, this.canvas.height / 2 - 50);
+
+        this.ctx.font = '24px Arial';
+        this.ctx.fillText(`Score: ${this.game.score}`, this.canvas.width / 2, this.canvas.height / 2);
+        this.ctx.fillText(`Levels Completed: ${this.game.currentLevel + 1}`, this.canvas.width / 2, this.canvas.height / 2 + 30);
+        this.ctx.fillText('Click to Restart', this.canvas.width / 2, this.canvas.height / 2 + 60);
+
+        this.ctx.restore();
+
+        // Add event listener for restarting the game
+        this.canvas.addEventListener('click', () => {
+            this.game.resetGame();
+            this.game.initialize();
+            this.game.toggleGame();  // This will set gameActive to true and start the game
+        }, { once: true });
     }
 }

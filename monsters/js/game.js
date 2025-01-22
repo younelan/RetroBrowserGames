@@ -10,16 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize game
     const game = new MonsterGame('gameCanvas', levels);
     
-    // Debug logging
-    console.log('DOM loaded, game created');
-    
     // Initialize and start
     game.initialize();
     game.start();
     
     // Set up canvas event handlers
     canvas.addEventListener('mousedown', (e) => {
-        console.log('Canvas mousedown');
         game.ui.isDragging = true;
         game.ui.handleMove(e);
     });
@@ -39,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     canvas.addEventListener('touchstart', (e) => {
-        console.log('Canvas touchstart');
         game.ui.isDragging = true;
         game.ui.handleMove(e);
     });
@@ -62,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const button = document.getElementById('startStopButton');
     button.textContent = game.translator.translate("Start");
     button.addEventListener('click', () => {
-        console.log('Button clicked');
         game.toggleGame();
     });
 });
