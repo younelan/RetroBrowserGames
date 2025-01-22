@@ -100,7 +100,7 @@ export class MonsterGame {
     initializeLevel() {
         this.monsters = [];
         let totalDots = 0;
-        this.ui.resizeCells();
+        this.ui.resizeCanvas();  // Ensure canvas is resized and centered
         
         for (let row = 0; row < this.levels[this.currentLevel].length; row++) {
             for (let col = 0; col < this.levels[this.currentLevel][row].length; col++) {
