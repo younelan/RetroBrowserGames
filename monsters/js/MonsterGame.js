@@ -19,6 +19,7 @@ export class MonsterGame {
         this.gameActive = false;
         this.highScoreItem = "monster_highScore";
         this.fixedTimeStep = 1000 / 60;
+        this.isNewHighScore = false;  // Add this line
         
         // Fix the scaling by setting initial size
         this.canvas.width = this.container.clientWidth;
@@ -142,6 +143,13 @@ export class MonsterGame {
     update(deltaTime) {
         if (!this.gameActive) return;
         
+        // Check high score at each score update, not just once per frame
+        const currentHighScore = localStorage.getItem(this.highScoreItem) || 0;
+        if (this.score > currentHighScore) {
+            this.isNewHighScore = true;
+            localStorage.setItem(this.highScoreItem, this.score);
+        }
+
         // Try to spawn a collectible
         this.updateCollectibles();
         
@@ -172,20 +180,7 @@ export class MonsterGame {
         });
 
         // Check dot collection
-        const currentLevel = this.levels[this.currentLevel];
-        for (let row = 0; row < currentLevel.length; row++) {
-            for (let col = 0; col < currentLevel[row].length; col++) {
-                if (currentLevel[row][col] === '.') {
-                    const dotX = col * this.cellSize + this.cellSize / 2;
-                    const dotY = row * this.cellSize + this.cellSize / 2;
-                    const dist = Math.hypot(this.player.x - dotX, this.player.y - dotY);
-                    if (dist < this.player.radius + this.cellSize / 10) {
-                        currentLevel[row][col] = ' ';
-                        this.score += 10;  // Changed from 1 to 10 points
-                    }
-                }
-            }
-        }
+        this.checkDotCollection();
 
         // Update monster states
         this.monsters.forEach(monster => monster.update());
@@ -240,6 +235,30 @@ export class MonsterGame {
         // Keep player within bounds
         this.keepInBounds(this.player);
         this.monsters.forEach(monster => this.keepInBounds(monster));
+    }
+
+    checkDotCollection() {
+        const currentLevel = this.levels[this.currentLevel];
+        for (let row = 0; row < currentLevel.length; row++) {
+            for (let col = 0; col < currentLevel[row].length; col++) {
+                if (currentLevel[row][col] === '.') {
+                    const dotX = col * this.cellSize + this.cellSize / 2;
+                    const dotY = row * this.cellSize + this.cellSize / 2;
+                    const dist = Math.hypot(this.player.x - dotX, this.player.y - dotY);
+                    if (dist < this.player.radius + this.cellSize / 10) {
+                        currentLevel[row][col] = ' ';
+                        this.score += 10;
+                        
+                        // Check high score immediately when score changes
+                        const currentHighScore = localStorage.getItem(this.highScoreItem) || 0;
+                        if (this.score > currentHighScore) {
+                            this.isNewHighScore = true;
+                            localStorage.setItem(this.highScoreItem, this.score);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     updateCollectibles() {
@@ -473,5 +492,6 @@ export class MonsterGame {
         this.initializeLevel();
         this.collectibles = [];
         this.lastCollectibleSpawn = 0;
+        this.isNewHighScore = false;  // Reset high score flag
     }
 }

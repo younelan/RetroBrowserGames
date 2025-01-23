@@ -209,18 +209,16 @@ export class GameUI {
     }
 
     drawScore() {
-        // Keep high score logic for coloring
-        var highScore = localStorage.getItem(this.game.highScoreItem) || 0;
+        const highScore = localStorage.getItem(this.game.highScoreItem) || 0;
         if (this.game.score > highScore) {
             localStorage.setItem(this.game.highScoreItem, this.game.score);
-            highScore = this.game.score;
         }
 
         const width = this.canvas.width;
-        const y = this.canvas.height - 10; // Move closer to bottom
+        const y = this.canvas.height - 10;
         const shadowOffset = 2;
 
-        this.ctx.font = `${this.game.cellSize / 1.5}px Arial`;  // Larger font size
+        this.ctx.font = `${this.game.cellSize / 1.5}px Arial`;
 
         // Draw shadow layer first
         this.ctx.fillStyle = 'black';
@@ -232,20 +230,19 @@ export class GameUI {
 
         // Draw main text
         // Level
-        this.ctx.fillStyle = 'lightgreen';  // Label color
+        this.ctx.fillStyle = 'lightgreen';
         this.ctx.fillText('L:', width * 0.15, y);
-        this.ctx.fillStyle = 'white';      // Value color
+        this.ctx.fillStyle = 'white';
         this.ctx.fillText(`${this.game.currentLevel + 1}`, width * 0.15 + this.game.cellSize, y);
 
         // Lives
-        this.ctx.fillStyle = 'lightblue';  // Label heart
-        this.ctx.fillStyle = '#FF0000';    // Red heart
+        this.ctx.fillStyle = '#FF0000';
         this.ctx.fillText('\u2764', width * 0.5, y);
-        this.ctx.fillStyle = 'white';      // Value color
+        this.ctx.fillStyle = 'white';
         this.ctx.fillText(`${this.game.lives}`, width * 0.5 + this.game.cellSize, y);
 
-        // Score
-        this.ctx.fillStyle = this.game.score > highScore ? 'yellow' : 'white';
+        // Score - yellow if it's a new high score
+        this.ctx.fillStyle = this.game.isNewHighScore ? 'yellow' : 'white';
         this.ctx.fillText(`${this.game.score}`, width * 0.85, y);
     }
 
@@ -254,15 +251,26 @@ export class GameUI {
         this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+        const highScore = localStorage.getItem(this.game.highScoreItem) || 0;
+        const isNewHighScore = this.game.isNewHighScore;  // Use the flag from game
+
         this.ctx.fillStyle = 'white';
         this.ctx.font = '48px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText(win ? 'You Win!' : 'Game Over', this.canvas.width / 2, this.canvas.height / 2 - 50);
+        this.ctx.fillText(win ? 'You Win!' : 'Game Over', this.canvas.width / 2, this.canvas.height / 2 - 80);
 
         this.ctx.font = '24px Arial';
-        this.ctx.fillText(`Score: ${this.game.score}`, this.canvas.width / 2, this.canvas.height / 2);
-        this.ctx.fillText(`Levels Completed: ${this.game.currentLevel + 1}`, this.canvas.width / 2, this.canvas.height / 2 + 30);
-        this.ctx.fillText('Tap Anywhere to Restart', this.canvas.width / 2, this.canvas.height / 2 + 60);
+        this.ctx.fillStyle = isNewHighScore ? 'yellow' : 'white';
+        this.ctx.fillText(`Score: ${this.game.score}`, this.canvas.width / 2, this.canvas.height / 2 - 20);
+        this.ctx.fillStyle = 'white';
+        this.ctx.fillText(`High Score: ${Math.max(highScore, this.game.score)}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+        this.ctx.fillText(`Levels Completed: ${this.game.currentLevel + 1}`, this.canvas.width / 2, this.canvas.height / 2 + 60);
+        this.ctx.fillText('Tap Anywhere to Restart', this.canvas.width / 2, this.canvas.height / 2 + 100);
+
+        if (isNewHighScore) {
+            this.ctx.fillStyle = 'yellow';
+            this.ctx.fillText('New High Score!', this.canvas.width / 2, this.canvas.height / 2 - 50);
+        }
 
         this.ctx.restore();
     }
