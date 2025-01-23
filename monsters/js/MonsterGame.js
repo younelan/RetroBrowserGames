@@ -3,6 +3,7 @@ import { Monster } from './Monster.js';
 import { GameUI } from './GameUI.js';
 import { Translator } from './Translator.js';
 import { colors } from './levels.js';
+import { Collectible } from './Collectible.js';
 
 export class MonsterGame {
     constructor(canvasId, levelStrings) {
@@ -29,6 +30,10 @@ export class MonsterGame {
         this.monsters = [];
         this.ui = new GameUI(this);
         this.translator = new Translator();
+        this.collectibles = [];
+        this.lastCollectibleSpawn = 0;
+        this.collectibleSpawnInterval = 10000; // 10 seconds between spawns
+        this.fruitTypes = ['cherry', 'banana', 'apple', 'powerPellet'];
 
         this.setupEventListeners();
         console.log('Game initialized'); // Debug
@@ -137,6 +142,9 @@ export class MonsterGame {
     update(deltaTime) {
         if (!this.gameActive) return;
         
+        // Try to spawn a collectible
+        this.updateCollectibles();
+        
         // Update player position
         this.player.move(deltaTime, this.cellSize);
         if (this.isCollidingWithWall(this.player.x, this.player.y, this.player.radius)) {
@@ -146,16 +154,20 @@ export class MonsterGame {
 
         // Update monsters
         this.monsters.forEach(monster => {
-            const prevX = monster.x;
-            const prevY = monster.y;
+            monster.update();
             
-            monster.move(deltaTime, this.cellSize);
-            
-            if (this.isCollidingWithWall(monster.x, monster.y, monster.radius)) {
-                monster.x = prevX;
-                monster.y = prevY;
-                // Fix: Use the monster's changeDirection method
-                monster.changeDirection();
+            // Only move monster if not regenerating
+            if (!monster.isRegenerating) {
+                const prevX = monster.x;
+                const prevY = monster.y;
+                
+                monster.move(deltaTime, this.cellSize);
+                
+                if (this.isCollidingWithWall(monster.x, monster.y, monster.radius)) {
+                    monster.x = prevX;
+                    monster.y = prevY;
+                    monster.changeDirection();
+                }
             }
         });
 
@@ -169,23 +181,50 @@ export class MonsterGame {
                     const dist = Math.hypot(this.player.x - dotX, this.player.y - dotY);
                     if (dist < this.player.radius + this.cellSize / 10) {
                         currentLevel[row][col] = ' ';
-                        this.score++;
+                        this.score += 10;  // Changed from 1 to 10 points
                     }
                 }
             }
         }
 
+        // Update monster states
+        this.monsters.forEach(monster => monster.update());
+
         // Check monster collisions
         this.monsters.forEach(monster => {
+            if (monster.isRegenerating) return; // Skip collision check if regenerating
+            
             const dist = Math.hypot(this.player.x - monster.x, this.player.y - monster.y);
             if (dist < this.player.radius + monster.radius) {
-                this.lives--;
-                if (this.lives <= 0) {
-                    this.endGame(false);
+                if (monster.isVulnerable) {
+                    // Player eats the monster - start regeneration
+                    this.score += monster.points;
+                    monster.startRegeneration();
                 } else {
-                    this.initializeLevel();
+                    // Monster eats the player
+                    this.lives--;
+                    if (this.lives <= 0) {
+                        this.endGame(false);
+                    } else {
+                        this.initializeLevel();
+                    }
                 }
             }
+        });
+
+        // Check collectible collisions with power pellet handling
+        this.collectibles = this.collectibles.filter(collectible => {
+            if (collectible.isExpired()) return false;
+            
+            const dist = Math.hypot(this.player.x - collectible.x, this.player.y - collectible.y);
+            if (dist < this.player.radius + collectible.radius) {
+                if (collectible.type === 'powerPellet') {
+                    this.monsters.forEach(monster => monster.makeVulnerable());
+                }
+                this.score += collectible.points;
+                return false;
+            }
+            return true;
         });
 
         // Replace level completion check
@@ -203,6 +242,38 @@ export class MonsterGame {
         this.monsters.forEach(monster => this.keepInBounds(monster));
     }
 
+    updateCollectibles() {
+        const now = Date.now();
+        if (now - this.lastCollectibleSpawn > this.collectibleSpawnInterval) {
+            const emptySpaces = this.findEmptySpaces();
+            if (emptySpaces.length > 0) {
+                const pos = emptySpaces[Math.floor(Math.random() * emptySpaces.length)];
+                const type = this.fruitTypes[Math.floor(Math.random() * this.fruitTypes.length)];
+                const collectible = new Collectible(
+                    pos.x * this.cellSize + this.cellSize / 2,
+                    pos.y * this.cellSize + this.cellSize / 2,
+                    type
+                );
+                collectible.radius = (this.cellSize - 2) / 2;
+                this.collectibles.push(collectible);
+                this.lastCollectibleSpawn = now;
+            }
+        }
+    }
+
+    findEmptySpaces() {
+        const spaces = [];
+        const level = this.levels[this.currentLevel];
+        for (let y = 0; y < level.length; y++) {
+            for (let x = 0; x < level[y].length; x++) {
+                if (level[y][x] === ' ') {
+                    spaces.push({x, y});
+                }
+            }
+        }
+        return spaces;
+    }
+
     draw() {
         if (!this.ctx) return;
         
@@ -210,6 +281,7 @@ export class MonsterGame {
         
         // Draw UI elements including debug info
         this.ui.draw();
+        this.drawCollectibles();
     }
 
     drawWalls() {
@@ -291,6 +363,12 @@ export class MonsterGame {
                 }
             }
         }
+    }
+
+    drawCollectibles() {
+        this.collectibles.forEach(collectible => {
+            collectible.draw(this.ctx);
+        });
     }
 
     isCollidingWithWall(x, y, radius) {
@@ -393,5 +471,7 @@ export class MonsterGame {
         
         // Initialize the level
         this.initializeLevel();
+        this.collectibles = [];
+        this.lastCollectibleSpawn = 0;
     }
 }
