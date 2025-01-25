@@ -186,12 +186,10 @@ export class Game {
             this.buttonArea.y = messageY + 150;
 
             this.ctx.fillStyle = '#444';
-            this.ctx.fillRect(
-                this.buttonArea.x,
-                this.buttonArea.y,
-                this.buttonArea.width,
-                this.buttonArea.height
-            );
+            this.ctx.fillRect(this.width / 2 - 75, this.height / 2 + 100, 150, 50);
+            this.ctx.fillStyle = '#fff';
+            this.ctx.font = '20px Arial';
+               this.ctx.fillText('RESTART', this.width / 2, this.height / 2 + 135);
 
             this.ctx.fillStyle = '#fff';
             this.ctx.font = Math.floor(this.width * 0.04) + 'px Arial';
