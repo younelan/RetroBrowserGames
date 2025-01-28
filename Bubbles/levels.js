@@ -10,7 +10,7 @@ B        B
 B        B
 B BBB BBBB
 B        B
-B1       B
+B1   B   B
 BBBBBBBBBB`
   },
 

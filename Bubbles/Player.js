@@ -11,48 +11,54 @@ export class Player {
   }
 
   update(keys, levelGrid, gridSize, jumpHeight) {
-    // Jumping logic
-    if (this.isJumping) {
-      this.velocity += 0.8; // Gravity
-      this.y += this.velocity;
+    // Check if the cell below is empty
+    const platformBelow = this.checkPlatformBelow(levelGrid, gridSize);
+    if (!this.isJumping && !platformBelow) {
+        this.velocity += 0.8; // Gravity
+        this.y += this.velocity;
 
-      const platformBelow = this.checkPlatformBelow(levelGrid, gridSize);
-      if (this.velocity > 0 && platformBelow) {
-        this.y = platformBelow.y - this.height;
-        this.isJumping = false;
-        this.velocity = 0;
-      }
-    } else {
-      const platformBelow = this.checkPlatformBelow(levelGrid, gridSize);
-      if (!platformBelow) {
-        this.velocity = 5;
-        this.isJumping = false;
-      }
+        // Ensure the player stops falling when hitting a platform
+        const newPlatformBelow = this.checkPlatformBelow(levelGrid, gridSize);
+        if (newPlatformBelow) {
+            this.y = newPlatformBelow.y - this.height;
+            this.velocity = 0;
+        }
+    } else if (this.isJumping) {
+        // Existing jumping logic
+        this.velocity += 0.8;
+        this.y += this.velocity;
+
+        if (this.velocity > 0 && platformBelow) {
+            this.y = platformBelow.y - this.height;
+            this.isJumping = false;
+            this.velocity = 0;
+        }
     }
 
     // Horizontal movement
     if (keys['ArrowLeft'] && !this.isWallCollision(levelGrid, gridSize, -this.speed)) {
-      this.x -= this.speed;
-      this.direction = -1;
+        this.x -= this.speed;
+        this.direction = -1;
     }
 
     if (keys['ArrowRight'] && !this.isWallCollision(levelGrid, gridSize, this.speed)) {
-      this.x += this.speed;
-      this.direction = 1;
+        this.x += this.speed;
+        this.direction = 1;
     }
 
     // Jumping with space or up arrow
-    if ((keys['ArrowUp'] || keys[' ']) && !this.isJumping) {
-      this.isJumping = true;
-      this.velocity = -10 * jumpHeight;
+    if ((keys['ArrowUp'] ) && !this.isJumping) {
+        this.isJumping = true;
+        this.velocity = -10 * jumpHeight;
     }
-  }
+}
 
   isWallCollision(levelGrid, gridSize, speed) {
-    const col = Math.floor((this.x + speed) / gridSize);
+    const col = Math.floor((this.x + (speed > 0 ? this.width : 0) + speed) / gridSize); // Adjust for width on the right
     const row = Math.floor(this.y / gridSize);
     return levelGrid[row] && levelGrid[row][col] === 'B';
-  }
+}
+
 
   checkPlatformBelow(levelGrid, gridSize) {
     const col = Math.floor(this.x / gridSize);

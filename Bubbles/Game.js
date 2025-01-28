@@ -67,8 +67,8 @@ export class Game {
     if (this.player.isJumping) return;
 
     const bubble = new Bubble(
-      this.player.x + this.player.width, 
-      this.player.y + this.player.height / 2, 
+      this.player.x , 
+      this.player.y , 
       this.gridSize, 
       this.gridSize, 
       10, 
