@@ -1,5 +1,7 @@
 export class Monster {
   constructor(x, y, width, height, speed, direction = 1) {
+    this.startX = x;
+    this.startY = y;
     this.x = x;
     this.y = y;
     this.width = width;
@@ -8,29 +10,34 @@ export class Monster {
     this.direction = direction;
   }
 
+  resetPosition() {
+    this.x = this.startX;
+    this.y = this.startY;
+  }
+
   update(levelGrid, gridSize) {
     const gridX = Math.floor(this.x / gridSize);
     const gridY = Math.floor(this.y / gridSize);
 
-    const leftCell = levelGrid[gridY][Math.floor((this.x - this.speed) / gridSize)]; // Adjust for precise left edge
-    const rightCell = levelGrid[gridY][Math.floor((this.x + this.width + this.speed - 1) / gridSize)]; // Right edge
+    // Ensure the grid cell exists before accessing it
+    if (!levelGrid[gridY]) return;
+
+    const leftCell = levelGrid[gridY][gridX - 1];
+    const rightCell = levelGrid[gridY][gridX + 1];
     const belowCell = levelGrid[gridY + 1] ? levelGrid[gridY + 1][gridX] : null;
 
-    // Change direction when hitting a wall
     if (this.direction === 1 && rightCell === 'B') {
         this.direction = -1;
     } else if (this.direction === -1 && leftCell === 'B') {
         this.direction = 1;
     }
 
-    // Fall if no platform below
     if (belowCell !== 'B') {
         this.y += this.speed;
     }
 
     this.x += this.direction * this.speed;
 }
-
 
   draw(ctx) {
     ctx.fillStyle = 'red';

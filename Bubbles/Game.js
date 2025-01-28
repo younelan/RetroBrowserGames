@@ -86,23 +86,37 @@ export class Game {
     this.player.draw(this.ctx);
 
     // Update and draw monsters
-    this.monsters.forEach(monster => {
+    this.monsters.forEach((monster) => {
       monster.update(this.level.grid, this.gridSize);
       monster.draw(this.ctx);
     });
 
     // Update and draw bubbles
-    this.bubbles.forEach((bubble, index) => {
-      bubble.update();
-      bubble.draw(this.ctx);
-
-      if (bubble.x < 0 || bubble.x > this.canvas.width || bubble.y < 0 || bubble.y > this.canvas.height) {
-        this.bubbles.splice(index, 1);
+    this.bubbles = this.bubbles.filter((bubble) => {
+      const collision = this.monsters.find(
+        (monster) =>
+          !bubble.trappedMonster && // Bubble isn't already trapping a monster
+          bubble.x < monster.x + monster.width &&
+          bubble.x + bubble.width > monster.x &&
+          bubble.y < monster.y + monster.height &&
+          bubble.y + bubble.height > monster.y
+      );
+    
+      if (collision) {
+        bubble.trap(collision); // Trap the monster and start the delay
+        return true;
       }
+    
+      const result = bubble.update();
+      bubble.draw(this.ctx);
+      return result !== 'burst'; // Remove bubble if it bursts
     });
+    
+    
 
     requestAnimationFrame(() => this.gameLoop());
-  }
+}
+
 
   resizeCanvas() {
     const maxWidth = window.innerWidth;
