@@ -64,18 +64,22 @@ export class Game {
   }
 
   throwBubble() {
-    if (this.player.isJumping) return;
+    const bubbleSpeed = levels[this.levelIndex].bubbleSpeed || 2; 
+    const bubbleDelay = levels[this.levelIndex].bubbleDelay || 60; 
 
     const bubble = new Bubble(
-      this.player.x , 
-      this.player.y , 
-      this.gridSize, 
-      this.gridSize, 
-      10, 
-      this.player.direction
+        this.player.x + this.player.width / 2 - this.gridSize / 2, // Center bubble
+        this.player.y + this.player.height / 2 - this.gridSize / 2,
+        this.gridSize, 
+        this.gridSize, 
+        bubbleSpeed, 
+        this.player.direction,
+        bubbleDelay
     );
     this.bubbles.push(bubble);
-  }
+}
+
+
 
   gameLoop() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -91,32 +95,64 @@ export class Game {
       monster.draw(this.ctx);
     });
 
-    // Update and draw bubbles
+    // Check if player collides with any bubbles and pop them
     this.bubbles = this.bubbles.filter((bubble) => {
-      const collision = this.monsters.find(
-        (monster) =>
-          !bubble.trappedMonster && // Bubble isn't already trapping a monster
-          bubble.x < monster.x + monster.width &&
-          bubble.x + bubble.width > monster.x &&
-          bubble.y < monster.y + monster.height &&
-          bubble.y + bubble.height > monster.y
-      );
-    
-      if (collision) {
-        bubble.trap(collision); // Trap the monster and start the delay
-        return true;
+      if (this.isColliding(this.player, bubble)) {
+          if (bubble.trappedMonster) {
+              this.score += 100; // Increase score
+              this.monsters = this.monsters.filter(m => m !== bubble.trappedMonster); // Remove monster
+          }
+          return false; // Remove the bubble
       }
-    
+  
       const result = bubble.update();
       bubble.draw(this.ctx);
-      return result !== 'burst'; // Remove bubble if it bursts
-    });
-    
-    
+      return result !== 'burst'; // Remove bubble if it bursts at top
+  });
+  
+  
+
+    // Check for victory condition
+    if (this.monsters.length === 0) {
+      this.handleLevelCompletion();
+    }
 
     requestAnimationFrame(() => this.gameLoop());
+  }
+
+  isColliding(player, bubble) {
+    const dx = (player.x + player.width / 2) - (bubble.x + bubble.width / 2);
+    const dy = (player.y + player.height / 2) - (bubble.y + bubble.height / 2);
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    return distance < bubble.width + player.width ; // Reduce radius for better detection
 }
 
+
+
+  handleLevelCompletion() {
+    this.ctx.fillStyle = "white";
+    this.ctx.font = "40px Arial";
+    this.ctx.fillText("Victory!", this.canvas.width / 2 - 80, this.canvas.height / 2);
+
+    setTimeout(() => {
+      this.levelIndex++;
+      if (this.levelIndex >= levels.length) {
+        alert("Game Over! You won!");
+        location.reload(); // Restart the game
+      } else {
+        this.loadNextLevel();
+      }
+    }, 3000); // 3-second delay before moving to next level
+  }
+  loadNextLevel() {
+    this.level = new Level(levels[this.levelIndex].grid);
+    this.player = null;
+    this.monsters = [];
+    this.bubbles = [];
+
+    this.initialize(); // Reinitialize player and monsters
+  }
 
   resizeCanvas() {
     const maxWidth = window.innerWidth;

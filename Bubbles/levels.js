@@ -25,7 +25,9 @@ export const levels = [
   BB1                      BB
   BBBBBBBBBBBBBBBBBBBBBBBBBBB
   `,
-  jumpHeight: 2
+  jumpHeight: 2,
+  bubbleSpeed: 16,  // Faster bubbles
+  bubbleDelay: 120, // Longer delay before moving
     },
     { //level2
       jumpHeight: 2,
