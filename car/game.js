@@ -74,18 +74,12 @@ class CarGame {
     }
 
     createTrack(trackPoints) {
-        // Create a flat track using the points
-        const trackWidth = 15;
-        const trackShape = new THREE.Shape();
-        const curve = new THREE.CatmullRomCurve3(trackPoints);
-        curve.closed = true;
-
-        // Create track surface
-        const trackGeometry = new THREE.PlaneGeometry(1000, 1000);
+        // Create ground plane
+        const groundGeometry = new THREE.PlaneGeometry(500, 500);
         const textureLoader = new THREE.TextureLoader();
         const grassTexture = textureLoader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
         grassTexture.wrapS = grassTexture.wrapT = THREE.RepeatWrapping;
-        grassTexture.repeat.set(50, 50);
+        grassTexture.repeat.set(10, 10);
         
         const groundMaterial = new THREE.MeshStandardMaterial({
             map: grassTexture,
@@ -93,171 +87,102 @@ class CarGame {
             metalness: 0.1
         });
         
-        const ground = new THREE.Mesh(trackGeometry, groundMaterial);
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
         ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0;
         this.scene.add(ground);
 
-        // Create the actual race track on top of the ground
-        const segments = 100;
-        const trackPositions = [];
-        const trackIndices = [];
-        const trackUVs = [];
+        // Create a flat circular road
+        const radius = 80;
+        const trackWidth = 16;
+        const segments = 64;
 
-        // Generate track vertices
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const centerPoint = curve.getPoint(t);
-            const tangent = curve.getTangent(t);
-            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+        // Create road geometry
+        const roadShape = new THREE.Shape();
+        roadShape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+        
+        const holePath = new THREE.Path();
+        holePath.absarc(0, 0, radius - trackWidth, 0, Math.PI * 2, true);
+        roadShape.holes.push(holePath);
 
-            // Create vertices for both sides of the track
-            const leftPoint = centerPoint.clone().add(normal.clone().multiplyScalar(trackWidth/2));
-            const rightPoint = centerPoint.clone().add(normal.clone().multiplyScalar(-trackWidth/2));
-
-            trackPositions.push(
-                leftPoint.x, 0.1, leftPoint.z,
-                rightPoint.x, 0.1, rightPoint.z
-            );
-
-            // UV coordinates for road texture
-            trackUVs.push(
-                0, t * 10,
-                1, t * 10
-            );
-
-            // Create faces (triangles)
-            if (i < segments) {
-                const baseIndex = i * 2;
-                trackIndices.push(
-                    baseIndex, baseIndex + 1, baseIndex + 2,
-                    baseIndex + 1, baseIndex + 3, baseIndex + 2
-                );
-            }
-        }
-
-        // Create track geometry
-        const roadGeometry = new THREE.BufferGeometry();
-        roadGeometry.setAttribute('position', new THREE.Float32BufferAttribute(trackPositions, 3));
-        roadGeometry.setAttribute('uv', new THREE.Float32BufferAttribute(trackUVs, 2));
-        roadGeometry.setIndex(trackIndices);
-        roadGeometry.computeVertexNormals();
-
-        // Load and apply road texture
-        const roadTexture = textureLoader.load('https://threejs.org/examples/textures/asphalt.jpg');
-        roadTexture.wrapS = roadTexture.wrapT = THREE.RepeatWrapping;
-        roadTexture.repeat.set(1, 50);
-
+        const roadGeometry = new THREE.ShapeGeometry(roadShape, segments);
         const roadMaterial = new THREE.MeshStandardMaterial({
-            map: roadTexture,
+            color: 0x333333,  // Dark gray for asphalt
             roughness: 0.7,
-            metalness: 0.1
+            metalness: 0.1,
+            side: THREE.DoubleSide
         });
 
         this.track = new THREE.Mesh(roadGeometry, roadMaterial);
+        this.track.rotation.x = -Math.PI / 2;
+        this.track.position.y = 0.01;  // Slightly above ground
         this.scene.add(this.track);
 
-        // Add track borders (white lines)
-        const borderWidth = 0.5;
-        const leftBorderPositions = [];
-        const rightBorderPositions = [];
+        // Create white border lines
+        const innerRadius = radius - trackWidth;
+        const outerRadius = radius;
 
-        for (let i = 0; i <= segments; i++) {
-            const t = i / segments;
-            const centerPoint = curve.getPoint(t);
-            const tangent = curve.getTangent(t);
-            const normal = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+        // Inner white line
+        const innerLineGeometry = new THREE.RingGeometry(innerRadius - 0.5, innerRadius, segments);
+        const linesMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            side: THREE.DoubleSide
+        });
+        
+        const innerLine = new THREE.Mesh(innerLineGeometry, linesMaterial);
+        innerLine.rotation.x = -Math.PI / 2;
+        innerLine.position.y = 0.02;
+        this.scene.add(innerLine);
 
-            // Left border
-            const leftOuter = centerPoint.clone().add(normal.clone().multiplyScalar(trackWidth/2 + borderWidth));
-            const leftInner = centerPoint.clone().add(normal.clone().multiplyScalar(trackWidth/2));
-            
-            // Right border
-            const rightOuter = centerPoint.clone().add(normal.clone().multiplyScalar(-(trackWidth/2 + borderWidth)));
-            const rightInner = centerPoint.clone().add(normal.clone().multiplyScalar(-trackWidth/2));
-
-            leftBorderPositions.push(
-                leftOuter.x, 0.11, leftOuter.z,
-                leftInner.x, 0.11, leftInner.z
-            );
-
-            rightBorderPositions.push(
-                rightOuter.x, 0.11, rightOuter.z,
-                rightInner.x, 0.11, rightInner.z
-            );
-        }
-
-        // Create border geometries
-        const createBorderMesh = (positions) => {
-            const geometry = new THREE.BufferGeometry();
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            
-            const indices = [];
-            for (let i = 0; i < segments; i++) {
-                const baseIndex = i * 2;
-                indices.push(
-                    baseIndex, baseIndex + 1, baseIndex + 2,
-                    baseIndex + 1, baseIndex + 3, baseIndex + 2
-                );
-            }
-            geometry.setIndex(indices);
-            geometry.computeVertexNormals();
-
-            return new THREE.Mesh(
-                geometry,
-                new THREE.MeshStandardMaterial({ 
-                    color: 0xffffff,
-                    roughness: 0.4,
-                    metalness: 0.3
-                })
-            );
-        };
-
-        const leftBorder = createBorderMesh(leftBorderPositions);
-        const rightBorder = createBorderMesh(rightBorderPositions);
-        this.scene.add(leftBorder);
-        this.scene.add(rightBorder);
+        // Outer white line
+        const outerLineGeometry = new THREE.RingGeometry(outerRadius, outerRadius + 0.5, segments);
+        const outerLine = new THREE.Mesh(outerLineGeometry, linesMaterial);
+        outerLine.rotation.x = -Math.PI / 2;
+        outerLine.position.y = 0.02;
+        this.scene.add(outerLine);
 
         // Create start/finish line
         const startLine = new THREE.Mesh(
-            new THREE.PlaneGeometry(trackWidth, 3),
-            new THREE.MeshPhongMaterial({
+            new THREE.PlaneGeometry(trackWidth - 1, 2),
+            new THREE.MeshBasicMaterial({
                 color: 0xffffff,
-                map: textureLoader.load('https://threejs.org/examples/textures/checkerboard.jpg')
+                side: THREE.DoubleSide
             })
         );
-        const startPoint = curve.getPoint(0);
-        const startTangent = curve.getTangent(0);
-        startLine.position.set(startPoint.x, 0.12, startPoint.z);
+        startLine.position.set(radius - trackWidth/2, 0.03, 0);
         startLine.rotation.x = -Math.PI / 2;
-        startLine.rotation.z = Math.atan2(startTangent.x, startTangent.z);
         this.scene.add(startLine);
 
-        // Create checkpoints
+        // Create checkpoints (less visible)
         this.checkpoints = [];
         const checkpointCount = 8;
         
         for (let i = 0; i < checkpointCount; i++) {
-            const t = i / checkpointCount;
-            const position = curve.getPoint(t);
-            const tangent = curve.getTangent(t);
+            const angle = (i / checkpointCount) * Math.PI * 2;
+            const x = Math.cos(angle) * (radius - trackWidth/2);
+            const z = Math.sin(angle) * (radius - trackWidth/2);
             
             const checkpoint = new THREE.Mesh(
-                new THREE.PlaneGeometry(trackWidth, 1),
-                new THREE.MeshPhongMaterial({ 
-                    color: i === 0 ? 0xff0000 : 0x00ff00,
+                new THREE.PlaneGeometry(trackWidth - 2, 1),
+                new THREE.MeshBasicMaterial({ 
+                    color: 0x00ff00,
                     transparent: true,
-                    opacity: 0.5,
+                    opacity: 0.2,
                     side: THREE.DoubleSide
                 })
             );
             
-            checkpoint.position.set(position.x, 0.13, position.z);
+            checkpoint.position.set(x, 0.02, z);
             checkpoint.rotation.x = -Math.PI / 2;
-            checkpoint.rotation.z = Math.atan2(tangent.x, tangent.z);
+            checkpoint.rotation.z = angle;
             
             this.scene.add(checkpoint);
             this.checkpoints.push(checkpoint);
         }
+
+        // Store track parameters for AI
+        this.trackRadius = radius;
+        this.trackWidth = trackWidth;
     }
 
     createAICars(aiCarConfigs) {
@@ -279,17 +204,19 @@ class CarGame {
 
     updateAICars(deltaTime) {
         this.aiCars.forEach(aiCar => {
-            // Simple AI logic: follow the track
-            const nextCheckpoint = this.checkpoints[aiCar.checkpoint];
+            if (!this.trackRadius) return;
+
             const carPos = aiCar.model.position;
-            const targetPos = nextCheckpoint.position;
             
-            // Calculate direction to next checkpoint
-            const direction = new THREE.Vector3()
-                .subVectors(targetPos, carPos)
-                .normalize();
+            // Calculate target point on track
+            const angle = Math.atan2(carPos.z, carPos.x);
+            const targetX = Math.cos(angle + 0.1) * this.trackRadius;
+            const targetZ = Math.sin(angle + 0.1) * this.trackRadius;
             
-            // Calculate angle to target
+            // Calculate direction to target
+            const direction = new THREE.Vector3(targetX - carPos.x, 0, targetZ - carPos.z).normalize();
+            
+            // Calculate target angle
             const targetAngle = Math.atan2(direction.x, direction.z);
             let angleDiff = targetAngle - aiCar.angle;
             
@@ -300,23 +227,20 @@ class CarGame {
             // Adjust steering
             aiCar.angle += angleDiff * 0.1;
             
-            // Adjust speed based on turn sharpness
-            const turnFactor = Math.abs(angleDiff) / Math.PI;
-            const targetSpeed = aiCar.maxSpeed * (1 - turnFactor * 0.7);
-            aiCar.speed += (targetSpeed - aiCar.speed) * 0.1;
+            // Calculate distance from ideal radius
+            const currentRadius = Math.sqrt(carPos.x * carPos.x + carPos.z * carPos.z);
+            const radiusDiff = Math.abs(currentRadius - this.trackRadius);
             
+            // Adjust speed based on how close to track we are
+            const speedFactor = Math.max(0.5, 1 - radiusDiff / 20);
+            aiCar.speed = aiCar.maxSpeed * speedFactor;
+
             // Update position
             const moveX = Math.sin(aiCar.angle) * aiCar.speed;
             const moveZ = Math.cos(aiCar.angle) * aiCar.speed;
             aiCar.model.position.x += moveX;
             aiCar.model.position.z += moveZ;
             aiCar.model.rotation.y = aiCar.angle;
-            
-            // Check if reached checkpoint
-            const distance = carPos.distanceTo(targetPos);
-            if (distance < 8) {
-                aiCar.checkpoint = (aiCar.checkpoint + 1) % this.checkpoints.length;
-            }
         });
     }
 
@@ -482,11 +406,11 @@ class CarGame {
         this.scene.add(ambientLight);
 
         const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        directionalLight.position.set(100, 100, 50);
+        directionalLight.position.set(0, 100, 0);
         this.scene.add(directionalLight);
 
-        // Set camera position and angle
-        this.camera.position.set(0, 50, 0);
+        // Set initial camera position higher and looking down
+        this.camera.position.set(0, 120, 0);
         this.camera.lookAt(0, 0, 0);
     }
 
@@ -601,7 +525,7 @@ class CarGame {
         document.getElementById('timeValue').textContent = 
             Math.floor(this.raceTime);
 
-        // Update player position with improved physics
+        // Update player position
         const moveX = Math.sin(this.playerAngle) * this.speed;
         const moveZ = Math.cos(this.playerAngle) * this.speed;
         
@@ -612,12 +536,9 @@ class CarGame {
         // Update AI cars
         this.updateAICars(deltaTime);
 
-        // Apply drift/friction
-        this.speed *= this.driftFactor;
-
-        // Update camera position with smoother following
-        const cameraDistance = 12;
-        const cameraHeight = 8;
+        // Update camera to follow player from behind and above
+        const cameraHeight = 15;
+        const cameraDistance = 20;
         const targetX = this.playerCar.position.x - Math.sin(this.playerAngle) * cameraDistance;
         const targetZ = this.playerCar.position.z - Math.cos(this.playerAngle) * cameraDistance;
         
