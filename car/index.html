@@ -1,44 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>3D Car Racing Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style>
         body {
             margin: 0;
-            padding: 0;
             overflow: hidden;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
             font-family: Arial, sans-serif;
         }
-
+        
         #game-container {
+            width: 100vw;
+            height: 100vh;
             position: relative;
-            width: 100%;
-            max-width: 100vh;
-            aspect-ratio: 1;
         }
-
+        
         #gameCanvas {
             width: 100%;
             height: 100%;
             display: block;
         }
-
+        
+        #start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        
+        #start-screen button {
+            padding: 10px 20px;
+            font-size: 18px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        
         #hud {
             position: absolute;
-            top: 10px;
-            left: 10px;
+            top: 20px;
+            left: 20px;
             color: white;
-            font-size: 18px;
-            text-shadow: 2px 2px 2px rgba(0,0,0,0.5);
+            font-size: 20px;
+            text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.5);
             pointer-events: none;
+        }
+
+        .hud-item {
+            margin-bottom: 10px;
         }
 
         #controls {
@@ -46,60 +60,30 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: 33%;
-            display: none;
-        }
-
-        #touch-area {
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-        }
-
-        #start-screen {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.8);
             padding: 20px;
-            border-radius: 10px;
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-button {
+            width: 60px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
             color: white;
-        }
-
-        .game-button {
-            background: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 30px;
-            font-size: 18px;
-            margin: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-
-        .game-button:hover {
-            background: #45a049;
-        }
-
-        @media (orientation: portrait) {
-            #game-container {
-                width: 100%;
-                height: auto;
-            }
-            #controls {
-                display: block;
-            }
-        }
-
-        @media (orientation: landscape) {
-            #game-container {
-                height: 100vh;
-                width: auto;
-            }
+            pointer-events: auto;
+            user-select: none;
+            touch-action: none;
         }
     </style>
 </head>
@@ -107,22 +91,26 @@
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         <div id="hud">
-            <div>Time: <span id="timeValue">0</span>s</div>
-            <div>Lap: <span id="lapValue">0/3</span></div>
-            <div>Best: <span id="bestValue">--:--</span></div>
+            <div class="hud-item">Time: <span id="timeValue">0</span>s</div>
+            <div class="hud-item">Score: <span id="scoreValue">0</span></div>
         </div>
-        <div id="start-screen">
+        <div id="start-screen" style="display: none;">
             <h2>3D Car Racing</h2>
-            <p>Use arrow keys or touch to control the car</p>
-            <button id="startButton" class="game-button">Start Race</button>
-            <button id="restartButton" class="game-button" style="display: none;">Restart</button>
+            <p>Collect coins and stay on track!</p>
+            <button id="startButton">Start Game</button>
+            <button id="restartButton" style="display: none;">Restart</button>
         </div>
         <div id="controls">
-            <div id="touch-area"></div>
+            <div class="control-group">
+                <div id="left" class="control-button">←</div>
+                <div id="right" class="control-button">→</div>
+            </div>
+            <div class="control-group">
+                <div id="accelerate" class="control-button">↑</div>
+                <div id="brake" class="control-button">↓</div>
+            </div>
         </div>
     </div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="levels.js"></script>
-    <script src="game.js"></script>
+    <script type="module" src="game.js"></script>
 </body>
 </html>
