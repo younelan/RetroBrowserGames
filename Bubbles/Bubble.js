@@ -16,40 +16,41 @@ export class Bubble {
 
   update() {
     if (this.safeFrames > 0) {
-      this.safeFrames--; // Count down before bubble can be popped
+        this.safeFrames--; // Count down before bubble can be popped
     }
 
     if (this.state === 'moving') {
-      if (this.distanceTravelled < 2 * this.width) {
-        this.x += this.direction * this.speed;
-        this.distanceTravelled += this.speed;
-      } else {
-        this.y -= 2;
-      }
-    } else if (this.state === 'trapped') {
-      if (this.trappedMonster) {
-        this.trappedMonster.x = this.x + this.width / 4;
-        this.trappedMonster.y = this.y;
-      }
-      this.trapDelay--;
-      if (this.trapDelay <= 0) {
-        this.state = 'upward';
-      }
-    } else if (this.state === 'upward') {
-      if (this.trappedMonster) {
-        this.trappedMonster.x = this.x + this.width / 4;
-        this.trappedMonster.y = this.y;
-      }
-      this.y -= this.speed;
-      if (this.y + this.height < 0) {
-        if (this.trappedMonster) {
-          this.trappedMonster.resetPosition();
-          this.trappedMonster = null;
+        if (this.distanceTravelled < 2 * this.width) {
+            this.x += this.direction * this.speed;
+            this.distanceTravelled += this.speed;
+        } else {
+            this.state = 'upward'; // Switch to moving upward
         }
-        return 'burst';
-      }
+    } else if (this.state === 'trapped') {
+        if (this.trappedMonster) {
+            this.trappedMonster.x = this.x + this.width / 4; // Keep centered
+            this.trappedMonster.y = this.y;
+        }
+        this.trapDelay--;
+        if (this.trapDelay <= 0) {
+            this.state = 'upward'; // Start moving up
+        }
+    } else if (this.state === 'upward') {
+        if (this.trappedMonster) {
+            this.trappedMonster.x = this.x + this.width / 4; // Center monster
+            this.trappedMonster.y = this.y;
+        }
+        this.y -= this.speed;
+        if (this.y + this.height < 0) {
+            if (this.trappedMonster) {
+                this.trappedMonster.resetPosition();
+                this.trappedMonster = null;
+            }
+            return 'burst';
+        }
     }
-  }
+}
+
 
   canBePopped() {
     return this.safeFrames <= 0; // Bubble can be popped after the safe delay
