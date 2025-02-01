@@ -8,7 +8,8 @@ export class Game {
   constructor() {
     this.canvas = document.getElementById('gameCanvas');
     this.ctx = this.canvas.getContext('2d');
-    this.gridSize = 60;
+    this.baseGridSize = 60; // Original grid size
+    this.gridSize = this.baseGridSize; // Current grid size (will be adjusted)
     this.levelIndex = 0;
     this.level = new Level(levels[this.levelIndex].grid);
     this.player = null;
@@ -16,6 +17,22 @@ export class Game {
     this.bubbles = [];
     this.keys = {};
     this.jumpHeight = levels[this.levelIndex].jumpHeight || 1;
+    this.score = 0;
+    this.lives = 3;
+    this.maxGridSize = 60; // Maximum allowed grid size
+
+    this.touchStart = null;
+    this.isDragging = false;
+    this.dragDirection = null;
+    this.dragSensitivity = 4; // Increased from 2 to 4
+    this.moveSpeed = 8; // Base movement speed for touch controls
+    this.lastTouch = null;
+    
+    // Add resize listener
+    window.addEventListener('resize', () => this.resizeCanvas());
+
+    // Add touch/mouse event listeners
+    this.setupTouchControls();
   }
 
   start() {
@@ -83,6 +100,7 @@ gameLoop() {
   this.ctx.fillStyle = "black";
   this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   this.level.draw(this.ctx, this.gridSize);
+  this.drawStats();
 
   // Check if level is completed
   if (this.monsters.length === 0) {
@@ -161,9 +179,13 @@ loadNextLevel() {
   this.player = null;
   this.monsters = [];
   this.bubbles = [];
-
-  this.initialize(); // Reinitialize player and monsters
+  
+  // Resize canvas before initializing entities
+  this.resizeCanvas();
+  this.initialize();
 }
+
+
 showWinScreen() {
   this.ctx.fillStyle = "black";
   this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -229,52 +251,208 @@ handleLevelCompletion() {
 }
 
 
-loadNextLevel() {
-  this.level = new Level(levels[this.levelIndex].grid);
-  this.player = null;
-  this.monsters = [];
-  this.bubbles = [];
-  
-  this.initialize(); // Reinitialize player, monsters, and level
-
-  requestAnimationFrame(() => this.gameLoop()); // Restart game loop
-}
-
-
   resizeCanvas() {
-    const maxWidth = window.innerWidth;
-    const maxHeight = window.innerHeight;
+    const containerWidth = window.innerWidth;
+    const containerHeight = window.innerHeight;
+    const isPortrait = containerHeight > containerWidth;
 
-    const gridCountX = Math.floor(maxWidth / this.gridSize);
-    const gridCountY = Math.floor(maxHeight / this.gridSize);
+    // Get current level dimensions
+    const levelWidth = this.level.grid[0].length;
+    const levelHeight = this.level.grid.length;
 
-    this.canvas.width = gridCountX * this.gridSize;
-    this.canvas.height = gridCountY * this.gridSize;
-  }
-resizeCanvas() {
-  const maxWidth = window.innerWidth;
-  const maxHeight = Math.min(window.innerHeight * 0.8, window.innerHeight); // Max 80% of screen height
-  
-    const isPortrait = maxHeight > maxWidth;
+    let maxWidth, maxHeight;
     if (isPortrait) {
-        
-        const gridCountX = Math.floor(maxWidth / this.gridSize);
-        const gridCountY = Math.floor(maxHeight / this.gridSize);
-    
-        this.canvas.width = gridCountX * this.gridSize;
-        this.canvas.height = gridCountY * this.gridSize;
-    
+      maxWidth = containerWidth * 0.95; // Use 95% of screen width in portrait
+      maxHeight = containerHeight * 0.8; // Use 80% of screen height
     } else {
-      const maxWidth = window.innerWidth;
-      const maxHeight = Math.min(window.innerHeight * 0.8, window.innerHeight); // Max 80% of screen height
-        const gridCountX = Math.floor(maxWidth / this.gridSize);
-      const gridCountY = Math.floor(maxHeight / this.gridSize);
-  
-      this.canvas.width = gridCountX * this.gridSize;
-      this.canvas.height = gridCountY * this.gridSize;
-  
+      maxWidth = containerWidth * 0.8;  // Use 80% of screen width in landscape
+      maxHeight = containerHeight * 0.8; // Use 80% of screen height
     }
-}
 
+    // Calculate grid size that will fit the level
+    const gridSizeByWidth = Math.floor(maxWidth / levelWidth);
+    const gridSizeByHeight = Math.floor(maxHeight / levelHeight);
+    let newGridSize = Math.min(gridSizeByWidth, gridSizeByHeight);
+
+    // Ensure grid size doesn't exceed maximum
+    newGridSize = Math.min(newGridSize, this.maxGridSize);
+
+    // Calculate actual canvas dimensions
+    const canvasWidth = newGridSize * levelWidth;
+    const canvasHeight = newGridSize * levelHeight;
+
+    // Update canvas size
+    this.canvas.width = canvasWidth;
+    this.canvas.height = canvasHeight;
+
+    // Center canvas
+    this.canvas.style.position = 'absolute';
+    this.canvas.style.left = '50%';
+    this.canvas.style.top = '50%';
+    this.canvas.style.transform = 'translate(-50%, -50%)';
+
+    // Update grid size if changed
+    if (this.gridSize !== newGridSize) {
+      this.updateGridSize(newGridSize);
+    }
+  }
+
+  updateGridSize(newGridSize) {
+    const scaleFactor = newGridSize / this.gridSize;
+    this.gridSize = newGridSize;
+
+    // Scale all entities
+    if (this.player) {
+      this.player.x *= scaleFactor;
+      this.player.y *= scaleFactor;
+      this.player.width = newGridSize;
+      this.player.height = newGridSize;
+      this.player.speed = (5 * newGridSize) / this.baseGridSize;
+    }
+
+    this.monsters.forEach(monster => {
+      monster.x *= scaleFactor;
+      monster.y *= scaleFactor;
+      monster.width = newGridSize;
+      monster.height = newGridSize;
+      monster.speed = (2 * newGridSize) / this.baseGridSize;
+      monster.startX *= scaleFactor;
+      monster.startY *= scaleFactor;
+    });
+
+    this.bubbles.forEach(bubble => {
+      bubble.x *= scaleFactor;
+      bubble.y *= scaleFactor;
+      bubble.width = newGridSize;
+      bubble.height = newGridSize;
+      bubble.speed = (16 * newGridSize) / this.baseGridSize;
+    });
+
+    // Ensure player stays within canvas bounds
+    if (this.player) {
+      this.player.x = Math.max(0, Math.min(this.player.x, this.canvas.width - this.player.width));
+      this.player.y = Math.max(0, Math.min(this.player.y, this.canvas.height - this.player.height));
+    }
+    
+    // Ensure monsters stay within canvas bounds
+    this.monsters.forEach(monster => {
+      monster.x = Math.max(0, Math.min(monster.x, this.canvas.width - monster.width));
+      monster.y = Math.max(0, Math.min(monster.y, this.canvas.height - monster.height));
+    });
+  }
+
+  drawStats() {
+    const padding = this.gridSize / 2;
+    this.ctx.fillStyle = 'white';
+    this.ctx.font = `${this.gridSize/2}px Arial`;
+    this.ctx.fillText(`🏆 ${this.score}`, padding, this.gridSize/1.5);
+    this.ctx.fillText(`❤️ ${this.lives}`, this.canvas.width - this.gridSize*3, this.gridSize/1.5);
+    this.ctx.fillText(`🎮 ${this.levelIndex + 1}`, this.canvas.width/2 - this.gridSize, this.gridSize/1.5);
+  }
+
+  setupTouchControls() {
+    const getCanvasPoint = (clientX, clientY) => {
+      const rect = this.canvas.getBoundingClientRect();
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+        inBounds: function() {
+          return this.x >= 0 && this.x <= rect.width &&
+                 this.y >= 0 && this.y <= rect.height;
+        }
+      };
+    };
+
+    let touchStartTime = 0;
+    const tapThreshold = 200; // ms to distinguish tap from drag
+
+    const touchStart = (e) => {
+      e.preventDefault();
+      const point = e.touches ? e.touches[0] : e;
+      const canvasPoint = getCanvasPoint(point.clientX, point.clientY);
+      
+      if (canvasPoint.inBounds()) {
+        touchStartTime = Date.now();
+        this.touchStart = { x: point.clientX, y: point.clientY };
+        this.lastTouch = { x: point.clientX, y: point.clientY };
+        this.isDragging = false; // Start as not dragging
+      }
+    };
+
+    const touchMove = (e) => {
+      e.preventDefault();
+      if (!this.touchStart || !this.lastTouch) return;
+
+      const point = e.touches ? e.touches[0] : e;
+      const canvasPoint = getCanvasPoint(point.clientX, point.clientY);
+      
+      if (canvasPoint.inBounds()) {
+        const deltaX = point.clientX - this.lastTouch.x;
+        const deltaY = point.clientY - this.lastTouch.y;
+        const moveThreshold = 3; // Smaller threshold for more responsive controls
+
+        // Mark as dragging if moved enough
+        if (Math.abs(deltaX) > moveThreshold || Math.abs(deltaY) > moveThreshold) {
+          this.isDragging = true;
+        }
+
+        // Horizontal movement
+        if (deltaX < -moveThreshold) {
+          this.player.x -= this.moveSpeed * this.dragSensitivity;
+          this.player.direction = -1;
+        } else if (deltaX > moveThreshold) {
+          this.player.x += this.moveSpeed * this.dragSensitivity;
+          this.player.direction = 1;
+        }
+
+        // Jump on upward movement
+        if (deltaY < -moveThreshold * 3) {
+          if (!this.player.isJumping) {
+            this.keys['ArrowUp'] = true;
+            setTimeout(() => {
+              this.keys['ArrowUp'] = false;
+            }, 100);
+          }
+        }
+
+        this.lastTouch = { x: point.clientX, y: point.clientY };
+      }
+    };
+
+    const touchEnd = (e) => {
+      e.preventDefault();
+      const touchDuration = Date.now() - touchStartTime;
+      
+      // If it was a quick tap and we didn't drag, throw bubble
+      if (!this.isDragging && touchDuration < tapThreshold) {
+        this.throwBubble();
+      }
+
+      this.touchStart = null;
+      this.lastTouch = null;
+      this.isDragging = false;
+      this.keys['ArrowLeft'] = false;
+      this.keys['ArrowRight'] = false;
+      this.keys['ArrowUp'] = false;
+    };
+
+    // Remove existing listeners first to prevent duplicates
+    this.canvas.removeEventListener('touchstart', touchStart);
+    this.canvas.removeEventListener('touchmove', touchMove);
+    this.canvas.removeEventListener('touchend', touchEnd);
+    
+    // Add touch events
+    this.canvas.addEventListener('touchstart', touchStart, { passive: false });
+    this.canvas.addEventListener('touchmove', touchMove, { passive: false });
+    this.canvas.addEventListener('touchend', touchEnd, { passive: false });
+    
+    // Mouse events
+    this.canvas.addEventListener('mousedown', touchStart);
+    this.canvas.addEventListener('mousemove', (e) => {
+      if (this.touchStart) touchMove(e);
+    });
+    this.canvas.addEventListener('mouseup', touchEnd);
+    this.canvas.addEventListener('mouseleave', touchEnd);
+  }
 }
 

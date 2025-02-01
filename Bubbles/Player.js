@@ -51,6 +51,10 @@ export class Player {
       this.isJumping = true;
       this.velocity = -10 * jumpHeight;
     }
+
+    // Keep player within canvas bounds
+    this.x = Math.max(0, Math.min(this.x, levelGrid[0].length * gridSize - this.width));
+    this.y = Math.max(0, Math.min(this.y, levelGrid.length * gridSize - this.height));
   }
 
   isWallCollision(levelGrid, gridSize, speed) {
@@ -76,6 +80,10 @@ export class Player {
     const height = this.height;
     const direction = -this.direction || 1;
 
+    // Scale all measurements relative to gridSize
+    const scale = width / 60; // 60 is the base grid size
+    const cornerRadius = width * 0.15;
+
     ctx.save();
 
     if (direction === -1) {
@@ -84,6 +92,12 @@ export class Player {
     } else {
         ctx.translate(x, y);
     }
+
+    // Always scale all dimensions relative to gridSize
+    ctx.scale(width/60, height/60);  // Scale everything relative to base size of 60
+    
+    // All coordinates should now use base size of 60
+    const baseSize = 60;
 
     // Lighting/Shading Calculations (for 3D effect)
     const lightX = this.x + this.width / 2; // Example light source position
@@ -97,55 +111,59 @@ export class Player {
 
     ctx.fillStyle = bodyGradient;
     ctx.beginPath();
-    ctx.moveTo(width * 0.1, height * 0.5);
-    ctx.bezierCurveTo(width * 0.2, height * 0.1, width * 0.8, height * 0.1, width * 0.9, height * 0.5);
-    ctx.lineTo(width * 0.7, height * 0.7);
-    ctx.lineTo(width * 0.9, height);
-    ctx.lineTo(width * 0.8, height * 0.8);
-    ctx.lineTo(width * 0.7, height * 0.7);
+    ctx.moveTo(baseSize * 0.1, baseSize * 0.5);
+    ctx.bezierCurveTo(
+      baseSize * 0.2, baseSize * 0.1,
+      baseSize * 0.8, baseSize * 0.1,
+      baseSize * 0.9, baseSize * 0.5
+    );
+    ctx.lineTo(baseSize * 0.7, baseSize * 0.7);
+    ctx.lineTo(baseSize * 0.9, baseSize);
+    ctx.lineTo(baseSize * 0.8, baseSize * 0.8);
+    ctx.lineTo(baseSize * 0.7, baseSize * 0.7);
     ctx.closePath();
     ctx.fill();
 
     // Belly with subtle gradient
-    const bellyGradient = ctx.createRadialGradient(width * 0.5, height * 0.6, 0, width * 0.5, height * 0.6, width * 0.4);
+    const bellyGradient = ctx.createRadialGradient(baseSize * 0.5, baseSize * 0.6, 0, baseSize * 0.5, baseSize * 0.6, baseSize * 0.4);
     bellyGradient.addColorStop(0, 'lightgreen');
     bellyGradient.addColorStop(1, 'green');
     ctx.fillStyle = bellyGradient;
     ctx.beginPath();
-    ctx.ellipse(width * 0.5, height * 0.6, width * 0.4, height * 0.3, 0, 0, Math.PI * 2);
+    ctx.ellipse(baseSize * 0.5, baseSize * 0.6, baseSize * 0.4, baseSize * 0.3, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Head with shading
     ctx.fillStyle = `hsl(120, 100%, ${50 + shadeFactor * 20}%)`; // Slightly darker head
     ctx.beginPath();
-    ctx.moveTo(0, height * 0.5);
-    ctx.quadraticCurveTo(width * 0.2, height * 0.2, width * 0.4, height * 0.3);
-    ctx.lineTo(width * 0.4, height * 0.5);
+    ctx.moveTo(0, baseSize * 0.5);
+    ctx.quadraticCurveTo(baseSize * 0.2, baseSize * 0.2, baseSize * 0.4, baseSize * 0.3);
+    ctx.lineTo(baseSize * 0.4, baseSize * 0.5);
     ctx.closePath();
     ctx.fill();
 
     // Eye with shine (more 3D)
     ctx.fillStyle = 'white';
     ctx.beginPath();
-    ctx.arc(width * 0.25, height * 0.4, width * 0.08, 0, Math.PI * 2);
+    ctx.arc(baseSize * 0.25 * scale, baseSize * 0.4 * scale, baseSize * 0.08 * scale, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = 'black';
     ctx.beginPath();
-    ctx.arc(width * 0.25, height * 0.4, width * 0.04, 0, Math.PI * 2);
+    ctx.arc(baseSize * 0.25 * scale, baseSize * 0.4 * scale, baseSize * 0.04 * scale, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'; // White shine
     ctx.beginPath();
-    ctx.arc(width * 0.27, height * 0.38, width * 0.02, 0, Math.PI * 2); // Smaller white circle
+    ctx.arc(baseSize * 0.27 * scale, baseSize * 0.38 * scale, baseSize * 0.02 * scale, 0, Math.PI * 2); // Smaller white circle
     ctx.fill();
 
     // Spike with shading
     ctx.fillStyle = `hsl(100, 100%, ${30 + shadeFactor * 20}%)`; // Darker spike
     ctx.beginPath();
-    ctx.moveTo(width * 0.2, height * 0.15);
-    ctx.lineTo(width * 0.3, 0);
-    ctx.lineTo(width * 0.4, height * 0.2);
+    ctx.moveTo(baseSize * 0.2, baseSize * 0.15);
+    ctx.lineTo(baseSize * 0.3, 0);
+    ctx.lineTo(baseSize * 0.4, baseSize * 0.2);
     ctx.closePath();
     ctx.fill();
 

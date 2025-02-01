@@ -64,13 +64,40 @@ export class Bubble {
   }
 
   draw(ctx) {
-    ctx.fillStyle = 'cyan';
+    const scale = this.width / 60;
+    const baseSize = 60;
+    
+    // Draw bubble with consistent proportions
+    ctx.fillStyle = 'rgba(135, 206, 235, 0.6)';
     ctx.beginPath();
-    ctx.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
+    ctx.arc(
+      this.x + this.width/2,
+      this.y + this.height/2,
+      baseSize * 0.4 * scale,  // Consistent proportion
+      0,
+      Math.PI * 2
+    );
     ctx.fill();
+    
+    // Scaled shine effect
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.lineWidth = 2 * scale;
+    ctx.beginPath();
+    ctx.arc(
+      this.x + this.width * 0.3,
+      this.y + this.height * 0.3,
+      baseSize * 0.1 * scale,
+      0,
+      Math.PI * 2
+    );
+    ctx.stroke();
 
     if (this.trappedMonster) {
+      // Scale down trapped monster
+      ctx.save();
+      ctx.scale(0.8, 0.8);
       this.trappedMonster.draw(ctx);
+      ctx.restore();
     }
 
     // Debugging: Draw safeFrames countdown
