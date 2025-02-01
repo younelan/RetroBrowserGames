@@ -48,20 +48,20 @@ export class Game {
 
     this.resizeCanvas();
   }
-
-  handleInput() {
+handleInput() {
     document.addEventListener('keydown', (e) => {
-      this.keys[e.key] = true;
+        this.keys[e.key] = true;
 
-      if (e.key === ' ' || e.key === 'Space') {
-        this.throwBubble();
-      }
+        if (e.key === ' ' || e.key === 'Space') {
+            console.log("Bubble thrown!"); // Debugging
+            this.throwBubble();
+        }
     });
 
     document.addEventListener('keyup', (e) => {
-      this.keys[e.key] = false;
+        this.keys[e.key] = false;
     });
-  }
+}
 
   throwBubble() {
     const bubbleSpeed = levels[this.levelIndex].bubbleSpeed || 2; 
@@ -81,51 +81,69 @@ export class Game {
 
 
 
-  gameLoop() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.level.draw(this.ctx, this.gridSize);
+gameLoop() {
+  this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  this.level.draw(this.ctx, this.gridSize);
 
-    // Update and draw player
-    this.player.update(this.keys, this.level.grid, this.gridSize, this.jumpHeight);
-    this.player.draw(this.ctx);
+  // Update and draw player
+  this.player.update(this.keys, this.level.grid, this.gridSize, this.jumpHeight);
+  this.player.draw(this.ctx);
 
-    // Update and draw monsters
-    this.monsters.forEach((monster) => {
+  // Update and draw monsters
+  this.monsters.forEach((monster) => {
       monster.update(this.level.grid, this.gridSize);
       monster.draw(this.ctx);
-    });
+  });
 
-    // Check if player collides with any bubbles and pop them
-    this.bubbles = this.bubbles.filter((bubble) => {
-      if (this.isColliding(this.player, bubble)) {
+  // Check if player pops any bubbles
+  this.checkBubblePop();
+
+  // Update and draw bubbles
+  this.bubbles.forEach((bubble) => {
+    if (bubble.state === "moving") { // Only trap monsters while moving horizontally
+        const collision = this.monsters.find(
+            (monster) =>
+                !bubble.trappedMonster && // Bubble isn't already trapping a monster
+                this.isColliding(monster, bubble)
+        );
+
+        if (collision) {
+            bubble.trap(collision);
+            console.log("Monster trapped in bubble!"); // Debugging
+        }
+    }
+
+    const result = bubble.update();
+    bubble.draw(this.ctx);
+});
+
+
+  requestAnimationFrame(() => this.gameLoop());
+}
+
+checkBubblePop() {
+  this.bubbles = this.bubbles.filter((bubble) => {
+      if (bubble.canBePopped() && this.isColliding(this.player, bubble)) {
+          console.log("Bubble popped!"); // Debugging
+
           if (bubble.trappedMonster) {
-              this.score += 100; // Increase score
+              this.score += 100;
               this.monsters = this.monsters.filter(m => m !== bubble.trappedMonster); // Remove monster
           }
           return false; // Remove the bubble
       }
-  
-      const result = bubble.update();
-      bubble.draw(this.ctx);
-      return result !== 'burst'; // Remove bubble if it bursts at top
+      return true;
   });
-  
-  
+}
 
-    // Check for victory condition
-    if (this.monsters.length === 0) {
-      this.handleLevelCompletion();
-    }
 
-    requestAnimationFrame(() => this.gameLoop());
-  }
 
-  isColliding(player, bubble) {
-    const dx = (player.x + player.width / 2) - (bubble.x + bubble.width / 2);
-    const dy = (player.y + player.height / 2) - (bubble.y + bubble.height / 2);
-    const distance = Math.sqrt(dx * dx + dy * dy);
 
-    return distance < bubble.width + player.width ; // Reduce radius for better detection
+isColliding(obj1, obj2) {
+    return obj1.x < obj2.x + obj2.width &&
+           obj1.x + obj1.width > obj2.x &&
+           obj1.y < obj2.y + obj2.height &&
+           obj1.y + obj1.height > obj2.y;
 }
 
 
@@ -158,6 +176,7 @@ export class Game {
     const maxWidth = window.innerWidth;
     const maxHeight = window.innerHeight;
 
+    
     const gridCountX = Math.floor(maxWidth / this.gridSize);
     const gridCountY = Math.floor(maxHeight / this.gridSize);
 

@@ -9,11 +9,16 @@ export class Bubble {
     this.distanceTravelled = 0;
     this.trappedMonster = null;
     this.trapDelay = 0;
-    this.state = 'moving'; 
-    this.configuredDelay = delayBeforeMoving; // Configurable delay
+    this.state = 'moving';
+    this.configuredDelay = delayBeforeMoving;
+    this.safeFrames = 30; // Bubble is invincible for first 30 frames
   }
 
   update() {
+    if (this.safeFrames > 0) {
+      this.safeFrames--; // Count down before bubble can be popped
+    }
+
     if (this.state === 'moving') {
       if (this.distanceTravelled < 2 * this.width) {
         this.x += this.direction * this.speed;
@@ -26,7 +31,7 @@ export class Bubble {
         this.trappedMonster.x = this.x + this.width / 4;
         this.trappedMonster.y = this.y;
       }
-      this.trapDelay -= 1;
+      this.trapDelay--;
       if (this.trapDelay <= 0) {
         this.state = 'upward';
       }
@@ -46,10 +51,15 @@ export class Bubble {
     }
   }
 
+  canBePopped() {
+    return this.safeFrames <= 0; // Bubble can be popped after the safe delay
+}
+
+
   trap(monster) {
     this.trappedMonster = monster;
     this.state = 'trapped';
-    this.trapDelay = this.configuredDelay; // Use configurable delay
+    this.trapDelay = this.configuredDelay;
   }
 
   draw(ctx) {
@@ -61,5 +71,10 @@ export class Bubble {
     if (this.trappedMonster) {
       this.trappedMonster.draw(ctx);
     }
+
+    // Debugging: Draw safeFrames countdown
+    ctx.fillStyle = 'black';
+    ctx.font = '12px Arial';
+    ctx.fillText(this.safeFrames, this.x + this.width / 2 - 6, this.y + this.height / 2);
   }
 }

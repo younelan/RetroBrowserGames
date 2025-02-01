@@ -72,5 +72,11 @@ export class Player {
   draw(ctx) {
     ctx.fillStyle = 'green';
     ctx.fillRect(this.x, this.y, this.width, this.height);
-  }
+
+    // Draw collision box (debugging)
+    ctx.strokeStyle = 'red';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(this.x, this.y, this.width, this.height);
+}
+
 }
