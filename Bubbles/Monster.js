@@ -6,8 +6,10 @@ export class Monster {
     this.y = y;
     this.width = width;
     this.height = height;
-    this.speed = speed;
+    const baseSpeed = 2; // Base monster speed
+    this.speed = (speed / 2) * (width / 60); // Scale speed to grid size
     this.direction = direction;
+    this.isTrapped = false;
   }
 
   resetPosition() {
@@ -33,10 +35,10 @@ export class Monster {
     }
 
     if (belowCell !== 'B') {
-        this.y += this.speed;
+        this.y += this.speed * 1.5; // Faster falling
     }
 
-    this.x += this.direction * this.speed;
+    this.x += this.direction * this.speed * 1.2; // Slightly faster horizontal movement
 }
 
 draw(ctx) {

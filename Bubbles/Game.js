@@ -3,6 +3,7 @@ import { Monster } from './Monster.js';
 import { Bubble } from './Bubble.js';
 import { Level } from './Level.js';
 import { levels } from './levels.js';
+import { Collectible } from './Collectible.js';
 
 export class Game {
   constructor() {
@@ -24,15 +25,37 @@ export class Game {
     this.touchStart = null;
     this.isDragging = false;
     this.dragDirection = null;
-    this.dragSensitivity = 4; // Increased from 2 to 4
-    this.moveSpeed = 8; // Base movement speed for touch controls
-    this.lastTouch = null;
+    this.dragSensitivity = 0.8; // Increased from 0.25
+    this.moveSpeed = 4; // Increased from 2
+    this.touchData = {
+      startTime: 0,
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0,
+      isDragging: false,
+      dragThreshold: 10, // pixels to start dragging
+      tapThreshold: 150, // ms to count as tap
+      jumpTriggered: false, // Add new property to track jump state
+      moveThreshold: 3, // Lower threshold for more responsive movement
+    };
     
     // Add resize listener
     window.addEventListener('resize', () => this.resizeCanvas());
 
     // Add touch/mouse event listeners
     this.setupTouchControls();
+
+    this.isGameEnding = false;
+    this.invincibleTime = 0; // Add invincibility time after getting hit
+    this.invincibleDuration = 120; // 2 seconds at 60fps
+
+    this.collectibles = [];
+    this.collectibleTypes = ['cherry', 'strawberry', 'star'];
+    this.collectibleSpawnTimer = 0;
+    this.collectibleSpawnInterval = 300; // Spawn every 5 seconds
+
+    this.isGameOver = false;
   }
 
   start() {
@@ -81,7 +104,7 @@ handleInput() {
 }
 
   throwBubble() {
-    const bubbleSpeed = levels[this.levelIndex].bubbleSpeed || 16; 
+    const bubbleSpeed = levels[this.levelIndex].bubbleSpeed || 8; // Reduced from 16
     const bubbleDelay = levels[this.levelIndex].bubbleDelay || 90; 
 
     const bubble = new Bubble(
@@ -97,6 +120,8 @@ handleInput() {
 }
 
 gameLoop() {
+  if (this.isGameOver) return;
+
   this.ctx.fillStyle = "black";
   this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   this.level.draw(this.ctx, this.gridSize);
@@ -108,14 +133,30 @@ gameLoop() {
       return;
   }
 
+  // Update invincibility
+  if (this.invincibleTime > 0) {
+    this.invincibleTime--;
+  }
+
   // Update and draw player
   this.player.update(this.keys, this.level.grid, this.gridSize, this.jumpHeight);
-  this.player.draw(this.ctx);
+  
+  // Only draw player every other frame when invincible (blinking effect)
+  if (this.invincibleTime === 0 || this.invincibleTime % 2) {
+    this.player.draw(this.ctx);
+  }
 
-  // Update and draw monsters
+  // Check monster collisions and update monsters
   this.monsters.forEach((monster) => {
-      monster.update(this.level.grid, this.gridSize);
-      monster.draw(this.ctx);
+    monster.update(this.level.grid, this.gridSize);
+    monster.draw(this.ctx);
+
+    // Only check collision if not invincible
+    if (this.invincibleTime === 0 && 
+        !monster.isTrapped && 
+        this.isColliding(this.player, monster)) {
+      this.handlePlayerHit();
+    }
   });
 
   // Check if player pops any bubbles
@@ -124,33 +165,64 @@ gameLoop() {
   // Update and draw bubbles
   this.updateBubbles(); // Now handled in its own function
 
-  requestAnimationFrame(() => this.gameLoop());
+  // Update and spawn collectibles
+  this.collectibleSpawnTimer++;
+  if (this.collectibleSpawnTimer >= this.collectibleSpawnInterval) {
+    this.spawnCollectible();
+    this.collectibleSpawnTimer = 0;
+  }
+
+  // Update and draw collectibles
+  this.collectibles.forEach((collectible, index) => {
+    collectible.update();
+    collectible.draw(this.ctx);
+
+    if (this.isColliding(this.player, collectible)) {
+      this.collectCollectible(index);
+    }
+  });
+
+  this.animationFrame = requestAnimationFrame(() => this.gameLoop());
 }
 
 
 handleLevelCompletion() {
-  // Wait until all bubbles are cleared before ending level
   if (this.bubbles.length > 0) {
-      setTimeout(() => this.handleLevelCompletion(), 500);
-      return;
+    requestAnimationFrame(() => this.handleLevelCompletion());
+    return;
   }
 
-  this.ctx.fillStyle = "black";
-  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  let frameCount = 0;
+  const maxFrames = 120; // 2 seconds at 60fps
 
-  this.ctx.fillStyle = "white";
-  this.ctx.font = "40px Arial";
-  this.ctx.fillText("Level Complete!", this.canvas.width / 2 - 120, this.canvas.height / 2);
+  const showLevelComplete = () => {
+    this.ctx.fillStyle = "black";
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-  setTimeout(() => {
+    const fontSize = Math.min(this.canvas.width, this.canvas.height) * 0.08;
+    this.ctx.font = `${fontSize}px Arial`;
+    this.ctx.fillStyle = "white";
+    const text = "Level Complete!";
+    const metrics = this.ctx.measureText(text);
+    this.ctx.fillText(text, (this.canvas.width - metrics.width) / 2, this.canvas.height / 2);
+
+    frameCount++;
+    if (frameCount < maxFrames) {
+      requestAnimationFrame(showLevelComplete);
+    } else {
       this.levelIndex++;
       if (this.levelIndex >= levels.length) {
-          this.showWinScreen();
+        this.showWinScreen();
       } else {
-          this.loadNextLevel();
+        this.loadNextLevel();
+        requestAnimationFrame(() => this.gameLoop());
       }
-  }, 3000); // Show for 3 seconds
+    }
+  };
+
+  requestAnimationFrame(showLevelComplete);
 }
+
 updateBubbles() {
   this.bubbles.forEach((bubble) => {
       if (bubble.state === "moving") { // Only trap monsters while moving horizontally
@@ -179,25 +251,41 @@ loadNextLevel() {
   this.player = null;
   this.monsters = [];
   this.bubbles = [];
-  
-  // Resize canvas before initializing entities
-  this.resizeCanvas();
   this.initialize();
 }
 
 
 showWinScreen() {
-  this.ctx.fillStyle = "black";
-  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+  this.isGameEnding = true;
+  let frameCount = 0;
+  const maxFrames = 180; // 3 seconds at 60fps
 
-  this.ctx.fillStyle = "white";
-  this.ctx.font = "40px Arial";
-  this.ctx.fillText("Congratulations! You Won!", this.canvas.width / 2 - 180, this.canvas.height / 2);
+  const drawWinScreen = () => {
+    if (!this.isGameEnding) return;
 
-  setTimeout(() => {
-      alert("Game Over! Restarting...");
-      location.reload(); // Restart the game
-  }, 5000); // Show win screen for 5 seconds
+    this.ctx.fillStyle = "black";
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    const fontSize = Math.min(this.canvas.width, this.canvas.height) * 0.08;
+    this.ctx.font = `${fontSize}px Arial`;
+    this.ctx.fillStyle = "white";
+    const text = "Congratulations! You Won!";
+    const metrics = this.ctx.measureText(text);
+    this.ctx.fillText(text, (this.canvas.width - metrics.width) / 2, this.canvas.height / 2);
+
+    frameCount++;
+    if (frameCount < maxFrames) {
+      requestAnimationFrame(drawWinScreen);
+    } else {
+      this.isGameEnding = false;
+      // Use timeout to ensure the last frame is rendered
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
+    }
+  };
+
+  requestAnimationFrame(drawWinScreen);
 }
 
 checkBubblePop() {
@@ -222,33 +310,9 @@ isColliding(obj1, obj2) {
     return obj1.x < obj2.x + obj2.width &&
            obj1.x + obj1.width > obj2.x &&
            obj1.y < obj2.y + obj2.height &&
-           obj1.y + obj1.height > obj2.y;
+           obj1.y + obj2.height > obj2.y;
 }
 
-
-
-handleLevelCompletion() {
-  if (this.bubbles.length > 0) {
-      setTimeout(() => this.handleLevelCompletion(), 500);
-      return;
-  }
-
-  this.ctx.fillStyle = "black";
-  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-  this.ctx.fillStyle = "white";
-  this.ctx.font = "40px Arial";
-  this.ctx.fillText("Level Complete!", this.canvas.width / 2 - 120, this.canvas.height / 2);
-
-  setTimeout(() => {
-      this.levelIndex++;
-      if (this.levelIndex >= levels.length) {
-          this.showWinScreen();
-      } else {
-          this.loadNextLevel();
-      }
-  }, 3000);
-}
 
 
   resizeCanvas() {
@@ -338,7 +402,7 @@ handleLevelCompletion() {
     this.monsters.forEach(monster => {
       monster.x = Math.max(0, Math.min(monster.x, this.canvas.width - monster.width));
       monster.y = Math.max(0, Math.min(monster.y, this.canvas.height - monster.height));
-    });
+    })
   }
 
   drawStats() {
@@ -351,108 +415,219 @@ handleLevelCompletion() {
   }
 
   setupTouchControls() {
-    const getCanvasPoint = (clientX, clientY) => {
-      const rect = this.canvas.getBoundingClientRect();
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-        inBounds: function() {
-          return this.x >= 0 && this.x <= rect.width &&
-                 this.y >= 0 && this.y <= rect.height;
-        }
-      };
-    };
-
-    let touchStartTime = 0;
-    const tapThreshold = 200; // ms to distinguish tap from drag
-
     const touchStart = (e) => {
       e.preventDefault();
       const point = e.touches ? e.touches[0] : e;
-      const canvasPoint = getCanvasPoint(point.clientX, point.clientY);
-      
-      if (canvasPoint.inBounds()) {
-        touchStartTime = Date.now();
-        this.touchStart = { x: point.clientX, y: point.clientY };
-        this.lastTouch = { x: point.clientX, y: point.clientY };
-        this.isDragging = false; // Start as not dragging
+      const rect = this.canvas.getBoundingClientRect();
+      const x = point.clientX - rect.left;
+      const y = point.clientY - rect.top;
+
+      // Only handle touches inside canvas
+      if (x >= 0 && x <= this.canvas.width && y >= 0 && y <= this.canvas.height) {
+        this.touchData.startTime = Date.now();
+        this.touchData.startX = point.clientX;
+        this.touchData.startY = point.clientY;
+        this.touchData.lastX = point.clientX;
+        this.touchData.lastY = point.clientY;
+        this.touchData.isDragging = false;
+        this.touchData.jumpTriggered = false;
       }
     };
 
     const touchMove = (e) => {
       e.preventDefault();
-      if (!this.touchStart || !this.lastTouch) return;
+      if (!this.touchData.startTime) return;
 
       const point = e.touches ? e.touches[0] : e;
-      const canvasPoint = getCanvasPoint(point.clientX, point.clientY);
+      const deltaX = point.clientX - this.touchData.lastX;
+      const totalDeltaY = point.clientY - this.touchData.startY;
       
-      if (canvasPoint.inBounds()) {
-        const deltaX = point.clientX - this.lastTouch.x;
-        const deltaY = point.clientY - this.lastTouch.y;
-        const moveThreshold = 3; // Smaller threshold for more responsive controls
+      // Continuous movement with acceleration
+      if (Math.abs(deltaX) > this.touchData.moveThreshold) {
+        const speedFactor = this.gridSize / this.baseGridSize;
+        const baseMovement = deltaX * this.dragSensitivity * this.moveSpeed;
+        const acceleratedMovement = baseMovement * speedFactor * 1.2; // Added acceleration
+        this.player.x += acceleratedMovement;
+        this.player.direction = deltaX > 0 ? 1 : -1;
 
-        // Mark as dragging if moved enough
-        if (Math.abs(deltaX) > moveThreshold || Math.abs(deltaY) > moveThreshold) {
-          this.isDragging = true;
-        }
-
-        // Horizontal movement
-        if (deltaX < -moveThreshold) {
-          this.player.x -= this.moveSpeed * this.dragSensitivity;
-          this.player.direction = -1;
-        } else if (deltaX > moveThreshold) {
-          this.player.x += this.moveSpeed * this.dragSensitivity;
-          this.player.direction = 1;
-        }
-
-        // Jump on upward movement
-        if (deltaY < -moveThreshold * 3) {
-          if (!this.player.isJumping) {
-            this.keys['ArrowUp'] = true;
-            setTimeout(() => {
-              this.keys['ArrowUp'] = false;
-            }, 100);
-          }
-        }
-
-        this.lastTouch = { x: point.clientX, y: point.clientY };
+        // Update last position more gradually for smoother movement
+        this.touchData.lastX = point.clientX * 0.8 + this.touchData.lastX * 0.2;
       }
+
+      // Improved jump handling
+      if (totalDeltaY < -this.touchData.dragThreshold && !this.touchData.jumpTriggered && !this.player.isJumping) {
+        this.touchData.jumpTriggered = true;
+        const jumpScale = Math.sqrt(this.gridSize / 60);
+        this.player.velocity = this.player.baseJumpVelocity * jumpScale * (this.jumpHeight * 1.2);
+        this.player.isJumping = true;
+      }
+
+      this.touchData.lastX = point.clientX;
+      this.touchData.lastY = point.clientY;
     };
 
     const touchEnd = (e) => {
       e.preventDefault();
-      const touchDuration = Date.now() - touchStartTime;
+      const touchDuration = Date.now() - this.touchData.startTime;
       
-      // If it was a quick tap and we didn't drag, throw bubble
-      if (!this.isDragging && touchDuration < tapThreshold) {
+      // Throw bubble if it was a quick tap without much movement
+      if (!this.touchData.isDragging && touchDuration < this.touchData.tapThreshold) {
         this.throwBubble();
       }
 
-      this.touchStart = null;
-      this.lastTouch = null;
-      this.isDragging = false;
-      this.keys['ArrowLeft'] = false;
-      this.keys['ArrowRight'] = false;
+      // Reset touch data
+      this.touchData.startTime = 0;
+      this.touchData.isDragging = false;
       this.keys['ArrowUp'] = false;
     };
 
-    // Remove existing listeners first to prevent duplicates
-    this.canvas.removeEventListener('touchstart', touchStart);
-    this.canvas.removeEventListener('touchmove', touchMove);
-    this.canvas.removeEventListener('touchend', touchEnd);
-    
-    // Add touch events
+    // Add event listeners
     this.canvas.addEventListener('touchstart', touchStart, { passive: false });
     this.canvas.addEventListener('touchmove', touchMove, { passive: false });
     this.canvas.addEventListener('touchend', touchEnd, { passive: false });
     
-    // Mouse events
+    // Mouse equivalents
     this.canvas.addEventListener('mousedown', touchStart);
     this.canvas.addEventListener('mousemove', (e) => {
-      if (this.touchStart) touchMove(e);
+      if (this.touchData.startTime) touchMove(e);
     });
     this.canvas.addEventListener('mouseup', touchEnd);
     this.canvas.addEventListener('mouseleave', touchEnd);
+  }
+
+  handlePlayerHit() {
+    this.lives--;
+    this.invincibleTime = this.invincibleDuration;
+
+    if (this.lives <= 0) {
+      cancelAnimationFrame(this.animationFrame); // Stop game loop
+      this.showGameOver();
+    } else {
+      // Reset player to starting position of current level
+      const levelGrid = this.level.grid;
+      levelGrid.forEach((row, rowIndex) => {
+        row.split('').forEach((cell, colIndex) => {
+          if (cell === '1') {
+            this.player.x = colIndex * this.gridSize;
+            this.player.y = rowIndex * this.gridSize;
+          }
+        });
+      });
+    }
+  }
+
+  showGameOver() {
+    this.isGameOver = true;
+    this.isGameEnding = true;
+
+    const drawGameOver = () => {
+      // Clear entire screen
+      this.ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
+      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+      // Scale text based on screen size
+      const fontSize = Math.min(this.canvas.width, this.canvas.height) * 0.1;
+      this.ctx.font = `bold ${fontSize}px Arial`;
+      this.ctx.fillStyle = "white";
+
+      // Game Over text
+      const gameOverText = "Game Over!";
+      const gameOverMetrics = this.ctx.measureText(gameOverText);
+      this.ctx.fillText(gameOverText, 
+        (this.canvas.width - gameOverMetrics.width) / 2, 
+        this.canvas.height * 0.3);
+
+      // Score text
+      const scoreText = `Final Score: ${this.score}`;
+      const scoreMetrics = this.ctx.measureText(scoreText);
+      this.ctx.fillText(scoreText, 
+        (this.canvas.width - scoreMetrics.width) / 2, 
+        this.canvas.height * 0.5);
+
+      // Draw restart button
+      const buttonWidth = this.canvas.width * 0.6;
+      const buttonHeight = fontSize * 2;
+      const buttonX = (this.canvas.width - buttonWidth) / 2;
+      const buttonY = this.canvas.height * 0.7;
+
+      // Button background
+      this.ctx.fillStyle = "#4CAF50";
+      this.ctx.roundRect(buttonX, buttonY, buttonWidth, buttonHeight, buttonHeight/2);
+      this.ctx.fill();
+
+      // Button text
+      this.ctx.fillStyle = "white";
+      this.ctx.font = `bold ${fontSize * 0.8}px Arial`;
+      const restartText = "Tap to Restart";
+      const restartMetrics = this.ctx.measureText(restartText);
+      this.ctx.fillText(restartText,
+        (this.canvas.width - restartMetrics.width) / 2,
+        buttonY + buttonHeight * 0.65);
+
+      // Add click/touch handler for restart button
+      const handleRestart = (e) => {
+        e.preventDefault();
+        const rect = this.canvas.getBoundingClientRect();
+        const x = e.touches ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+        const y = e.touches ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+
+        if (x >= buttonX && x <= buttonX + buttonWidth &&
+            y >= buttonY && y <= buttonY + buttonHeight) {
+          // Remove event listeners
+          this.canvas.removeEventListener('touchstart', handleRestart);
+          this.canvas.removeEventListener('mousedown', handleRestart);
+          // Reset game
+          location.reload();
+        }
+      };
+
+      this.canvas.addEventListener('touchstart', handleRestart, { passive: false });
+      this.canvas.addEventListener('mousedown', handleRestart);
+    };
+
+    // Initial draw and keep redrawing to ensure visibility
+    drawGameOver();
+  }
+
+  spawnCollectible() {
+    const type = this.collectibleTypes[Math.floor(Math.random() * this.collectibleTypes.length)];
+    const validPositions = [];
+
+    // Find valid spawn positions (empty spaces)
+    this.level.grid.forEach((row, rowIndex) => {
+      row.split('').forEach((cell, colIndex) => {
+        if (cell === ' ') {
+          validPositions.push({ x: colIndex, y: rowIndex });
+        }
+      });
+    });
+
+    if (validPositions.length > 0) {
+      const pos = validPositions[Math.floor(Math.random() * validPositions.length)];
+      const collectible = new Collectible(
+        pos.x * this.gridSize,
+        pos.y * this.gridSize,
+        this.gridSize * 0.8,
+        type
+      );
+      this.collectibles.push(collectible);
+    }
+  }
+
+  collectCollectible(index) {
+    const collectible = this.collectibles[index];
+    switch(collectible.type) {
+      case 'cherry':
+        this.score += 200;
+        break;
+      case 'strawberry':
+        this.score += 500;
+        break;
+      case 'star':
+        this.lives++;
+        break;
+    }
+    this.collectibles.splice(index, 1);
   }
 }
 

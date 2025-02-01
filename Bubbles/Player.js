@@ -8,13 +8,20 @@ export class Player {
     this.velocity = 0;
     this.isJumping = false;
     this.direction = direction;
+    this.baseJumpVelocity = -8; // Increased from -6
+    this.gravity = 0.4; // Reduced gravity for better control
+    this.maxVelocity = 15; // Add max velocity limit
   }
 
   update(keys, levelGrid, gridSize, jumpHeight) {
     // Check if the cell below is empty
     const platformBelow = this.checkPlatformBelow(levelGrid, gridSize);
+    
+    // Limit velocity to prevent visual glitches
+    this.velocity = Math.min(Math.max(this.velocity, -this.maxVelocity), this.maxVelocity);
+    
     if (!this.isJumping && !platformBelow) {
-      this.velocity += 0.8; // Gravity
+      this.velocity += this.gravity; // Use class gravity
       this.y += this.velocity;
 
       // Ensure the player stops falling when hitting a platform
@@ -24,8 +31,7 @@ export class Player {
         this.velocity = 0;
       }
     } else if (this.isJumping) {
-      // Existing jumping logic
-      this.velocity += 0.8;
+      this.velocity += this.gravity; // Use class gravity
       this.y += this.velocity;
 
       if (this.velocity > 0 && platformBelow) {
@@ -35,21 +41,23 @@ export class Player {
       }
     }
 
-    // Horizontal movement
+    // Horizontal movement - make it more responsive
     if (keys['ArrowLeft'] && !this.isWallCollision(levelGrid, gridSize, -this.speed)) {
-      this.x -= this.speed;
+      this.x -= this.speed * 1.2; // Slightly faster keyboard movement
       this.direction = -1;
     }
 
     if (keys['ArrowRight'] && !this.isWallCollision(levelGrid, gridSize, this.speed)) {
-      this.x += this.speed;
+      this.x += this.speed * 1.2; // Slightly faster keyboard movement
       this.direction = 1;
     }
 
-    // Jumping with space or up arrow
+    // Jumping with better scaling
     if ((keys['ArrowUp']) && !this.isJumping) {
       this.isJumping = true;
-      this.velocity = -10 * jumpHeight;
+      // Scale jump by both grid size and level jump height
+      const jumpScale = Math.sqrt(gridSize / 60);
+      this.velocity = this.baseJumpVelocity * jumpScale * (jumpHeight * 1.2);
     }
 
     // Keep player within canvas bounds
@@ -65,7 +73,7 @@ export class Player {
 
 
   checkPlatformBelow(levelGrid, gridSize) {
-    const col = Math.floor(this.x / gridSize);
+    const col = Math.floor((this.x + this.width/2) / gridSize); // Check middle of player
     const row = Math.floor((this.y + this.height) / gridSize);
     if (levelGrid[row] && levelGrid[row][col] === 'B') {
       return { x: col * gridSize, y: row * gridSize };

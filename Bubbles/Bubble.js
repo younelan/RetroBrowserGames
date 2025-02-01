@@ -4,7 +4,8 @@ export class Bubble {
     this.y = y;
     this.width = width;
     this.height = height;
-    this.speed = speed;
+    const baseSpeed = 4; // Lower base speed
+    this.speed = (speed / 4) * (width / 60); // Scale speed to grid size
     this.direction = direction;
     this.distanceTravelled = 0;
     this.trappedMonster = null;
@@ -22,7 +23,7 @@ export class Bubble {
     if (this.state === 'moving') {
         if (this.distanceTravelled < 2 * this.width) {
             this.x += this.direction * this.speed;
-            this.distanceTravelled += this.speed;
+            this.distanceTravelled += Math.abs(this.speed);
         } else {
             this.state = 'upward'; // Switch to moving upward
         }
@@ -40,9 +41,10 @@ export class Bubble {
             this.trappedMonster.x = this.x + this.width / 4; // Center monster
             this.trappedMonster.y = this.y;
         }
-        this.y -= this.speed;
+        this.y -= this.speed * 0.75;
         if (this.y + this.height < 0) {
             if (this.trappedMonster) {
+                this.trappedMonster.isTrapped = false;
                 this.trappedMonster.resetPosition();
                 this.trappedMonster = null;
             }
@@ -59,43 +61,47 @@ export class Bubble {
 
   trap(monster) {
     this.trappedMonster = monster;
+    this.trappedMonster.isTrapped = true;
     this.state = 'trapped';
     this.trapDelay = this.configuredDelay;
   }
 
   draw(ctx) {
     const scale = this.width / 60;
-    const baseSize = 60;
     
-    // Draw bubble with consistent proportions
+    // Draw bubble slightly smaller than grid
+    const bubbleRadius = (this.width * 0.4);
     ctx.fillStyle = 'rgba(135, 206, 235, 0.6)';
     ctx.beginPath();
     ctx.arc(
       this.x + this.width/2,
       this.y + this.height/2,
-      baseSize * 0.4 * scale,  // Consistent proportion
+      bubbleRadius,
       0,
       Math.PI * 2
     );
     ctx.fill();
     
-    // Scaled shine effect
+    // Scale shine effect properly
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
     ctx.lineWidth = 2 * scale;
     ctx.beginPath();
     ctx.arc(
       this.x + this.width * 0.3,
       this.y + this.height * 0.3,
-      baseSize * 0.1 * scale,
+      bubbleRadius * 0.25,
       0,
       Math.PI * 2
     );
     ctx.stroke();
 
     if (this.trappedMonster) {
-      // Scale down trapped monster
+      // Properly scale and position trapped monster
       ctx.save();
-      ctx.scale(0.8, 0.8);
+      const monsterScale = 0.8;
+      ctx.translate(this.x + this.width/2, this.y + this.height/2);
+      ctx.scale(monsterScale * (this.trappedMonster.direction), monsterScale);
+      ctx.translate(-this.width/2, -this.height/2);
       this.trappedMonster.draw(ctx);
       ctx.restore();
     }
