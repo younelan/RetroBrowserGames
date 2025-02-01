@@ -64,8 +64,8 @@ handleInput() {
 }
 
   throwBubble() {
-    const bubbleSpeed = levels[this.levelIndex].bubbleSpeed || 2; 
-    const bubbleDelay = levels[this.levelIndex].bubbleDelay || 60; 
+    const bubbleSpeed = levels[this.levelIndex].bubbleSpeed || 16; 
+    const bubbleDelay = levels[this.levelIndex].bubbleDelay || 90; 
 
     const bubble = new Bubble(
         this.player.x + this.player.width / 2 - this.gridSize / 2, // Center bubble
@@ -80,7 +80,8 @@ handleInput() {
 }
 
 gameLoop() {
-  this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  this.ctx.fillStyle = "black";
+  this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
   this.level.draw(this.ctx, this.gridSize);
 
   // Check if level is completed
@@ -244,12 +245,36 @@ loadNextLevel() {
     const maxWidth = window.innerWidth;
     const maxHeight = window.innerHeight;
 
-    
     const gridCountX = Math.floor(maxWidth / this.gridSize);
     const gridCountY = Math.floor(maxHeight / this.gridSize);
 
     this.canvas.width = gridCountX * this.gridSize;
     this.canvas.height = gridCountY * this.gridSize;
   }
+resizeCanvas() {
+  const maxWidth = window.innerWidth;
+  const maxHeight = Math.min(window.innerHeight * 0.8, window.innerHeight); // Max 80% of screen height
+  
+    const isPortrait = maxHeight > maxWidth;
+    if (isPortrait) {
+        
+        const gridCountX = Math.floor(maxWidth / this.gridSize);
+        const gridCountY = Math.floor(maxHeight / this.gridSize);
+    
+        this.canvas.width = gridCountX * this.gridSize;
+        this.canvas.height = gridCountY * this.gridSize;
+    
+    } else {
+      const maxWidth = window.innerWidth;
+      const maxHeight = Math.min(window.innerHeight * 0.8, window.innerHeight); // Max 80% of screen height
+        const gridCountX = Math.floor(maxWidth / this.gridSize);
+      const gridCountY = Math.floor(maxHeight / this.gridSize);
+  
+      this.canvas.width = gridCountX * this.gridSize;
+      this.canvas.height = gridCountY * this.gridSize;
+  
+    }
+}
+
 }
 

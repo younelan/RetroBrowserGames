@@ -78,4 +78,5 @@ export class Bubble {
     ctx.font = '12px Arial';
     ctx.fillText(this.safeFrames, this.x + this.width / 2 - 6, this.y + this.height / 2);
   }
+
 }
