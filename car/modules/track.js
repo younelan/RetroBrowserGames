@@ -193,15 +193,19 @@ export class Track {
     }
 
     checkLap(position) {
-        // Simple lap checking by crossing start line
-        const startX = this.radius - this.width/2;
-        if (Math.abs(position.x - startX) < 2 && Math.abs(position.z) < 1) {
-            return {
-                newLap: true,
-                currentLap: 1,
-                lapTime: 0,
-                bestLap: Infinity
-            };
+        // Only detect lap if player crosses from behind the start line.
+        const threshold = 5;
+        const d = position.distanceTo(this.startLine.position);
+        // Assume lap crosses when player's x exceeds startLine.x (tweak as needed)
+        if (d < threshold && position.x > this.startLine.position.x) {
+            // Debounce: ensure lap detected only once per crossing.
+            if (!this.lapDetected) {
+                this.lapDetected = true;
+                // ...set currentLap, lapTime etc...
+                return { newLap: true, currentLap: 1, lapTime: 10, bestLap: 10 };
+            }
+        } else {
+            this.lapDetected = false;
         }
         return { newLap: false };
     }

@@ -73,13 +73,12 @@ export class Game {
     setupControls() {
         window.addEventListener('resize', () => this.handleResize());
         
-        // Keyboard controls
         const keyState = {};
         
         document.addEventListener('keydown', (e) => {
             keyState[e.key] = true;
             if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-                e.preventDefault(); // Prevent page scrolling
+                e.preventDefault();
             }
         });
         
@@ -87,32 +86,42 @@ export class Game {
             keyState[e.key] = false;
         });
         
-        // Game loop for continuous key checking
+        let lastTime = performance.now();
         setInterval(() => {
             if (!this.gameStarted) return;
             
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
             // Forward/Backward
             if (keyState['ArrowUp'] || keyState['w']) {
-                this.player.speed = Math.min(this.player.speed + this.player.acceleration, this.player.maxSpeed);
+                this.player.speed = Math.min(
+                    this.player.speed + this.player.acceleration * deltaTime,
+                    this.player.maxSpeed
+                );
             }
             if (keyState['ArrowDown'] || keyState['s']) {
-                this.player.speed = Math.max(this.player.speed - this.player.deceleration, -this.player.maxSpeed/2);
+                this.player.speed = Math.max(
+                    this.player.speed - this.player.deceleration * deltaTime,
+                    -this.player.maxSpeed/2
+                );
             }
             
-            // Left/Right (fixed direction)
+            // Inverted Left/Right: left now increases angle, right decreases it
             if (keyState['ArrowLeft'] || keyState['a']) {
-                this.player.angle += this.player.turnSpeed; // Remove negative
+                this.player.angle += this.player.turnSpeed * deltaTime;
             }
             if (keyState['ArrowRight'] || keyState['d']) {
-                this.player.angle -= this.player.turnSpeed; // Remove negative
+                this.player.angle -= this.player.turnSpeed * deltaTime;
             }
             
             // Natural deceleration
             if (!keyState['ArrowUp'] && !keyState['w'] && !keyState['ArrowDown'] && !keyState['s']) {
                 if (this.player.speed > 0) {
-                    this.player.speed = Math.max(0, this.player.speed - this.player.deceleration);
+                    this.player.speed = Math.max(0, this.player.speed - this.player.deceleration * deltaTime);
                 } else if (this.player.speed < 0) {
-                    this.player.speed = Math.min(0, this.player.speed + this.player.deceleration);
+                    this.player.speed = Math.min(0, this.player.speed + this.player.deceleration * deltaTime);
                 }
             }
         }, 1000 / 60);
@@ -134,37 +143,36 @@ export class Game {
     
     setupTouchControls() {
         const canvas = document.getElementById('gameCanvas');
+        let lastTouchTime = performance.now();
         
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             this.isTouching = true;
-            
-            // Start accelerating immediately
-            this.player.speed = Math.min(this.player.speed + this.player.acceleration * 2, this.player.maxSpeed);
+            lastTouchTime = performance.now();
+            this.player.speed = this.player.maxSpeed * 0.5;
         });
         
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
+            const currentTime = performance.now();
+            const deltaTime = (currentTime - lastTouchTime) / 1000;
+            lastTouchTime = currentTime;
+            
             const touch = e.touches[0];
-            
-            // Calculate touch position relative to screen center
             const screenWidth = window.innerWidth;
-            const centerX = screenWidth / 2;
-            const touchX = touch.clientX;
+            // Map touch position to 0-9 scale; center (5) gives zero, <5 left, >5 right.
+            const digit = (touch.clientX / screenWidth) * 9;
+            const multiplier = (digit - 5) * (2/5);
+            // Invert steer: subtract instead of add
+            this.player.angle -= multiplier * this.player.turnSpeed * deltaTime;
             
-            // Calculate how far from center (ranges from -1 to 1)
-            const normalizedPosition = (touchX - centerX) / (centerX);
-            
-            // Apply exponential curve for more control near center and stronger turning at edges
-            const turnStrength = Math.sign(normalizedPosition) * Math.pow(Math.abs(normalizedPosition), 1.5);
-            
-            // Apply turning based on screen position
-            this.player.angle -= turnStrength * 0.05;
-            
-            // Keep accelerating while touching
-            this.player.speed = Math.min(this.player.speed + this.player.acceleration, this.player.maxSpeed);
+            // Moderate acceleration
+            this.player.speed = Math.min(
+                this.player.speed + this.player.acceleration * deltaTime * 2,
+                this.player.maxSpeed
+            );
         });
-
+        
         canvas.addEventListener('touchend', () => {
             this.isTouching = false;
         });
@@ -227,8 +235,8 @@ export class Game {
         document.getElementById('timeValue').textContent = Math.floor(this.raceTime);
 
         // Update game components
-        this.player.update();
-        this.aiController.update(this.track);
+        this.player.update(deltaTime);
+        this.aiController.update(this.track, deltaTime);
         this.collectibles.update(deltaTime, this.track);
         this.directionIndicator.update(this.player.car.position, this.track);
 

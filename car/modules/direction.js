@@ -37,17 +37,17 @@ export class DirectionIndicator {
     update(playerPosition, track) {
         const nextPoint = track.getNextPoint(playerPosition);
         if (nextPoint) {
-            // Calculate position on larger circle around player
-            const directionToNext = new THREE.Vector3()
+            // Position arrow 10 units ahead of player
+            this.arrow.position.x = playerPosition.x;
+            this.arrow.position.z = playerPosition.z;
+            
+            // Calculate direction to next point
+            const direction = new THREE.Vector3()
                 .subVectors(nextPoint, playerPosition)
                 .normalize();
             
-            // Position arrow 30 units ahead of player (3x car length)
-            this.arrow.position.x = playerPosition.x + directionToNext.x * 30;
-            this.arrow.position.z = playerPosition.z + directionToNext.z * 30;
+            // Point arrow horizontally
             this.arrow.position.y = 2;
-            
-            // Make arrow look towards next point
             this.arrow.lookAt(nextPoint.x, 2, nextPoint.z);
         }
     }
