@@ -7,20 +7,48 @@ export class DirectionIndicator {
     }
 
     createArrow() {
-        const geometry = new THREE.ConeGeometry(1, 2, 32);
-        const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        this.arrow = new THREE.Mesh(geometry, material);
-        this.arrow.position.y = 5;
+        // Create a more visible direction indicator
+        const arrowGroup = new THREE.Group();
+        
+        // Arrow body
+        const bodyGeometry = new THREE.BoxGeometry(3, 0.3, 0.3);
+        const arrowBody = new THREE.Mesh(
+            bodyGeometry,
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+        
+        // Arrow head
+        const headGeometry = new THREE.ConeGeometry(0.6, 1.5, 8);
+        const arrowHead = new THREE.Mesh(
+            headGeometry,
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+        arrowHead.position.x = 2;
+        arrowHead.rotation.z = -Math.PI / 2;
+        
+        arrowGroup.add(arrowBody);
+        arrowGroup.add(arrowHead);
+        
+        this.arrow = arrowGroup;
+        this.arrow.position.y = 2; // Lower height, just above car
         this.scene.add(this.arrow);
     }
 
     update(playerPosition, track) {
-        // Find next track point and point arrow towards it
         const nextPoint = track.getNextPoint(playerPosition);
         if (nextPoint) {
-            this.arrow.position.x = playerPosition.x;
-            this.arrow.position.z = playerPosition.z;
-            this.arrow.lookAt(nextPoint);
+            // Calculate position on larger circle around player
+            const directionToNext = new THREE.Vector3()
+                .subVectors(nextPoint, playerPosition)
+                .normalize();
+            
+            // Position arrow 30 units ahead of player (3x car length)
+            this.arrow.position.x = playerPosition.x + directionToNext.x * 30;
+            this.arrow.position.z = playerPosition.z + directionToNext.z * 30;
+            this.arrow.position.y = 2;
+            
+            // Make arrow look towards next point
+            this.arrow.lookAt(nextPoint.x, 2, nextPoint.z);
         }
     }
 

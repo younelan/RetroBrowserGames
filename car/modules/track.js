@@ -5,7 +5,7 @@ export class Track {
     constructor(scene) {
         this.scene = scene;
         this.radius = 80;
-        this.width = 16;
+        this.width = 32; // Doubled from 16 to 32
         this.trackPoints = [];
         this.currentLevel = LEVELS.level1;
         this.createTrack();
@@ -65,6 +65,12 @@ export class Track {
     }
 
     createRoad() {
+        // Create asphalt texture
+        const textureLoader = new THREE.TextureLoader();
+        const asphaltTexture = textureLoader.load('https://threejs.org/examples/textures/terrain/grasslight-big.jpg');
+        asphaltTexture.wrapS = asphaltTexture.wrapT = THREE.RepeatWrapping;
+        asphaltTexture.repeat.set(20, 20);
+        
         const roadShape = new THREE.Shape();
         roadShape.absarc(0, 0, this.radius, 0, Math.PI * 2, false);
         
@@ -77,6 +83,7 @@ export class Track {
             color: 0x333333,
             roughness: 0.7,
             metalness: 0.1,
+            map: asphaltTexture,
             side: THREE.DoubleSide
         });
 
@@ -84,6 +91,31 @@ export class Track {
         this.road.rotation.x = -Math.PI / 2;
         this.road.position.y = 0.01;
         this.scene.add(this.road);
+
+        // Add road markings
+        this.createRoadMarkings();
+    }
+
+    createRoadMarkings() {
+        // Create dashed lines along the track
+        const segments = 32;
+        for (let i = 0; i < segments; i++) {
+            if (i % 2 === 0) continue; // Skip every other segment for dashed effect
+            
+            const angle = (i / segments) * Math.PI * 2;
+            const marking = new THREE.Mesh(
+                new THREE.PlaneGeometry(2, 0.3),
+                new THREE.MeshBasicMaterial({ color: 0xffffff })
+            );
+            
+            marking.position.x = Math.cos(angle) * (this.radius - this.width/2);
+            marking.position.z = Math.sin(angle) * (this.radius - this.width/2);
+            marking.position.y = 0.02;
+            marking.rotation.x = -Math.PI/2;
+            marking.rotation.z = angle;
+            
+            this.scene.add(marking);
+        }
     }
 
     createBorderLines() {

@@ -16,12 +16,45 @@ export class AIController {
     }
 
     createAICar(color = 0x00ff00) {
-        const geometry = new THREE.BoxGeometry(4, 2, 2);
-        const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-        const car = new THREE.Mesh(geometry, material);
-        car.position.y = 1;
-        this.scene.add(car);
-        this.cars.push(car);
+        const carGroup = new THREE.Group();
+        
+        // Main body
+        const body = new THREE.Mesh(
+            new THREE.BoxGeometry(4, 1, 2),
+            new THREE.MeshPhongMaterial({ color: color })
+        );
+        
+        // Cockpit
+        const cockpit = new THREE.Mesh(
+            new THREE.BoxGeometry(2, 1, 1.8),
+            new THREE.MeshPhongMaterial({ color: 0x333333 })
+        );
+        cockpit.position.set(-0.5, 0.6, 0);
+        
+        // Wheels (same as player car)
+        const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.4, 8);
+        const wheelMaterial = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        
+        const wheelPositions = [
+            { x: -1.2, z: 1 },
+            { x: -1.2, z: -1 },
+            { x: 1.2, z: 1 },
+            { x: 1.2, z: -1 }
+        ];
+        
+        wheelPositions.forEach(pos => {
+            const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(pos.x, -0.3, pos.z);
+            carGroup.add(wheel);
+        });
+
+        carGroup.add(body);
+        carGroup.add(cockpit);
+        carGroup.position.y = 1;
+        
+        this.scene.add(carGroup);
+        this.cars.push(carGroup);
     }
 
     update(track) {

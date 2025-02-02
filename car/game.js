@@ -87,6 +87,9 @@ export class Game {
         
         document.addEventListener('keydown', (e) => {
             keyState[e.key] = true;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                e.preventDefault(); // Prevent page scrolling
+            }
         });
         
         document.addEventListener('keyup', (e) => {
@@ -97,20 +100,24 @@ export class Game {
         setInterval(() => {
             if (!this.gameStarted) return;
             
+            // Forward/Backward
             if (keyState['ArrowUp'] || keyState['w']) {
                 this.player.speed = Math.min(this.player.speed + this.player.acceleration, this.player.maxSpeed);
             }
             if (keyState['ArrowDown'] || keyState['s']) {
                 this.player.speed = Math.max(this.player.speed - this.player.deceleration, -this.player.maxSpeed/2);
             }
+            
+            // Left/Right (fixed direction)
             if (keyState['ArrowLeft'] || keyState['a']) {
-                this.player.angle -= this.player.turnSpeed;
+                this.player.angle += this.player.turnSpeed; // Remove negative
             }
             if (keyState['ArrowRight'] || keyState['d']) {
-                this.player.angle += this.player.turnSpeed;
+                this.player.angle -= this.player.turnSpeed; // Remove negative
             }
+            
+            // Natural deceleration
             if (!keyState['ArrowUp'] && !keyState['w'] && !keyState['ArrowDown'] && !keyState['s']) {
-                // Apply deceleration when no acceleration/brake keys are pressed
                 if (this.player.speed > 0) {
                     this.player.speed = Math.max(0, this.player.speed - this.player.deceleration);
                 } else if (this.player.speed < 0) {
