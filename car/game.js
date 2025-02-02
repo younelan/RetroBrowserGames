@@ -17,17 +17,17 @@ export class Game {
         this.dragStartX = 0;
         this.currentTurnAmount = 0;
         
-        // Then setup components
+        // Initialize all components before starting
         this.setupScene();
         this.setupLights();
         this.setupControls();
         this.setupTouchControls();
         
-        // Start the game immediately
-        this.startGame();
-        
-        // Start animation loop
-        this.animate();
+        // Wait for components to be ready
+        requestAnimationFrame(() => {
+            this.startGame();
+            this.animate();
+        });
     }
     
     setupScene() {
@@ -45,26 +45,17 @@ export class Game {
         
         this.handleResize();
         
-        // Initialize game components
+        // Initialize all components synchronously
         this.track = new Track(this.scene);
         this.player = new Player(this.scene);
         this.aiController = new AIController(this.scene);
-        this.collectibles = new Collectibles(this.scene);
         this.directionIndicator = new DirectionIndicator(this.scene);
+        this.collectibles = new Collectibles(this.scene, this.track);
         
-        // Create initial AI cars
+        // Create AI cars immediately
         for (let i = 0; i < 3; i++) {
-            this.aiController.createAICar();
+            this.aiController.createAICar(i);
         }
-        
-        // Set initial AI speed
-        this.aiController.setSpeed(1.2);
-
-        // Adjust player properties for better mobile control
-        this.player.maxSpeed = 1.5;  // Reduced max speed
-        this.player.acceleration = 0.03;  // Smoother acceleration
-        this.player.deceleration = 0.02;  // Smoother deceleration
-        this.player.turnSpeed = 0.02;     // Smoother turning
     }
     
     setupLights() {
@@ -147,31 +138,35 @@ export class Game {
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             this.isTouching = true;
-            const touch = e.touches[0];
-            this.dragStartX = touch.clientX;
-            this.touchX = 0;
             
-            // Start accelerating immediately when touched
+            // Start accelerating immediately
             this.player.speed = Math.min(this.player.speed + this.player.acceleration * 2, this.player.maxSpeed);
         });
         
         canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
             const touch = e.touches[0];
-            this.touchX = (touch.clientX - this.dragStartX) / 100;
-            this.currentTurnAmount = this.touchX * this.player.turnSpeed;
             
-            // Update player angle based on drag
-            this.player.angle += this.currentTurnAmount;
+            // Calculate touch position relative to screen center
+            const screenWidth = window.innerWidth;
+            const centerX = screenWidth / 2;
+            const touchX = touch.clientX;
+            
+            // Calculate how far from center (ranges from -1 to 1)
+            const normalizedPosition = (touchX - centerX) / (centerX);
+            
+            // Apply exponential curve for more control near center and stronger turning at edges
+            const turnStrength = Math.sign(normalizedPosition) * Math.pow(Math.abs(normalizedPosition), 1.5);
+            
+            // Apply turning based on screen position
+            this.player.angle -= turnStrength * 0.05;
             
             // Keep accelerating while touching
             this.player.speed = Math.min(this.player.speed + this.player.acceleration, this.player.maxSpeed);
         });
-        
+
         canvas.addEventListener('touchend', () => {
             this.isTouching = false;
-            this.touchX = 0;
-            this.currentTurnAmount = 0;
         });
     }
     
@@ -188,11 +183,17 @@ export class Game {
     }
 
     startGame() {
+        if (!this.track || !this.player || !this.aiController || 
+            !this.collectibles || !this.directionIndicator) {
+            console.error('Game components not ready');
+            return;
+        }
+
         this.gameStarted = true;
         this.raceTime = 0;
         this.score = 0;
         
-        // Reset all components
+        // Reset components
         this.player.reset();
         this.aiController.reset();
         this.collectibles.reset();
@@ -255,6 +256,7 @@ export class Game {
         const targetZ = this.player.car.position.z - Math.cos(this.player.angle) * cameraDistance;
         
         this.camera.position.x += (targetX - this.camera.position.x) * 0.1;
+
         this.camera.position.z += (targetZ - this.camera.position.z) * 0.1;
         this.camera.position.y = cameraHeight;
         this.camera.lookAt(this.player.car.position);

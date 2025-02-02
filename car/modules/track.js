@@ -5,7 +5,9 @@ export class Track {
     constructor(scene) {
         this.scene = scene;
         this.radius = 80;
-        this.width = 32; // Doubled from 16 to 32
+        this.width = 40; // Make track wider (was 16/32)
+        this.innerRadius = this.radius - this.width;
+        this.centerRadius = this.radius - this.width/2; // For placing objects
         this.trackPoints = [];
         this.currentLevel = LEVELS.level1;
         this.createTrack();
@@ -97,22 +99,27 @@ export class Track {
     }
 
     createRoadMarkings() {
-        // Create dashed lines along the track
         const segments = 32;
         for (let i = 0; i < segments; i++) {
-            if (i % 2 === 0) continue; // Skip every other segment for dashed effect
+            if (i % 2 === 0) continue;
             
             const angle = (i / segments) * Math.PI * 2;
             const marking = new THREE.Mesh(
-                new THREE.PlaneGeometry(2, 0.3),
-                new THREE.MeshBasicMaterial({ color: 0xffffff })
+                new THREE.PlaneGeometry(5, 0.8), // Length first, width second
+                new THREE.MeshBasicMaterial({ 
+                    color: 0xffffff,
+                    side: THREE.DoubleSide 
+                })
             );
             
-            marking.position.x = Math.cos(angle) * (this.radius - this.width/2);
-            marking.position.z = Math.sin(angle) * (this.radius - this.width/2);
-            marking.position.y = 0.02;
-            marking.rotation.x = -Math.PI/2;
-            marking.rotation.z = angle;
+            // Position markings flat on the road
+            marking.position.x = Math.cos(angle) * this.centerRadius;
+            marking.position.z = Math.sin(angle) * this.centerRadius;
+            marking.position.y = 0.02; // Just above road surface
+            
+            // Align with track direction
+            marking.rotation.x = -Math.PI/2; // Lay flat
+            marking.rotation.z = angle + Math.PI/2; // Point along track
             
             this.scene.add(marking);
         }

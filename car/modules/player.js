@@ -15,107 +15,74 @@ export class Player {
     createCar() {
         const carGroup = new THREE.Group();
 
-        // Main body - lower part
-        const bodyGeometry = new THREE.BoxGeometry(4, 0.75, 2);
-        const bodyMaterial = new THREE.MeshPhongMaterial({ 
+        // Sleek convertible body
+        const bodyShape = new THREE.Shape();
+        // Lower body curve
+        bodyShape.moveTo(-2, -1);
+        bodyShape.quadraticCurveTo(-2.3, -0.5, -2.3, 0);
+        // Hood
+        bodyShape.quadraticCurveTo(-2, 0.3, -1.5, 0.4);
+        // Windshield base
+        bodyShape.lineTo(-0.8, 0.4);
+        // Windshield (angled)
+        bodyShape.lineTo(-0.3, 0.8);
+        // Back area (no roof)
+        bodyShape.lineTo(1.5, 0.8);
+        // Rear deck
+        bodyShape.quadraticCurveTo(2, 0.4, 2.2, 0);
+        // Bottom curve
+        bodyShape.quadraticCurveTo(2, -0.5, 1.8, -1);
+        bodyShape.lineTo(-2, -1);
+
+        // Create car body with correct material properties
+        const bodyMaterial = new THREE.MeshPhongMaterial({
             color: 0xff0000,
             shininess: 100,
-            specular: 0x444444
+            specular: 0x666666
         });
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
 
-        // Hood and trunk (tapered shape)
-        const hoodShape = new THREE.Shape();
-        hoodShape.moveTo(-2, -1);
-        hoodShape.lineTo(2, -1);
-        hoodShape.lineTo(1.5, 1);
-        hoodShape.lineTo(-1.5, 1);
-        hoodShape.lineTo(-2, -1);
-
+        // Create body with proper depth
         const extrudeSettings = {
             steps: 1,
             depth: 2,
             bevelEnabled: true,
-            bevelThickness: 0.2,
+            bevelThickness: 0.1,
             bevelSize: 0.1,
-            bevelSegments: 3
+            bevelSegments: 5
         };
 
-        const hood = new THREE.Mesh(
-            new THREE.ExtrudeGeometry(hoodShape, extrudeSettings),
+        const body = new THREE.Mesh(
+            new THREE.ExtrudeGeometry(bodyShape, extrudeSettings),
             bodyMaterial
         );
-        hood.scale.set(0.45, 0.25, 0.8);
-        hood.position.set(0, 0.75, 0);
+        body.scale.set(0.6, 0.6, 0.6);
 
-        // Cabin/cockpit
-        const cabinGeometry = new THREE.BoxGeometry(2, 0.8, 1.8);
-        const cabinMaterial = new THREE.MeshPhongMaterial({
-            color: 0x111111,
-            shininess: 150,
-            transparent: true,
-            opacity: 0.7
-        });
-        const cabin = new THREE.Mesh(cabinGeometry, cabinMaterial);
-        cabin.position.set(0, 1.1, 0);
+        // Add driver figure
+        const driver = this.createDriver();
+        driver.position.set(0.2, 0.6, 0); // Centered in cockpit
 
-        // Spoiler
-        const spoilerGeometry = new THREE.BoxGeometry(0.3, 0.5, 2.2);
-        const spoiler = new THREE.Mesh(spoilerGeometry, bodyMaterial);
-        spoiler.position.set(-1.5, 1.2, 0);
+        // Add seats
+        const seats = this.createSeats();
+        seats.position.set(0.2, 0.3, 0);
 
-        // Front bumper details
-        const bumperGeometry = new THREE.CylinderGeometry(0.2, 0.2, 1.8, 8);
-        const bumperMaterial = new THREE.MeshPhongMaterial({ 
-            color: 0x333333,
-            shininess: 80
-        });
-        const frontBumper = new THREE.Mesh(bumperGeometry, bumperMaterial);
-        frontBumper.rotation.z = Math.PI / 2;
-        frontBumper.position.set(1.8, 0.2, 0);
-
-        // Headlights
-        const headlightGeometry = new THREE.CylinderGeometry(0.15, 0.15, 0.1, 16);
-        const headlightMaterial = new THREE.MeshPhongMaterial({
-            color: 0xffffcc,
-            shininess: 150,
-            emissive: 0xffffcc,
-            emissiveIntensity: 0.5
-        });
-
-        const headlightLeft = new THREE.Mesh(headlightGeometry, headlightMaterial);
-        headlightLeft.rotation.z = Math.PI / 2;
-        headlightLeft.position.set(1.9, 0.4, 0.6);
-
-        const headlightRight = headlightLeft.clone();
-        headlightRight.position.z = -0.6;
-
-        // Wheels with better detail
-        const wheelGeometry = new THREE.Group();
+        // Fix wheel positions and orientation
         const wheelPositions = [
-            { x: 1.2, z: 1, angle: 0 },    // Front Right
-            { x: 1.2, z: -1, angle: 0 },   // Front Left
-            { x: -1.2, z: 1, angle: 0 },   // Back Right
-            { x: -1.2, z: -1, angle: 0 }   // Back Left
+            { x: -1.2, y: -0.3, z: 0.5 },  // Front Right
+            { x: -1.2, y: -0.3, z: -0.5 }, // Front Left
+            { x: 1.2, y: -0.3, z: 0.5 },   // Back Right
+            { x: 1.2, y: -0.3, z: -0.5 }   // Back Left
         ];
 
         wheelPositions.forEach(pos => {
             const wheel = this.createDetailedWheel();
-            wheel.position.set(pos.x, 0, pos.z);
-            wheel.rotation.set(0, pos.angle, Math.PI / 2);
+            wheel.position.set(pos.x, pos.y, pos.z);
             carGroup.add(wheel);
         });
 
-        // Add all parts to car
         carGroup.add(body);
-        carGroup.add(hood);
-        carGroup.add(cabin);
-        carGroup.add(spoiler);
-        carGroup.add(frontBumper);
-        carGroup.add(headlightLeft);
-        carGroup.add(headlightRight);
+        carGroup.add(driver);
+        carGroup.add(seats);
 
-        // Final positioning
         carGroup.rotation.y = Math.PI / 2;
         carGroup.position.y = 0.5;
 
@@ -126,36 +93,102 @@ export class Player {
     createDetailedWheel() {
         const wheelGroup = new THREE.Group();
 
-        // Tire
-        const tireGeometry = new THREE.TorusGeometry(0.4, 0.2, 16, 32);
-        const tireMaterial = new THREE.MeshPhongMaterial({
-            color: 0x222222,
-            shininess: 30
-        });
-        const tire = new THREE.Mesh(tireGeometry, tireMaterial);
+        // Create tire as a cylinder (vertical orientation)
+        const tire = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.4, 0.4, 0.3, 32),
+            new THREE.MeshPhongMaterial({
+                color: 0x222222,
+                shininess: 30
+            })
+        );
 
-        // Rim
-        const rimGeometry = new THREE.CircleGeometry(0.35, 8);
-        const rimMaterial = new THREE.MeshPhongMaterial({
-            color: 0xcccccc,
-            shininess: 100
-        });
-        const rim = new THREE.Mesh(rimGeometry, rimMaterial);
-        rim.position.set(0, 0, 0.1);
+        // Create rim
+        const rim = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.25, 0.25, 0.32, 16),
+            new THREE.MeshPhongMaterial({
+                color: 0xcccccc,
+                shininess: 100
+            })
+        );
 
-        // Spokes
-        for (let i = 0; i < 4; i++) {
-            const spokeGeometry = new THREE.BoxGeometry(0.08, 0.3, 0.05);
-            const spoke = new THREE.Mesh(spokeGeometry, rimMaterial);
-            spoke.position.set(0, 0, 0.1);
-            spoke.rotation.z = (i / 4) * Math.PI * 2;
-            wheelGroup.add(spoke);
+        // Add spokes for detail
+        for (let i = 0; i < 8; i++) {
+            const spoke = new THREE.Mesh(
+                new THREE.BoxGeometry(0.04, 0.3, 0.04),
+                rim.material
+            );
+            spoke.rotation.z = (i / 8) * Math.PI * 2;
+            rim.add(spoke);
         }
 
         wheelGroup.add(tire);
         wheelGroup.add(rim);
 
+        // Orient wheel properly
+        wheelGroup.rotation.z = Math.PI/2; // Make wheel vertical
+        
         return wheelGroup;
+    }
+
+    createDriver() {
+        const driverGroup = new THREE.Group();
+        
+        // Helmet with visor
+        const helmet = new THREE.Mesh(
+            new THREE.SphereGeometry(0.15, 16, 16),
+            new THREE.MeshPhongMaterial({ 
+                color: 0xff0000,
+                shininess: 150
+            })
+        );
+        
+        // Visor
+        const visor = new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2),
+            new THREE.MeshPhongMaterial({
+                color: 0x111111,
+                transparent: true,
+                opacity: 0.7
+            })
+        );
+        visor.position.y = 0.03;
+        visor.position.z = 0.02;
+        helmet.add(visor);
+
+        // Body in racing suit
+        const body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.2, 0.15, 0.4, 8),
+            new THREE.MeshPhongMaterial({ color: 0x2266ff })
+        );
+        body.position.y = -0.3;
+
+        driverGroup.add(helmet);
+        driverGroup.add(body);
+        return driverGroup;
+    }
+
+    createSeats() {
+        const seatGroup = new THREE.Group();
+
+        // Fix seat material
+        const seatMaterial = new THREE.MeshPhongMaterial({
+            color: 0x222222,
+            shininess: 30
+        });
+
+        // Driver seat
+        const seatGeometry = new THREE.BoxGeometry(0.4, 0.1, 0.4);
+        const seatBack = new THREE.BoxGeometry(0.4, 0.4, 0.1);
+
+        const driverSeat = new THREE.Mesh(seatGeometry, seatMaterial);
+        const driverBack = new THREE.Mesh(seatBack, seatMaterial);
+        driverBack.position.z = -0.15;
+        driverBack.position.y = 0.15;
+
+        seatGroup.add(driverSeat);
+        seatGroup.add(driverBack);
+
+        return seatGroup;
     }
 
     update() {

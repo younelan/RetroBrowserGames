@@ -12,15 +12,18 @@
         }
         
         #game-container {
-            width: 100vw;
-            height: 100vh;
             position: relative;
+            margin: 0 auto;
+            width: 60em;
+            height: 60em;
+            /* Container will be sized by JS */
         }
         
         #gameCanvas {
             width: 100%;
             height: 100%;
             display: block;
+            background: #000;
         }
         
         #start-screen {
@@ -85,19 +88,34 @@
             user-select: none;
             touch-action: none;
         }
+
+        /* Center the game in the viewport */
+        .game-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-        <div id="hud">
-            <div class="hud-item">⏱️ Time: <span id="timeValue">0</span>s</div>
-            <div class="hud-item">🏆 Score: <span id="scoreValue">0</span></div>
-            <div class="hud-item">🔄 Lap: <span id="lapValue">0</span></div>
-            <div class="hud-item">⏲️ Last: <span id="lastLapValue">-</span></div>
-            <div class="hud-item">🏅 Best: <span id="bestLapValue">-</span></div>
+    <div class="game-wrapper">
+        <div id="game-container">
+            <canvas id="gameCanvas"></canvas>
+            <div id="hud">
+                <div class="hud-item">⏱️ Time: <span id="timeValue">0</span>s</div>
+                <div class="hud-item">🏆 Score: <span id="scoreValue">0</span></div>
+                <div class="hud-item">🔄 Lap: <span id="lapValue">0</span></div>
+                <div class="hud-item">⏲️ Last: <span id="lastLapValue">-</span></div>
+                <div class="hud-item">🏅 Best: <span id="bestLapValue">-</span></div>
+            </div>
+            <div id="controls">🎮</div>
         </div>
-        <div id="controls">🎮</div>
     </div>
     <script type="module" src="game.js"></script>
 </body>
