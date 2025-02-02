@@ -4,68 +4,55 @@ export class Collectibles {
     constructor(scene) {
         this.scene = scene;
         this.items = [];
-        this.trackRadius = 80;
         this.createCollectibles();
     }
 
     createCollectibles() {
-        const collectibleCount = 12;
-        const textureLoader = new THREE.TextureLoader();
-        const coinTexture = textureLoader.load('https://threejs.org/examples/textures/sprites/disc.png');
+        const geometry = new THREE.SphereGeometry(1, 16, 16);
+        const material = new THREE.MeshPhongMaterial({ color: 0xffff00 });
         
-        for (let i = 0; i < collectibleCount; i++) {
-            const angle = (i / collectibleCount) * Math.PI * 2;
-            const x = Math.cos(angle) * (this.trackRadius - 8);
-            const z = Math.sin(angle) * (this.trackRadius - 8);
-            
-            const collectible = new THREE.Mesh(
-                new THREE.PlaneGeometry(3, 3),
-                new THREE.MeshBasicMaterial({
-                    map: coinTexture,
-                    color: 0xFFD700,
-                    transparent: true,
-                    opacity: 0.8,
-                    side: THREE.DoubleSide
-                })
+        for (let i = 0; i < 10; i++) {
+            const coin = new THREE.Mesh(geometry, material);
+            const angle = (i / 10) * Math.PI * 2;
+            coin.position.set(
+                Math.sin(angle) * 80,
+                2,
+                Math.cos(angle) * 80
             );
-            
-            collectible.position.set(x, 1, z);
-            collectible.rotation.x = -Math.PI / 2;
-            collectible.rotation.z = angle;
-            collectible.userData.collected = false;
-            
-            this.scene.add(collectible);
-            this.items.push(collectible);
+            this.scene.add(coin);
+            this.items.push(coin);
         }
-    }
-
-    update(deltaTime) {
-        this.items.forEach(coin => {
-            if (!coin.userData.collected) {
-                coin.rotation.z += deltaTime * 2;
-            }
-        });
     }
 
     checkCollisions(playerPosition) {
         let score = 0;
-        this.items.forEach(collectible => {
-            if (!collectible.userData.collected) {
-                const distance = collectible.position.distanceTo(playerPosition);
-                if (distance < 4) {
-                    collectible.userData.collected = true;
-                    collectible.material.opacity = 0.2;
-                    score += 10;
-                }
+        this.items.forEach((item, index) => {
+            if (item.visible && this.distance(playerPosition, item.position) < 3) {
+                item.visible = false;
+                score += 10;
             }
         });
         return score;
     }
 
+    distance(p1, p2) {
+        return Math.sqrt(
+            Math.pow(p1.x - p2.x, 2) +
+            Math.pow(p1.z - p2.z, 2)
+        );
+    }
+
+    update(deltaTime, track) {
+        this.items.forEach(item => {
+            if (item.visible) {
+                item.rotation.y += deltaTime;
+            }
+        });
+    }
+
     reset() {
         this.items.forEach(item => {
-            item.userData.collected = false;
-            item.material.opacity = 0.8;
+            item.visible = true;
         });
     }
 }

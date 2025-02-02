@@ -1,19 +1,36 @@
 import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
 import { Player } from './modules/player.js';
-import { AIController } from './modules/ai.js';
 import { Track } from './modules/track.js';
-import { Collectibles } from './modules/collectibles.js';
+import { AIController } from './modules/ai.js';
 import { DirectionIndicator } from './modules/direction.js';
+import { Collectibles } from './modules/collectibles.js';
 
-class Game {
+export class Game {
     constructor() {
-        this.setupGame();
-        this.setupEventListeners();
-        // Start game immediately
+        // Initialize properties first
+        this.lastTime = performance.now();
+        this.gameStarted = false;
+        this.score = 0;
+        this.raceTime = 0;
+        this.touchX = 0;
+        this.isTouching = false;
+        this.dragStartX = 0;
+        this.currentTurnAmount = 0;
+        
+        // Then setup components
+        this.setupScene();
+        this.setupLights();
+        this.setupControls();
+        this.setupTouchControls();
+        
+        // Start the game immediately
         this.startGame();
+        
+        // Start animation loop
+        this.animate();
     }
-
-    setupGame() {
+    
+    setupScene() {
         // Scene setup
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
@@ -23,15 +40,9 @@ class Game {
             antialias: true
         });
         
-        // Game state
-        this.gameStarted = false;
-        this.raceTime = 0;
-        this.score = 0;
-        
         // Set sky color
         this.scene.background = new THREE.Color(0x87CEEB);
         
-        this.setupLighting();
         this.handleResize();
         
         // Initialize game components
@@ -46,12 +57,17 @@ class Game {
             this.aiController.createAICar();
         }
         
-        // Start animation loop
-        this.lastTime = 0;
-        this.animate();
-    }
+        // Set initial AI speed
+        this.aiController.setSpeed(1.2);
 
-    setupLighting() {
+        // Adjust player properties for better mobile control
+        this.player.maxSpeed = 1.5;  // Reduced max speed
+        this.player.acceleration = 0.03;  // Smoother acceleration
+        this.player.deceleration = 0.02;  // Smoother deceleration
+        this.player.turnSpeed = 0.02;     // Smoother turning
+    }
+    
+    setupLights() {
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
         this.scene.add(ambientLight);
 
@@ -62,39 +78,10 @@ class Game {
         this.camera.position.set(0, 120, 0);
         this.camera.lookAt(0, 0, 0);
     }
-
-    handleResize() {
-        const container = document.getElementById('game-container');
-        const width = container.clientWidth;
-        const height = container.clientHeight;
-        
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        
-        this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-    }
-
-    setupEventListeners() {
+    
+    setupControls() {
         window.addEventListener('resize', () => this.handleResize());
         
-        // Touch controls
-        document.getElementById('accelerate')?.addEventListener('touchstart', () => {
-            this.player.speed = Math.min(this.player.speed + this.player.acceleration, this.player.maxSpeed);
-        });
-        
-        document.getElementById('brake')?.addEventListener('touchstart', () => {
-            this.player.speed = Math.max(this.player.speed - this.player.deceleration, -this.player.maxSpeed/2);
-        });
-        
-        document.getElementById('left')?.addEventListener('touchstart', () => {
-            this.player.angle -= this.player.turnSpeed;
-        });
-        
-        document.getElementById('right')?.addEventListener('touchstart', () => {
-            this.player.angle += this.player.turnSpeed;
-        });
-
         // Keyboard controls
         const keyState = {};
         
@@ -122,44 +109,130 @@ class Game {
             if (keyState['ArrowRight'] || keyState['d']) {
                 this.player.angle += this.player.turnSpeed;
             }
+            if (!keyState['ArrowUp'] && !keyState['w'] && !keyState['ArrowDown'] && !keyState['s']) {
+                // Apply deceleration when no acceleration/brake keys are pressed
+                if (this.player.speed > 0) {
+                    this.player.speed = Math.max(0, this.player.speed - this.player.deceleration);
+                } else if (this.player.speed < 0) {
+                    this.player.speed = Math.min(0, this.player.speed + this.player.deceleration);
+                }
+            }
         }, 1000 / 60);
+    }
+    
+    setupHUD() {
+        // Verify HUD elements exist
+        const requiredElements = ['scoreValue', 'timeValue', 'lapValue', 'lastLapValue', 'bestLapValue'];
+        const missingElements = requiredElements.filter(id => !document.getElementById(id));
+        
+        if (missingElements.length > 0) {
+            console.error('Missing HUD elements:', missingElements);
+            return;
+        }
+        
+        // Start game if all elements exist
+        this.startGame();
+    }
+    
+    setupTouchControls() {
+        const canvas = document.getElementById('gameCanvas');
+        
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            this.isTouching = true;
+            const touch = e.touches[0];
+            this.dragStartX = touch.clientX;
+            this.touchX = 0;
+            
+            // Start accelerating immediately when touched
+            this.player.speed = Math.min(this.player.speed + this.player.acceleration * 2, this.player.maxSpeed);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            this.touchX = (touch.clientX - this.dragStartX) / 100;
+            this.currentTurnAmount = this.touchX * this.player.turnSpeed;
+            
+            // Update player angle based on drag
+            this.player.angle += this.currentTurnAmount;
+            
+            // Keep accelerating while touching
+            this.player.speed = Math.min(this.player.speed + this.player.acceleration, this.player.maxSpeed);
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            this.isTouching = false;
+            this.touchX = 0;
+            this.currentTurnAmount = 0;
+        });
+    }
+    
+    handleResize() {
+        const container = document.getElementById('game-container');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        
+        this.renderer.setSize(width, height);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
     }
 
     startGame() {
-        // Hide start screen
-        const startScreen = document.getElementById('start-screen');
-        if (startScreen) {
-            startScreen.style.display = 'none';
-        }
-
         this.gameStarted = true;
         this.raceTime = 0;
         this.score = 0;
+        
+        // Reset all components
         this.player.reset();
         this.aiController.reset();
         this.collectibles.reset();
+        this.track.reset();
+        this.directionIndicator.reset();
         
-        document.getElementById('scoreValue').textContent = this.score;
-        document.getElementById('timeValue').textContent = this.raceTime;
+        // Reset HUD
+        const elements = ['scoreValue', 'timeValue', 'lapValue', 'lastLapValue', 'bestLapValue'];
+        elements.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) element.textContent = '0';
+        });
     }
 
     animate(currentTime = 0) {
         requestAnimationFrame((time) => this.animate(time));
+        
+        // Ensure game is started
+        if (!this.gameStarted) {
+            this.startGame();
+            return;
+        }
 
-        const deltaTime = (currentTime - this.lastTime) / 1000;
+        const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1);
         this.lastTime = currentTime;
 
         if (!deltaTime || !this.gameStarted) return;
 
-        // Update game time and score display
+        // Update game time
         this.raceTime += deltaTime;
         document.getElementById('timeValue').textContent = Math.floor(this.raceTime);
 
         // Update game components
         this.player.update();
-        this.aiController.update();
-        this.collectibles.update(deltaTime);
-        this.directionIndicator.update(this.player.car.position);
+        this.aiController.update(this.track);
+        this.collectibles.update(deltaTime, this.track);
+        this.directionIndicator.update(this.player.car.position, this.track);
+
+        // Check lap completion
+        const lapInfo = this.track.checkLap(this.player.car.position);
+        if (lapInfo.newLap) {
+            document.getElementById('lapValue').textContent = lapInfo.currentLap;
+            document.getElementById('lastLapValue').textContent = lapInfo.lapTime.toFixed(1);
+            if (lapInfo.bestLap < Infinity) {
+                document.getElementById('bestLapValue').textContent = lapInfo.bestLap.toFixed(1);
+            }
+        }
 
         // Check collectibles
         const scoreGained = this.collectibles.checkCollisions(this.player.car.position);

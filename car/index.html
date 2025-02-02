@@ -57,13 +57,12 @@
 
         #controls {
             position: absolute;
-            bottom: 0;
+            bottom: 20px;
             left: 0;
             right: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: space-between;
+            text-align: center;
             pointer-events: none;
+            font-size: 40px;
         }
 
         .control-group {
@@ -91,25 +90,13 @@
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         <div id="hud">
-            <div class="hud-item">Time: <span id="timeValue">0</span>s</div>
-            <div class="hud-item">Score: <span id="scoreValue">0</span></div>
+            <div class="hud-item">⏱️ <span id="timeValue">0</span>s</div>
+            <div class="hud-item">🏆 <span id="scoreValue">0</span></div>
+            <div class="hud-item">🔄 <span id="lapValue">0</span></div>
+            <div class="hud-item">⏲️ <span id="lastLapValue">-</span></div>
+            <div class="hud-item">🏅 <span id="bestLapValue">-</span></div>
         </div>
-        <div id="start-screen" style="display: none;">
-            <h2>3D Car Racing</h2>
-            <p>Collect coins and stay on track!</p>
-            <button id="startButton">Start Game</button>
-            <button id="restartButton" style="display: none;">Restart</button>
-        </div>
-        <div id="controls">
-            <div class="control-group">
-                <div id="left" class="control-button">←</div>
-                <div id="right" class="control-button">→</div>
-            </div>
-            <div class="control-group">
-                <div id="accelerate" class="control-button">↑</div>
-                <div id="brake" class="control-button">↓</div>
-            </div>
-        </div>
+        <div id="controls">🏎️</div>
     </div>
     <script type="module" src="game.js"></script>
 </body>

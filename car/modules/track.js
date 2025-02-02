@@ -1,10 +1,13 @@
 import * as THREE from 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.module.js';
+import { LEVELS } from '../data/levels.js';
 
 export class Track {
     constructor(scene) {
         this.scene = scene;
         this.radius = 80;
         this.width = 16;
+        this.trackPoints = [];
+        this.currentLevel = LEVELS.level1;
         this.createTrack();
     }
 
@@ -13,6 +16,33 @@ export class Track {
         this.createRoad();
         this.createBorderLines();
         this.createStartLine();
+
+        // Clear existing track points if any
+        this.trackPoints = [...this.currentLevel.trackPoints];
+        
+        // Create track visualization
+        const trackGeometry = new THREE.BufferGeometry();
+        const positions = [];
+        
+        this.trackPoints.forEach(point => {
+            positions.push(point.x, point.y, point.z);
+        });
+        // Close the loop
+        positions.push(this.trackPoints[0].x, this.trackPoints[0].y, this.trackPoints[0].z);
+        
+        trackGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        const trackMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+        this.trackLine = new THREE.Line(trackGeometry, trackMaterial);
+        this.scene.add(this.trackLine);
+    }
+
+    reset() {
+        // Remove existing track
+        if (this.trackLine) {
+            this.scene.remove(this.trackLine);
+        }
+        // Recreate track
+        this.createTrack();
     }
 
     createGround() {
@@ -104,5 +134,36 @@ export class Track {
         );
         return distanceFromCenter <= this.radius + 6 && 
                distanceFromCenter >= this.radius - 14;
+    }
+
+    getNextPoint(position) {
+        // Find the closest point and return the next one
+        let closestIndex = 0;
+        let closestDistance = Infinity;
+        
+        this.trackPoints.forEach((point, index) => {
+            const distance = position.distanceTo(point);
+            if (distance < closestDistance) {
+                closestDistance = distance;
+                closestIndex = index;
+            }
+        });
+        
+        // Return next point (or first if at end)
+        return this.trackPoints[(closestIndex + 1) % this.trackPoints.length];
+    }
+
+    checkLap(position) {
+        // Simple lap checking by crossing start line
+        const startX = this.radius - this.width/2;
+        if (Math.abs(position.x - startX) < 2 && Math.abs(position.z) < 1) {
+            return {
+                newLap: true,
+                currentLap: 1,
+                lapTime: 0,
+                bestLap: Infinity
+            };
+        }
+        return { newLap: false };
     }
 }
