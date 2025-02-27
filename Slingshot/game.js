@@ -305,14 +305,15 @@ class Game {
                     
                     // Only bounce if coming down with significant velocity
                     if (this.player.velocityY > 0) {
+                        // Base case: if velocity is too low, stop bouncing
+                        if (this.player.velocityY < 2) {
+                            this.resetPlayer();
+                            return;
+                        }
+                        
                         // Reduce both velocities on each bounce
                         this.player.velocityY = -this.player.velocityY * 0.5;
                         this.player.velocityX = this.player.velocityX * 0.8;
-                        
-                        // If moving very slowly, stop completely
-                        if (Math.abs(this.player.velocityY) < 0.5) {
-                            this.player.velocityY = 0;
-                        }
                     }
                     
                     onPlatform = true;
