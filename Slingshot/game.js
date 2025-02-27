@@ -65,6 +65,9 @@ class Game {
         
         // Initialize enemies with physics
         this.enemies = [];
+        
+        // Initialize platforms
+        this.platforms = [];
     }
 
     loadLevel(levelIndex) {
@@ -80,12 +83,23 @@ class Game {
         // Load enemies with physics properties
         this.enemies = level.enemies.map(enemy => ({
             x: enemy.x * this.canvas.width,
-            y: groundY - 100, // Start a bit in the air
+            y: enemy.y * this.canvas.height,
             radius: GAME_CONSTANTS.ENEMY_RADIUS,
             velocityY: 0,
             isGrounded: false,
             isHit: false,
             type: enemy.type
+        }));
+
+        // Load platforms
+        this.platforms = level.platforms.map(platform => ({
+            x: platform.x * this.canvas.width,
+            y: platform.y * this.canvas.height,
+            width: platform.width * this.canvas.width,
+            height: platform.height * this.canvas.height,
+            color: platform.color || GAME_CONSTANTS.SLINGSHOT_COLOR,
+            hasGrass: platform.hasGrass || false,
+            type: platform.type || 'regular'
         }));
 
         this.resetPlayer();
@@ -227,6 +241,17 @@ class Game {
                 enemy.velocityY += GAME_CONSTANTS.GRAVITY;
                 enemy.y += enemy.velocityY;
 
+                // Platform collision for enemies
+                for (const platform of this.platforms) {
+                    if (enemy.x > platform.x && enemy.x < platform.x + platform.width &&
+                        enemy.y + enemy.radius > platform.y && enemy.y + enemy.radius < platform.y + platform.height) {
+                        enemy.y = platform.y - enemy.radius;
+                        enemy.velocityY = 0;
+                        enemy.isGrounded = true;
+                        break;
+                    }
+                }
+
                 // Ground collision for enemies
                 if (enemy.y + enemy.radius > groundY) {
                     enemy.y = groundY - enemy.radius;
@@ -329,10 +354,30 @@ class Game {
         this.ctx.fillStyle = GAME_CONSTANTS.SKY_COLOR;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw ground
-        this.ctx.fillStyle = GAME_CONSTANTS.GROUND_COLOR;
-        this.ctx.fillRect(0, this.canvas.height - GAME_CONSTANTS.GROUND_HEIGHT, 
-                         this.canvas.width, GAME_CONSTANTS.GROUND_HEIGHT);
+        // Draw platforms
+        for (const platform of this.platforms) {
+            if (platform.type === "ground") {
+                // Draw ground-like platform
+                this.ctx.fillStyle = GAME_CONSTANTS.GROUND_COLOR;
+                this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+
+                // Draw grass on ground
+                for(let x = platform.x; x < platform.x + platform.width; x += 20) {
+                    this.ctx.fillText(SPRITES.GROUND, x, platform.y);
+                }
+            } else {
+                // Draw regular platform
+                this.ctx.fillStyle = platform.color;
+                this.ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+
+                // Draw grass on platform if specified
+                if (platform.hasGrass) {
+                    for(let x = platform.x; x < platform.x + platform.width; x += 20) {
+                        this.ctx.fillText(SPRITES.GROUND, x, platform.y);
+                    }
+                }
+            }
+        }
 
         // Draw rubber band first (behind slingshot)
         if (!this.player.isLaunched) {
