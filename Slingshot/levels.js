@@ -1,58 +1,65 @@
+const GRID_SIZE = 32; // Base unit for our grid
+
 const LEVELS = [
     {
         id: 1,
         name: "Level 1",
+        width: 1024,  // 32 * 32
+        height: 768,  // 24 * 32
+        viewport: 768,
         slingshot: {
-            x: 0.25, 
-            y: 0.9  
+            x: 256,
+            y: 730
         },
-        enemies: [
-            { x: 0.75, y: 0.9, type: 'basic' },
-            { x: 0.85, y: 0.9, type: 'basic' }
+      enemies: [
+            { x: 768, y: 700, type: 'basic' },
+            { x: 864, y: 700, type: 'basic' }
         ],
         platforms: [
             {
                 x: 0,
-                y: 0.91,
-                width: 1,
-                height: 0.1,
+                y: 728,
+                width: 1024,
+                height: 40,
                 type: "ground"
-            }
+            },
+            { x: 864, y: 500, type: 'basic' },
         ]
     },
     {
         id: 2,
         name: "Level 2",
+        width: 1024,
+        height: 768,
         slingshot: {
-            x: 0.25,
-            y: 0.9
+            x: 256,
+            y: 728
         },
         enemies: [
-            { x: 0.75, y: 0.9, type: 'basic' },
-            { x: 0.85, y: 0.9, type: 'basic' },
-            { x: 0.8, y: 0.5, type: 'basic' }
+            { x: 768, y: 700, type: 'basic' },
+            { x: 864, y: 700, type: 'basic' },
+            { x: 832, y: 380, type: 'basic' }
         ],
         platforms: [
             {
                 x: 0,
-                y: 0.91,
-                width: 1,
-                height: 0.1,
-                type: "ground"
-            },
-
-            {
-                x: 0.7,
-                y: 0.5,
-                width: 0.2,
-                height: 0.05,
+                y: 728,
+                width: 1024,
+                height: 40,
                 type: "ground"
             },
             {
-                x: 0.4,
-                y: 0.2,
-                width: 0.2,
-                height: 0.05,
+                x: 704,
+                y: 400,
+                width: 192,
+                height: 32,
+                type: "ground"
+            },
+            {
+                x: 416,
+                y: 192,
+                width: 192,
+                height: 32,
                 type: "ground"
             }
         ]
