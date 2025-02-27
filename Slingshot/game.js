@@ -7,7 +7,7 @@ const GAME_CONSTANTS = {
     GROUND_HEIGHT: 50,
     GRAVITY: 0.5,
     DRAG_RADIUS: 100,
-    MAX_POWER: 15,
+    MAX_POWER: 25, // Increased to allow reaching higher platforms
     SKY_COLOR: '#87CEEB',
     GROUND_COLOR: '#90EE90',
     SLINGSHOT_COLOR: '#8B4513'
@@ -220,7 +220,7 @@ class Game {
             let vx = -dx / distance * power;
             let vy = -dy / distance * power;
             
-            for (let i = 0; i < 30; i++) {
+            for (let i = 0; i < 60; i++) {
                 x += vx;
                 y += vy;
                 vy += GAME_CONSTANTS.GRAVITY;
