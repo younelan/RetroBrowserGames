@@ -365,27 +365,63 @@ class Game {
         const playerLeft = player.x - player.radius;
         const playerRight = player.x + player.radius;
 
-        // Check if player is within platform's horizontal bounds
-        if (playerRight > platform.x && playerLeft < platform.x + platform.width) {
-            // Check for collision from above
-            if (playerBottom > platform.y && playerTop < platform.y) {
-                // Only handle collision if moving downward
-                if (player.velocityY > 0) {
-                    player.y = platform.y - player.radius;
-                    
-                    // Reduce both velocities on each bounce
-                    player.velocityY = -player.velocityY * 0.5;
-                    player.velocityX = player.velocityX * 0.8;
-                    
-                    // Base case: if velocities are too low, stop bouncing
-                    if (Math.abs(player.velocityY) < 3 || Math.abs(player.velocityX) < 1) {
-                        this.resetPlayer();  // This will create placeholder and new player
-                        return true;
+        // Check if player overlaps with platform
+        if (playerRight > platform.x && playerLeft < platform.x + platform.width &&
+            playerBottom > platform.y && playerTop < platform.y + platform.height) {
+            
+            // Calculate overlap on each axis
+            const overlapLeft = playerRight - platform.x;
+            const overlapRight = platform.x + platform.width - playerLeft;
+            const overlapTop = playerBottom - platform.y;
+            const overlapBottom = platform.y + platform.height - playerTop;
+
+            // Find smallest overlap to determine collision side
+            const overlaps = [
+                { amount: overlapLeft, type: 'left' },
+                { amount: overlapRight, type: 'right' },
+                { amount: overlapTop, type: 'top' },
+                { amount: overlapBottom, type: 'bottom' }
+            ];
+            const collision = overlaps.reduce((min, current) => 
+                current.amount < min.amount ? current : min
+            );
+
+            // Handle collision based on side
+            switch (collision.type) {
+                case 'top':
+                    if (player.velocityY > 0) {
+                        player.y = platform.y - player.radius;
+                        
+                        // Reduce both velocities on each bounce
+                        player.velocityY = -player.velocityY * 0.5;
+                        player.velocityX = player.velocityX * 0.8;
+                        
+                        // Base case: if velocities are too low, stop bouncing
+                        if (Math.abs(player.velocityY) < 3 || Math.abs(player.velocityX) < 1) {
+                            this.resetPlayer();
+                            return true;
+                        }
                     }
+                    break;
                     
-                    return true;
-                }
+                case 'left':
+                    if (player.velocityX > 0) {
+                        player.x = platform.x - player.radius;
+                        player.velocityX = -player.velocityX * 0.8;
+                        player.velocityY = player.velocityY * 0.9;
+                    }
+                    break;
+                    
+                case 'right':
+                    if (player.velocityX < 0) {
+                        player.x = platform.x + platform.width + player.radius;
+                        player.velocityX = -player.velocityX * 0.8;
+                        player.velocityY = player.velocityY * 0.9;
+                    }
+                    break;
             }
+            
+            return true;
         }
 
         return false;
