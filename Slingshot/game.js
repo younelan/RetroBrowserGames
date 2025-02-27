@@ -288,9 +288,41 @@ class Game {
         if (!this.player.isLaunched) return;
 
         const groundY = this.canvas.height - GAME_CONSTANTS.GROUND_HEIGHT;
+        let onPlatform = false;
 
-        // Ground collision
-        if (this.player.y + this.player.radius > groundY) {
+        // Platform collisions
+        for (const platform of this.platforms) {
+            const playerBottom = this.player.y + this.player.radius;
+            const playerTop = this.player.y - this.player.radius;
+            const playerLeft = this.player.x - this.player.radius;
+            const playerRight = this.player.x + this.player.radius;
+
+            // Check if player is within platform's horizontal bounds
+            if (playerRight > platform.x && playerLeft < platform.x + platform.width) {
+                // Check for collision from above
+                if (playerBottom > platform.y && playerTop < platform.y) {
+                    this.player.y = platform.y - this.player.radius;
+                    
+                    // Only bounce if coming down with significant velocity
+                    if (this.player.velocityY > 0) {
+                        // Reduce both velocities on each bounce
+                        this.player.velocityY = -this.player.velocityY * 0.5;
+                        this.player.velocityX = this.player.velocityX * 0.8;
+                        
+                        // If moving very slowly, stop completely
+                        if (Math.abs(this.player.velocityY) < 0.5) {
+                            this.player.velocityY = 0;
+                        }
+                    }
+                    
+                    onPlatform = true;
+                    break;
+                }
+            }
+        }
+
+        // Ground collision (only if not on platform)
+        if (!onPlatform && this.player.y + this.player.radius > groundY) {
             this.resetPlayer();
             return;
         }
