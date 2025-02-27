@@ -355,14 +355,6 @@ class Game {
                 enemy.isHit = true;
             }
         }
-
-        // Check if level is complete
-        if (this.enemies.every(enemy => enemy.isHit)) {
-            this.currentLevel++;
-            if (this.currentLevel < LEVELS.length) {
-                this.loadLevel(this.currentLevel);
-            }
-        }
     }
 
     checkPlatformCollision(player, platform) {
@@ -560,6 +552,15 @@ class Game {
             isPlaceholder: true
         };
         this.placeholders.push(placeholder);
+
+        // Check if level is complete before resetting player
+        if (this.enemies.every(enemy => enemy.isHit)) {
+            this.currentLevel++;
+            if (this.currentLevel < LEVELS.length) {
+                this.loadLevel(this.currentLevel);
+                return;
+            }
+        }
 
         // Reset player position to slingshot
         this.player.x = this.slingshot.x;
