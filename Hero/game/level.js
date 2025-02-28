@@ -1,6 +1,7 @@
 class Level {
-    constructor(levelString) {
-        this.map = levelString.trim().split('\n').map(row => row.split(''));
+    constructor(levelData) {
+        this.map = levelData.map.trim().split('\n').map(row => row.split(''));
+        this.viewport = levelData.viewport;
         this.miners = [];
         
         // Find miners in the level
@@ -37,128 +38,135 @@ class Level {
         return this.miners.every(miner => miner.rescued);
     }
 
-    render(ctx, cameraY) {
+    render(ctx, cameraX, cameraY) {
         // Draw level
         for (let y = 0; y < this.map.length; y++) {
             for (let x = 0; x < this.map[y].length; x++) {
-                const screenX = x * GAME_CONSTANTS.TILE_SIZE;
+                const screenX = x * GAME_CONSTANTS.TILE_SIZE - cameraX;
                 const screenY = y * GAME_CONSTANTS.TILE_SIZE - cameraY;
-                const tile = this.map[y][x];
                 
-                if (tile in WALLS) {
-                    ctx.fillStyle = WALLS[tile];
-                    ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
-                } else if (tile === '=') {
-                    // Draw destructible wall (brick style)
-                    ctx.fillStyle = WALLS[tile];
-                    ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                // Only render tiles that are within the viewport
+                if (screenX >= -GAME_CONSTANTS.TILE_SIZE && 
+                    screenX <= ctx.canvas.width &&
+                    screenY >= -GAME_CONSTANTS.TILE_SIZE && 
+                    screenY <= ctx.canvas.height) {
                     
-                    // Add brick pattern
-                    ctx.fillStyle = '#800000';
-                    ctx.fillRect(screenX, screenY + GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
-                    ctx.fillRect(screenX, screenY + 2*GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
-                    ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY, 2, GAME_CONSTANTS.TILE_SIZE);
-                } else if (tile === '^') {
-                    // Draw spider platform (blue)
-                    ctx.fillStyle = '#0000FF';
-                    ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
-                    
-                    // Draw spider
-                    const time = performance.now() / 1000;
-                    const legOffset = Math.sin(time * 2) * 4;
-                    
-                    // Draw legs
-                    ctx.strokeStyle = 'black';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    for (let i = 0; i < 4; i++) {
-                        const angle = (i * Math.PI/2) + Math.sin(time * 2) * 0.2;
-                        ctx.moveTo(
+                    const tile = this.map[y][x];
+                    if (tile in WALLS) {
+                        ctx.fillStyle = WALLS[tile];
+                        ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                    } else if (tile === '=') {
+                        // Draw destructible wall (brick style)
+                        ctx.fillStyle = WALLS[tile];
+                        ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                        
+                        // Add brick pattern
+                        ctx.fillStyle = '#800000';
+                        ctx.fillRect(screenX, screenY + GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
+                        ctx.fillRect(screenX, screenY + 2*GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
+                        ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY, 2, GAME_CONSTANTS.TILE_SIZE);
+                    } else if (tile === '^') {
+                        // Draw spider platform (blue)
+                        ctx.fillStyle = '#0000FF';
+                        ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                        
+                        // Draw spider
+                        const time = performance.now() / 1000;
+                        const legOffset = Math.sin(time * 2) * 4;
+                        
+                        // Draw legs
+                        ctx.strokeStyle = 'black';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        for (let i = 0; i < 4; i++) {
+                            const angle = (i * Math.PI/2) + Math.sin(time * 2) * 0.2;
+                            ctx.moveTo(
+                                screenX + GAME_CONSTANTS.TILE_SIZE/2,
+                                screenY + GAME_CONSTANTS.TILE_SIZE/2
+                            );
+                            ctx.lineTo(
+                                screenX + GAME_CONSTANTS.TILE_SIZE/2 + Math.cos(angle) * (GAME_CONSTANTS.TILE_SIZE/3 + legOffset),
+                                screenY + GAME_CONSTANTS.TILE_SIZE/2 + Math.sin(angle) * (GAME_CONSTANTS.TILE_SIZE/3 + legOffset)
+                            );
+                        }
+                        ctx.stroke();
+                        
+                        // Draw body
+                        ctx.fillStyle = 'black';
+                        ctx.beginPath();
+                        ctx.arc(
                             screenX + GAME_CONSTANTS.TILE_SIZE/2,
-                            screenY + GAME_CONSTANTS.TILE_SIZE/2
+                            screenY + GAME_CONSTANTS.TILE_SIZE/2,
+                            GAME_CONSTANTS.TILE_SIZE/4,
+                            0, Math.PI * 2
                         );
-                        ctx.lineTo(
-                            screenX + GAME_CONSTANTS.TILE_SIZE/2 + Math.cos(angle) * (GAME_CONSTANTS.TILE_SIZE/3 + legOffset),
-                            screenY + GAME_CONSTANTS.TILE_SIZE/2 + Math.sin(angle) * (GAME_CONSTANTS.TILE_SIZE/3 + legOffset)
+                        ctx.fill();
+                    } else if (tile === '&') {
+                        // Draw snake platform (green)
+                        ctx.fillStyle = '#00FF00';
+                        ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                        
+                        // Draw snake
+                        const time = performance.now() / 300;
+                        ctx.strokeStyle = '#004400';
+                        ctx.lineWidth = 8;
+                        ctx.lineCap = 'round';
+                        
+                        // Snake body
+                        ctx.beginPath();
+                        ctx.moveTo(screenX + 4, screenY + GAME_CONSTANTS.TILE_SIZE/2);
+                        for (let i = 0; i <= GAME_CONSTANTS.TILE_SIZE - 8; i += 4) {
+                            const waveHeight = Math.sin(time + i/10) * 6;
+                            ctx.lineTo(
+                                screenX + i + 4,
+                                screenY + GAME_CONSTANTS.TILE_SIZE/2 + waveHeight
+                            );
+                        }
+                        ctx.stroke();
+                        
+                        // Snake head
+                        ctx.fillStyle = '#004400';
+                        ctx.beginPath();
+                        ctx.arc(
+                            screenX + GAME_CONSTANTS.TILE_SIZE - 8,
+                            screenY + GAME_CONSTANTS.TILE_SIZE/2 + Math.sin(time + Math.PI) * 6,
+                            6, 0, Math.PI * 2
                         );
+                        ctx.fill();
+                        
+                        // Snake eye
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath();
+                        ctx.arc(
+                            screenX + GAME_CONSTANTS.TILE_SIZE - 10,
+                            screenY + GAME_CONSTANTS.TILE_SIZE/2 + Math.sin(time + Math.PI) * 6 - 2,
+                            2, 0, Math.PI * 2
+                        );
+                        ctx.fill();
+                    } else if (tile === '*') {
+                        // Draw lamp platform (yellow)
+                        ctx.fillStyle = '#FFFF00';
+                        ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                        
+                        // Draw lamp
+                        ctx.beginPath();
+                        ctx.arc(screenX + GAME_CONSTANTS.TILE_SIZE/2, 
+                               screenY + GAME_CONSTANTS.TILE_SIZE/2,
+                               GAME_CONSTANTS.TILE_SIZE/3, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Glow effect
+                        const gradient = ctx.createRadialGradient(
+                            screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY + GAME_CONSTANTS.TILE_SIZE/2, 0,
+                            screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY + GAME_CONSTANTS.TILE_SIZE/2, GAME_CONSTANTS.TILE_SIZE/2
+                        );
+                        gradient.addColorStop(0, 'rgba(255, 255, 200, 0.6)');
+                        gradient.addColorStop(1, 'rgba(255, 255, 0, 0)');
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY + GAME_CONSTANTS.TILE_SIZE/2, GAME_CONSTANTS.TILE_SIZE/2, 0, Math.PI * 2);
+                        ctx.fill();
                     }
-                    ctx.stroke();
-                    
-                    // Draw body
-                    ctx.fillStyle = 'black';
-                    ctx.beginPath();
-                    ctx.arc(
-                        screenX + GAME_CONSTANTS.TILE_SIZE/2,
-                        screenY + GAME_CONSTANTS.TILE_SIZE/2,
-                        GAME_CONSTANTS.TILE_SIZE/4,
-                        0, Math.PI * 2
-                    );
-                    ctx.fill();
-                } else if (tile === '&') {
-                    // Draw snake platform (green)
-                    ctx.fillStyle = '#00FF00';
-                    ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
-                    
-                    // Draw snake
-                    const time = performance.now() / 300;
-                    ctx.strokeStyle = '#004400';
-                    ctx.lineWidth = 8;
-                    ctx.lineCap = 'round';
-                    
-                    // Snake body
-                    ctx.beginPath();
-                    ctx.moveTo(screenX + 4, screenY + GAME_CONSTANTS.TILE_SIZE/2);
-                    for (let i = 0; i <= GAME_CONSTANTS.TILE_SIZE - 8; i += 4) {
-                        const waveHeight = Math.sin(time + i/10) * 6;
-                        ctx.lineTo(
-                            screenX + i + 4,
-                            screenY + GAME_CONSTANTS.TILE_SIZE/2 + waveHeight
-                        );
-                    }
-                    ctx.stroke();
-                    
-                    // Snake head
-                    ctx.fillStyle = '#004400';
-                    ctx.beginPath();
-                    ctx.arc(
-                        screenX + GAME_CONSTANTS.TILE_SIZE - 8,
-                        screenY + GAME_CONSTANTS.TILE_SIZE/2 + Math.sin(time + Math.PI) * 6,
-                        6, 0, Math.PI * 2
-                    );
-                    ctx.fill();
-                    
-                    // Snake eye
-                    ctx.fillStyle = 'white';
-                    ctx.beginPath();
-                    ctx.arc(
-                        screenX + GAME_CONSTANTS.TILE_SIZE - 10,
-                        screenY + GAME_CONSTANTS.TILE_SIZE/2 + Math.sin(time + Math.PI) * 6 - 2,
-                        2, 0, Math.PI * 2
-                    );
-                    ctx.fill();
-                } else if (tile === '*') {
-                    // Draw lamp platform (yellow)
-                    ctx.fillStyle = '#FFFF00';
-                    ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
-                    
-                    // Draw lamp
-                    ctx.beginPath();
-                    ctx.arc(screenX + GAME_CONSTANTS.TILE_SIZE/2, 
-                           screenY + GAME_CONSTANTS.TILE_SIZE/2,
-                           GAME_CONSTANTS.TILE_SIZE/3, 0, Math.PI * 2);
-                    ctx.fill();
-                    
-                    // Glow effect
-                    const gradient = ctx.createRadialGradient(
-                        screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY + GAME_CONSTANTS.TILE_SIZE/2, 0,
-                        screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY + GAME_CONSTANTS.TILE_SIZE/2, GAME_CONSTANTS.TILE_SIZE/2
-                    );
-                    gradient.addColorStop(0, 'rgba(255, 255, 200, 0.6)');
-                    gradient.addColorStop(1, 'rgba(255, 255, 0, 0)');
-                    ctx.fillStyle = gradient;
-                    ctx.beginPath();
-                    ctx.arc(screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY + GAME_CONSTANTS.TILE_SIZE/2, GAME_CONSTANTS.TILE_SIZE/2, 0, Math.PI * 2);
-                    ctx.fill();
                 }
             }
         }
@@ -166,11 +174,19 @@ class Level {
         // Render miners
         for (const miner of this.miners) {
             if (!miner.rescued) {
-                const screenX = miner.x * GAME_CONSTANTS.TILE_SIZE;
+                const screenX = miner.x * GAME_CONSTANTS.TILE_SIZE - cameraX;
                 const screenY = miner.y * GAME_CONSTANTS.TILE_SIZE - cameraY;
-                ctx.fillStyle = 'white';
-                ctx.font = '40px Arial';
-                ctx.fillText('👷', screenX, screenY + GAME_CONSTANTS.TILE_SIZE - 8);
+                
+                // Only render miners that are within the viewport
+                if (screenX >= -GAME_CONSTANTS.TILE_SIZE && 
+                    screenX <= ctx.canvas.width &&
+                    screenY >= -GAME_CONSTANTS.TILE_SIZE && 
+                    screenY <= ctx.canvas.height) {
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.font = '40px Arial';
+                    ctx.fillText('👷', screenX, screenY + GAME_CONSTANTS.TILE_SIZE - 8);
+                }
             }
         }
     }

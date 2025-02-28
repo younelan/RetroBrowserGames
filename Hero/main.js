@@ -3,9 +3,12 @@ class Game {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
         
-        // Set canvas size
-        this.canvas.width = GAME_CONSTANTS.CANVAS_WIDTH;
-        this.canvas.height = GAME_CONSTANTS.CANVAS_HEIGHT;
+        // Initialize level first to get viewport size
+        this.level = new Level(LEVELS[0]);
+        
+        // Set canvas size based on viewport
+        this.canvas.width = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
+        this.canvas.height = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
         
         this.controls = new Controls();
         this.currentLevel = 0;
@@ -14,9 +17,6 @@ class Game {
         this.bombs = [];
         this.explosions = [];
         this.sparkles = [];
-        
-        // Initialize level first
-        this.level = new Level(LEVELS[0]);
         
         // Player state
         this.player = {
@@ -30,6 +30,7 @@ class Game {
         
         // Camera position
         this.camera = {
+            x: 0,
             y: 0
         };
         
@@ -221,15 +222,28 @@ class Game {
             this.loadLevel(this.currentLevel);
         }
         
-        // Update camera
-        this.camera.y = Math.max(0, this.player.y - this.canvas.height / 2);
+        // Update camera to follow player
+        const halfViewportWidth = this.canvas.width / 2;
+        const halfViewportHeight = this.canvas.height / 2;
+        
+        // Target camera position (centered on player)
+        const targetX = this.player.x - halfViewportWidth;
+        const targetY = this.player.y - halfViewportHeight;
+        
+        // Calculate level bounds
+        const maxX = (this.level.map[0].length * GAME_CONSTANTS.TILE_SIZE) - this.canvas.width;
+        const maxY = (this.level.map.length * GAME_CONSTANTS.TILE_SIZE) - this.canvas.height;
+        
+        // Clamp camera position to level bounds
+        this.camera.x = Math.max(0, Math.min(maxX, targetX));
+        this.camera.y = Math.max(0, Math.min(maxY, targetY));
     }
     
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw level
-        this.level.render(this.ctx, this.camera.y);
+        // Draw level with camera offset
+        this.level.render(this.ctx, this.camera.x, this.camera.y);
         
         // Check if player is in the air
         const playerTileY = Math.floor((this.player.y + this.player.height) / GAME_CONSTANTS.TILE_SIZE);
@@ -237,44 +251,45 @@ class Game {
                        this.level.map[playerTileY][Math.floor(this.player.x / GAME_CONSTANTS.TILE_SIZE)] !== 1;
         
         // Render player (adjusted for camera)
+        const screenX = this.player.x - this.camera.x;
         const screenY = this.player.y - this.camera.y;
         
         // Draw legs (slightly spread apart)
         this.ctx.fillStyle = '#ffffff'; // White pants
         const legWidth = GAME_CONSTANTS.TILE_SIZE * 0.2;
         const legHeight = GAME_CONSTANTS.TILE_SIZE * 0.5;
-        this.ctx.fillRect(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.4, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4, legWidth, legHeight); // Left leg
-        this.ctx.fillRect(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.8, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4, legWidth, legHeight); // Right leg
+        this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.4, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4, legWidth, legHeight); // Left leg
+        this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.8, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4, legWidth, legHeight); // Right leg
         
         // Draw body (narrower at waist, wider at shoulders)
         this.ctx.fillStyle = '#4444ff'; // Blue shirt
         this.ctx.beginPath();
-        this.ctx.moveTo(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.5, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4); // Waist left
-        this.ctx.lineTo(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.4, screenY); // Shoulder left
-        this.ctx.lineTo(this.player.x + GAME_CONSTANTS.TILE_SIZE * 1.1, screenY); // Shoulder right
-        this.ctx.lineTo(this.player.x + GAME_CONSTANTS.TILE_SIZE * 1.0, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4); // Waist right
+        this.ctx.moveTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.5, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4); // Waist left
+        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.4, screenY); // Shoulder left
+        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 1.1, screenY); // Shoulder right
+        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 1.0, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4); // Waist right
         this.ctx.fill();
         
         // Draw helmet (round top)
         this.ctx.fillStyle = '#ff4444'; // Red helmet
         this.ctx.beginPath();
-        this.ctx.arc(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.1, GAME_CONSTANTS.TILE_SIZE * 0.4, Math.PI, 0);
+        this.ctx.arc(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.1, GAME_CONSTANTS.TILE_SIZE * 0.4, Math.PI, 0);
         this.ctx.fill();
         
         // Draw rotor with animation
         if (isInAir) {
             // Draw vertical line (doesn't rotate)
             this.ctx.fillStyle = '#ffff00';
-            this.ctx.fillRect(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.06, GAME_CONSTANTS.TILE_SIZE * 0.4);
+            this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.06, GAME_CONSTANTS.TILE_SIZE * 0.4);
             
             // Draw horizontal line at top with animation
             const width = Math.abs(Math.sin(performance.now() / 50)) * GAME_CONSTANTS.TILE_SIZE * 0.4 + GAME_CONSTANTS.TILE_SIZE * 0.12;
-            this.ctx.fillRect(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.75 - width/2, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, width, GAME_CONSTANTS.TILE_SIZE * 0.06);
+            this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75 - width/2, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, width, GAME_CONSTANTS.TILE_SIZE * 0.06);
         } else {
             // Static rotor when on ground
             this.ctx.fillStyle = '#ffff00';
-            this.ctx.fillRect(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.06, GAME_CONSTANTS.TILE_SIZE * 0.4); // Vertical line
-            this.ctx.fillRect(this.player.x + GAME_CONSTANTS.TILE_SIZE * 0.6, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.4, GAME_CONSTANTS.TILE_SIZE * 0.06); // Horizontal line at top
+            this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.06, GAME_CONSTANTS.TILE_SIZE * 0.4); // Vertical line
+            this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.6, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.4, GAME_CONSTANTS.TILE_SIZE * 0.06); // Horizontal line at top
         }
         
         // Render enemies (bats and spiders)
@@ -284,28 +299,28 @@ class Game {
                 if (tile === 4) { // Bat
                     this.ctx.fillStyle = '#8B4513'; // Brown color for bat
                     this.ctx.fillRect(
-                        x * GAME_CONSTANTS.TILE_SIZE + 16,
-                        y * GAME_CONSTANTS.TILE_SIZE + 16 - this.camera.y,
+                        x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 16,
+                        y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 16,
                         16, 8
                     );
                     // Wings
                     this.ctx.fillRect(
-                        x * GAME_CONSTANTS.TILE_SIZE + 12,
-                        y * GAME_CONSTANTS.TILE_SIZE + 18 - this.camera.y,
+                        x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 12,
+                        y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 18,
                         24, 4
                     );
                 } else if (tile === 5) { // Spider
                     this.ctx.fillStyle = '#8B4513'; // Brown color for spider
                     // Body
                     this.ctx.fillRect(
-                        x * GAME_CONSTANTS.TILE_SIZE + 16,
-                        y * GAME_CONSTANTS.TILE_SIZE + 16 - this.camera.y,
+                        x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 16,
+                        y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 16,
                         16, 16
                     );
                     // Legs
                     this.ctx.fillRect(
-                        x * GAME_CONSTANTS.TILE_SIZE + 12,
-                        y * GAME_CONSTANTS.TILE_SIZE + 20 - this.camera.y,
+                        x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 12,
+                        y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 20,
                         24, 2
                     );
                 }
@@ -318,7 +333,7 @@ class Game {
                 this.ctx.fillStyle = 'white';
                 this.ctx.font = '40px Arial';
                 this.ctx.fillText('👷', 
-                    miner.x * GAME_CONSTANTS.TILE_SIZE, 
+                    miner.x * GAME_CONSTANTS.TILE_SIZE - this.camera.x, 
                     (miner.y + 1) * GAME_CONSTANTS.TILE_SIZE - 8 - this.camera.y // Position at bottom of cell with small offset
                 );
             }
@@ -328,14 +343,14 @@ class Game {
         for (const bomb of this.bombs) {
             // Draw dynamite stick (red rectangle)
             this.ctx.fillStyle = '#ff0000';
-            this.ctx.fillRect(bomb.x - 4, bomb.y - 12 - this.camera.y, 8, 12);
+            this.ctx.fillRect(bomb.x - 4 - this.camera.x, bomb.y - 12 - this.camera.y, 8, 12);
             
             // Draw fuse (brown line)
             this.ctx.strokeStyle = '#8B4513';
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
-            this.ctx.moveTo(bomb.x, bomb.y - 12 - this.camera.y);
-            this.ctx.lineTo(bomb.x, bomb.y - 24 - this.camera.y);
+            this.ctx.moveTo(bomb.x - this.camera.x, bomb.y - 12 - this.camera.y);
+            this.ctx.lineTo(bomb.x - this.camera.x, bomb.y - 24 - this.camera.y);
             this.ctx.stroke();
         }
         
@@ -352,7 +367,7 @@ class Game {
             
             this.ctx.fillStyle = gradient;
             this.ctx.beginPath();
-            this.ctx.arc(sparkle.x, sparkle.y, sparkle.size * 2, 0, Math.PI * 2);
+            this.ctx.arc(sparkle.x - this.camera.x, sparkle.y - this.camera.y, sparkle.size * 2, 0, Math.PI * 2);
             this.ctx.fill();
         }
         
@@ -371,7 +386,7 @@ class Game {
             
             this.ctx.fillStyle = gradient;
             this.ctx.beginPath();
-            this.ctx.arc(explosion.x, explosion.y, explosion.radius, 0, Math.PI * 2);
+            this.ctx.arc(explosion.x - this.camera.x, explosion.y - this.camera.y, explosion.radius, 0, Math.PI * 2);
             this.ctx.fill();
             
             // Particle effects
@@ -382,7 +397,7 @@ class Game {
                 
                 this.ctx.fillStyle = 'rgba(255, 200, 0, 0.6)';
                 this.ctx.beginPath();
-                this.ctx.arc(x, y, 3, 0, Math.PI * 2);
+                this.ctx.arc(x - this.camera.x, y - this.camera.y, 3, 0, Math.PI * 2);
                 this.ctx.fill();
             }
         }
@@ -410,9 +425,16 @@ class Game {
         }
         
         this.level = new Level(LEVELS[levelIndex]);
+        
+        // Update canvas size based on viewport
+        this.canvas.width = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
+        this.canvas.height = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
+        
+        // Reset player position to start
         const startPos = this.level.findPlayerStart();
         this.player.x = startPos.x * GAME_CONSTANTS.TILE_SIZE;
         this.player.y = startPos.y * GAME_CONSTANTS.TILE_SIZE;
+        this.camera.x = 0;
         this.camera.y = 0;
         this.fuel = 100;
     }
