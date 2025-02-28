@@ -85,6 +85,27 @@
             transform: scale(0.95);
         }
         
+        #restart-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, 120px);
+            padding: 15px 30px;
+            font-size: 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: none;
+            z-index: 100;
+            font-family: Arial, sans-serif;
+        }
+
+        #restart-button:hover {
+            background-color: #45a049;
+        }
+        
         @media (orientation: landscape) {
             #mobile-controls {
                 height: 100px;
@@ -107,6 +128,7 @@
             <div id="score">💎 Score: 0</div>
             <div id="level"></div>
         </div>
+        <button id="restart-button">🔄 Restart Game</button>
     </div>
     
     <div id="mobile-controls">

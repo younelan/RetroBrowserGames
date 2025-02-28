@@ -20,6 +20,13 @@ window.Game = class {
         this.explosions = [];
         this.sparkles = [];
         this.gameOver = false;
+        this.gameWon = false;
+
+        // Setup restart button
+        this.restartButton = document.getElementById('restart-button');
+        this.restartButton.addEventListener('click', () => {
+            this.restartGame();
+        });
         
         // Player state
         this.player = {
@@ -50,12 +57,16 @@ window.Game = class {
     }
     
     update(deltaTime) {
-        if (this.gameOver) {
+        if (this.gameOver || this.gameWon) {
+            // Show restart button
+            this.restartButton.style.display = 'block';
+            
             if (this.controls.isPressed('Space')) {
-                // Restart game on space when game over
-                this.lives = GAME_CONSTANTS.PLAYER.STARTING_LIVES;
-                this.loadLevel(0);
-                this.score = 0;
+                this.restartGame();
+            } else if (this.controls.isPressed('Enter') && this.gameOver) {
+                // Retry current level
+                this.lives--;
+                this.loadLevel(this.currentLevel);
                 this.gameOver = false;
             }
             return;
@@ -446,21 +457,42 @@ window.Game = class {
         document.getElementById('fuel').textContent = `⛽ Fuel: ${Math.ceil(this.fuel)}`;
         document.getElementById('lives').textContent = `❤️ Lives: ${this.lives}`;
         
-        // Render game over screen
-        if (this.gameOver) {
+        // Render game over or win screen
+        if (this.gameOver || this.gameWon) {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             
             this.ctx.fillStyle = 'white';
             this.ctx.font = '48px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2);
-            this.ctx.font = '24px Arial';
-            this.ctx.fillText('Press SPACE to restart', this.canvas.width / 2, this.canvas.height / 2 + 40);
-            this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 80);
+            
+            if (this.gameWon) {
+                // Win screen
+                this.ctx.fillStyle = 'gold';
+                this.ctx.fillText('🏆 YOU WIN! 🏆', this.canvas.width / 2, this.canvas.height / 2 - 40);
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '24px Arial';
+                this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+            } else {
+                // Game over screen
+                this.ctx.fillStyle = 'red';
+                this.ctx.fillText('💀 GAME OVER 💀', this.canvas.width / 2, this.canvas.height / 2 - 40);
+                this.ctx.fillStyle = 'white';
+                this.ctx.font = '24px Arial';
+                this.ctx.fillText(`Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+            }
         }
     }
     
+    restartGame() {
+        this.lives = GAME_CONSTANTS.PLAYER.STARTING_LIVES;
+        this.loadLevel(0);
+        this.score = 0;
+        this.gameOver = false;
+        this.gameWon = false;
+        this.restartButton.style.display = 'none';
+    }
+
     gameLoop(currentTime) {
         const deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
@@ -471,25 +503,29 @@ window.Game = class {
         requestAnimationFrame(this.gameLoop.bind(this));
     }
     
-    loadLevel(levelIndex) {
-        if (levelIndex >= LEVELS.length) {
-            this.gameWon();
+    loadLevel(levelNumber) {
+        this.currentLevel = levelNumber;
+        
+        // Check if we've completed all levels
+        if (levelNumber >= LEVELS.length) {
+            this.gameWon = true;
             return;
         }
         
-        this.level = new Level(LEVELS[levelIndex]);
-        
-        // Update canvas size based on viewport
-        this.canvas.width = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
-        this.canvas.height = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
-        
-        // Reset player position to start
+        this.level = new Level(LEVELS[levelNumber]);
         const startPos = this.level.findPlayerStart();
+        
+        // Reset player position
         this.player.x = startPos.x * GAME_CONSTANTS.TILE_SIZE;
         this.player.y = startPos.y * GAME_CONSTANTS.TILE_SIZE;
-        this.camera.x = 0;
-        this.camera.y = 0;
-        this.fuel = 100;
+        this.player.velocityX = 0;
+        this.player.velocityY = 0;
+        
+        // Reset state
+        this.fuel = GAME_CONSTANTS.PLAYER.MAX_FUEL;
+        this.bombs = [];
+        this.explosions = [];
+        this.sparkles = [];
     }
     
     gameWon() {
