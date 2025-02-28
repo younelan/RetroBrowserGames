@@ -21,12 +21,6 @@ window.Game = class {
         this.sparkles = [];
         this.gameOver = false;
         this.gameWon = false;
-
-        // Setup restart button
-        this.restartButton = document.getElementById('restart-button');
-        this.restartButton.addEventListener('click', () => {
-            this.restartGame();
-        });
         
         // Player state
         this.player = {
@@ -58,11 +52,13 @@ window.Game = class {
     
     update(deltaTime) {
         if (this.gameOver || this.gameWon) {
-            // Show restart button
-            this.restartButton.style.display = 'block';
-            
             if (this.controls.isPressed('Space')) {
-                this.restartGame();
+                // Restart game
+                this.lives = GAME_CONSTANTS.PLAYER.STARTING_LIVES;
+                this.loadLevel(0);
+                this.score = 0;
+                this.gameOver = false;
+                this.gameWon = false;
             } else if (this.controls.isPressed('Enter') && this.gameOver) {
                 // Retry current level
                 this.lives--;
@@ -306,42 +302,95 @@ window.Game = class {
         const screenX = this.player.x - this.camera.x;
         const screenY = this.player.y - this.camera.y;
         
-        // Draw legs (slightly spread apart)
-        this.ctx.fillStyle = '#ffffff'; // White pants
-        const legWidth = GAME_CONSTANTS.TILE_SIZE * 0.2;
-        const legHeight = GAME_CONSTANTS.TILE_SIZE * 0.5;
-        this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.4, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4, legWidth, legHeight); // Left leg
-        this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.8, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4, legWidth, legHeight); // Right leg
+        // Draw legs
+        this.ctx.fillStyle = '#1565C0';  // Dark blue pants
+        this.ctx.fillRect(
+            screenX + GAME_CONSTANTS.TILE_SIZE * 0.3,
+            screenY + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.5
+        );
+        this.ctx.fillRect(
+            screenX + GAME_CONSTANTS.TILE_SIZE * 0.55,
+            screenY + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.5
+        );
         
-        // Draw body (narrower at waist, wider at shoulders)
-        this.ctx.fillStyle = '#4444ff'; // Blue shirt
+        // Draw jetpack
+        this.ctx.fillStyle = '#FFA000';  // Golden jetpack
+        this.ctx.fillRect(
+            screenX + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            screenY + GAME_CONSTANTS.TILE_SIZE * 0.2,
+            GAME_CONSTANTS.TILE_SIZE * 0.2,
+            GAME_CONSTANTS.TILE_SIZE * 0.4
+        );
+        
+        // Draw body
+        this.ctx.fillStyle = '#2196F3';  // Blue jacket
         this.ctx.beginPath();
-        this.ctx.moveTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.5, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4); // Waist left
-        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.4, screenY); // Shoulder left
-        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 1.1, screenY); // Shoulder right
-        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 1.0, screenY + GAME_CONSTANTS.TILE_SIZE * 0.4); // Waist right
+        this.ctx.moveTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.3, screenY + GAME_CONSTANTS.TILE_SIZE * 0.5);  // Waist left
+        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.25, screenY + GAME_CONSTANTS.TILE_SIZE * 0.2); // Shoulder left
+        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY + GAME_CONSTANTS.TILE_SIZE * 0.2); // Shoulder right
+        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.7, screenY + GAME_CONSTANTS.TILE_SIZE * 0.5);  // Waist right
         this.ctx.fill();
         
-        // Draw helmet (round top)
-        this.ctx.fillStyle = '#ff4444'; // Red helmet
+        // Draw head
+        this.ctx.fillStyle = '#FFB74D';  // Skin tone
         this.ctx.beginPath();
-        this.ctx.arc(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.1, GAME_CONSTANTS.TILE_SIZE * 0.4, Math.PI, 0);
+        this.ctx.arc(
+            screenX + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            screenY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.15,
+            0,
+            Math.PI * 2
+        );
         this.ctx.fill();
         
-        // Draw rotor with animation
-        if (isInAir) {
-            // Draw vertical line (doesn't rotate)
-            this.ctx.fillStyle = '#ffff00';
-            this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.06, GAME_CONSTANTS.TILE_SIZE * 0.4);
+        // Draw goggles
+        this.ctx.fillStyle = '#424242';  // Dark goggles
+        this.ctx.beginPath();
+        this.ctx.ellipse(
+            screenX + GAME_CONSTANTS.TILE_SIZE * 0.43,
+            screenY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.08,
+            GAME_CONSTANTS.TILE_SIZE * 0.05,
+            0,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.ellipse(
+            screenX + GAME_CONSTANTS.TILE_SIZE * 0.57,
+            screenY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.08,
+            GAME_CONSTANTS.TILE_SIZE * 0.05,
+            0,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        
+        // Draw jetpack flames when flying
+        if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
+            const flameHeight = Math.random() * 0.2 + 0.3;  // Random flame height
+            const gradient = this.ctx.createLinearGradient(
+                screenX + GAME_CONSTANTS.TILE_SIZE * 0.25,
+                screenY + GAME_CONSTANTS.TILE_SIZE * 0.6,
+                screenX + GAME_CONSTANTS.TILE_SIZE * 0.25,
+                screenY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight)
+            );
+            gradient.addColorStop(0, '#FF9800');   // Orange
+            gradient.addColorStop(0.5, '#FF5722'); // Deep orange
+            gradient.addColorStop(1, '#F44336');   // Red
             
-            // Draw horizontal line at top with animation
-            const width = Math.abs(Math.sin(performance.now() / 50)) * GAME_CONSTANTS.TILE_SIZE * 0.4 + GAME_CONSTANTS.TILE_SIZE * 0.12;
-            this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75 - width/2, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, width, GAME_CONSTANTS.TILE_SIZE * 0.06);
-        } else {
-            // Static rotor when on ground
-            this.ctx.fillStyle = '#ffff00';
-            this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.06, GAME_CONSTANTS.TILE_SIZE * 0.4); // Vertical line
-            this.ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE * 0.6, screenY - GAME_CONSTANTS.TILE_SIZE * 0.85, GAME_CONSTANTS.TILE_SIZE * 0.4, GAME_CONSTANTS.TILE_SIZE * 0.06); // Horizontal line at top
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.moveTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.15, screenY + GAME_CONSTANTS.TILE_SIZE * 0.6);
+            this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.25, screenY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight));
+            this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.35, screenY + GAME_CONSTANTS.TILE_SIZE * 0.6);
+            this.ctx.fill();
         }
         
         // Render enemies (bats and spiders)
@@ -473,6 +522,7 @@ window.Game = class {
                 this.ctx.fillStyle = 'white';
                 this.ctx.font = '24px Arial';
                 this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+                this.ctx.fillText('Press SPACE to play again', this.canvas.width / 2, this.canvas.height / 2 + 60);
             } else {
                 // Game over screen
                 this.ctx.fillStyle = 'red';
@@ -480,19 +530,16 @@ window.Game = class {
                 this.ctx.fillStyle = 'white';
                 this.ctx.font = '24px Arial';
                 this.ctx.fillText(`Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+                if (this.lives > 0) {
+                    this.ctx.fillText('Press ENTER to retry level', this.canvas.width / 2, this.canvas.height / 2 + 60);
+                    this.ctx.fillText('Press SPACE to restart game', this.canvas.width / 2, this.canvas.height / 2 + 100);
+                } else {
+                    this.ctx.fillText('Press SPACE to restart game', this.canvas.width / 2, this.canvas.height / 2 + 60);
+                }
             }
         }
     }
     
-    restartGame() {
-        this.lives = GAME_CONSTANTS.PLAYER.STARTING_LIVES;
-        this.loadLevel(0);
-        this.score = 0;
-        this.gameOver = false;
-        this.gameWon = false;
-        this.restartButton.style.display = 'none';
-    }
-
     gameLoop(currentTime) {
         const deltaTime = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
