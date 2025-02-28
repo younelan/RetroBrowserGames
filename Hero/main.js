@@ -21,6 +21,7 @@ window.Game = class {
         this.sparkles = [];
         this.gameOver = false;
         this.gameWon = false;
+        this.rotorStopTimer = 0;  // Timer for delaying rotor stop
         
         // Player state
         this.player = {
@@ -183,6 +184,15 @@ window.Game = class {
             }
         }
         
+        // Update rotor stop timer
+        if (isOnGround) {
+            if (this.rotorStopTimer < 1) {
+                this.rotorStopTimer += deltaTime;
+            }
+        } else {
+            this.rotorStopTimer = 0;
+        }
+        
         // Apply velocities
         this.player.x += this.player.velocityX;
         this.player.y += this.player.velocityY;
@@ -294,65 +304,94 @@ window.Game = class {
         this.level.render(this.ctx, this.camera.x, this.camera.y);
         
         // Check if player is in the air
-        const playerTileY = Math.floor((this.player.y + this.player.height) / GAME_CONSTANTS.TILE_SIZE);
-        const isInAir = playerTileY < 0 || playerTileY >= this.level.map.length || 
-                       this.level.map[playerTileY][Math.floor(this.player.x / GAME_CONSTANTS.TILE_SIZE)] !== 1;
+        const playerBottom = this.player.y + GAME_CONSTANTS.TILE_SIZE;
+        const groundTileY = Math.floor(playerBottom / GAME_CONSTANTS.TILE_SIZE);
+        const isOnGround = groundTileY >= 0 && groundTileY < this.level.map.length &&
+                          this.level.isWall(Math.floor(this.player.x / GAME_CONSTANTS.TILE_SIZE), groundTileY);
         
-        // Render player (adjusted for camera)
+        // Render player
         const screenX = this.player.x - this.camera.x;
         const screenY = this.player.y - this.camera.y;
+        const scale = GAME_CONSTANTS.PLAYER.SCALE;
+        
+        // Center the visual representation within the collision box
+        const visualX = screenX / scale - (GAME_CONSTANTS.TILE_SIZE * (scale - 1)) / (2 * scale);
+        const visualY = (screenY - GAME_CONSTANTS.TILE_SIZE * (scale - 1)) / scale;  // Offset Y to account for increased height
+        
+        this.ctx.save();
+        this.ctx.scale(scale, scale);
         
         // Draw legs
-        this.ctx.fillStyle = '#1565C0';  // Dark blue pants
+        this.ctx.fillStyle = '#1565C0';
         this.ctx.fillRect(
-            screenX + GAME_CONSTANTS.TILE_SIZE * 0.3,
-            screenY + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.3,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.5,
             GAME_CONSTANTS.TILE_SIZE * 0.15,
             GAME_CONSTANTS.TILE_SIZE * 0.5
         );
         this.ctx.fillRect(
-            screenX + GAME_CONSTANTS.TILE_SIZE * 0.55,
-            screenY + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.55,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.5,
             GAME_CONSTANTS.TILE_SIZE * 0.15,
             GAME_CONSTANTS.TILE_SIZE * 0.5
         );
         
         // Draw jetpack
-        this.ctx.fillStyle = '#FFA000';  // Golden jetpack
+        this.ctx.fillStyle = '#FFA000';
         this.ctx.fillRect(
-            screenX + GAME_CONSTANTS.TILE_SIZE * 0.15,
-            screenY + GAME_CONSTANTS.TILE_SIZE * 0.2,
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.2,
             GAME_CONSTANTS.TILE_SIZE * 0.2,
             GAME_CONSTANTS.TILE_SIZE * 0.4
         );
         
         // Draw body
-        this.ctx.fillStyle = '#2196F3';  // Blue jacket
+        this.ctx.fillStyle = '#2196F3';
         this.ctx.beginPath();
-        this.ctx.moveTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.3, screenY + GAME_CONSTANTS.TILE_SIZE * 0.5);  // Waist left
-        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.25, screenY + GAME_CONSTANTS.TILE_SIZE * 0.2); // Shoulder left
-        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.75, screenY + GAME_CONSTANTS.TILE_SIZE * 0.2); // Shoulder right
-        this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.7, screenY + GAME_CONSTANTS.TILE_SIZE * 0.5);  // Waist right
+        this.ctx.moveTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.3, visualY + GAME_CONSTANTS.TILE_SIZE * 0.5);
+        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.25, visualY + GAME_CONSTANTS.TILE_SIZE * 0.2);
+        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.75, visualY + GAME_CONSTANTS.TILE_SIZE * 0.2);
+        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.7, visualY + GAME_CONSTANTS.TILE_SIZE * 0.5);
         this.ctx.fill();
         
         // Draw head
-        this.ctx.fillStyle = '#FFB74D';  // Skin tone
+        this.ctx.fillStyle = '#FFB74D';
         this.ctx.beginPath();
         this.ctx.arc(
-            screenX + GAME_CONSTANTS.TILE_SIZE * 0.5,
-            screenY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
             GAME_CONSTANTS.TILE_SIZE * 0.15,
             0,
             Math.PI * 2
         );
         this.ctx.fill();
         
+        // Draw helicopter rotor
+        this.ctx.fillStyle = '#424242';
+        // Vertical part
+        this.ctx.fillRect(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.48,
+            visualY - GAME_CONSTANTS.TILE_SIZE * 0.1,
+            GAME_CONSTANTS.TILE_SIZE * 0.04,
+            GAME_CONSTANTS.TILE_SIZE * 0.2
+        );
+        
+        // Horizontal part (rotates when not on ground or during stop delay)
+        const shouldSpin = !isOnGround || this.rotorStopTimer < 1;
+        const rotorWidth = GAME_CONSTANTS.TILE_SIZE * (0.3 + (shouldSpin ? Math.sin(Date.now() / 100) * 0.2 : 0));
+        this.ctx.fillRect(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.5 - rotorWidth,
+            visualY - GAME_CONSTANTS.TILE_SIZE * 0.1,
+            rotorWidth * 2,
+            GAME_CONSTANTS.TILE_SIZE * 0.04
+        );
+        
         // Draw goggles
-        this.ctx.fillStyle = '#424242';  // Dark goggles
+        this.ctx.fillStyle = '#424242';
         this.ctx.beginPath();
         this.ctx.ellipse(
-            screenX + GAME_CONSTANTS.TILE_SIZE * 0.43,
-            screenY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.43,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
             GAME_CONSTANTS.TILE_SIZE * 0.08,
             GAME_CONSTANTS.TILE_SIZE * 0.05,
             0,
@@ -362,8 +401,8 @@ window.Game = class {
         this.ctx.fill();
         this.ctx.beginPath();
         this.ctx.ellipse(
-            screenX + GAME_CONSTANTS.TILE_SIZE * 0.57,
-            screenY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.57,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
             GAME_CONSTANTS.TILE_SIZE * 0.08,
             GAME_CONSTANTS.TILE_SIZE * 0.05,
             0,
@@ -374,31 +413,33 @@ window.Game = class {
         
         // Draw jetpack flames when flying
         if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
-            const flameHeight = Math.random() * 0.2 + 0.3;  // Random flame height
+            const flameHeight = Math.random() * 0.2 + 0.3;
             const gradient = this.ctx.createLinearGradient(
-                screenX + GAME_CONSTANTS.TILE_SIZE * 0.25,
-                screenY + GAME_CONSTANTS.TILE_SIZE * 0.6,
-                screenX + GAME_CONSTANTS.TILE_SIZE * 0.25,
-                screenY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight)
+                visualX + GAME_CONSTANTS.TILE_SIZE * 0.25,
+                visualY + GAME_CONSTANTS.TILE_SIZE * 0.6,
+                visualX + GAME_CONSTANTS.TILE_SIZE * 0.25,
+                visualY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight)
             );
-            gradient.addColorStop(0, '#FF9800');   // Orange
-            gradient.addColorStop(0.5, '#FF5722'); // Deep orange
-            gradient.addColorStop(1, '#F44336');   // Red
+            gradient.addColorStop(0, '#FF9800');
+            gradient.addColorStop(0.5, '#FF5722');
+            gradient.addColorStop(1, '#F44336');
             
             this.ctx.fillStyle = gradient;
             this.ctx.beginPath();
-            this.ctx.moveTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.15, screenY + GAME_CONSTANTS.TILE_SIZE * 0.6);
-            this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.25, screenY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight));
-            this.ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE * 0.35, screenY + GAME_CONSTANTS.TILE_SIZE * 0.6);
+            this.ctx.moveTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.15, visualY + GAME_CONSTANTS.TILE_SIZE * 0.6);
+            this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.25, visualY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight));
+            this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.35, visualY + GAME_CONSTANTS.TILE_SIZE * 0.6);
             this.ctx.fill();
         }
+        
+        this.ctx.restore();
         
         // Render enemies (bats and spiders)
         for (let y = 0; y < this.level.map.length; y++) {
             for (let x = 0; x < this.level.map[y].length; x++) {
                 const tile = this.level.map[y][x];
                 if (tile === 4) { // Bat
-                    this.ctx.fillStyle = '#8B4513'; // Brown color for bat
+                    this.ctx.fillStyle = '#8B4513';
                     this.ctx.fillRect(
                         x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 16,
                         y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 16,
@@ -411,7 +452,7 @@ window.Game = class {
                         24, 4
                     );
                 } else if (tile === 5) { // Spider
-                    this.ctx.fillStyle = '#8B4513'; // Brown color for spider
+                    this.ctx.fillStyle = '#8B4513';
                     // Body
                     this.ctx.fillRect(
                         x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 16,
@@ -456,9 +497,9 @@ window.Game = class {
         }
         
         // Render sparkles
-        this.ctx.fillStyle = '#FFD700';  // Gold color for sparkles
+        this.ctx.fillStyle = '#FFD700';
         for (const sparkle of this.sparkles) {
-            this.ctx.globalAlpha = sparkle.timeLeft / 0.2;  // Fade out
+            this.ctx.globalAlpha = sparkle.timeLeft / 0.2;
             this.ctx.beginPath();
             this.ctx.arc(
                 sparkle.x - this.camera.x,
@@ -468,7 +509,7 @@ window.Game = class {
             );
             this.ctx.fill();
         }
-        this.ctx.globalAlpha = 1;  // Reset alpha
+        this.ctx.globalAlpha = 1;
         
         // Render explosions
         for (const explosion of this.explosions) {
