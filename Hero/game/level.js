@@ -68,12 +68,21 @@ class Level {
         return this.collectibles.every(c => c.collected);
     }
 
-    render(ctx, cameraX, cameraY) {
-        // Draw level
-        for (let y = 0; y < this.map.length; y++) {
-            for (let x = 0; x < this.map[y].length; x++) {
-                const screenX = x * GAME_CONSTANTS.TILE_SIZE - cameraX;
-                const screenY = y * GAME_CONSTANTS.TILE_SIZE - cameraY;
+    render(ctx, offsetX, offsetY) {
+        const startCol = Math.floor(offsetX / GAME_CONSTANTS.TILE_SIZE);
+        const endCol = startCol + Math.ceil(ctx.canvas.width / GAME_CONSTANTS.TILE_SIZE);
+        const startRow = Math.floor(offsetY / GAME_CONSTANTS.TILE_SIZE);
+        const endRow = startRow + Math.ceil(ctx.canvas.height / GAME_CONSTANTS.TILE_SIZE);
+
+        for (let row = startRow; row < endRow; row++) {
+            if (row < 0 || row >= this.map.length) continue;
+            
+            for (let col = startCol; col < endCol; col++) {
+                if (col < 0 || col >= this.map[row].length) continue;
+                
+                const tile = this.map[row][col];
+                const screenX = col * GAME_CONSTANTS.TILE_SIZE - offsetX;
+                const screenY = row * GAME_CONSTANTS.TILE_SIZE - offsetY;
                 
                 // Only render tiles that are within the viewport
                 if (screenX >= -GAME_CONSTANTS.TILE_SIZE && 
@@ -81,7 +90,7 @@ class Level {
                     screenY >= -GAME_CONSTANTS.TILE_SIZE && 
                     screenY <= ctx.canvas.height) {
                     
-                    const tile = this.map[y][x];
+                    const tile = this.map[row][col];
                     if (tile in WALLS) {
                         ctx.fillStyle = WALLS[tile];
                         ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
@@ -402,8 +411,8 @@ class Level {
                     
                     // Draw collectibles
                     const collectible = this.collectibles.find(c => 
-                        Math.floor(c.x / GAME_CONSTANTS.TILE_SIZE) === x && 
-                        Math.floor(c.y / GAME_CONSTANTS.TILE_SIZE) === y && 
+                        Math.floor(c.x / GAME_CONSTANTS.TILE_SIZE) === col && 
+                        Math.floor(c.y / GAME_CONSTANTS.TILE_SIZE) === row && 
                         !c.collected
                     );
                     if (collectible) {

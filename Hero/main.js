@@ -24,6 +24,7 @@ window.Game = class {
         this.rotorStopTimer = 0;  // Timer for delaying rotor stop
         this.drowning = false;
         this.drowningStartTime = 0;
+        this.currentLampTile = null; // Track which lamp tile the player is currently on
         
         // Player state
         this.player = {
@@ -233,60 +234,11 @@ window.Game = class {
                     }
                     
                     // Check for lamp collision
-                    if (this.level.map[playerTileY][playerTileX] === '*' || this.level.map[playerTileY][playerTileX] === 'o') {
-                        // Toggle lamp state
-                        this.level.map[playerTileY][playerTileX] = this.level.map[playerTileY][playerTileX] === '*' ? 'o' : '*';
-                        
-                        // Count lit lamps
-                        let litCount = 0;
-                        for (let y = 0; y < this.level.map.length; y++) {
-                            for (let x = 0; x < this.level.map[y].length; x++) {
-                                if (this.level.map[y][x] === '*') {
-                                    litCount++;
-                                }
-                            }
-                        }
-                        
-                        // Update lighting state
-                        this.lightsOn = litCount > 0;
-                    }
-                    
-                    // Check for water
-                    if (this.level.isHazard(playerTileX, playerTileY) && this.level.map[playerTileY][playerTileX] === '~') {
-                        // Player is in water
-                        if (this.player.velocityY < 1) {  // Cap sinking speed
-                            this.player.velocityY += 0.05; // Very slow sinking
-                        }
-                        
-                        // Check if player has sunk too deep
-                        const playerHead = this.player.y;
-                        const waterSurfaceY = playerTileY * GAME_CONSTANTS.TILE_SIZE;
-                        
-                        // Allow small upward movement when jumping in water
-                        if (this.controls.isPressed('ArrowUp')) {
-                            this.player.velocityY -= 0.1;
-                        }
-                        
-                        // Reduce horizontal movement in water
-                        this.player.velocityX *= 0.95;
-                        
-                        // Start drowning only if player's head is under water
-                        if (playerHead > waterSurfaceY + 4) {  // 4 pixels grace period at surface
-                            if (!this.drowning) {
-                                this.drowning = true;
-                                this.drowningStartTime = performance.now();
-                            }
-                            
-                            // Give player 5 seconds after starting to drown before game over
-                            if (this.drowning && performance.now() - this.drowningStartTime > 5000) {
-                                this.gameOver = true;
-                                return;
-                            }
-                        } else {
-                            this.drowning = false;
-                        }
-                    } else {
-                        this.drowning = false;
+                    const currentTile = this.level.map[playerTileY][playerTileX];
+                    if (currentTile === 'o') {  // Off lamp - turns lights off
+                        this.lightsOn = false;
+                    } else if (currentTile === '*') {  // On lamp - turns lights on
+                        this.lightsOn = true;
                     }
                     
                     // Then check for wall collisions
@@ -360,47 +312,6 @@ window.Game = class {
         // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Create darkness overlay if lights are out
-        if (!this.lightsOn) {
-            // Save the current context state
-            this.ctx.save();
-            
-            // Create a dark overlay
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            
-            // Create a small light around the player
-            const playerScreenX = this.player.x - this.camera.x;
-            const playerScreenY = this.player.y - this.camera.y;
-            
-            // Create a radial gradient for player's light
-            const gradient = this.ctx.createRadialGradient(
-                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
-                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
-                0,
-                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
-                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
-                GAME_CONSTANTS.TILE_SIZE * 3
-            );
-            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
-            
-            // Clear a circle around player
-            this.ctx.globalCompositeOperation = 'destination-out';
-            this.ctx.fillStyle = gradient;
-            this.ctx.beginPath();
-            this.ctx.arc(
-                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
-                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
-                GAME_CONSTANTS.TILE_SIZE * 3,
-                0, Math.PI * 2
-            );
-            this.ctx.fill();
-            
-            // Restore the context state
-            this.ctx.restore();
-        }
-        
         // Draw the level
         this.level.render(this.ctx, this.camera.x, this.camera.y);
         
@@ -413,138 +324,101 @@ window.Game = class {
         this.drawPlayer();
         this.ctx.restore();
         
-        // Render enemies (bats and spiders)
-        for (let y = 0; y < this.level.map.length; y++) {
-            for (let x = 0; x < this.level.map[y].length; x++) {
-                const tile = this.level.map[y][x];
-                if (tile === 4) { // Bat
-                    this.ctx.fillStyle = '#8B4513';
-                    this.ctx.fillRect(
-                        x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 16,
-                        y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 16,
-                        16, 8
-                    );
-                    // Wings
-                    this.ctx.fillRect(
-                        x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 12,
-                        y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 18,
-                        24, 4
-                    );
-                } else if (tile === 5) { // Spider
-                    this.ctx.fillStyle = '#8B4513';
-                    // Body
-                    this.ctx.fillRect(
-                        x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 16,
-                        y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 16,
-                        16, 16
-                    );
-                    // Legs
-                    this.ctx.fillRect(
-                        x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + 12,
-                        y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + 20,
-                        24, 2
-                    );
-                }
-            }
-        }
-        
         // Render bombs
+        const time = performance.now() / 1000;
         for (const bomb of this.bombs) {
             // Draw dynamite stick (red rectangle)
             this.ctx.fillStyle = '#ff0000';
             this.ctx.fillRect(bomb.x - 4 - this.camera.x, bomb.y - 12 - this.camera.y, 8, 12);
             
-            // Draw fuse (brown line)
+            // Draw fuse (brown line with animation)
             this.ctx.strokeStyle = '#8B4513';
             this.ctx.lineWidth = 2;
             this.ctx.beginPath();
+            
+            // Animate fuse with sine wave
+            const fuseWave = Math.sin(time * 5) * 2;
             this.ctx.moveTo(bomb.x - this.camera.x, bomb.y - 12 - this.camera.y);
-            this.ctx.lineTo(bomb.x - this.camera.x, bomb.y - 24 - this.camera.y);
-            this.ctx.stroke();
-        }
-        
-        // Render sparkles
-        this.ctx.fillStyle = '#FFD700';
-        for (const sparkle of this.sparkles) {
-            this.ctx.globalAlpha = sparkle.timeLeft / 0.2;
-            this.ctx.beginPath();
-            this.ctx.arc(
-                sparkle.x - this.camera.x,
-                sparkle.y - this.camera.y,
-                sparkle.size,
-                0, Math.PI * 2
+            this.ctx.quadraticCurveTo(
+                bomb.x - this.camera.x + fuseWave, 
+                bomb.y - 18 - this.camera.y,
+                bomb.x - this.camera.x, 
+                bomb.y - 24 - this.camera.y
             );
+            this.ctx.stroke();
+            
+            // Draw fuse spark
+            this.ctx.fillStyle = '#FFA500';
+            const sparkX = bomb.x - this.camera.x + Math.sin(time * 10) * 2;
+            const sparkY = bomb.y - 24 - this.camera.y + Math.cos(time * 10);
+            this.ctx.beginPath();
+            this.ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            // Draw spark glow
+            const sparkGradient = this.ctx.createRadialGradient(
+                sparkX, sparkY, 0,
+                sparkX, sparkY, 4
+            );
+            sparkGradient.addColorStop(0, 'rgba(255, 200, 0, 0.6)');
+            sparkGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            this.ctx.fillStyle = sparkGradient;
+            this.ctx.beginPath();
+            this.ctx.arc(sparkX, sparkY, 4, 0, Math.PI * 2);
             this.ctx.fill();
         }
-        this.ctx.globalAlpha = 1;
         
-        // Render explosions
-        for (const explosion of this.explosions) {
-            // Main explosion
+        // Create darkness overlay if lights are out
+        if (!this.lightsOn) {
+            // Save the current context state
+            this.ctx.save();
+            
+            // Create a dark overlay
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Create a small light around the player
+            const playerScreenX = Math.floor(this.player.x - this.camera.x);  // Floor to prevent shimmering
+            const playerScreenY = Math.floor(this.player.y - this.camera.y);
+            
+            // Clear a circle around player and lava
+            this.ctx.globalCompositeOperation = 'destination-out';
+            
+            // Player light
             const gradient = this.ctx.createRadialGradient(
-                explosion.x, explosion.y, 0,
-                explosion.x, explosion.y, explosion.radius
+                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
+                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
+                0,
+                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
+                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
+                GAME_CONSTANTS.TILE_SIZE * 2
             );
-            gradient.addColorStop(0, 'rgba(255, 255, 200, 1)');
-            gradient.addColorStop(0.2, 'rgba(255, 200, 0, 0.8)');
-            gradient.addColorStop(0.4, 'rgba(255, 100, 0, 0.6)');
-            gradient.addColorStop(0.8, 'rgba(255, 50, 0, 0.4)');
-            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
+            gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.7)');  // Softer edge
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             this.ctx.fillStyle = gradient;
             this.ctx.beginPath();
-            this.ctx.arc(explosion.x - this.camera.x, explosion.y - this.camera.y, explosion.radius, 0, Math.PI * 2);
+            this.ctx.arc(
+                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
+                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
+                GAME_CONSTANTS.TILE_SIZE * 2,
+                0, Math.PI * 2
+            );
             this.ctx.fill();
             
-            // Particle effects
-            for (const particle of explosion.particles) {
-                const distance = (1 - explosion.timeLeft / explosion.duration) * particle.speed;
-                const x = explosion.x + Math.cos(particle.angle) * distance;
-                const y = explosion.y + Math.sin(particle.angle) * distance;
-                
-                this.ctx.fillStyle = 'rgba(255, 200, 0, 0.6)';
-                this.ctx.beginPath();
-                this.ctx.arc(x - this.camera.x, y - this.camera.y, 3, 0, Math.PI * 2);
-                this.ctx.fill();
-            }
+            // Restore the context state
+            this.ctx.restore();
         }
         
-        // Update HUD
-        document.getElementById('score').textContent = `💎 Score: ${this.score}`;
-        document.getElementById('fuel').textContent = `⛽ Fuel: ${Math.ceil(this.fuel)}`;
-        document.getElementById('lives').textContent = `❤️ Lives: ${this.lives}`;
-        
-        // Render game over or win screen
-        if (this.gameOver || this.gameWon) {
+        // Draw game over screen if needed
+        if (this.gameOver) {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            
             this.ctx.fillStyle = 'white';
             this.ctx.font = '48px Arial';
             this.ctx.textAlign = 'center';
-            
-            if (this.gameWon) {
-                // Win screen
-                this.ctx.fillStyle = 'gold';
-                this.ctx.fillText('🏆 YOU WIN! 🏆', this.canvas.width / 2, this.canvas.height / 2 - 40);
-                this.ctx.fillStyle = 'white';
-                this.ctx.font = '24px Arial';
-                this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
-                this.ctx.fillText('Press SPACE to play again', this.canvas.width / 2, this.canvas.height / 2 + 60);
-            } else {
-                // Game over screen
-                this.ctx.fillStyle = 'red';
-                this.ctx.fillText('💀 GAME OVER 💀', this.canvas.width / 2, this.canvas.height / 2 - 40);
-                this.ctx.fillStyle = 'white';
-                this.ctx.font = '24px Arial';
-                this.ctx.fillText(`Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
-                if (this.lives > 0) {
-                    this.ctx.fillText('Press ENTER to retry level', this.canvas.width / 2, this.canvas.height / 2 + 60);
-                    this.ctx.fillText('Press SPACE to restart game', this.canvas.width / 2, this.canvas.height / 2 + 100);
-                } else {
-                    this.ctx.fillText('Press SPACE to restart game', this.canvas.width / 2, this.canvas.height / 2 + 60);
-                }
-            }
+            this.ctx.fillText('Game Over', this.canvas.width / 2, this.canvas.height / 2);
         }
     }
     
