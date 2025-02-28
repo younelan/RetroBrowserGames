@@ -181,6 +181,13 @@ window.Game = class {
         }
         
         // Update bombs and explosions
+        if (this.player.y < 0) {
+            this.player.y = 0;
+            this.player.velocityY = 0;
+        } else if (this.player.y > (this.level.map.length - 1) * GAME_CONSTANTS.TILE_SIZE) {
+            this.player.y = (this.level.map.length - 1) * GAME_CONSTANTS.TILE_SIZE;
+            this.player.velocityY = 0;
+        }
         for (let i = this.bombs.length - 1; i >= 0; i--) {
             const bomb = this.bombs[i];
             bomb.timeLeft -= deltaTime;
@@ -305,11 +312,18 @@ window.Game = class {
                     }
                     
                     // Check for lamp collision
-                    const currentTile = this.level.map[playerTileY][playerTileX];
-                    if (currentTile === 'o') {  // Off lamp - turns lights off
-                        this.lightsOn = false;
-                    } else if (currentTile === '*') {  // On lamp - turns lights on
-                        this.lightsOn = true;
+                    const playerTileY = Math.floor(this.player.y / GAME_CONSTANTS.TILE_SIZE);
+                    const playerTileX = Math.floor(this.player.x / GAME_CONSTANTS.TILE_SIZE);
+                    
+                    // Make sure we're within map bounds
+                    if (playerTileY >= 0 && playerTileY < this.level.map.length && 
+                        playerTileX >= 0 && playerTileX < this.level.map[0].length) {
+                        const currentTile = this.level.map[playerTileY][playerTileX];
+                        if (currentTile === 'o') {  // Off lamp - turns lights off
+                            this.lightsOn = false;
+                        } else if (currentTile === '*') {  // On lamp - turns lights on
+                            this.lightsOn = true;
+                        }
                     }
                     
                     // Then check for wall collisions
@@ -578,7 +592,10 @@ window.Game = class {
         
         // Draw player in dark
         if (!this.lightsOn) {
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.5;
             this.drawPlayer();
+            this.ctx.restore();
         }
         
         // Draw laser beam

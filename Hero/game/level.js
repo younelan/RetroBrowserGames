@@ -1,6 +1,8 @@
 class Level {
     constructor(levelData) {
-        this.map = levelData.map.trim().split('\n').map(row => row.split(''));
+        // First trim the entire level string to remove empty lines at start/end
+        // Then split into lines and trim each line to remove leading/trailing spaces
+        this.map = levelData.map.trim().split('\n').map(row => row.trim().split(''));
         this.viewport = levelData.viewport;
         this.collectibles = [];
         

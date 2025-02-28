@@ -87,17 +87,69 @@ const GAME_CONSTANTS = {
     // Level symbols
     SYMBOLS: {
         EMPTY: ' ',
-        BLUE_WALL: 'B',
-        RED_WALL: 'R',
-        LAVA: 'L',
+        // Blues
+        LIGHT_BLUE: 'B',
+        MED_BLUE: 'C',
+        DARK_BLUE: 'D',
+        
+        // Browns
+        LIGHT_BROWN: 'N',
+        MED_BROWN: 'M',
+        DARK_BROWN: 'K',
+        
+        // Reds
+        LIGHT_RED: 'R',
+        MED_RED: 'S',
+        DARK_RED: 'T',
+        
+        // Greens
+        LIGHT_GREEN: 'G',
+        MED_GREEN: 'H',
+        DARK_GREEN: 'I',
+        
+        // Additional colors
+        ORANGE: 'O',
+        PURPLE: 'P',
+        GOLD: 'Y',
+        
+        // Special tiles
+        LAVA: '!',
         MINER: '+',
         PLAYER: '@'
     }
 };
 
 const WALLS = {
-    B : "blue",
-    R : "red",
-    G : "green",
-    Y : "yellow"
+    // Blues (B, C, D)
+    B: "#87CEEB",  // Light blue
+    C: "#4169E1",  // Medium blue
+    D: "#00008B",  // Dark blue
+    
+    // Browns (N, M, K)
+    N: "#D2B48C",  // Light brown (tan)
+    M: "#8B4513",  // Medium brown
+    K: "#3E2723",  // Dark brown
+    
+    // Reds (R, S, T)
+    R: "#FF6B6B",  // Light red
+    S: "#DC143C",  // Medium red
+    T: "#8B0000",  // Dark red
+    
+    // Greens (G, H, I)
+    G: "#90EE90",  // Light green
+    H: "#228B22",  // Medium green
+    I: "#006400",  // Dark green
+    
+    // Golds (Y, U, V)
+    Y: "#FFD700",  // Light gold
+    U: "#DAA520",  // Medium gold
+    V: "#B8860B",  // Dark gold
+    
+    // Additional colors
+    O: "#FFA500",  // Orange
+    P: "#800080",  // Purple
+
+    W: "#A9A9A9",  // Light gray
+    X: "#696969",  // Dark gray
+    Z: "#800000",  // Maroon
 };
