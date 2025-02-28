@@ -34,6 +34,28 @@ class Level {
         return (tile in WALLS && tile !== '+') || tile === '=' || tile === '^' || tile === '&' || tile === '*' || tile === '!';
     }
 
+    isHazard(x, y) {
+        if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[0].length) {
+            return false;
+        }
+        const tile = this.map[y][x];
+        return tile === '!' || tile === '^' || tile === '&';  // Lava, spider, snake
+    }
+
+    isDestructible(x, y) {
+        if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[0].length) {
+            return false;
+        }
+        const tile = this.map[y][x];
+        return tile === '=' || tile === '!';  // Both destructible wall and lava can be destroyed
+    }
+
+    damageWall(x, y, damage) {
+        if (!this.isDestructible(x, y)) return false;
+        this.map[y][x] = ' ';  // Convert to empty space
+        return true;
+    }
+
     isComplete() {
         return this.miners.every(miner => miner.rescued);
     }
@@ -323,9 +345,10 @@ class LevelManager {
         for (let y = 0; y < GAME_CONSTANTS.GRID_SIZE; y++) {
             this.grid[y] = [];
             for (let x = 0; x < GAME_CONSTANTS.GRID_SIZE; x++) {
+                const tileType = level.map[y][x];
                 this.grid[y][x] = {
-                    type: level.map[y][x],
-                    health: level.map[y][x] === 2 ? 100 : 0 // Destructible walls have health
+                    type: tileType,
+                    health: (tileType === 2 || tileType === '!') ? 100 : 0 // Both destructible walls and lava have health
                 };
             }
         }
@@ -349,7 +372,7 @@ class LevelManager {
 
     damageWall(x, y, damage) {
         const tile = this.getTileAt(x, y);
-        if (tile && tile.type === 2) { // Destructible wall
+        if (tile && (tile.type === 2 || tile.type === '!')) { // Handle both destructible wall and lava
             tile.health -= damage * 100; // Convert to percentage
             if (tile.health <= 0) {
                 tile.type = 0; // Convert to empty space

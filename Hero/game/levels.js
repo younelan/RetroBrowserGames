@@ -29,30 +29,30 @@ B     +      L         +     B
 BRRRRRRR     L      RRRRRRRRRB
 B                            B
 B                            B
-B     +      L         +     B
-BBBBBBBBB    L     BBBBBBBBBBB
+B     +               +     B
+BBBBBBBBB    !     BBBBBBBBBBB
 B                            B
-B            L               B
-B     +      L         +     B
+B            !               B
+B     +      !         +     B
 BRRRRRRR            RRRRRRRRRB
 B                            B
-B     +      L         +     B
-B            L               B
-B     +      L         +     B
-BRRRRRRR     L      RRRRRRRRRB
+B     +      !         +     B
+B            !               B
+B     +      !         +     B
+BRRRRRRR     !      RRRRRRRRRB
 B                            B
-B     +      L         +     B
-BBBBBBBBB    L     BBBBBBBBBBB
-B            L               B
-B     +      L         +     B
+B     +      G         +     B
+BBBBBBBBB    G     BBBBBBBBBBB
+B            G               B
+B     +      G         +     B
 BRRRRRRR            RRRRRRRRRB
 B                            B
-B     +      L         +     B
-B            L               B
-B     +      L         +     B
-BRRRRRRR     L      RRRRRRRRRB
+B     +      !         +     B
+B            !               B
+B     +      !         +     B
+BRRRRRRR     !      RRRRRRRRRB
 B                            B
-B     +      L         +     B
+B     +                +     B
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
         viewport: 20
     }

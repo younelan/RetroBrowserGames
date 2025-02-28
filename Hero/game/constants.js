@@ -16,6 +16,7 @@ const GAME_CONSTANTS = {
         GRAVITY: 600,
         MAX_FUEL: 1000,
         FUEL_CONSUMPTION: 100, // per second
+        STARTING_LIVES: 10,
         EMOJI: {
             STANDING: '🦸',
             HOVERING: '🚁',

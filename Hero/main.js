@@ -1,4 +1,5 @@
-class Game {
+// Export Game class to make it available globally
+window.Game = class {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
@@ -14,9 +15,11 @@ class Game {
         this.currentLevel = 0;
         this.score = 0;
         this.fuel = 100;
+        this.lives = GAME_CONSTANTS.PLAYER.STARTING_LIVES;
         this.bombs = [];
         this.explosions = [];
         this.sparkles = [];
+        this.gameOver = false;
         
         // Player state
         this.player = {
@@ -47,6 +50,17 @@ class Game {
     }
     
     update(deltaTime) {
+        if (this.gameOver) {
+            if (this.controls.isPressed('Space')) {
+                // Restart game on space when game over
+                this.lives = GAME_CONSTANTS.PLAYER.STARTING_LIVES;
+                this.loadLevel(0);
+                this.score = 0;
+                this.gameOver = false;
+            }
+            return;
+        }
+        
         // Check if player is on ground
         const playerBottom = this.player.y + GAME_CONSTANTS.TILE_SIZE;
         const groundTileY = Math.floor(playerBottom / GAME_CONSTANTS.TILE_SIZE);
@@ -127,10 +141,11 @@ class Game {
                         if (tileY >= 0 && tileY < this.level.map.length &&
                             tileX >= 0 && tileX < this.level.map[0].length) {
                             const tile = this.level.map[tileY][tileX];
-                            if (tile === '=') {
-                                // Clear all = blocks above this position
+                            if (tile === '=' || tile === '!') {  // Check for both wall and lava
+                                // Clear all destructible blocks above this position
                                 for (let y = tileY; y >= 0; y--) {
-                                    if (this.level.map[y][tileX] === '=') {
+                                    const currentTile = this.level.map[y][tileX];
+                                    if (currentTile === '=' || currentTile === '!') {
                                         this.level.map[y][tileX] = ' ';
                                     }
                                 }
@@ -173,6 +188,28 @@ class Game {
         for (let y = playerTileY - 1; y <= playerTileY + 1; y++) {
             for (let x = playerTileX - 1; x <= playerTileX + 1; x++) {
                 if (y >= 0 && y < this.level.map.length && x >= 0 && x < this.level.map[0].length) {
+                    // Check for hazards first
+                    if (this.level.isHazard(x, y)) {
+                        const hazardBox = {
+                            x: x * GAME_CONSTANTS.TILE_SIZE,
+                            y: y * GAME_CONSTANTS.TILE_SIZE,
+                            width: GAME_CONSTANTS.TILE_SIZE,
+                            height: GAME_CONSTANTS.TILE_SIZE
+                        };
+                        if (this.checkCollision(this.player, hazardBox)) {
+                            this.lives--;
+                            if (this.lives <= 0) {
+                                this.gameOver = true;
+                                return;
+                            } else {
+                                // Reset player position to start of current level
+                                this.loadLevel(this.currentLevel);
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // Then check for wall collisions
                     if (this.level.isWall(x, y)) {
                         const wallBox = {
                             x: x * GAME_CONSTANTS.TILE_SIZE,
@@ -242,7 +279,11 @@ class Game {
     render() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Draw level with camera offset
+        // Calculate camera position
+        this.camera.x = this.player.x - this.canvas.width / 2;
+        this.camera.y = this.player.y - this.canvas.height / 2;
+        
+        // Render level
         this.level.render(this.ctx, this.camera.x, this.camera.y);
         
         // Check if player is in the air
@@ -355,21 +396,19 @@ class Game {
         }
         
         // Render sparkles
+        this.ctx.fillStyle = '#FFD700';  // Gold color for sparkles
         for (const sparkle of this.sparkles) {
-            const alpha = sparkle.timeLeft / 0.2; // Fade out
-            const gradient = this.ctx.createRadialGradient(
-                sparkle.x, sparkle.y, 0,
-                sparkle.x, sparkle.y, sparkle.size * 2
-            );
-            gradient.addColorStop(0, `rgba(255, 255, 200, ${alpha})`);
-            gradient.addColorStop(0.5, `rgba(255, 200, 0, ${alpha * 0.5})`);
-            gradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-            
-            this.ctx.fillStyle = gradient;
+            this.ctx.globalAlpha = sparkle.timeLeft / 0.2;  // Fade out
             this.ctx.beginPath();
-            this.ctx.arc(sparkle.x - this.camera.x, sparkle.y - this.camera.y, sparkle.size * 2, 0, Math.PI * 2);
+            this.ctx.arc(
+                sparkle.x - this.camera.x,
+                sparkle.y - this.camera.y,
+                sparkle.size,
+                0, Math.PI * 2
+            );
             this.ctx.fill();
         }
+        this.ctx.globalAlpha = 1;  // Reset alpha
         
         // Render explosions
         for (const explosion of this.explosions) {
@@ -403,9 +442,23 @@ class Game {
         }
         
         // Update HUD
-        document.getElementById('score').textContent = `Score: ${this.score}`;
-        document.getElementById('fuel').textContent = `Fuel: ${Math.ceil(this.fuel)}`;
-        document.getElementById('level').textContent = `Level: ${this.currentLevel + 1}`;
+        document.getElementById('score').textContent = `💎 Score: ${this.score}`;
+        document.getElementById('fuel').textContent = `⛽ Fuel: ${Math.ceil(this.fuel)}`;
+        document.getElementById('lives').textContent = `❤️ Lives: ${this.lives}`;
+        
+        // Render game over screen
+        if (this.gameOver) {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = '48px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2);
+            this.ctx.font = '24px Arial';
+            this.ctx.fillText('Press SPACE to restart', this.canvas.width / 2, this.canvas.height / 2 + 40);
+            this.ctx.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 80);
+        }
     }
     
     gameLoop(currentTime) {
