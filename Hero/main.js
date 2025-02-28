@@ -22,6 +22,8 @@ window.Game = class {
         this.gameOver = false;
         this.gameWon = false;
         this.rotorStopTimer = 0;  // Timer for delaying rotor stop
+        this.drowning = false;
+        this.drowningStartTime = 0;
         
         // Player state
         this.player = {
@@ -226,6 +228,42 @@ window.Game = class {
                         }
                     }
                     
+                    // Check for water
+                    if (this.level.isHazard(playerTileX, playerTileY) && this.level.map[playerTileY][playerTileX] === '~') {
+                        // Player is in water
+                        if (this.player.velocityY < 1) {  // Cap sinking speed
+                            this.player.velocityY += 0.05; // Very slow sinking
+                        }
+                        
+                        // Check if player has sunk too deep
+                        const playerHead = this.player.y;
+                        const waterSurfaceY = playerTileY * GAME_CONSTANTS.TILE_SIZE;
+                        
+                        // Allow small upward movement when jumping in water
+                        if (this.controls.isPressed('ArrowUp')) {
+                            this.player.velocityY -= 0.1;
+                        }
+                        
+                        // Reduce horizontal movement in water
+                        this.player.velocityX *= 0.95;
+                        
+                        // Start drowning only if player's head is under water
+                        if (playerHead > waterSurfaceY + 4) {  // 4 pixels grace period at surface
+                            if (!this.drowning) {
+                                this.drowning = true;
+                                this.drowningStartTime = performance.now();
+                            }
+                            
+                            // Give player 5 seconds after starting to drown before game over
+                            if (this.drowning && performance.now() - this.drowningStartTime > 5000) {
+                                this.gameOver = true;
+                                return;
+                            }
+                        } else {
+                            this.drowning = false;
+                        }
+                    }
+                    
                     // Then check for wall collisions
                     if (this.level.isWall(x, y)) {
                         const wallBox = {
@@ -294,144 +332,19 @@ window.Game = class {
     }
     
     render() {
+        // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Calculate camera position
-        this.camera.x = this.player.x - this.canvas.width / 2;
-        this.camera.y = this.player.y - this.canvas.height / 2;
-        
-        // Render level
+        // Draw the level
         this.level.render(this.ctx, this.camera.x, this.camera.y);
         
-        // Check if player is in the air
-        const playerBottom = this.player.y + GAME_CONSTANTS.TILE_SIZE;
-        const groundTileY = Math.floor(playerBottom / GAME_CONSTANTS.TILE_SIZE);
-        const isOnGround = groundTileY >= 0 && groundTileY < this.level.map.length &&
-                          this.level.isWall(Math.floor(this.player.x / GAME_CONSTANTS.TILE_SIZE), groundTileY);
-        
-        // Render player
-        const screenX = this.player.x - this.camera.x;
-        const screenY = this.player.y - this.camera.y;
-        const scale = GAME_CONSTANTS.PLAYER.SCALE;
-        
-        // Center the visual representation within the collision box
-        const visualX = screenX / scale - (GAME_CONSTANTS.TILE_SIZE * (scale - 1)) / (2 * scale);
-        const visualY = (screenY - GAME_CONSTANTS.TILE_SIZE * (scale - 1)) / scale;  // Offset Y to account for increased height
-        
+        // Draw the player
         this.ctx.save();
-        this.ctx.scale(scale, scale);
-        
-        // Draw legs
-        this.ctx.fillStyle = '#1565C0';
-        this.ctx.fillRect(
-            visualX + GAME_CONSTANTS.TILE_SIZE * 0.3,
-            visualY + GAME_CONSTANTS.TILE_SIZE * 0.5,
-            GAME_CONSTANTS.TILE_SIZE * 0.15,
-            GAME_CONSTANTS.TILE_SIZE * 0.5
-        );
-        this.ctx.fillRect(
-            visualX + GAME_CONSTANTS.TILE_SIZE * 0.55,
-            visualY + GAME_CONSTANTS.TILE_SIZE * 0.5,
-            GAME_CONSTANTS.TILE_SIZE * 0.15,
-            GAME_CONSTANTS.TILE_SIZE * 0.5
-        );
-        
-        // Draw jetpack
-        this.ctx.fillStyle = '#FFA000';
-        this.ctx.fillRect(
-            visualX + GAME_CONSTANTS.TILE_SIZE * 0.15,
-            visualY + GAME_CONSTANTS.TILE_SIZE * 0.2,
-            GAME_CONSTANTS.TILE_SIZE * 0.2,
-            GAME_CONSTANTS.TILE_SIZE * 0.4
-        );
-        
-        // Draw body
-        this.ctx.fillStyle = '#2196F3';
-        this.ctx.beginPath();
-        this.ctx.moveTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.3, visualY + GAME_CONSTANTS.TILE_SIZE * 0.5);
-        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.25, visualY + GAME_CONSTANTS.TILE_SIZE * 0.2);
-        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.75, visualY + GAME_CONSTANTS.TILE_SIZE * 0.2);
-        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.7, visualY + GAME_CONSTANTS.TILE_SIZE * 0.5);
-        this.ctx.fill();
-        
-        // Draw head
-        this.ctx.fillStyle = '#FFB74D';
-        this.ctx.beginPath();
-        this.ctx.arc(
-            visualX + GAME_CONSTANTS.TILE_SIZE * 0.5,
-            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
-            GAME_CONSTANTS.TILE_SIZE * 0.15,
-            0,
-            Math.PI * 2
-        );
-        this.ctx.fill();
-        
-        // Draw helicopter rotor
-        this.ctx.fillStyle = '#424242';
-        // Vertical part
-        this.ctx.fillRect(
-            visualX + GAME_CONSTANTS.TILE_SIZE * 0.48,
-            visualY - GAME_CONSTANTS.TILE_SIZE * 0.1,
-            GAME_CONSTANTS.TILE_SIZE * 0.04,
-            GAME_CONSTANTS.TILE_SIZE * 0.2
-        );
-        
-        // Horizontal part (rotates when not on ground or during stop delay)
-        const shouldSpin = !isOnGround || this.rotorStopTimer < 1;
-        const rotorWidth = GAME_CONSTANTS.TILE_SIZE * (0.3 + (shouldSpin ? Math.sin(Date.now() / 100) * 0.2 : 0));
-        this.ctx.fillRect(
-            visualX + GAME_CONSTANTS.TILE_SIZE * 0.5 - rotorWidth,
-            visualY - GAME_CONSTANTS.TILE_SIZE * 0.1,
-            rotorWidth * 2,
-            GAME_CONSTANTS.TILE_SIZE * 0.04
-        );
-        
-        // Draw goggles
-        this.ctx.fillStyle = '#424242';
-        this.ctx.beginPath();
-        this.ctx.ellipse(
-            visualX + GAME_CONSTANTS.TILE_SIZE * 0.43,
-            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
-            GAME_CONSTANTS.TILE_SIZE * 0.08,
-            GAME_CONSTANTS.TILE_SIZE * 0.05,
-            0,
-            0,
-            Math.PI * 2
-        );
-        this.ctx.fill();
-        this.ctx.beginPath();
-        this.ctx.ellipse(
-            visualX + GAME_CONSTANTS.TILE_SIZE * 0.57,
-            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
-            GAME_CONSTANTS.TILE_SIZE * 0.08,
-            GAME_CONSTANTS.TILE_SIZE * 0.05,
-            0,
-            0,
-            Math.PI * 2
-        );
-        this.ctx.fill();
-        
-        // Draw jetpack flames when flying
-        if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
-            const flameHeight = Math.random() * 0.2 + 0.3;
-            const gradient = this.ctx.createLinearGradient(
-                visualX + GAME_CONSTANTS.TILE_SIZE * 0.25,
-                visualY + GAME_CONSTANTS.TILE_SIZE * 0.6,
-                visualX + GAME_CONSTANTS.TILE_SIZE * 0.25,
-                visualY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight)
-            );
-            gradient.addColorStop(0, '#FF9800');
-            gradient.addColorStop(0.5, '#FF5722');
-            gradient.addColorStop(1, '#F44336');
-            
-            this.ctx.fillStyle = gradient;
-            this.ctx.beginPath();
-            this.ctx.moveTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.15, visualY + GAME_CONSTANTS.TILE_SIZE * 0.6);
-            this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.25, visualY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight));
-            this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.35, visualY + GAME_CONSTANTS.TILE_SIZE * 0.6);
-            this.ctx.fill();
+        if (this.drowning) {
+            // Make player semi-transparent when drowning
+            this.ctx.globalAlpha = 0.5 + Math.sin(performance.now() / 200) * 0.5;
         }
-        
+        this.drawPlayer();
         this.ctx.restore();
         
         // Render enemies (bats and spiders)
@@ -567,6 +480,139 @@ window.Game = class {
                 }
             }
         }
+    }
+    
+    drawPlayer() {
+        // Check if player is in the air
+        const playerBottom = this.player.y + GAME_CONSTANTS.TILE_SIZE;
+        const groundTileY = Math.floor(playerBottom / GAME_CONSTANTS.TILE_SIZE);
+        const isOnGround = groundTileY >= 0 && groundTileY < this.level.map.length &&
+                          this.level.isWall(Math.floor(this.player.x / GAME_CONSTANTS.TILE_SIZE), groundTileY);
+        
+        // Render player
+        const screenX = this.player.x - this.camera.x;
+        const screenY = this.player.y - this.camera.y;
+        const scale = GAME_CONSTANTS.PLAYER.SCALE;
+        
+        // Center the visual representation within the collision box
+        const visualX = screenX / scale - (GAME_CONSTANTS.TILE_SIZE * (scale - 1)) / (2 * scale);
+        const visualY = (screenY - GAME_CONSTANTS.TILE_SIZE * (scale - 1)) / scale;  // Offset Y to account for increased height
+        
+        this.ctx.save();
+        this.ctx.scale(scale, scale);
+        
+        // Draw legs
+        this.ctx.fillStyle = '#1565C0';
+        this.ctx.fillRect(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.3,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.5
+        );
+        this.ctx.fillRect(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.55,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.5
+        );
+        
+        // Draw jetpack
+        this.ctx.fillStyle = '#FFA000';
+        this.ctx.fillRect(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.2,
+            GAME_CONSTANTS.TILE_SIZE * 0.2,
+            GAME_CONSTANTS.TILE_SIZE * 0.4
+        );
+        
+        // Draw body
+        this.ctx.fillStyle = '#2196F3';
+        this.ctx.beginPath();
+        this.ctx.moveTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.3, visualY + GAME_CONSTANTS.TILE_SIZE * 0.5);
+        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.25, visualY + GAME_CONSTANTS.TILE_SIZE * 0.2);
+        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.75, visualY + GAME_CONSTANTS.TILE_SIZE * 0.2);
+        this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.7, visualY + GAME_CONSTANTS.TILE_SIZE * 0.5);
+        this.ctx.fill();
+        
+        // Draw head
+        this.ctx.fillStyle = '#FFB74D';
+        this.ctx.beginPath();
+        this.ctx.arc(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.5,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.15,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        
+        // Draw helicopter rotor
+        this.ctx.fillStyle = '#424242';
+        // Vertical part
+        this.ctx.fillRect(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.48,
+            visualY - GAME_CONSTANTS.TILE_SIZE * 0.1,
+            GAME_CONSTANTS.TILE_SIZE * 0.04,
+            GAME_CONSTANTS.TILE_SIZE * 0.2
+        );
+        
+        // Horizontal part (rotates when not on ground or during stop delay)
+        const shouldSpin = !isOnGround || this.rotorStopTimer < 1;
+        const rotorWidth = GAME_CONSTANTS.TILE_SIZE * (0.3 + (shouldSpin ? Math.sin(Date.now() / 100) * 0.2 : 0));
+        this.ctx.fillRect(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.5 - rotorWidth,
+            visualY - GAME_CONSTANTS.TILE_SIZE * 0.1,
+            rotorWidth * 2,
+            GAME_CONSTANTS.TILE_SIZE * 0.04
+        );
+        
+        // Draw goggles
+        this.ctx.fillStyle = '#424242';
+        this.ctx.beginPath();
+        this.ctx.ellipse(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.43,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.08,
+            GAME_CONSTANTS.TILE_SIZE * 0.05,
+            0,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        this.ctx.beginPath();
+        this.ctx.ellipse(
+            visualX + GAME_CONSTANTS.TILE_SIZE * 0.57,
+            visualY + GAME_CONSTANTS.TILE_SIZE * 0.15,
+            GAME_CONSTANTS.TILE_SIZE * 0.08,
+            GAME_CONSTANTS.TILE_SIZE * 0.05,
+            0,
+            0,
+            Math.PI * 2
+        );
+        this.ctx.fill();
+        
+        // Draw jetpack flames when flying
+        if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
+            const flameHeight = Math.random() * 0.2 + 0.3;
+            const gradient = this.ctx.createLinearGradient(
+                visualX + GAME_CONSTANTS.TILE_SIZE * 0.25,
+                visualY + GAME_CONSTANTS.TILE_SIZE * 0.6,
+                visualX + GAME_CONSTANTS.TILE_SIZE * 0.25,
+                visualY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight)
+            );
+            gradient.addColorStop(0, '#FF9800');
+            gradient.addColorStop(0.5, '#FF5722');
+            gradient.addColorStop(1, '#F44336');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.moveTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.15, visualY + GAME_CONSTANTS.TILE_SIZE * 0.6);
+            this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.25, visualY + GAME_CONSTANTS.TILE_SIZE * (0.6 + flameHeight));
+            this.ctx.lineTo(visualX + GAME_CONSTANTS.TILE_SIZE * 0.35, visualY + GAME_CONSTANTS.TILE_SIZE * 0.6);
+            this.ctx.fill();
+        }
+        
+        this.ctx.restore();
     }
     
     gameLoop(currentTime) {

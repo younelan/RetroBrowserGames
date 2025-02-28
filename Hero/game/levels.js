@@ -12,7 +12,7 @@ B                            B
 B                          ! B
 B                          ! B
 B +                   $    ! B
-BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
+BBBBBBBBBBBBBBBBBBBBBBBB~~BBBB`,
         viewport: 30
     },
     {
@@ -29,7 +29,7 @@ B     +      L         +     B
 BRRRRRRR     L      RRRRRRRRRB
 B                            B
 B                            B
-B     +               +     B
+B     +               +      B
 BBBBBBBBB    !     BBBBBBBBBBB
 B                            B
 B            !               B

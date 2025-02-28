@@ -71,8 +71,12 @@ const GAME_CONSTANTS = {
     // Colors
     COLORS: {
         WALL: '#0000FF',      // Blue wall
-        DESTRUCTIBLE_WALL: '#FF0000',  // Red wall
-        LAVA: '#FFA500',       // Orange lava
+        DESTRUCTIBLE_WALL: '#8B4513',  // Red wall
+        LAVA: '#FF4500',       // Orange lava
+        SPIKE: '#808080',
+        SNAKE: '#228B22',
+        SPIDER: '#800000',
+        WATER: '#4169E1',  // Royal Blue
         PLAYER: '#00ff00',
         PLAYER_DRILL: '#ffff00',
         PLAYER_HOVER: '#00ffff',

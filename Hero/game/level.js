@@ -37,7 +37,7 @@ class Level {
             return true;
         }
         const tile = this.map[y][x];
-        return (tile in WALLS) || tile === '=' || tile === '^' || tile === '&' || tile === '*' || tile === '!';
+        return (tile in WALLS) || tile === '=' || tile === '^' || tile === '&' || tile === '*' || tile === '!' || tile === '~';
     }
 
     isHazard(x, y) {
@@ -45,7 +45,7 @@ class Level {
             return false;
         }
         const tile = this.map[y][x];
-        return tile === '!' || tile === '^' || tile === '&';  // Lava, spider, snake
+        return tile === '!' || tile === '^' || tile === '&' || tile === '~';  // Lava, spider, snake, water
     }
 
     isDestructible(x, y) {
@@ -302,6 +302,38 @@ class Level {
                         ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
                         ctx.beginPath();
                         ctx.arc(centerX - 2, centerY - 2, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    } else if (tile === '~') {
+                        const time = performance.now() / 1000;
+                        
+                        // Create wave pattern
+                        ctx.beginPath();
+                        ctx.moveTo(screenX, screenY);
+                        
+                        // Draw wavy pattern from left to right at the top of tile
+                        for (let x = 0; x <= GAME_CONSTANTS.TILE_SIZE; x += 4) {
+                            const waveOffset = Math.sin(time * 2 + x/10) * 2;
+                            ctx.lineTo(screenX + x, screenY + waveOffset);
+                        }
+                        
+                        // Complete the path
+                        ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE, screenY + GAME_CONSTANTS.TILE_SIZE);
+                        ctx.lineTo(screenX, screenY + GAME_CONSTANTS.TILE_SIZE);
+                        
+                        // Fill with semi-transparent blue
+                        ctx.fillStyle = 'rgba(30, 144, 255, 0.5)';
+                        ctx.fill();
+                        
+                        // Add a second wave layer for depth
+                        ctx.beginPath();
+                        ctx.moveTo(screenX, screenY);
+                        for (let x = 0; x <= GAME_CONSTANTS.TILE_SIZE; x += 4) {
+                            const waveOffset = Math.sin(time * 1.5 + x/8 + Math.PI) * 1.5;
+                            ctx.lineTo(screenX + x, screenY + waveOffset);
+                        }
+                        ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE, screenY + GAME_CONSTANTS.TILE_SIZE);
+                        ctx.lineTo(screenX, screenY + GAME_CONSTANTS.TILE_SIZE);
+                        ctx.fillStyle = 'rgba(30, 144, 255, 0.3)';
                         ctx.fill();
                     }
                     
