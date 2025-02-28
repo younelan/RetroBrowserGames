@@ -442,7 +442,6 @@ window.Game = class {
         
         // Render explosions
         for (const explosion of this.explosions) {
-            // Skip invalid explosions
             if (!Number.isFinite(explosion.x) || !Number.isFinite(explosion.y) || !Number.isFinite(explosion.radius)) {
                 continue;
             }
@@ -531,46 +530,145 @@ window.Game = class {
         
         // Create darkness overlay if lights are out
         if (!this.lightsOn) {
-            // Save the current context state
-            this.ctx.save();
-            
-            // Create a dark overlay
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             
-            // Create a small light around the player
-            const playerScreenX = Math.floor(this.player.x - this.camera.x);  // Floor to prevent shimmering
-            const playerScreenY = Math.floor(this.player.y - this.camera.y);
-            
-            // Clear a circle around player and lava
-            this.ctx.globalCompositeOperation = 'destination-out';
-            
-            // Player light
+            // Draw visible circle around player
             const gradient = this.ctx.createRadialGradient(
-                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
-                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
+                this.player.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/2,
+                this.player.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/2,
                 0,
-                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
-                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
+                this.player.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/2,
+                this.player.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/2,
                 GAME_CONSTANTS.TILE_SIZE * 2
             );
-            gradient.addColorStop(0, 'rgba(0, 0, 0, 1)');
-            gradient.addColorStop(0.7, 'rgba(0, 0, 0, 0.7)');  // Softer edge
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        }
+
+        // Always visible elements (even in darkness)
+        this.ctx.save();
+        this.ctx.globalCompositeOperation = 'screen';
+        
+        // Draw lava with glow
+        for (let y = 0; y < this.level.map.length; y++) {
+            for (let x = 0; x < this.level.map[y].length; x++) {
+                if (this.level.map[y][x] === '!') { // Lava
+                    const screenX = x * GAME_CONSTANTS.TILE_SIZE - this.camera.x;
+                    const screenY = y * GAME_CONSTANTS.TILE_SIZE - this.camera.y;
+                    
+                    // Draw lava glow
+                    const lavaGradient = this.ctx.createRadialGradient(
+                        screenX + GAME_CONSTANTS.TILE_SIZE/2, 
+                        screenY + GAME_CONSTANTS.TILE_SIZE/2, 
+                        0,
+                        screenX + GAME_CONSTANTS.TILE_SIZE/2, 
+                        screenY + GAME_CONSTANTS.TILE_SIZE/2, 
+                        GAME_CONSTANTS.TILE_SIZE
+                    );
+                    lavaGradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
+                    lavaGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                    this.ctx.fillStyle = lavaGradient;
+                    this.ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                }
+            }
+        }
+        
+        // Draw player in dark
+        if (!this.lightsOn) {
+            this.drawPlayer();
+        }
+        
+        // Draw laser beam
+        if (this.laserActive) {
+            const direction = this.player.facingLeft ? -1 : 1;
+            const eyeY = this.player.y - this.camera.y - GAME_CONSTANTS.TILE_SIZE/2 - 4;
+            const eyeX = this.player.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE / 2;
+            const fullLaserLength = GAME_CONSTANTS.TILE_SIZE * 3;
+            
+            // Animated beam pattern
+            for (let i = 0; i < 3; i++) {
+                const offset = Math.sin(this.laserPhase + i * Math.PI / 2) * 2;
+                this.ctx.strokeStyle = 'rgba(255, 50, 50, 0.8)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(eyeX, eyeY + offset);
+                this.ctx.lineTo(eyeX + fullLaserLength * direction, eyeY + offset);
+                this.ctx.stroke();
+            }
+            
+            // Add glow effect
+            const gradient = this.ctx.createLinearGradient(
+                eyeX, eyeY,
+                eyeX + fullLaserLength * direction, eyeY
+            );
+            gradient.addColorStop(0, 'rgba(255, 100, 100, 0.5)');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = 6;
+            this.ctx.beginPath();
+            this.ctx.moveTo(eyeX, eyeY);
+            this.ctx.lineTo(eyeX + fullLaserLength * direction, eyeY);
+            this.ctx.stroke();
+        }
+        
+        // Draw dynamite glow in dark
+        if (!this.lightsOn) {
+            for (const bomb of this.bombs) {
+                const bombGradient = this.ctx.createRadialGradient(
+                    bomb.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
+                    bomb.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
+                    0,
+                    bomb.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
+                    bomb.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
+                    GAME_CONSTANTS.TILE_SIZE/2
+                );
+                bombGradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
+                bombGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                this.ctx.fillStyle = bombGradient;
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    bomb.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
+                    bomb.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
+                    GAME_CONSTANTS.TILE_SIZE/4,
+                    0,
+                    Math.PI * 2
+                );
+                this.ctx.fill();
+            }
+        }
+        
+        // Draw explosions with glow
+        for (const explosion of this.explosions) {
+            if (!Number.isFinite(explosion.x) || !Number.isFinite(explosion.y) || !Number.isFinite(explosion.radius)) {
+                continue;
+            }
+            
+            const progress = explosion.timeLeft / explosion.duration;
+            if (!Number.isFinite(progress)) {
+                continue;
+            }
+            
+            const x = explosion.x - this.camera.x;
+            const y = explosion.y - this.camera.y;
+            const radius = explosion.radius;
+            
+            const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, radius);
+            gradient.addColorStop(0, `rgba(255, 255, 200, ${progress})`);
+            gradient.addColorStop(0.2, `rgba(255, 200, 0, ${progress * 0.8})`);
+            gradient.addColorStop(0.4, `rgba(255, 100, 0, ${progress * 0.6})`);
+            gradient.addColorStop(0.8, `rgba(255, 50, 0, ${progress * 0.4})`);
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
             
             this.ctx.fillStyle = gradient;
             this.ctx.beginPath();
-            this.ctx.arc(
-                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
-                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
-                GAME_CONSTANTS.TILE_SIZE * 2,
-                0, Math.PI * 2
-            );
+            this.ctx.arc(x, y, radius, 0, Math.PI * 2);
             this.ctx.fill();
-            
-            // Restore the context state
-            this.ctx.restore();
         }
+        
+        this.ctx.restore();
         
         // Draw game over screen if needed
         if (this.gameOver) {
