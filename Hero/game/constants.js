@@ -9,8 +9,9 @@ const GAME_CONSTANTS = {
     
     // Player settings
     PLAYER: {
-        WIDTH: 40,
-        HEIGHT: 40,
+        SCALE: 2.0,  // Player scale factor
+        WIDTH: 48,  // Keep original collision size
+        HEIGHT: 48,
         MOVE_SPEED: 200,
         FLY_SPEED: 300,
         GRAVITY: 600,
