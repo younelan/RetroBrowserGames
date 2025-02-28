@@ -1,8 +1,31 @@
 // Export Game class to make it available globally
 window.Game = class {
     constructor() {
+        // Initialize canvas
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
+        
+        // Initialize controls
+        this.controls = {
+            ArrowLeft: false,
+            ArrowRight: false,
+            ArrowUp: false,
+            ArrowDown: false,
+            ' ': false  // Space bar
+        };
+        
+        // Add event listeners for controls
+        window.addEventListener('keydown', (e) => {
+            if (this.controls.hasOwnProperty(e.key)) {
+                this.controls[e.key] = true;
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            if (this.controls.hasOwnProperty(e.key)) {
+                this.controls[e.key] = false;
+            }
+        });
         
         // Initialize level first to get viewport size
         this.level = new Level(LEVELS[0]);
@@ -11,7 +34,6 @@ window.Game = class {
         this.canvas.width = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
         this.canvas.height = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
         
-        this.controls = new Controls();
         this.currentLevel = 0;
         this.score = 0;
         this.fuel = 100;
@@ -33,7 +55,8 @@ window.Game = class {
             width: GAME_CONSTANTS.TILE_SIZE,
             height: GAME_CONSTANTS.TILE_SIZE,
             velocityX: 0,
-            velocityY: 0
+            velocityY: 0,
+            facingLeft: true
         };
         
         // Camera position
@@ -45,6 +68,10 @@ window.Game = class {
         // Lighting state
         this.lightsOn = true;
         this.litLamps = new Set();  // Keep track of which lamps are lit
+        
+        // Laser state
+        this.laserActive = false;
+        this.laserPhase = 0; // For animation
         
         // Start game loop
         this.lastTime = performance.now();
@@ -60,14 +87,14 @@ window.Game = class {
     
     update(deltaTime) {
         if (this.gameOver || this.gameWon) {
-            if (this.controls.isPressed('Space')) {
+            if (this.controls[' '] || this.controls['Enter']) {
                 // Restart game
                 this.lives = GAME_CONSTANTS.PLAYER.STARTING_LIVES;
                 this.loadLevel(0);
                 this.score = 0;
                 this.gameOver = false;
                 this.gameWon = false;
-            } else if (this.controls.isPressed('Enter') && this.gameOver) {
+            } else if (this.controls['Enter'] && this.gameOver) {
                 // Retry current level
                 this.lives--;
                 this.loadLevel(this.currentLevel);
@@ -83,29 +110,74 @@ window.Game = class {
                           this.level.isWall(Math.floor(this.player.x / GAME_CONSTANTS.TILE_SIZE), groundTileY);
         
         // Update player position based on controls
-        if (this.controls.isPressed('ArrowLeft')) {
+        if (this.controls['ArrowLeft']) {
             this.player.velocityX = -5;
-        } else if (this.controls.isPressed('ArrowRight')) {
+            this.player.facingLeft = true;
+        } else if (this.controls['ArrowRight']) {
             this.player.velocityX = 5;
+            this.player.facingLeft = false;
         } else {
             this.player.velocityX = 0;
         }
         
         // Flying
-        if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
+        if (this.controls['ArrowUp'] && this.fuel > 0) {
             this.player.velocityY = -5;
             this.fuel = Math.max(0, this.fuel - 10 * deltaTime);
         } else {
             this.player.velocityY += 10 * deltaTime; // Gravity
         }
         
-        // Drop bomb on Space or when pressing Down while on ground
-        if (this.controls.isPressed('Space') || (this.controls.isPressed('ArrowDown') && isOnGround)) {
-            this.bombs.push({
-                x: this.player.x + this.player.width / 2,
-                y: this.player.y + this.player.height,
-                timeLeft: 1.5 // 1.5 seconds until explosion
-            });
+        // Handle dynamite (down arrow while on ground)
+        if (this.controls['ArrowDown'] && isOnGround) {
+            if (this.bombs.length < 3) {  // Limit number of active bombs
+                this.bombs.push({
+                    x: this.player.x + this.player.width / 2,
+                    y: this.player.y + this.player.height,
+                    timeLeft: 1.5 // 1.5 seconds until explosion
+                });
+            }
+        }
+        
+        // Handle laser (space bar)
+        this.laserActive = this.controls[' '];
+        if (this.laserActive) {
+            const direction = this.player.facingLeft ? -1 : 1;
+            // Position laser at head level (matching where we draw the head)
+            const eyeY = this.player.y - GAME_CONSTANTS.TILE_SIZE/2 - 4; // Match head position from level.js
+            const eyeX = this.player.x + GAME_CONSTANTS.TILE_SIZE / 2; // Center of player
+            const fullLaserLength = GAME_CONSTANTS.TILE_SIZE * 3; // Shorter laser length
+            
+            // Animate laser phase
+            this.laserPhase = (this.laserPhase + deltaTime * 10) % (Math.PI * 2);
+            
+            // Check for enemies along the laser beam
+            const laserEndX = eyeX + fullLaserLength * direction;
+            const startTileX = Math.floor(Math.min(eyeX, laserEndX) / GAME_CONSTANTS.TILE_SIZE);
+            const endTileX = Math.floor(Math.max(eyeX, laserEndX) / GAME_CONSTANTS.TILE_SIZE);
+            const tileY = Math.floor(eyeY / GAME_CONSTANTS.TILE_SIZE);
+            
+            // Check each tile the laser passes through
+            for (let tileX = startTileX; tileX <= endTileX; tileX++) {
+                // Make sure we're in bounds
+                if (tileY >= 0 && tileY < this.level.map.length && 
+                    tileX >= 0 && tileX < this.level.map[tileY].length) {
+                    // Check for enemies
+                    const tile = this.level.map[tileY][tileX];
+                    if (tile === '&' || tile === '^') { // Snake (&) or Spider (^)
+                        // Remove the enemy
+                        this.level.map[tileY][tileX] = ' ';
+                        // Add score
+                        this.score += 100;
+                        // Add explosion effect
+                        this.addExplosion(
+                            tileX * GAME_CONSTANTS.TILE_SIZE + GAME_CONSTANTS.TILE_SIZE/2,
+                            tileY * GAME_CONSTANTS.TILE_SIZE + GAME_CONSTANTS.TILE_SIZE/2,
+                            '#FF0000'
+                        );
+                    }
+                }
+            }
         }
         
         // Update bombs and explosions
@@ -130,14 +202,10 @@ window.Game = class {
                 this.explosions.push({
                     x: bomb.x,
                     y: bomb.y,
-                    radius: 0,
-                    maxRadius: 60,
-                    duration: 0.5,
+                    radius: GAME_CONSTANTS.TILE_SIZE,
                     timeLeft: 0.5,
-                    particles: Array(8).fill().map(() => ({
-                        angle: Math.random() * Math.PI * 2,
-                        speed: Math.random() * 100 + 50
-                    }))
+                    duration: 0.5,
+                    color: '#FF0000'
                 });
                 
                 // Remove the bomb
@@ -171,23 +239,26 @@ window.Game = class {
             }
         }
         
+        // Update explosions
+        for (let i = this.explosions.length - 1; i >= 0; i--) {
+            const explosion = this.explosions[i];
+            explosion.timeLeft -= deltaTime;
+            if (explosion.timeLeft <= 0) {
+                this.explosions.splice(i, 1);
+                continue;
+            }
+            
+            // Scale radius based on time left
+            const progress = explosion.timeLeft / explosion.duration;
+            explosion.radius = GAME_CONSTANTS.TILE_SIZE * (1 + (1 - progress));
+        }
+        
         // Update sparkles
         for (let i = this.sparkles.length - 1; i >= 0; i--) {
             const sparkle = this.sparkles[i];
             sparkle.timeLeft -= deltaTime;
             if (sparkle.timeLeft <= 0) {
                 this.sparkles.splice(i, 1);
-            }
-        }
-        
-        // Update explosions
-        for (let i = this.explosions.length - 1; i >= 0; i--) {
-            const explosion = this.explosions[i];
-            explosion.timeLeft -= deltaTime;
-            explosion.radius = (1 - explosion.timeLeft / explosion.duration) * explosion.maxRadius;
-            
-            if (explosion.timeLeft <= 0) {
-                this.explosions.splice(i, 1);
             }
         }
         
@@ -362,10 +433,100 @@ window.Game = class {
             );
             sparkGradient.addColorStop(0, 'rgba(255, 200, 0, 0.6)');
             sparkGradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+            
             this.ctx.fillStyle = sparkGradient;
             this.ctx.beginPath();
             this.ctx.arc(sparkX, sparkY, 4, 0, Math.PI * 2);
             this.ctx.fill();
+        }
+        
+        // Render explosions
+        for (const explosion of this.explosions) {
+            // Skip invalid explosions
+            if (!Number.isFinite(explosion.x) || !Number.isFinite(explosion.y) || !Number.isFinite(explosion.radius)) {
+                continue;
+            }
+            
+            const progress = explosion.timeLeft / explosion.duration;
+            if (!Number.isFinite(progress)) {
+                continue;
+            }
+            
+            // Main explosion
+            const x = explosion.x - this.camera.x;
+            const y = explosion.y - this.camera.y;
+            const radius = explosion.radius;
+            
+            const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, radius);
+            gradient.addColorStop(0, `rgba(255, 255, 200, ${progress})`);
+            gradient.addColorStop(0.2, `rgba(255, 200, 0, ${progress * 0.8})`);
+            gradient.addColorStop(0.4, `rgba(255, 100, 0, ${progress * 0.6})`);
+            gradient.addColorStop(0.8, `rgba(255, 50, 0, ${progress * 0.4})`);
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        
+        // Render sparkles
+        this.ctx.fillStyle = '#FFD700';
+        for (const sparkle of this.sparkles) {
+            this.ctx.globalAlpha = sparkle.timeLeft / 0.2;
+            this.ctx.beginPath();
+            this.ctx.arc(
+                sparkle.x - this.camera.x,
+                sparkle.y - this.camera.y,
+                sparkle.size,
+                0, Math.PI * 2
+            );
+            this.ctx.fill();
+        }
+        this.ctx.globalAlpha = 1;
+        
+        // Draw laser beam (before darkness overlay so it's visible in dark)
+        if (this.laserActive) {
+            const direction = this.player.facingLeft ? -1 : 1;
+            // Position laser at head level (matching where we draw the head)
+            const eyeY = this.player.y - this.camera.y - GAME_CONSTANTS.TILE_SIZE/2 - 4; // Match head position from level.js
+            const eyeX = this.player.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE / 2; // Center of player
+            const fullLaserLength = GAME_CONSTANTS.TILE_SIZE * 3; // Shorter laser length
+            
+            this.ctx.save();
+            
+            // Make laser glow in dark
+            this.ctx.globalCompositeOperation = 'screen';
+            
+            // Main beam
+            this.ctx.strokeStyle = '#FF0000';
+            this.ctx.lineWidth = 2;
+            
+            // Animated beam pattern
+            for (let i = 0; i < 3; i++) {
+                const offset = Math.sin(this.laserPhase + i * Math.PI / 2) * 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(eyeX, eyeY + offset);
+                this.ctx.lineTo(eyeX + fullLaserLength * direction, eyeY + offset);
+                this.ctx.stroke();
+            }
+            
+            // Add glow effect
+            const gradient = this.ctx.createLinearGradient(
+                eyeX, eyeY,
+                eyeX + fullLaserLength * direction, eyeY
+            );
+            gradient.addColorStop(0, 'rgba(255, 0, 0, 0.5)');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = 6;
+            this.ctx.beginPath();
+            this.ctx.moveTo(eyeX, eyeY);
+            this.ctx.lineTo(eyeX + fullLaserLength * direction, eyeY);
+            this.ctx.stroke();
+            
+            this.ctx.restore();
         }
         
         // Create darkness overlay if lights are out
@@ -532,7 +693,7 @@ window.Game = class {
         this.ctx.fill();
         
         // Draw jetpack flames when flying
-        if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
+        if (this.controls['ArrowUp'] && this.fuel > 0) {
             const flameHeight = Math.random() * 0.2 + 0.3;
             const gradient = this.ctx.createLinearGradient(
                 visualX + GAME_CONSTANTS.TILE_SIZE * 0.25,
@@ -588,10 +749,23 @@ window.Game = class {
         this.bombs = [];
         this.explosions = [];
         this.sparkles = [];
+        this.lasers = [];
     }
     
     gameWon() {
         alert('Congratulations! You won!');
+    }
+    
+    addExplosion(x, y, color) {
+        const explosion = {
+            x: Number(x),
+            y: Number(y),
+            radius: GAME_CONSTANTS.TILE_SIZE,
+            timeLeft: 0.5,
+            duration: 0.5,
+            color: color || '#FF0000'
+        };
+        this.explosions.push(explosion);
     }
 }
 
