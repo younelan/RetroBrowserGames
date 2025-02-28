@@ -37,7 +37,7 @@ class Level {
             return true;
         }
         const tile = this.map[y][x];
-        return (tile in WALLS) || tile === '=' || tile === '^' || tile === '&' || tile === '*' || tile === '!' || tile === '~';
+        return (tile in WALLS) || tile === '=' || tile === '^' || tile === '&' || tile === '!' || tile === '~';
     }
 
     isHazard(x, y) {
@@ -249,60 +249,123 @@ class Level {
                         ctx.moveTo(headX + 4 + tongueLength - 1, headY);
                         ctx.lineTo(headX + 4 + tongueLength, headY + 2);
                         ctx.stroke();
-                    } else if (tile === '*') {
+                    } else if (tile === '*' || tile === 'o') {
                         const centerX = screenX + GAME_CONSTANTS.TILE_SIZE/2;
                         const centerY = screenY + GAME_CONSTANTS.TILE_SIZE/2;
-                        const time = performance.now() / 1000;
                         
-                        // Outer glow
-                        const glowSize = 1 + Math.sin(time * 3) * 0.1;  // Pulsing effect
-                        const gradient = ctx.createRadialGradient(
-                            centerX, centerY, 0,
-                            centerX, centerY, GAME_CONSTANTS.TILE_SIZE/1.5 * glowSize
-                        );
-                        gradient.addColorStop(0, 'rgba(255, 200, 0, 0.6)');
-                        gradient.addColorStop(0.5, 'rgba(255, 150, 0, 0.2)');
-                        gradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
-                        
-                        ctx.fillStyle = gradient;
-                        ctx.fillRect(
-                            screenX - GAME_CONSTANTS.TILE_SIZE/3,
-                            screenY - GAME_CONSTANTS.TILE_SIZE/3,
-                            GAME_CONSTANTS.TILE_SIZE * 1.6,
-                            GAME_CONSTANTS.TILE_SIZE * 1.6
-                        );
-                        
-                        // Chain
-                        ctx.strokeStyle = '#B8860B';
+                        // Draw chain
+                        ctx.strokeStyle = '#696969';
                         ctx.lineWidth = 2;
-                        const chainLinks = 3;
-                        for (let i = 0; i < chainLinks; i++) {
-                            const y = screenY + 4 + i * 6;
+                        ctx.beginPath();
+                        ctx.moveTo(centerX, screenY);
+                        ctx.lineTo(centerX, centerY + 8);  // Chain now goes to bottom
+                        ctx.stroke();
+                        
+                        // Draw hook at bottom
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY + 8, 2, 0, Math.PI);  // Hook faces down
+                        ctx.stroke();
+                        
+                        // Draw main lantern body (upside down)
+                        ctx.fillStyle = '#8B4513';  // Saddle brown
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = '#654321';
+                        
+                        // Bottom wide part (was top)
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - 8, centerY + 6);  // Left bottom
+                        ctx.lineTo(centerX + 8, centerY + 6);  // Right bottom
+                        ctx.stroke();
+                        
+                        // Sides converging to top (was bottom)
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - 8, centerY + 6);  // Left bottom
+                        ctx.lineTo(centerX - 4, centerY - 8);  // Left top
+                        ctx.stroke();
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(centerX + 8, centerY + 6);  // Right bottom
+                        ctx.lineTo(centerX + 4, centerY - 8);  // Right top
+                        ctx.stroke();
+                        
+                        // Top line (was bottom)
+                        ctx.beginPath();
+                        ctx.moveTo(centerX - 4, centerY - 8);
+                        ctx.lineTo(centerX + 4, centerY - 8);
+                        ctx.stroke();
+                        
+                        // Cross beams (horizontal)
+                        for(let i = 1; i < 3; i++) {
+                            const y = centerY + 4 - i * 5;  // Start from bottom
+                            const bottomWidth = 8;
+                            const shrink = i * 2;
                             ctx.beginPath();
-                            ctx.moveTo(centerX - 3, y);
-                            ctx.lineTo(centerX + 3, y);
+                            ctx.moveTo(centerX - bottomWidth + shrink, y);
+                            ctx.lineTo(centerX + bottomWidth - shrink, y);
                             ctx.stroke();
                         }
                         
-                        // Lamp body
-                        const lampGradient = ctx.createRadialGradient(
-                            centerX, centerY, 0,
-                            centerX, centerY, 8
-                        );
-                        lampGradient.addColorStop(0, '#FFF7B3');  // Bright center
-                        lampGradient.addColorStop(0.5, '#FFD700');  // Gold
-                        lampGradient.addColorStop(1, '#B8860B');  // Dark gold edge
+                        // Draw glass panels
+                        const glassColor = tile === '*' ? '#FFDB58' : '#A0A0A0';
+                        ctx.fillStyle = glassColor;
                         
-                        ctx.fillStyle = lampGradient;
+                        // Front panel (trapezoid, upside down)
                         ctx.beginPath();
-                        ctx.arc(centerX, centerY, 8, 0, Math.PI * 2);
+                        ctx.moveTo(centerX - 8, centerY + 6);  // Bottom left (wide)
+                        ctx.lineTo(centerX + 8, centerY + 6);  // Bottom right (wide)
+                        ctx.lineTo(centerX + 4, centerY - 8);  // Top right (narrow)
+                        ctx.lineTo(centerX - 4, centerY - 8);  // Top left (narrow)
+                        ctx.closePath();
                         ctx.fill();
                         
-                        // Highlight
-                        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                        ctx.beginPath();
-                        ctx.arc(centerX - 2, centerY - 2, 3, 0, Math.PI * 2);
-                        ctx.fill();
+                        // Add sharp panel lines
+                        ctx.strokeStyle = '#000000';
+                        ctx.lineWidth = 1;
+                        for(let i = 1; i < 3; i++) {
+                            const y = centerY + 4 - i * 5;  // Start from bottom
+                            const bottomWidth = 8;
+                            const shrink = i * 2;
+                            ctx.beginPath();
+                            ctx.moveTo(centerX - bottomWidth + shrink, y);
+                            ctx.lineTo(centerX + bottomWidth - shrink, y);
+                            ctx.stroke();
+                        }
+                        
+                        if (tile === '*') {
+                            // Draw sharper glow
+                            const gradient = ctx.createRadialGradient(
+                                centerX, centerY, 0,
+                                centerX, centerY, GAME_CONSTANTS.TILE_SIZE * 0.6
+                            );
+                            gradient.addColorStop(0, 'rgba(255, 255, 150, 0.6)');
+                            gradient.addColorStop(0.7, 'rgba(255, 255, 150, 0.2)');
+                            gradient.addColorStop(1, 'rgba(255, 255, 150, 0)');
+                            
+                            ctx.fillStyle = gradient;
+                            ctx.beginPath();
+                            ctx.arc(centerX, centerY, GAME_CONSTANTS.TILE_SIZE * 0.6, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Draw sharp flame (upside down)
+                            ctx.fillStyle = '#FF4500';  // OrangeRed
+                            ctx.beginPath();
+                            ctx.moveTo(centerX, centerY + 1);
+                            ctx.lineTo(centerX + 2, centerY - 2);
+                            ctx.lineTo(centerX, centerY - 4);
+                            ctx.lineTo(centerX - 2, centerY - 2);
+                            ctx.closePath();
+                            ctx.fill();
+                            
+                            // Flame highlight (upside down)
+                            ctx.fillStyle = '#FFD700';
+                            ctx.beginPath();
+                            ctx.moveTo(centerX, centerY);
+                            ctx.lineTo(centerX + 1, centerY - 2);
+                            ctx.lineTo(centerX, centerY - 3);
+                            ctx.lineTo(centerX - 1, centerY - 2);
+                            ctx.closePath();
+                            ctx.fill();
+                        }
                     } else if (tile === '~') {
                         const time = performance.now() / 1000;
                         

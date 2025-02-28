@@ -41,6 +41,10 @@ window.Game = class {
             y: 0
         };
         
+        // Lighting state
+        this.lightsOn = true;
+        this.litLamps = new Set();  // Keep track of which lamps are lit
+        
         // Start game loop
         this.lastTime = performance.now();
         requestAnimationFrame(this.gameLoop.bind(this));
@@ -228,6 +232,25 @@ window.Game = class {
                         }
                     }
                     
+                    // Check for lamp collision
+                    if (this.level.map[playerTileY][playerTileX] === '*' || this.level.map[playerTileY][playerTileX] === 'o') {
+                        // Toggle lamp state
+                        this.level.map[playerTileY][playerTileX] = this.level.map[playerTileY][playerTileX] === '*' ? 'o' : '*';
+                        
+                        // Count lit lamps
+                        let litCount = 0;
+                        for (let y = 0; y < this.level.map.length; y++) {
+                            for (let x = 0; x < this.level.map[y].length; x++) {
+                                if (this.level.map[y][x] === '*') {
+                                    litCount++;
+                                }
+                            }
+                        }
+                        
+                        // Update lighting state
+                        this.lightsOn = litCount > 0;
+                    }
+                    
                     // Check for water
                     if (this.level.isHazard(playerTileX, playerTileY) && this.level.map[playerTileY][playerTileX] === '~') {
                         // Player is in water
@@ -262,6 +285,8 @@ window.Game = class {
                         } else {
                             this.drowning = false;
                         }
+                    } else {
+                        this.drowning = false;
                     }
                     
                     // Then check for wall collisions
@@ -334,6 +359,47 @@ window.Game = class {
     render() {
         // Clear the canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Create darkness overlay if lights are out
+        if (!this.lightsOn) {
+            // Save the current context state
+            this.ctx.save();
+            
+            // Create a dark overlay
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // Create a small light around the player
+            const playerScreenX = this.player.x - this.camera.x;
+            const playerScreenY = this.player.y - this.camera.y;
+            
+            // Create a radial gradient for player's light
+            const gradient = this.ctx.createRadialGradient(
+                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
+                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
+                0,
+                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
+                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
+                GAME_CONSTANTS.TILE_SIZE * 3
+            );
+            gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0.8)');
+            
+            // Clear a circle around player
+            this.ctx.globalCompositeOperation = 'destination-out';
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(
+                playerScreenX + GAME_CONSTANTS.TILE_SIZE/2,
+                playerScreenY + GAME_CONSTANTS.TILE_SIZE/2,
+                GAME_CONSTANTS.TILE_SIZE * 3,
+                0, Math.PI * 2
+            );
+            this.ctx.fill();
+            
+            // Restore the context state
+            this.ctx.restore();
+        }
         
         // Draw the level
         this.level.render(this.ctx, this.camera.x, this.camera.y);

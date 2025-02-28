@@ -5,8 +5,8 @@ const LEVELS = [
 B@    =                ^     B
 B     =                  &   B
 B     =                      B
-B     =                    * B
-B     =      .               B
+B     =                      B
+B     =      .        *    o B
 BBBBBBBBBBBBBBBB    BBBBBBBBBB
 B                            B
 B                          ! B
