@@ -46,6 +46,28 @@ const GAME_CONSTANTS = {
         EMOJI: '💣'
     },
     
+    // Collectible settings
+    COLLECTIBLES: {
+        '$': {
+            SYMBOL: '$',
+            POINTS: 100,
+            COLOR: '#FFD700',
+            EMOJI: '🪙'
+        },
+        '+': {
+            SYMBOL: '+',
+            POINTS: 500,
+            COLOR: '#FF0000',
+            EMOJI: '👷'
+        },
+        '.': {
+            SYMBOL: '.',
+            POINTS: 1000,
+            COLOR: '#00FF00',
+            EMOJI: '💎'
+        }
+    },
+    
     // Colors
     COLORS: {
         WALL: '#0000FF',      // Blue wall

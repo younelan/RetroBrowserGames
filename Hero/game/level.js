@@ -2,13 +2,19 @@ class Level {
     constructor(levelData) {
         this.map = levelData.map.trim().split('\n').map(row => row.split(''));
         this.viewport = levelData.viewport;
-        this.miners = [];
+        this.collectibles = [];
         
-        // Find miners in the level
+        // Find collectibles in the level
         for (let y = 0; y < this.map.length; y++) {
             for (let x = 0; x < this.map[y].length; x++) {
-                if (this.map[y][x] === '+') {
-                    this.miners.push({ x, y, rescued: false });
+                const tile = this.map[y][x];
+                if (tile in GAME_CONSTANTS.COLLECTIBLES) {
+                    this.collectibles.push({ 
+                        x: x * GAME_CONSTANTS.TILE_SIZE, 
+                        y: y * GAME_CONSTANTS.TILE_SIZE, 
+                        type: tile, 
+                        collected: false 
+                    });
                 }
             }
         }
@@ -31,7 +37,7 @@ class Level {
             return true;
         }
         const tile = this.map[y][x];
-        return (tile in WALLS && tile !== '+') || tile === '=' || tile === '^' || tile === '&' || tile === '*' || tile === '!';
+        return (tile in WALLS) || tile === '=' || tile === '^' || tile === '&' || tile === '*' || tile === '!';
     }
 
     isHazard(x, y) {
@@ -51,13 +57,15 @@ class Level {
     }
 
     damageWall(x, y, damage) {
-        if (!this.isDestructible(x, y)) return false;
-        this.map[y][x] = ' ';  // Convert to empty space
-        return true;
+        if (this.isDestructible(x, y)) {
+            this.map[y][x] = ' ';  // Replace with empty space
+            return true;
+        }
+        return false;
     }
 
     isComplete() {
-        return this.miners.every(miner => miner.rescued);
+        return this.collectibles.every(c => c.collected);
     }
 
     render(ctx, cameraX, cameraY) {
@@ -78,8 +86,7 @@ class Level {
                         ctx.fillStyle = WALLS[tile];
                         ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
                     } else if (tile === '=') {
-                        // Draw destructible wall (brick style)
-                        ctx.fillStyle = WALLS[tile];
+                        ctx.fillStyle = GAME_CONSTANTS.COLORS.DESTRUCTIBLE_WALL;
                         ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
                         
                         // Add brick pattern
@@ -88,8 +95,7 @@ class Level {
                         ctx.fillRect(screenX, screenY + 2*GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
                         ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY, 2, GAME_CONSTANTS.TILE_SIZE);
                     } else if (tile === '!') {
-                        // Draw lava with animated bubbles
-                        ctx.fillStyle = '#FF4500';  // Orange-red base
+                        ctx.fillStyle = GAME_CONSTANTS.COLORS.LAVA;
                         ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
                         
                         // Add bubbles
@@ -298,25 +304,24 @@ class Level {
                         ctx.arc(centerX - 2, centerY - 2, 3, 0, Math.PI * 2);
                         ctx.fill();
                     }
-                }
-            }
-        }
-        
-        // Render miners
-        for (const miner of this.miners) {
-            if (!miner.rescued) {
-                const screenX = miner.x * GAME_CONSTANTS.TILE_SIZE - cameraX;
-                const screenY = miner.y * GAME_CONSTANTS.TILE_SIZE - cameraY;
-                
-                // Only render miners that are within the viewport
-                if (screenX >= -GAME_CONSTANTS.TILE_SIZE && 
-                    screenX <= ctx.canvas.width &&
-                    screenY >= -GAME_CONSTANTS.TILE_SIZE && 
-                    screenY <= ctx.canvas.height) {
                     
-                    ctx.fillStyle = 'white';
-                    ctx.font = '40px Arial';
-                    ctx.fillText('👷', screenX, screenY + GAME_CONSTANTS.TILE_SIZE - 8);
+                    // Draw collectibles
+                    const collectible = this.collectibles.find(c => 
+                        Math.floor(c.x / GAME_CONSTANTS.TILE_SIZE) === x && 
+                        Math.floor(c.y / GAME_CONSTANTS.TILE_SIZE) === y && 
+                        !c.collected
+                    );
+                    if (collectible) {
+                        ctx.fillStyle = GAME_CONSTANTS.COLLECTIBLES[collectible.type].COLOR;
+                        ctx.font = '24px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(
+                            GAME_CONSTANTS.COLLECTIBLES[collectible.type].EMOJI,
+                            screenX + GAME_CONSTANTS.TILE_SIZE / 2,
+                            screenY + GAME_CONSTANTS.TILE_SIZE / 2
+                        );
+                    }
                 }
             }
         }
@@ -327,7 +332,7 @@ class LevelManager {
     constructor() {
         this.currentLevel = 0;
         this.grid = [];
-        this.miners = [];
+        this.collectibles = [];
         this.dynamites = [];
         this.loadLevel(this.currentLevel);
     }
@@ -335,7 +340,7 @@ class LevelManager {
     loadLevel(levelNumber) {
         this.currentLevel = levelNumber;
         this.grid = [];
-        this.miners = [];
+        this.collectibles = [];
         this.dynamites = [];
         
         const level = LEVELS[levelNumber];
@@ -353,11 +358,12 @@ class LevelManager {
             }
         }
 
-        // Load miners
-        this.miners = level.miners.map(miner => ({
-            x: miner.x * GAME_CONSTANTS.TILE_SIZE,
-            y: miner.y * GAME_CONSTANTS.TILE_SIZE,
-            rescued: false
+        // Load collectibles
+        this.collectibles = level.collectibles.map(collectible => ({
+            x: collectible.x * GAME_CONSTANTS.TILE_SIZE,
+            y: collectible.y * GAME_CONSTANTS.TILE_SIZE,
+            type: collectible.type,
+            collected: false
         }));
 
         return true;
@@ -434,21 +440,21 @@ class LevelManager {
         }
     }
 
-    rescueMiner(x, y) {
-        const miner = this.miners.find(m => 
-            !m.rescued &&
-            Math.abs(m.x - x) < GAME_CONSTANTS.TILE_SIZE &&
-            Math.abs(m.y - y) < GAME_CONSTANTS.TILE_SIZE
+    collectCollectible(x, y) {
+        const collectible = this.collectibles.find(c => 
+            !c.collected &&
+            Math.abs(c.x - x) < GAME_CONSTANTS.TILE_SIZE &&
+            Math.abs(c.y - y) < GAME_CONSTANTS.TILE_SIZE
         );
 
-        if (miner) {
-            miner.rescued = true;
+        if (collectible) {
+            collectible.collected = true;
             return true;
         }
         return false;
     }
 
     isLevelComplete() {
-        return this.miners.every(miner => miner.rescued);
+        return this.collectibles.every(collectible => collectible.collected);
     }
 }

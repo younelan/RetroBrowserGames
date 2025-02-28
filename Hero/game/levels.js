@@ -6,12 +6,12 @@ B@    =                ^     B
 B     =                  &   B
 B     =                      B
 B     =                    * B
-B     =                      B
+B     =      .               B
 BBBBBBBBBBBBBBBB    BBBBBBBBBB
 B                            B
 B                          ! B
 B                          ! B
-B +                        ! B
+B +                   $    ! B
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
         viewport: 30
     },

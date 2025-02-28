@@ -253,22 +253,22 @@ window.Game = class {
             }
         }
         
-        // Check for miner collection
-        for (const miner of this.level.miners) {
-            if (!miner.rescued) {
-                const minerBox = {
-                    x: miner.x * GAME_CONSTANTS.TILE_SIZE,
-                    y: miner.y * GAME_CONSTANTS.TILE_SIZE,
+        // Check for collectible collection
+        this.level.collectibles.forEach(collectible => {
+            if (!collectible.collected) {
+                const collectibleBox = {
+                    x: collectible.x,
+                    y: collectible.y,
                     width: GAME_CONSTANTS.TILE_SIZE,
                     height: GAME_CONSTANTS.TILE_SIZE
                 };
                 
-                if (this.checkCollision(this.player, minerBox)) {
-                    miner.rescued = true;
-                    this.score += 1000;
+                if (this.checkCollision(this.player, collectibleBox)) {
+                    collectible.collected = true;
+                    this.score += GAME_CONSTANTS.COLLECTIBLES[collectible.type].POINTS;
                 }
             }
-        }
+        });
         
         // Check if level is complete
         if (this.level.isComplete()) {
@@ -466,18 +466,6 @@ window.Game = class {
                         24, 2
                     );
                 }
-            }
-        }
-        
-        // Render miners
-        for (const miner of this.level.miners) {
-            if (!miner.rescued) {
-                this.ctx.fillStyle = 'white';
-                this.ctx.font = '40px Arial';
-                this.ctx.fillText('👷', 
-                    miner.x * GAME_CONSTANTS.TILE_SIZE - this.camera.x, 
-                    (miner.y + 1) * GAME_CONSTANTS.TILE_SIZE - 8 - this.camera.y // Position at bottom of cell with small offset
-                );
             }
         }
         
