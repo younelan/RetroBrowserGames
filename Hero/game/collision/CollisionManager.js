@@ -67,11 +67,22 @@ class CollisionManager {
     }
 
     checkGroundCollision(player) {
-        const bottom = Math.floor((player.y + player.height) / this.tileSize);
-        const left = Math.floor(player.x / this.tileSize);
-        const right = Math.floor((player.x + player.width) / this.tileSize);
-        
-        return this.level.isWall(left, bottom) || this.level.isWall(right, bottom);
+        // Check the tiles just below the player's feet
+        const bottomY = Math.floor((player.y + player.height + 1) / this.tileSize);
+        const leftX = Math.floor(player.x / this.tileSize);
+        const rightX = Math.floor((player.x + player.width - 1) / this.tileSize);
+
+        // Check all tiles under the player's width
+        for (let x = leftX; x <= rightX; x++) {
+            if (this.level.isWall(x, bottomY)) {
+                // Only snap to ground if moving downward
+                if (player.velocityY >= 0) {
+                    player.y = bottomY * this.tileSize - player.height;
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     hasCollision(entity1, entity2) {
@@ -81,22 +92,19 @@ class CollisionManager {
                entity1.y + entity2.height > entity2.y;
     }
 
-    resolveCollision(entity, obstacle) {
-        const overlap = {
-            x: (entity.x + entity.width / 2) - (obstacle.x + obstacle.width / 2),
-            y: (entity.y + entity.height / 2) - (obstacle.y + obstacle.height / 2)
-        };
+    resolveCollision(entity, wall) {
+        const overlapX = (entity.x + entity.width/2) - (wall.x + wall.width/2);
+        const overlapY = (entity.y + entity.height/2) - (wall.y + wall.height/2);
 
-        const minTranslate = {
-            x: entity.width / 2 + obstacle.width / 2 - Math.abs(overlap.x),
-            y: entity.height / 2 + obstacle.height / 2 - Math.abs(overlap.y)
-        };
+        const minDistX = (entity.width + wall.width) / 2;
+        const minDistY = (entity.height + wall.height) / 2;
 
-        if (minTranslate.x < minTranslate.y) {
-            entity.x += overlap.x > 0 ? minTranslate.x : -minTranslate.x;
+        // Determine shortest axis to resolve collision
+        if (Math.abs(overlapX/minDistX) < Math.abs(overlapY/minDistY)) {
+            entity.x = overlapX > 0 ? wall.x + wall.width : wall.x - entity.width;
             entity.velocityX = 0;
         } else {
-            entity.y += overlap.y > 0 ? minTranslate.y : -minTranslate.y;
+            entity.y = overlapY > 0 ? wall.y + wall.height : wall.y - entity.height;
             entity.velocityY = 0;
         }
     }
@@ -117,8 +125,14 @@ class CollisionManager {
     }
 
     handleGridCollisions(player) {
+        const prevX = player.x;
+        const prevY = player.y;
+        
+        // Get surrounding tiles
         const tiles = this.getEntityTiles(player);
-        tiles.forEach(({x, y}) => {
+        let collided = false;
+
+        for (const {x, y} of tiles) {
             if (this.level.isWall(x, y)) {
                 const wall = {
                     x: x * this.tileSize,
@@ -126,9 +140,31 @@ class CollisionManager {
                     width: this.tileSize,
                     height: this.tileSize
                 };
-                this.resolveCollision(player, wall);
+                
+                // Handle horizontal collision first
+                if (this.hasCollision(player, wall)) {
+                    if (player.velocityX > 0) {
+                        player.x = wall.x - player.width;
+                    } else if (player.velocityX < 0) {
+                        player.x = wall.x + wall.width;
+                    }
+                    player.velocityX = 0;
+                    collided = true;
+                }
+
+                // Then handle vertical collision
+                if (this.hasCollision(player, wall)) {
+                    if (player.velocityY > 0) {
+                        player.y = wall.y - player.height;
+                    } else if (player.velocityY < 0) {
+                        player.y = wall.y + wall.height;
+                    }
+                    player.velocityY = 0;
+                    collided = true;
+                }
             }
-        });
+        }
+        return collided;
     }
 }
 

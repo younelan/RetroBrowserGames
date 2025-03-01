@@ -11,38 +11,40 @@ class Player {
     }
 
     update(deltaTime, controls, isOnGround) {
-        this.handleInput(deltaTime, controls);
+        this.handleInput(deltaTime, controls, isOnGround);
         this.applyPhysics(deltaTime, isOnGround);
     }
 
-    handleInput(deltaTime, controls) {
-        // Movement
+    handleInput(deltaTime, controls, isOnGround) {
+        // Horizontal movement - smoother with constant speed
         if (controls.ArrowLeft) {
-            this.velocityX = -GAME_CONSTANTS.PLAYER.MOVE_SPEED * deltaTime;
+            this.velocityX = -GAME_CONSTANTS.PLAYER.MOVE_SPEED;
             this.facingLeft = true;
         } else if (controls.ArrowRight) {
-            this.velocityX = GAME_CONSTANTS.PLAYER.MOVE_SPEED * deltaTime;
+            this.velocityX = GAME_CONSTANTS.PLAYER.MOVE_SPEED;
             this.facingLeft = false;
         } else {
             this.velocityX = 0;
         }
 
-        // Jetpack
+        // Vertical movement - jetpack
         if (controls.ArrowUp && this.fuel > 0) {
-            this.velocityY = -GAME_CONSTANTS.PLAYER.FLY_SPEED * deltaTime;
+            this.velocityY = -GAME_CONSTANTS.PLAYER.FLY_SPEED;
             this.fuel = Math.max(0, this.fuel - GAME_CONSTANTS.PLAYER.FUEL_CONSUMPTION * deltaTime);
+        } else if (!isOnGround) {
+            this.velocityY += GAME_CONSTANTS.PLAYER.GRAVITY * deltaTime;
+        } else {
+            this.velocityY = 0;
+            if (this.fuel < GAME_CONSTANTS.PLAYER.MAX_FUEL) {
+                this.fuel += GAME_CONSTANTS.PLAYER.FUEL_CONSUMPTION * deltaTime;
+            }
         }
     }
 
-    applyPhysics(deltaTime, isOnGround) {
-        // Only apply gravity when not on ground
-        if (!isOnGround) {
-            this.velocityY += GAME_CONSTANTS.PLAYER.GRAVITY * deltaTime;
-        }
-        
-        // Apply velocities
-        this.x += this.velocityX;
-        this.y += this.velocityY;
+    applyPhysics(deltaTime) {
+        // Apply velocities with deltaTime
+        this.x += this.velocityX * deltaTime;
+        this.y += this.velocityY * deltaTime;
     }
 }
 

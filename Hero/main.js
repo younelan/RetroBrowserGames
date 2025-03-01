@@ -132,15 +132,16 @@ loadScripts().then(() => {
         update(deltaTime) {
             if (this.gameOver || this.gameWon) return;
 
-            // Ground check first
+            // Ground collision check
             const isOnGround = this.collisionManager.checkGroundCollision(this.player);
             
-            // Update player with ground state
+            // Update player movement
             this.player.update(deltaTime, this.controls, isOnGround);
             
-            // Handle all collisions after movement
+            // Handle wall collisions after movement
             this.collisionManager.handleGridCollisions(this.player);
             
+            // Additional collision checks
             if (this.collisionManager.checkHazardCollisions(this.player) ||
                 this.collisionManager.checkEnemyCollisions(this.player, this.enemies)) {
                 this.handlePlayerDeath();
