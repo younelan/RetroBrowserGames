@@ -13,7 +13,7 @@ B                          ! B
 B                          ! B
 B +                   $    ! B
 BBBBBBBBBBBBBBBBBBBBBBBB~~BBBB`,
-        viewport: 30
+        viewport: 30,
     },
     {
         map: `BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
@@ -54,7 +54,8 @@ BRRRRRRR     !      RRRRRRRRRB
 B                            B
 B     +                +     B
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
-        viewport: 20
+        viewport: 20,
+        lights: true
     }
 ];
 

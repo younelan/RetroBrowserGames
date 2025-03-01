@@ -5,6 +5,7 @@ class Level {
         this.map = levelData.map.trim().split('\n').map(row => row.trim().split(''));
         this.viewport = levelData.viewport;
         this.collectibles = [];
+        this.initialLightsOn = (levelData.lights === false) ? false : true; // Store initial light state
         
         // Find collectibles in the level
         for (let y = 0; y < this.map.length; y++) {

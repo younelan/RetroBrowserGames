@@ -92,7 +92,7 @@ loadScripts().then(() => {
                 y: 0
             };
             // Lighting state
-            this.lightsOn = true;
+            this.lightsOn = this.level.initialLightsOn;
             this.litLamps = new Set();  // Keep track of which lamps are lit
             
             // Laser state
@@ -145,6 +145,7 @@ loadScripts().then(() => {
                 this.explosions = [];
                 this.sparkles = [];
                 this.lasers = [];
+                this.lightsOn = this.level.initialLightsOn; // Reset lights
             }
         }
 
@@ -578,6 +579,7 @@ loadScripts().then(() => {
             this.explosions = [];
             this.sparkles = [];
             this.lasers = [];
+            this.lightsOn = this.level.initialLightsOn; // Set initial light state
         }
         
         gameWon() {
