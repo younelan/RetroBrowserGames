@@ -57,3 +57,6 @@ BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
         viewport: 20
     }
 ];
+
+// Make LEVELS available globally
+window.LEVELS = LEVELS;

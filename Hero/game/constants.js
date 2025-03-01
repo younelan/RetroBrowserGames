@@ -1,17 +1,19 @@
 const GAME_CONSTANTS = {
+    // Base tile size that everything scales from
+    TILE_SIZE: 32,
+
     // Canvas size (viewable area)
     CANVAS_WIDTH: 800,
     CANVAS_HEIGHT: 600,
     
     // Grid settings (full level size)
     GRID_SIZE: 32,
-    TILE_SIZE: 32,
     
     // Player settings
     PLAYER: {
         SCALE: 2.0,  // Player scale factor
-        WIDTH: 48,  // Keep original collision size
-        HEIGHT: 48,
+        WIDTH: 2,  // Player is 2 tiles wide
+        HEIGHT: 2, // Player is 2 tiles tall
         MOVE_SPEED: 200,
         FLY_SPEED: 300,
         GRAVITY: 600,
@@ -116,6 +118,13 @@ const GAME_CONSTANTS = {
         LAVA: '!',
         MINER: '+',
         PLAYER: '@'
+    },
+
+    // Add scaling helper
+    getPlayerScale() {
+        const baseSize = 32; // Original tile size
+        const scale = Math.min(window.innerWidth, window.innerHeight) / (baseSize * 20);
+        return Math.max(1, scale);
     }
 };
 
