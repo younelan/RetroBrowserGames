@@ -83,7 +83,10 @@ class Dynamite {
         const screenY = this.y - cameraY;
         const time = performance.now() / 1000;
 
+        // Draw dynamite body
         this.renderDynamite(ctx, screenX, screenY);
+        
+        // Draw fuse and sparkles
         this.renderFuse(ctx, screenX, screenY, time);
         this.renderSparkles(ctx, cameraX, cameraY, time);
     }
@@ -172,8 +175,32 @@ class Dynamite {
         ctx.globalAlpha = 1;
     }
 
+    renderGlowInDarkness(ctx, screenX, screenY) {
+        const bombGradient = ctx.createRadialGradient(
+            screenX + GAME_CONSTANTS.TILE_SIZE/4,
+            screenY + GAME_CONSTANTS.TILE_SIZE/4,
+            0,
+            screenX + GAME_CONSTANTS.TILE_SIZE/4,
+            screenY + GAME_CONSTANTS.TILE_SIZE/4,
+            GAME_CONSTANTS.TILE_SIZE/2
+        );
+        bombGradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
+        bombGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        
+        ctx.fillStyle = bombGradient;
+        ctx.beginPath();
+        ctx.arc(
+            screenX + GAME_CONSTANTS.TILE_SIZE/4,
+            screenY + GAME_CONSTANTS.TILE_SIZE/4,
+            GAME_CONSTANTS.TILE_SIZE/4,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
+
     createExplosion() {
-        return {
+        const explosion = {
             x: this.x,
             y: this.y,
             radius: GAME_CONSTANTS.TILE_SIZE * 2.5,
@@ -182,6 +209,22 @@ class Dynamite {
             sparkCount: 20,
             sparkles: []
         };
+
+        // Create initial explosion sparkles
+        for (let i = 0; i < explosion.sparkCount; i++) {
+            const angle = (Math.PI * 2 * i) / explosion.sparkCount;
+            const speed = Math.random() * 200 + 100;
+            explosion.sparkles.push({
+                x: explosion.x,
+                y: explosion.y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: Math.random() * 3 + 2,
+                timeLeft: Math.random() * 0.5 + 0.3
+            });
+        }
+
+        return explosion;
     }
 }
 

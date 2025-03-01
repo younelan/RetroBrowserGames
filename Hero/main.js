@@ -347,7 +347,7 @@ loadScripts().then(() => {
             }
         }
 
-        render() {
+        render(deltaTime) {
             // Clear the canvas
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             
@@ -413,32 +413,8 @@ loadScripts().then(() => {
             
             // Draw dynamite glow in dark
             if (!this.lightsOn) {
-                for (const dynamite of this.dynamites) {
-                    const bombGradient = this.ctx.createRadialGradient(
-                        dynamite.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
-                        dynamite.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
-                        0,
-                        dynamite.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
-                        dynamite.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
-                        GAME_CONSTANTS.TILE_SIZE/2
-                    );
-                    bombGradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
-                    bombGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                    this.ctx.fillStyle = bombGradient;
-                    this.ctx.beginPath();
-                    this.ctx.arc(
-                        dynamite.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
-                        dynamite.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
-                        GAME_CONSTANTS.TILE_SIZE/4,
-                        0,
-                        Math.PI * 2
-                    );
-                    this.ctx.fill();
-                }
-            }
-            
-            // Draw darkness overlay when lights are off
-            if (!this.lightsOn) {
+                // Remove dynamite glow rendering code since it's now in Dynamite.render()
+                // Just keep other darkness-related rendering
                 // Fill entire screen with darkness
                 this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -525,6 +501,47 @@ loadScripts().then(() => {
                         this.ctx.beginPath();
                         this.ctx.arc(screenX, screenY, explosion.radius * 1.5 * progress, 0, Math.PI * 2);
                         this.ctx.fill();
+                    }
+                }
+            }
+            
+            // Render explosions with proper effects
+            for (const explosion of this.explosions) {
+                const progress = explosion.timeLeft / explosion.duration;
+                const screenX = explosion.x - this.camera.x;
+                const screenY = explosion.y - this.camera.y;
+                
+                if (progress > 0) {
+                    // Draw explosion shockwave
+                    const gradient = this.ctx.createRadialGradient(
+                        screenX, screenY, 0,
+                        screenX, screenY, explosion.radius * progress
+                    );
+                    gradient.addColorStop(0, `rgba(255, 200, 0, ${progress * 0.8})`);
+                    gradient.addColorStop(0.4, `rgba(255, 100, 0, ${progress * 0.6})`);
+                    gradient.addColorStop(0.7, `rgba(255, 50, 0, ${progress * 0.3})`);
+                    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                    
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX, screenY, explosion.radius * progress, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    
+                    // Draw sparkles
+                    for (const sparkle of explosion.sparkles) {
+                        const sparkleX = sparkle.x - this.camera.x;
+                        const sparkleY = sparkle.y - this.camera.y;
+                        
+                        this.ctx.fillStyle = `rgba(255, 200, 0, ${sparkle.timeLeft * 2})`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(sparkleX, sparkleY, sparkle.size * progress, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        // Update sparkle position
+                        sparkle.x += sparkle.vx * deltaTime;
+                        sparkle.y += sparkle.vy * deltaTime;
+                        sparkle.vy += 400 * deltaTime; // Add gravity to sparkles
+                        sparkle.timeLeft -= deltaTime;
                     }
                 }
             }
@@ -632,7 +649,7 @@ loadScripts().then(() => {
             this.lastTime = currentTime;
             
             this.update(deltaTime);
-            this.render();
+            this.render(deltaTime);  // Pass deltaTime to render
             
             requestAnimationFrame(this.gameLoop.bind(this));
         }
