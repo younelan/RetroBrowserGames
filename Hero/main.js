@@ -348,11 +348,11 @@ loadScripts().then(() => {
         }
 
         render(deltaTime) {
-            // Clear the canvas
+            const time = performance.now() / 1000;  // Add this line
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             
-            // Draw the level
-            this.level.render(this.ctx, this.camera.x, this.camera.y);
+            // Pass time to level.render
+            this.level.render(this.ctx, this.camera.x, this.camera.y, time);
             
             // Draw the player using the Player class's render method
             this.ctx.save();

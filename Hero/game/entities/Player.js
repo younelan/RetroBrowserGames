@@ -171,17 +171,24 @@ class Player {
         const centerX = x + this.width * 0.5;
         const centerY = y + this.height * 0.5;
         
+        ctx.save(); // Save context to restore after rotation
+        
+        // Rotate around the center based on facing direction
+        ctx.translate(centerX, centerY);
+        ctx.rotate(this.facingLeft ? -0.2 : (this.facingLeft === false ? 0.2 : 0));
+        ctx.translate(-centerX, -centerY);
+        
         // Dragon body - more elongated and less circular
         ctx.beginPath();
         ctx.moveTo(centerX - this.width * 0.4, centerY - this.height * 0.2);
         
-        // Back curve
+        // Back curve (adjusted for rotation perspective)
         ctx.quadraticCurveTo(
             centerX - this.width * 0.2, centerY - this.height * 0.3,
             centerX + this.width * 0.2, centerY - this.height * 0.2
         );
         
-        // Tail section
+        // Tail section (adjusted for rotation perspective)
         ctx.quadraticCurveTo(
             centerX + this.width * 0.3, centerY,
             centerX + this.width * 0.2, centerY + this.height * 0.2
@@ -193,7 +200,6 @@ class Player {
             centerX - this.width * 0.4, centerY + this.height * 0.2
         );
         
-        // Close the path
         ctx.closePath();
 
         // Fill with gradient
@@ -214,6 +220,8 @@ class Player {
         
         // Render legs
         this.renderDragonLegs(ctx, centerX, centerY);
+        
+        ctx.restore(); // Restore context to prevent rotation affecting other elements
     }
 
     renderDragonLegs(ctx, centerX, centerY) {

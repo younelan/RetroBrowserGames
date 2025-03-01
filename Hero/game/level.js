@@ -99,7 +99,90 @@ class Level {
         return this.collectibles.every(c => c.collected);
     }
 
-    render(ctx, offsetX, offsetY) {
+    renderLava(ctx, screenX, screenY, time) {
+        // Base lava color
+        const baseGradient = ctx.createLinearGradient(
+            screenX, screenY,
+            screenX, screenY + GAME_CONSTANTS.TILE_SIZE
+        );
+        baseGradient.addColorStop(0, '#FF4500');  // Bright orange-red
+        baseGradient.addColorStop(0.5, '#FF2400'); // Deeper red
+        baseGradient.addColorStop(1, '#8B0000');  // Dark red
+        
+        ctx.fillStyle = baseGradient;
+        ctx.fillRect(
+            screenX, screenY,
+            GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE
+        );
+    
+        // Lava flow animation
+        const flowOffset = Math.sin(time * 2 + screenX * 0.1) * 5;
+        const flowGradient = ctx.createLinearGradient(
+            screenX, screenY + flowOffset,
+            screenX, screenY + GAME_CONSTANTS.TILE_SIZE + flowOffset
+        );
+        flowGradient.addColorStop(0, 'rgba(255, 140, 0, 0.5)'); // Bright orange
+        flowGradient.addColorStop(0.5, 'rgba(255, 69, 0, 0.5)'); // Red-orange
+        flowGradient.addColorStop(1, 'rgba(139, 0, 0, 0.5)');   // Dark red
+        
+        ctx.fillStyle = flowGradient;
+        ctx.fillRect(
+            screenX, screenY,
+            GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE
+        );
+    
+        // Add bubbles
+        for (let i = 0; i < 3; i++) {
+            const bubbleX = screenX + (Math.sin(time * 3 + i * 7) + 1) * GAME_CONSTANTS.TILE_SIZE/3;
+            const bubbleY = screenY + ((time * (0.5 + i * 0.2)) % 1) * GAME_CONSTANTS.TILE_SIZE;
+            const bubbleSize = 4 + Math.sin(time * 5 + i * 3) * 2;
+            
+            // Bubble gradient
+            const bubbleGradient = ctx.createRadialGradient(
+                bubbleX, bubbleY, 0,
+                bubbleX, bubbleY, bubbleSize
+            );
+            bubbleGradient.addColorStop(0, 'rgba(255, 200, 0, 0.8)');
+            bubbleGradient.addColorStop(0.6, 'rgba(255, 140, 0, 0.4)');
+            bubbleGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    
+            ctx.fillStyle = bubbleGradient;
+            ctx.beginPath();
+            ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    
+        // Add sparks
+        for (let i = 0; i < 2; i++) {
+            if (Math.random() < 0.1) {
+                const sparkX = screenX + Math.random() * GAME_CONSTANTS.TILE_SIZE;
+                const sparkY = screenY + Math.random() * GAME_CONSTANTS.TILE_SIZE * 0.5;
+                const sparkSize = 1 + Math.random() * 2;
+                
+                ctx.fillStyle = '#FFF';
+                ctx.beginPath();
+                ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    
+        // Add surface glow
+        const glowGradient = ctx.createRadialGradient(
+            screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY, 0,
+            screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY, GAME_CONSTANTS.TILE_SIZE
+        );
+        glowGradient.addColorStop(0, 'rgba(255, 100, 0, 0.4)');
+        glowGradient.addColorStop(0.5, 'rgba(255, 50, 0, 0.2)');
+        glowGradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        
+        ctx.fillStyle = glowGradient;
+        ctx.fillRect(
+            screenX - 5, screenY - 5,
+            GAME_CONSTANTS.TILE_SIZE + 10, GAME_CONSTANTS.TILE_SIZE + 10
+        );
+    }
+
+    render(ctx, offsetX, offsetY, time) { // Add time parameter here
         const startCol = Math.floor(offsetX / GAME_CONSTANTS.TILE_SIZE);
         const endCol = startCol + Math.ceil(ctx.canvas.width / GAME_CONSTANTS.TILE_SIZE) + 1; // +1 to ensure we render offscreen tiles
         const startRow = Math.floor(offsetY / GAME_CONSTANTS.TILE_SIZE);
@@ -205,29 +288,8 @@ class Level {
                             brickHeight
                         );
                     } else if (tile === '!') {
-                        // Draw lava base
-                        ctx.fillStyle = GAME_CONSTANTS.COLORS.LAVA;
-                        ctx.fillRect(
-                            screenX, 
-                            screenY, 
-                            GAME_CONSTANTS.TILE_SIZE,
-                            GAME_CONSTANTS.TILE_SIZE
-                        );
-                        
-                        // Add bubbles
-                        const time = performance.now() / 1000;
-                        ctx.fillStyle = '#FFA500';  // Lighter orange for bubbles
-                        for (let i = 0; i < 3; i++) {
-                            const bubbleX = screenX + (Math.sin(time * 2 + i) + 1) * GAME_CONSTANTS.TILE_SIZE/3;
-                            const bubbleY = screenY + ((Math.sin(time * 3 + i) + 1) / 2) * GAME_CONSTANTS.TILE_SIZE;
-                            ctx.beginPath();
-                            ctx.arc(bubbleX, bubbleY, 3, 0, Math.PI * 2);
-                            ctx.fill();
-                        }
-                        
-                        // Add glow effect
-                        ctx.fillStyle = 'rgba(255, 69, 0, 0.3)';
-                        ctx.fillRect(screenX - 2, screenY - 2, GAME_CONSTANTS.TILE_SIZE + 4, GAME_CONSTANTS.TILE_SIZE + 4);
+                        this.renderLava(ctx, screenX, screenY, time);
+                        continue; // Skip the default tile rendering
                     } else if (tile === '~') {
                         // Draw water base
                         ctx.fillStyle = 'rgba(30, 144, 255, 0.5)'; // Semi-transparent blue
