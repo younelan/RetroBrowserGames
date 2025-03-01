@@ -100,10 +100,15 @@ class Level {
 
     render(ctx, offsetX, offsetY) {
         const startCol = Math.floor(offsetX / GAME_CONSTANTS.TILE_SIZE);
-        const endCol = startCol + Math.ceil(ctx.canvas.width / GAME_CONSTANTS.TILE_SIZE);
+        const endCol = startCol + Math.ceil(ctx.canvas.width / GAME_CONSTANTS.TILE_SIZE) + 1; // +1 to ensure we render offscreen tiles
         const startRow = Math.floor(offsetY / GAME_CONSTANTS.TILE_SIZE);
-        const endRow = startRow + Math.ceil(ctx.canvas.height / GAME_CONSTANTS.TILE_SIZE);
+        const endRow = startRow + Math.ceil(ctx.canvas.height / GAME_CONSTANTS.TILE_SIZE) + 1; // +1 to ensure we render offscreen tiles
 
+        // Clear the canvas with a solid background color first
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        
+        // Render the tiles with exact pixel alignment
         for (let row = startRow; row < endRow; row++) {
             if (row < 0 || row >= this.map.length) continue;
             
@@ -111,34 +116,46 @@ class Level {
                 if (col < 0 || col >= this.map[row].length) continue;
                 
                 const tile = this.map[row][col];
-                const screenX = col * GAME_CONSTANTS.TILE_SIZE - offsetX;
-                const screenY = row * GAME_CONSTANTS.TILE_SIZE - offsetY;
+                
+                // Calculate exact pixel positions without any subpixel values
+                const screenX = Math.floor(col * GAME_CONSTANTS.TILE_SIZE - offsetX);
+                const screenY = Math.floor(row * GAME_CONSTANTS.TILE_SIZE - offsetY);
                 
                 // Only render tiles that are within the viewport
-                if (screenX >= -GAME_CONSTANTS.TILE_SIZE && 
-                    screenX <= ctx.canvas.width &&
-                    screenY >= -GAME_CONSTANTS.TILE_SIZE && 
-                    screenY <= ctx.canvas.height) {
-                    
-                    const tile = this.map[row][col];
+                if (screenX <= ctx.canvas.width && screenY <= ctx.canvas.height) {
+                    // Set fill color based on tile type
                     if (tile in WALLS) {
                         ctx.fillStyle = WALLS[tile];
-                        ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                        ctx.fillRect(
+                            screenX, 
+                            screenY, 
+                            GAME_CONSTANTS.TILE_SIZE,
+                            GAME_CONSTANTS.TILE_SIZE
+                        );
                     } else if (tile === '=') {
+                        // Draw destructible wall base
                         ctx.fillStyle = GAME_CONSTANTS.COLORS.DESTRUCTIBLE_WALL;
-                        ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                        ctx.fillRect(
+                            screenX, 
+                            screenY, 
+                            GAME_CONSTANTS.TILE_SIZE,
+                            GAME_CONSTANTS.TILE_SIZE
+                        );
                         
                         // Add brick pattern
                         ctx.fillStyle = '#800000';
                         ctx.fillRect(screenX, screenY + GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
                         ctx.fillRect(screenX, screenY + 2*GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
                         ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY, 2, GAME_CONSTANTS.TILE_SIZE);
-                    } else if (tile === '(' || tile === ')') {
-                        const facingRight = tile === ')';
-                        this.renderSittingPerson(ctx, screenX, screenY, facingRight);
                     } else if (tile === '!') {
+                        // Draw lava base
                         ctx.fillStyle = GAME_CONSTANTS.COLORS.LAVA;
-                        ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
+                        ctx.fillRect(
+                            screenX, 
+                            screenY, 
+                            GAME_CONSTANTS.TILE_SIZE,
+                            GAME_CONSTANTS.TILE_SIZE
+                        );
                         
                         // Add bubbles
                         const time = performance.now() / 1000;
@@ -154,6 +171,35 @@ class Level {
                         // Add glow effect
                         ctx.fillStyle = 'rgba(255, 69, 0, 0.3)';
                         ctx.fillRect(screenX - 2, screenY - 2, GAME_CONSTANTS.TILE_SIZE + 4, GAME_CONSTANTS.TILE_SIZE + 4);
+                    } else if (tile === '~') {
+                        // Draw water base
+                        ctx.fillStyle = 'rgba(30, 144, 255, 0.5)'; // Semi-transparent blue
+                        ctx.fillRect(
+                            screenX, 
+                            screenY, 
+                            GAME_CONSTANTS.TILE_SIZE,
+                            GAME_CONSTANTS.TILE_SIZE
+                        );
+                        
+                        // Create wave pattern
+                        const time = performance.now() / 1000;
+                        ctx.fillStyle = 'rgba(30, 144, 255, 0.3)'; // Lighter blue for waves
+                        ctx.beginPath();
+                        ctx.moveTo(screenX, screenY);
+                        
+                        // Draw wavy pattern from left to right at the top of tile
+                        for (let x = 0; x <= GAME_CONSTANTS.TILE_SIZE; x += 4) {
+                            const waveOffset = Math.sin(time * 2 + x/10) * 2;
+                            ctx.lineTo(screenX + x, screenY + waveOffset);
+                        }
+                        
+                        // Complete the path
+                        ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE, screenY + GAME_CONSTANTS.TILE_SIZE);
+                        ctx.lineTo(screenX, screenY + GAME_CONSTANTS.TILE_SIZE);
+                        ctx.closePath();
+                        ctx.fill();
+                    } else if (tile === '(' || tile === ')') {
+                        this.renderSittingPerson(ctx, screenX, screenY, tile === ')');
                     } else if (tile === '^') {
                         const centerX = screenX + GAME_CONSTANTS.TILE_SIZE/2;
                         const centerY = screenY + GAME_CONSTANTS.TILE_SIZE/2;
@@ -408,55 +454,41 @@ class Level {
                             ctx.closePath();
                             ctx.fill();
                         }
-                    } else if (tile === '~') {
-                        const time = performance.now() / 1000;
-                        
-                        // Create wave pattern
-                        ctx.beginPath();
-                        ctx.moveTo(screenX, screenY);
-                        
-                        // Draw wavy pattern from left to right at the top of tile
-                        for (let x = 0; x <= GAME_CONSTANTS.TILE_SIZE; x += 4) {
-                            const waveOffset = Math.sin(time * 2 + x/10) * 2;
-                            ctx.lineTo(screenX + x, screenY + waveOffset);
-                        }
-                        
-                        // Complete the path
-                        ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE, screenY + GAME_CONSTANTS.TILE_SIZE);
-                        ctx.lineTo(screenX, screenY + GAME_CONSTANTS.TILE_SIZE);
-                        
-                        // Fill with semi-transparent blue
-                        ctx.fillStyle = 'rgba(30, 144, 255, 0.5)';
-                        ctx.fill();
-                        
-                        // Add a second wave layer for depth
-                        ctx.beginPath();
-                        ctx.moveTo(screenX, screenY);
-                        for (let x = 0; x <= GAME_CONSTANTS.TILE_SIZE; x += 4) {
-                            const waveOffset = Math.sin(time * 1.5 + x/8 + Math.PI) * 1.5;
-                            ctx.lineTo(screenX + x, screenY + waveOffset);
-                        }
-                        ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE, screenY + GAME_CONSTANTS.TILE_SIZE);
-                        ctx.lineTo(screenX, screenY + GAME_CONSTANTS.TILE_SIZE);
-                        ctx.fillStyle = 'rgba(30, 144, 255, 0.3)';
-                        ctx.fill();
                     }
                     
-                    // Draw collectibles
+                    // Draw collectibles in the same pass
                     const collectible = this.collectibles.find(c => 
                         Math.floor(c.x / GAME_CONSTANTS.TILE_SIZE) === col && 
                         Math.floor(c.y / GAME_CONSTANTS.TILE_SIZE) === row && 
                         !c.collected
                     );
+                    
                     if (collectible) {
-                        ctx.fillStyle = GAME_CONSTANTS.COLLECTIBLES[collectible.type].COLOR;
+                        const centerX = screenX + GAME_CONSTANTS.TILE_SIZE / 2;
+                        const centerY = screenY + GAME_CONSTANTS.TILE_SIZE / 2;
+                        
+                        // Draw collectible glow
+                        const gradient = ctx.createRadialGradient(
+                            centerX, centerY, 0,
+                            centerX, centerY, GAME_CONSTANTS.TILE_SIZE / 2
+                        );
+                        gradient.addColorStop(0, GAME_CONSTANTS.COLLECTIBLES[collectible.type].COLOR);
+                        gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                        
+                        ctx.fillStyle = gradient;
+                        ctx.beginPath();
+                        ctx.arc(centerX, centerY, GAME_CONSTANTS.TILE_SIZE / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // Draw collectible emoji
                         ctx.font = '24px Arial';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
+                        ctx.fillStyle = GAME_CONSTANTS.COLLECTIBLES[collectible.type].COLOR;
                         ctx.fillText(
                             GAME_CONSTANTS.COLLECTIBLES[collectible.type].EMOJI,
-                            screenX + GAME_CONSTANTS.TILE_SIZE / 2,
-                            screenY + GAME_CONSTANTS.TILE_SIZE / 2
+                            centerX,
+                            centerY
                         );
                     }
                 }

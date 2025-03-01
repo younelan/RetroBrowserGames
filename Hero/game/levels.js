@@ -7,12 +7,12 @@ B     =                  &   B
 B     =                      B
 B     =                      B
 B     =      .        *    o B
-BBBBBBBBBBBBBBBB    BBBBBBBBBB
+BBBBBBBBBBBBBBBB    BBBB~~BBBB
 B                            B
-B                          ! B
-B                          ! B
-B (                   $    ! B
-BBBBBBBBBBBBBBBBBBBBBBBB~~BBBB`,
+B                        !   B
+B                        !   B
+B    (                $  !  )B
+BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
         viewport: 30,
     },
     {
@@ -52,7 +52,7 @@ B            !               B
 B     +      !         +     B
 BRRRRRRR     !      RRRRRRRRRB
 B                            B
-B     +                +     B
+B     +                +   ) B
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
         viewport: 20,
         lights: true

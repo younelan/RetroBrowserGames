@@ -147,8 +147,8 @@ class CollisionManager {
         player.x = Math.max(0, Math.min(player.x, levelWidth - player.width));
         player.y = Math.max(0, Math.min(player.y, levelHeight - player.height));
 
-        // Get surrounding tiles
-        const tiles = this.getEntityTiles(player);
+        // Get surrounding tiles with a slightly expanded check area
+        const expandedTiles = this.getExpandedEntityTiles(player);
         
         // Before attempting collision resolution, store current position
         const originalX = player.x;
@@ -156,7 +156,7 @@ class CollisionManager {
         let collided = false;
 
         // First pass: collect all wall collision tiles
-        const collisionTiles = tiles.filter(({x, y}) => this.level.isWall(x, y)).map(({x, y}) => ({
+        const collisionTiles = expandedTiles.filter(({x, y}) => this.level.isWall(x, y)).map(({x, y}) => ({
             x: x * this.tileSize,
             y: y * this.tileSize,
             width: this.tileSize,
@@ -277,6 +277,24 @@ class CollisionManager {
         }
 
         return collided;
+    }
+
+    getExpandedEntityTiles(entity) {
+        // Use a small margin to ensure we catch tiles that might be overlapping visually
+        const margin = 1;
+        
+        const left = Math.floor((entity.x - margin) / this.tileSize);
+        const right = Math.floor((entity.x + entity.width + margin) / this.tileSize);
+        const top = Math.floor((entity.y - margin) / this.tileSize);
+        const bottom = Math.floor((entity.y + entity.height + margin) / this.tileSize);
+
+        const tiles = [];
+        for (let y = top; y <= bottom; y++) {
+            for (let x = left; x <= right; x++) {
+                tiles.push({x, y});
+            }
+        }
+        return tiles;
     }
 
     checkLightSwitchCollisions(player) {
