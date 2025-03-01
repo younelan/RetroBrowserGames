@@ -261,78 +261,122 @@ class Level {
                         const centerX = screenX + GAME_CONSTANTS.TILE_SIZE/2;
                         const centerY = screenY + GAME_CONSTANTS.TILE_SIZE/2;
                         const time = performance.now() / 1000;
-                        const bobY = Math.sin(time * 2) * 6;  // Slower, wider bob
+                        const bobY = Math.sin(time * 2) * 4;  // Reduced bob amount for more menacing look
                         
-                        // Draw web
-                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+                        // Draw web with shimmer effect
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
                         ctx.lineWidth = 1;
-                        // Main thread
-                        ctx.beginPath();
-                        ctx.moveTo(centerX, screenY);
-                        ctx.lineTo(centerX, centerY + bobY);
-                        ctx.stroke();
-                        // Cross threads
-                        for (let i = 0; i < 3; i++) {
-                            const y = screenY + 5 + i * 8;
-                            const width = 3 + i * 2;
+                        
+                        // Main web thread
+                        for (let i = 0; i < 2; i++) {
+                            const offset = Math.sin(time * 3 + i) * 2;
+                            ctx.beginPath();
+                            ctx.moveTo(centerX + offset, screenY);
+                            ctx.lineTo(centerX, centerY + bobY);
+                            ctx.stroke();
+                        }
+                        
+                        // Cross threads with shimmer
+                        for (let i = 0; i < 4; i++) {
+                            const y = screenY + 4 + i * 6;
+                            const width = 4 + i * 3;
+                            const shimmer = Math.sin(time * 4 + i * 2) * 0.3 + 0.7;
+                            ctx.strokeStyle = `rgba(255, 255, 255, ${shimmer})`;
                             ctx.beginPath();
                             ctx.moveTo(centerX - width, y);
                             ctx.lineTo(centerX + width, y);
                             ctx.stroke();
                         }
                         
-                        // Draw spider
+                        // Spider body with enhanced gradient
                         const bodyGradient = ctx.createRadialGradient(
                             centerX, centerY + bobY, 0,
-                            centerX, centerY + bobY, 8
+                            centerX, centerY + bobY, 12
                         );
-                        bodyGradient.addColorStop(0, '#AA0000');
-                        bodyGradient.addColorStop(1, '#660000');
+                        bodyGradient.addColorStop(0, '#440000');
+                        bodyGradient.addColorStop(0.6, '#220000');
+                        bodyGradient.addColorStop(1, '#110000');
                         
-                        // Body segments
+                        // Draw main body segments
                         ctx.fillStyle = bodyGradient;
-                        // Rear segment
+                        
+                        // Abdomen (rear segment)
                         ctx.beginPath();
-                        ctx.ellipse(centerX, centerY + bobY + 2, 6, 8, 0, 0, Math.PI * 2);
-                        ctx.fill();
-                        // Front segment
-                        ctx.beginPath();
-                        ctx.ellipse(centerX, centerY + bobY - 4, 5, 6, 0, 0, Math.PI * 2);
+                        ctx.ellipse(centerX, centerY + bobY + 4, 8, 10, 0, 0, Math.PI * 2);
                         ctx.fill();
                         
-                        // Eyes
-                        ctx.fillStyle = 'white';
-                        const eyeX = 2;
-                        const eyeY = -6;
+                        // Add texture pattern to abdomen
+                        ctx.strokeStyle = '#660000';
+                        ctx.lineWidth = 0.5;
+                        for (let i = 0; i < 3; i++) {
+                            ctx.beginPath();
+                            ctx.ellipse(centerX, centerY + bobY + 4, 8 - i * 2, 10 - i * 2, 0, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+                        
+                        // Cephalothorax (front segment)
                         ctx.beginPath();
-                        ctx.arc(centerX - eyeX, centerY + bobY + eyeY, 1.5, 0, Math.PI * 2);
-                        ctx.arc(centerX + eyeX, centerY + bobY + eyeY, 1.5, 0, Math.PI * 2);
+                        ctx.ellipse(centerX, centerY + bobY - 4, 6, 7, 0, 0, Math.PI * 2);
                         ctx.fill();
                         
-                        // Legs
-                        ctx.strokeStyle = '#AA0000';
+                        // Glowing red eyes with pulse effect
+                        const eyeGlow = Math.sin(time * 3) * 0.3 + 0.7;
+                        const eyeGradient = ctx.createRadialGradient(
+                            centerX - 3, centerY + bobY - 6, 0,
+                            centerX - 3, centerY + bobY - 6, 2
+                        );
+                        eyeGradient.addColorStop(0, `rgba(255, 0, 0, ${eyeGlow})`);
+                        eyeGradient.addColorStop(1, 'rgba(100, 0, 0, 0)');
+                        
+                        // Draw each eye with glow effect
+                        for (let i = -1; i <= 1; i += 2) {
+                            ctx.fillStyle = eyeGradient;
+                            ctx.beginPath();
+                            ctx.arc(centerX + (i * 3), centerY + bobY - 6, 2, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Add bright center to eyes
+                            ctx.fillStyle = '#FF0000';
+                            ctx.beginPath();
+                            ctx.arc(centerX + (i * 3), centerY + bobY - 6, 1, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
+                        
+                        // Enhanced leg rendering with smoother animation
+                        ctx.strokeStyle = '#330000';
                         ctx.lineWidth = 2;
                         const legCount = 4;
+                        
                         for (let side = -1; side <= 1; side += 2) {
                             for (let i = 0; i < legCount; i++) {
-                                const baseAngle = (i / (legCount-1) - 0.5) * Math.PI * 0.8;
-                                const legTime = time * 3 + i * Math.PI / 3;
-                                const legBend = Math.sin(legTime) * 0.2;
+                                const baseAngle = (i / (legCount-1) - 0.5) * Math.PI * 0.6;
+                                const legTime = time * 2 + i * Math.PI / 3;
+                                const legBend = Math.sin(legTime) * 0.3;
                                 
+                                // Create smooth curve for legs
                                 ctx.beginPath();
-                                ctx.moveTo(centerX, centerY + bobY);
+                                const startX = centerX;
+                                const startY = centerY + bobY;
                                 
-                                // Middle joint
-                                const mid1X = centerX + Math.cos(baseAngle) * 8 * side;
-                                const mid1Y = centerY + bobY + Math.sin(baseAngle) * 8;
-                                ctx.lineTo(mid1X, mid1Y);
+                                // Control points for Bezier curve
+                                const cp1x = centerX + Math.cos(baseAngle) * 10 * side;
+                                const cp1y = centerY + bobY + Math.sin(baseAngle) * 10;
+                                const cp2x = centerX + Math.cos(baseAngle + legBend) * 15 * side;
+                                const cp2y = centerY + bobY + Math.sin(baseAngle + legBend) * 15;
+                                const endX = centerX + Math.cos(baseAngle + legBend) * 20 * side;
+                                const endY = centerY + bobY + Math.sin(baseAngle + legBend) * 20;
                                 
-                                // End point
-                                const endX = mid1X + Math.cos(baseAngle + legBend) * 8 * side;
-                                const endY = mid1Y + Math.sin(baseAngle + legBend) * 8;
-                                ctx.lineTo(endX, endY);
-                                
+                                // Draw leg with bezier curve for smooth bending
+                                ctx.beginPath();
+                                ctx.moveTo(startX, startY);
+                                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, endX, endY);
                                 ctx.stroke();
+                                
+                                // Add joint highlight
+                                ctx.fillStyle = '#440000';
+                                ctx.beginPath();
+                                ctx.arc(cp1x, cp1y, 1.5, 0, Math.PI * 2);
+                                ctx.fill();
                             }
                         }
                     } else if (tile === '&') {
