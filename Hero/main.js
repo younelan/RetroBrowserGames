@@ -285,7 +285,6 @@ loadScripts().then(() => {
             if (this.controls.isPressed(' ')) {
                 this.laserActive = true;
                 this.laser.active = true;
-                this.laserPhase += deltaTime * 10;
                 
                 // Update laser before checking collisions
                 this.laser.update(deltaTime, this.player, this.level);
@@ -410,38 +409,9 @@ loadScripts().then(() => {
                 }
             }
             
-            // Draw laser beam
+            // Draw laser using the Laser class's render method
             if (this.laserActive) {
-                const direction = this.player.facingLeft ? -1 : 1;
-                const eyeY = this.player.y - this.camera.y + this.player.height * 0.1; // Match goggle position
-                const eyeX = this.player.x - this.camera.x + (this.player.facingLeft ? 
-                    this.player.width * 0.4 : this.player.width * 0.6); // Left or right eye
-                const fullLaserLength = GAME_CONSTANTS.TILE_SIZE * 3;
-                
-                // Animated beam pattern
-                for (let i = 0; i < 3; i++) {
-                    const offset = Math.sin(this.laserPhase + i * Math.PI / 2) * 2;
-                    this.ctx.strokeStyle = 'rgba(255, 50, 50, 0.8)';
-                    this.ctx.lineWidth = 2;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(eyeX, eyeY + offset);
-                    this.ctx.lineTo(eyeX + fullLaserLength * direction, eyeY + offset);
-                    this.ctx.stroke();
-                }
-                
-                // Add glow effect
-                const gradient = this.ctx.createLinearGradient(
-                    eyeX, eyeY,
-                    eyeX + fullLaserLength * direction, eyeY
-                );
-                gradient.addColorStop(0, 'rgba(255, 100, 100, 0.5)');
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                this.ctx.strokeStyle = gradient;
-                this.ctx.lineWidth = 6;
-                this.ctx.beginPath();
-                this.ctx.moveTo(eyeX, eyeY);
-                this.ctx.lineTo(eyeX + fullLaserLength * direction, eyeY);
-                this.ctx.stroke();
+                this.laser.render(this.ctx, this.camera);
             }
             
             // Draw dynamite glow in dark
