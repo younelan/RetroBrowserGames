@@ -176,6 +176,16 @@ class CollisionManager {
         }
         return collided;
     }
+
+    checkLightSwitchCollisions(player) {
+        const tiles = this.getEntityTiles(player);
+        for (const {x, y} of tiles) {
+            if (this.level.isLightSwitch(x, y)) {
+                return {x, y};
+            }
+        }
+        return null;
+    }
 }
 
 window.CollisionManager = CollisionManager;

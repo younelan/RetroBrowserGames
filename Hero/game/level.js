@@ -65,6 +65,14 @@ class Level {
         return false;
     }
 
+    isLightSwitch(x, y) {
+        if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[0].length) {
+            return false;
+        }
+        const tile = this.map[y][x];
+        return tile === '*' || tile === 'o';
+    }
+
     isComplete() {
         return this.collectibles.every(c => c.collected);
     }

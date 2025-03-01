@@ -251,6 +251,17 @@ loadScripts().then(() => {
             // Update systems
             this.weaponSystem.update(deltaTime, this.player, this.level);
             this.updateCamera();
+
+            // Handle light switch collisions
+            const lightSwitch = this.collisionManager.checkLightSwitchCollisions(this.player);
+            if (lightSwitch) {
+                const tile = this.level.map[lightSwitch.y][lightSwitch.x];
+                if (tile === '*') {
+                    this.lightsOn = true; // Turn on light
+                } else if (tile === 'o') {
+                    this.lightsOn = false; // Turn off light
+                }
+            }
         }
         
         render() {
@@ -421,13 +432,13 @@ loadScripts().then(() => {
             
             // Draw dynamite glow in dark
             if (!this.lightsOn) {
-                for (const bomb of this.bombs) {
+                for (const dynamite of this.dynamites) {
                     const bombGradient = this.ctx.createRadialGradient(
-                        bomb.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
-                        bomb.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
+                        dynamite.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
+                        dynamite.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
                         0,
-                        bomb.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
-                        bomb.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
+                        dynamite.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
+                        dynamite.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
                         GAME_CONSTANTS.TILE_SIZE/2
                     );
                     bombGradient.addColorStop(0, 'rgba(255, 100, 0, 0.8)');
@@ -435,8 +446,8 @@ loadScripts().then(() => {
                     this.ctx.fillStyle = bombGradient;
                     this.ctx.beginPath();
                     this.ctx.arc(
-                        bomb.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
-                        bomb.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
+                        dynamite.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/4,
+                        dynamite.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/4,
                         GAME_CONSTANTS.TILE_SIZE/4,
                         0,
                         Math.PI * 2
