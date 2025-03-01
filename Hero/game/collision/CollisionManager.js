@@ -39,24 +39,48 @@ class CollisionManager {
     }
 
     checkLaserCollisions(laser, enemies) {
-        const startX = laser.x;
-        const endX = startX + (laser.length * laser.direction);
-        const y = laser.y;
-
-        return enemies.filter(enemy => {
-            if (!enemy.alive) return false;
-
-            const enemyBox = {
-                top: enemy.y,
-                bottom: enemy.y + enemy.height,
-                left: enemy.x,
-                right: enemy.x + enemy.width
-            };
-
-            return (y >= enemyBox.top && y <= enemyBox.bottom) && 
-                   ((laser.direction > 0 && enemyBox.left <= endX && enemyBox.right >= startX) ||
-                    (laser.direction < 0 && enemyBox.right >= endX && enemyBox.left <= startX));
-        });
+        // Skip if laser is not active
+        if (!laser.active) return [];
+        
+        const hitEnemies = [];
+        
+        // Calculate laser beam endpoints
+        const laserStartX = laser.x;
+        const laserStartY = laser.y;
+        const laserEndX = laser.x + (laser.length * laser.direction);
+        
+        // Check each enemy against the laser beam
+        for (const enemy of enemies) {
+            if (!enemy.alive) continue;
+            
+            // Create enemy bounding box
+            const enemyLeft = enemy.x;
+            const enemyRight = enemy.x + enemy.width;
+            const enemyTop = enemy.y;
+            const enemyBottom = enemy.y + enemy.height;
+            
+            // Check if laser's Y-position is within enemy's vertical bounds
+            // Use a small vertical range for the laser height
+            const laserTop = laser.y - laser.height/2;
+            const laserBottom = laser.y + laser.height/2;
+            
+            const verticalOverlap = (laserBottom >= enemyTop && laserTop <= enemyBottom);
+            
+            if (verticalOverlap) {
+                // Check horizontal intersection based on laser direction
+                if (laser.direction > 0) { // Shooting right
+                    if (laserStartX <= enemyRight && laserEndX >= enemyLeft) {
+                        hitEnemies.push(enemy);
+                    }
+                } else { // Shooting left
+                    if (laserStartX >= enemyLeft && laserEndX <= enemyRight) {
+                        hitEnemies.push(enemy);
+                    }
+                }
+            }
+        }
+        
+        return hitEnemies;
     }
 
     checkCollectibleCollisions(player, collectibles) {

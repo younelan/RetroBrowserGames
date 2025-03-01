@@ -1,23 +1,30 @@
 class Laser {
     constructor() {
-        this.active = false;
-        this.phase = 0;
-        this.direction = 1;
         this.x = 0;
         this.y = 0;
+        this.width = 1;
+        this.height = 1;
         this.length = GAME_CONSTANTS.TILE_SIZE * 3;
+        this.direction = 1; // 1 for right, -1 for left
+        this.active = false;
     }
 
-    update(deltaTime, player) {
-        if (!this.active) return false;
-        
-        this.phase = (this.phase + deltaTime * 10) % (Math.PI * 2);
+    update(deltaTime, player, level) {
+        // Update laser position based on player's position and direction
         this.direction = player.facingLeft ? -1 : 1;
-        // Position laser at eye level (about 1/4 from top of player)
-        this.x = player.x + (player.facingLeft ? 0 : player.width);
-        this.y = player.y + player.height * 0.25;
         
-        return true; // Return true when laser is active
+        // Set laser origin at the player's eye level (from where it's visually shown)
+        this.y = player.y + player.height * 0.1; // Match the goggles position
+        
+        // Set X position based on which eye (left or right) the laser comes from
+        if (player.facingLeft) {
+            this.x = player.x + player.width * 0.4; // Left eye when facing left
+        } else {
+            this.x = player.x + player.width * 0.6; // Right eye when facing right
+        }
+        
+        // Add a small height to the laser beam for better collision detection
+        this.height = 4; // Give the laser some height for collision detection
     }
 
     render(ctx, player, cameraX, cameraY) {

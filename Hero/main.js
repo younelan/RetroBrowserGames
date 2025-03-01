@@ -270,14 +270,26 @@ loadScripts().then(() => {
                 this.laser.active = true;
                 this.laserPhase += deltaTime * 10;
                 
+                // Update laser before checking collisions
+                this.laser.update(deltaTime, this.player, this.level);
+                
                 // Check laser collisions with enemies
-                if (this.laser.active) {
-                    const hitEnemies = this.collisionManager.checkLaserCollisions(this.laser, this.enemies);
-                    hitEnemies.forEach(enemy => {
-                        enemy.hit();
-                        this.score += 100;
-                    });
-                }
+                const hitEnemies = this.collisionManager.checkLaserCollisions(this.laser, this.enemies);
+                
+                hitEnemies.forEach(enemy => {
+                    // Make sure enemies actually get hit and removed
+                    enemy.hit();
+                    enemy.alive = false; // Ensure enemy is marked as dead
+                    
+                    // Remove enemy from map
+                    const tileX = Math.floor(enemy.x / GAME_CONSTANTS.TILE_SIZE);
+                    const tileY = Math.floor(enemy.y / GAME_CONSTANTS.TILE_SIZE);
+                    if (tileX >= 0 && tileY >= 0 && tileY < this.level.map.length && tileX < this.level.map[0].length) {
+                        this.level.map[tileY][tileX] = ' '; // Replace with empty space
+                    }
+                    
+                    this.score += 100;
+                });
             } else {
                 this.laserActive = false;
                 this.laser.active = false;
