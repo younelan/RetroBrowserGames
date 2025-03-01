@@ -26,6 +26,13 @@ class EndScreens {
         return this.restartButton;
     }
 
+    // Reset button state when not showing screens
+    reset() {
+        this.restartButton = null;
+        this.gameOverTime = null;
+        this.winTime = null;
+    }
+
     renderGameOverScreen(ctx, canvasWidth, canvasHeight) {
         const centerX = canvasWidth / 2;
         const centerY = canvasHeight / 2;
@@ -141,8 +148,15 @@ class EndScreens {
                 x: buttonX,
                 y: buttonY,
                 width: buttonWidth,
-                height: buttonHeight
+                height: buttonHeight,
+                active: true // Add active flag to indicate button is ready
             };
+            
+            // Draw debug outline around button (only for testing)
+            if (window.DEBUG_BUTTONS) {
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+            }
         }
         
         ctx.restore();
@@ -324,8 +338,15 @@ class EndScreens {
             x: buttonX,
             y: buttonY,
             width: buttonWidth,
-            height: buttonHeight
+            height: buttonHeight,
+            active: true // Add active flag to indicate button is ready
         };
+        
+        // Draw debug outline around button (only for testing)
+        if (window.DEBUG_BUTTONS) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
+        }
     }
 
     drawVictorySparkles(ctx, centerX, centerY, time) {
@@ -371,6 +392,18 @@ class EndScreens {
         gradient.addColorStop(1, '#FFD700');
         ctx.fillStyle = gradient;
         ctx.fill();
+    }
+
+    // Check if a point is inside the restart button
+    isPointInButton(x, y) {
+        if (!this.restartButton || !this.restartButton.active) return false;
+        
+        return (
+            x >= this.restartButton.x && 
+            x <= this.restartButton.x + this.restartButton.width &&
+            y >= this.restartButton.y && 
+            y <= this.restartButton.y + this.restartButton.height
+        );
     }
 }
 

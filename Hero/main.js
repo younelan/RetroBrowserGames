@@ -63,6 +63,9 @@ loadScripts().then(() => {
             // Create end screens manager
             this.endScreens = new EndScreens();
             
+            // Enable button debugging if needed
+            window.DEBUG_BUTTONS = false; // Set to true to see button boundaries
+            
             // Replace player object with Player instance
             const startPos = this.level.findPlayerStart();
             this.player = new Player(startPos.x, startPos.y);
@@ -97,7 +100,7 @@ loadScripts().then(() => {
             this.lastTime = performance.now();
             requestAnimationFrame(this.gameLoop.bind(this));
 
-            // Add click listener for restart button
+            // Add click listener for restart button with improved handling
             this.canvas.addEventListener('click', this.handleCanvasClick.bind(this));
             this.canvas.addEventListener('touchend', (e) => {
                 // Prevent default to avoid unwanted scrolling or zooming
@@ -497,6 +500,9 @@ loadScripts().then(() => {
                 this.endScreens.renderGameOverScreen(this.ctx, this.canvas.width, this.canvas.height);
             } else if (this.gameWon) {
                 this.endScreens.renderWinScreen(this.ctx, this.canvas.width, this.canvas.height);
+            } else {
+                // Reset button state when not showing end screens
+                this.endScreens.reset();
             }
             
             // Draw virtual joystick for touch controls
@@ -742,30 +748,36 @@ loadScripts().then(() => {
         }
 
         handleCanvasClick(event) {
-            // Get restart button area from end screens
-            const restartButton = this.endScreens.getRestartButton();
-            if (!restartButton) return;
-            
-            // Get click coordinates
+            // Get click coordinates with improved touch handling
             let x, y;
+            let rect = this.canvas.getBoundingClientRect();
+            
             if (event.type === 'touchend') {
-                const rect = event.target.getBoundingClientRect();
-                const touch = event.changedTouches[0];
-                x = touch.clientX - rect.left;
-                y = touch.clientY - rect.top;
+                if (event.changedTouches && event.changedTouches.length > 0) {
+                    const touch = event.changedTouches[0];
+                    x = touch.clientX - rect.left;
+                    y = touch.clientY - rect.top;
+                } else {
+                    return; // No valid touch detected
+                }
             } else {
-                const rect = this.canvas.getBoundingClientRect();
+                // Mouse click
                 x = event.clientX - rect.left;
                 y = event.clientY - rect.top;
             }
             
-            // Check if click is within button bounds
-            if (x >= restartButton.x && 
-                x <= restartButton.x + restartButton.width &&
-                y >= restartButton.y && 
-                y <= restartButton.y + restartButton.height) {
-                // Reset the game
+            // Scale coordinates if canvas is being scaled by CSS
+            const scaleX = this.canvas.width / rect.width;
+            const scaleY = this.canvas.height / rect.height;
+            
+            x *= scaleX;
+            y *= scaleY;
+            
+            // Check if click is within restart button (using new helper method)
+            if (this.endScreens.isPointInButton(x, y)) {
+                console.log("Button clicked! Restarting game...");
                 this.restartGame();
+                return;
             }
         }
 
@@ -780,6 +792,9 @@ loadScripts().then(() => {
             this.dynamites = [];
             this.explosions = [];
             this.sparkles = [];
+            
+            // Reset end screen state
+            this.endScreens.reset();
 
             // Load the first level
             this.loadLevel(0);
