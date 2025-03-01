@@ -288,10 +288,10 @@ loadScripts().then(() => {
             // Use proper ground check for arrow down/swipe down
             if ((this.controls.isPressed('KeyX') || this.controls.canDropDynamite()) && 
                 this.dynamites.length < 3 && isOnGround) {
-                // Create a new dynamite at the player's position
+                // Create a new dynamite at the player's feet
                 const dynamite = new Dynamite(
-                    this.player.x + this.player.width / 2,
-                    this.player.y + this.player.height
+                    this.player.x + this.player.width / 2, // Center horizontally
+                    this.player.y + this.player.height // Place at the bottom of player
                 );
                 this.dynamites.push(dynamite);
             }

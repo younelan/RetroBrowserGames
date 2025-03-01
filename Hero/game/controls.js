@@ -123,6 +123,8 @@ class Controls {
                 const touch = e.changedTouches[i];
                 if (touch.identifier === this.touchId) {
                     const DRAG_THRESHOLD = 20;
+                    // Require a larger threshold for downward movement to prevent accidental dynamite drops
+                    const DOWN_DRAG_THRESHOLD = 40; 
                     
                     this.touchDrag = {
                         x: touch.clientX - this.touchStart.x,
@@ -155,10 +157,11 @@ class Controls {
                         this.touchControls.right = true;
                     }
                     
+                    // Use standard threshold for upward, larger threshold for downward
                     if (this.touchDrag.y < -DRAG_THRESHOLD) {
                         this.touchControls.upIntensity = verticalIntensity;
                         this.touchControls.up = true;
-                    } else if (this.touchDrag.y > DRAG_THRESHOLD) {
+                    } else if (this.touchDrag.y > DOWN_DRAG_THRESHOLD) { // Higher threshold for down
                         this.touchControls.downIntensity = verticalIntensity;
                         this.touchControls.down = true;
                     }
@@ -298,20 +301,35 @@ class Controls {
 
     // Track if controls should allow dynamite based on being on ground
     setOnGround(isOnGround) {
-        // If player is on ground and pressing down, mark this as a valid dynamite trigger
-        if (isOnGround && (this.touchControls.down || this.pressedKeys.has('arrowdown') || this.pressedKeys.has('s'))) {
-            this.downControlStartedOnGround = true;
-        }
-        
-        // If player is not on ground anymore, they can't drop dynamite
-        if (!isOnGround) {
+        // If player is on ground and pressing down with a significant intensity, mark this as a valid dynamite trigger
+        if (isOnGround) {
+            if (this.pressedKeys.has('arrowdown') || this.pressedKeys.has('s')) {
+                // For keyboard controls, just check if the key is pressed
+                this.downControlStartedOnGround = true;
+            } else if (this.touchControls.down && this.touchControls.downIntensity > 0.6) {
+                // For touch controls, require a significant downward intensity
+                this.downControlStartedOnGround = true;
+            } else {
+                // Reset if we don't have enough downward force
+                this.downControlStartedOnGround = false;
+            }
+        } else {
+            // If player is not on ground anymore, they can't drop dynamite
             this.downControlStartedOnGround = false;
         }
     }
     
     canDropDynamite() {
-        return this.downControlStartedOnGround && 
-               (this.touchControls.down || this.pressedKeys.has('arrowdown') || this.pressedKeys.has('s'));
+        // For keyboard controls, any press of down arrow will trigger dynamite
+        const keyboardTrigger = this.downControlStartedOnGround && 
+                             (this.pressedKeys.has('arrowdown') || this.pressedKeys.has('s'));
+        
+        // For touch controls, require a significant downward intensity
+        const touchTrigger = this.downControlStartedOnGround && 
+                          this.touchControls.down && 
+                          this.touchControls.downIntensity > 0.6;
+        
+        return keyboardTrigger || touchTrigger;
     }
 
     // Add new methods to get movement intensities (0-1+)

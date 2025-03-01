@@ -1,9 +1,10 @@
 class Dynamite {
     constructor(x, y) {
+        // Place dynamite on the ground at player's feet
         this.x = x;
-        this.y = y;
+        this.y = y; // This will be the player's feet position
         this.velocityX = 0;
-        this.velocityY = -300; // Initial upward toss
+        this.velocityY = -150; // Reduced initial upward toss so it stays lower
         this.width = GAME_CONSTANTS.TILE_SIZE / 2;
         this.height = GAME_CONSTANTS.TILE_SIZE / 2;
         this.timer = 1.5; // 1.5 seconds fuse
@@ -11,7 +12,7 @@ class Dynamite {
         this.sparkles = [];
         this.fuseSparkles = [];
         this.bounceCount = 0;
-        this.maxBounces = 2;
+        this.maxBounces = 1; // Reduced bounces for quicker placement
         this.hasExploded = false;
     }
 
@@ -88,30 +89,48 @@ class Dynamite {
     }
 
     renderDynamite(ctx, x, y) {
+        // Get the position of the ground under the dynamite
+        const tileY = Math.floor((this.y + this.height) / GAME_CONSTANTS.TILE_SIZE);
+        const groundY = tileY * GAME_CONSTANTS.TILE_SIZE;
+        
+        // Calculate the stick height to reach exactly to the ground, not below
+        const stickHeight = Math.max(12, groundY - (this.y - 6));
+        
+        // Draw red dynamite stick extending to the ground
         ctx.fillStyle = '#ff0000';
-        ctx.fillRect(x - 4, y - 12, 8, 12);
+        ctx.fillRect(
+            x - 4,          // Center horizontally (8px wide)
+            y - 6,          // Top position (6px above center)
+            8,              // Width of dynamite stick
+            stickHeight     // Height extending to the ground
+        );
+        
+        // Draw black cap on top
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(x - 4, y - 8, 8, 2);
     }
 
     renderFuse(ctx, x, y, time) {
         const fuseWave = Math.sin(time * 5) * 2;
         
+        // Draw fuse coming from the top of the dynamite
         ctx.strokeStyle = '#8B4513';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(x, y - 12);
+        ctx.moveTo(x, y - 8); // Connect to the top of the dynamite
         ctx.quadraticCurveTo(
             x + fuseWave,
-            y - 18,
+            y - 14,
             x,
-            y - 24
+            y - 20 // Keep fuse visible above dynamite
         );
         ctx.stroke();
     }
 
     renderSparkles(ctx, cameraX, cameraY, time) {
-        // Current fuse spark
+        // Current fuse spark - adjusted position to match new fuse placement
         const sparkX = this.x - cameraX + Math.sin(time * 10) * 2;
-        const sparkY = this.y - 24 - cameraY + Math.cos(time * 10);
+        const sparkY = this.y - 20 - cameraY + Math.cos(time * 10); // Align with top of fuse
         
         this.renderSpark(ctx, sparkX, sparkY);
         this.renderSparkGlow(ctx, sparkX, sparkY);
