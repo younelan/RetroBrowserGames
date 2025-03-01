@@ -101,7 +101,14 @@ class CollisionManager {
 
     checkHazardCollisions(player) {
         const tiles = this.getEntityTiles(player);
-        return tiles.some(({x, y}) => this.level.isHazard(x, y));
+        
+        return tiles.some(({x, y}) => {
+            if (this.level.map[y]?.[x] === '!') {
+                // Lava is lethal from all directions - simply return true if there's any overlap
+                return true;
+            }
+            return this.level.isHazard(x, y);
+        });
     }
 
     checkGroundCollision(player) {

@@ -9,9 +9,9 @@ B     =                      B
 B     =      .      *      o B
 BBBBBBBBBBBBBB    BBBBB~BBBBBB
 B                            B
-B                        !   B
-B                        !   B
-B    (                $  !  )B
+B                       !!   B
+B                       !!   B
+B    (                $ !!  )B
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
         viewport: 30,
     },

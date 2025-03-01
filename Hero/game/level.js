@@ -48,16 +48,16 @@ class Level {
             return true;
         }
         const tile = this.map[y][x];
-        return (tile in WALLS) || tile === '=' || tile === '!' || tile === '~';
+        return (tile in WALLS) || tile === '=' || tile === '~'; // Remove '!' from wall checks
     }
 
-    isHazard(x, y) {
+    isHazard(x, y, fromDirection = null) {
         if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[0].length) {
             return false;
         }
         const tile = this.map[y][x];
         return tile === '!' || tile === '^' || tile === '&' || 
-               tile === '~' || tile === '/' || tile === '_';  // Add Bat and Moth as hazards
+               tile === '~' || tile === '/' || tile === '_';
     }
 
     isDestructible(x, y) {
@@ -101,52 +101,86 @@ class Level {
     }
 
     renderLava(ctx, screenX, screenY, time) {
-        // Base lava glow effect for continuity
-        const lavaGradient = ctx.createRadialGradient(
-            screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY + GAME_CONSTANTS.TILE_SIZE/2, 0,
-            screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY + GAME_CONSTANTS.TILE_SIZE/2, GAME_CONSTANTS.TILE_SIZE * 1.2
-        );
-        lavaGradient.addColorStop(0, '#FF6600');
-        lavaGradient.addColorStop(0.4, '#FF4500');
-        lavaGradient.addColorStop(1, '#8B0000');
+        // Center the lava effect within the tile bounds
+        const margin = GAME_CONSTANTS.TILE_SIZE * 0.25; // Reduced from 0.5 to 0.25
         
-        ctx.fillStyle = lavaGradient;
+        // Base glow effect
+        const baseGlow = ctx.createRadialGradient(
+            screenX + GAME_CONSTANTS.TILE_SIZE/2, 
+            screenY + GAME_CONSTANTS.TILE_SIZE/2, 0,
+            screenX + GAME_CONSTANTS.TILE_SIZE/2, 
+            screenY + GAME_CONSTANTS.TILE_SIZE/2, 
+            GAME_CONSTANTS.TILE_SIZE * 1.1 // Reduced from 1.2 to 1.1
+        );
+        baseGlow.addColorStop(0, 'rgba(255, 80, 0, 0.8)');
+        baseGlow.addColorStop(0.5, 'rgba(255, 50, 0, 0.4)');
+        baseGlow.addColorStop(1, 'rgba(255, 30, 0, 0)');
+        
+        ctx.fillStyle = baseGlow;
         ctx.fillRect(
-            screenX - 4, screenY - 4,
-            GAME_CONSTANTS.TILE_SIZE + 8, GAME_CONSTANTS.TILE_SIZE + 8
+            screenX - margin, screenY - margin,
+            GAME_CONSTANTS.TILE_SIZE + margin * 2, 
+            GAME_CONSTANTS.TILE_SIZE + margin * 2
         );
 
-        // Draw fluid lava surface with wave effect
-        const waveAmplitude = 3;
-        const waveFrequency = 3;
+        // Animated lava surface with soft edges
         ctx.beginPath();
-        ctx.moveTo(screenX - 4, screenY + GAME_CONSTANTS.TILE_SIZE);
-
-        // Create wavy top surface
-        for (let x = 0; x <= GAME_CONSTANTS.TILE_SIZE + 8; x++) {
-            const waveY = screenY + Math.sin((time * 2 + x * 0.2) * waveFrequency) * waveAmplitude;
-            ctx.lineTo(screenX - 4 + x, waveY);
+        ctx.moveTo(screenX - margin, screenY + GAME_CONSTANTS.TILE_SIZE);
+        
+        // Bottom edge waves
+        for (let x = 0; x <= GAME_CONSTANTS.TILE_SIZE + margin * 2; x += 4) {
+            const waveY = screenY + GAME_CONSTANTS.TILE_SIZE + 
+                         Math.sin((time * 2 + x * 0.2)) * 4 +
+                         Math.sin((time * 3 + x * 0.1)) * 2;
+            ctx.lineTo(screenX - margin + x, waveY);
         }
 
-        // Complete the path
-        ctx.lineTo(screenX + GAME_CONSTANTS.TILE_SIZE + 4, screenY + GAME_CONSTANTS.TILE_SIZE);
+        // Top edge waves
+        for (let x = GAME_CONSTANTS.TILE_SIZE + margin * 2; x >= 0; x -= 4) {
+            const waveY = screenY + 
+                         Math.sin((time * 2.5 + x * 0.3)) * 4 +
+                         Math.sin((time * 4 + x * 0.2)) * 2;
+            ctx.lineTo(screenX - margin + x, waveY);
+        }
+
         ctx.closePath();
 
-        // Fill with dynamic gradient
+        // Create flowing lava gradient
         const flowGradient = ctx.createLinearGradient(
             screenX, screenY,
             screenX, screenY + GAME_CONSTANTS.TILE_SIZE
         );
         const pulseIntensity = Math.sin(time * 2) * 0.1 + 0.9;
-        flowGradient.addColorStop(0, `rgba(255, 140, 0, ${pulseIntensity})`);
-        flowGradient.addColorStop(0.3, 'rgba(255, 69, 0, 0.9)');
-        flowGradient.addColorStop(0.7, 'rgba(255, 30, 0, 0.8)');
-        flowGradient.addColorStop(1, 'rgba(139, 0, 0, 0.9)');
+        flowGradient.addColorStop(0, `rgba(255, 160, 0, ${pulseIntensity})`);
+        flowGradient.addColorStop(0.3, 'rgba(255, 80, 0, 0.95)');
+        flowGradient.addColorStop(0.7, 'rgba(255, 30, 0, 0.9)');
+        flowGradient.addColorStop(1, 'rgba(200, 0, 0, 0.85)');
         
         ctx.fillStyle = flowGradient;
         ctx.fill();
 
-        // Add bubbles with improved depth effect
+        // Add surface highlights and bubbles
+        this.renderLavaEffects(ctx, screenX, screenY, time);
+    }
+
+    renderLavaEffects(ctx, screenX, screenY, time) {
+        // Add swirling surface patterns
+        for (let i = 0; i < 3; i++) {
+            const x = screenX + Math.sin(time * 2 + i * Math.PI * 2/3) * GAME_CONSTANTS.TILE_SIZE * 0.3 + GAME_CONSTANTS.TILE_SIZE * 0.5;
+            const y = screenY + Math.cos(time * 2 + i * Math.PI * 2/3) * GAME_CONSTANTS.TILE_SIZE * 0.3 + GAME_CONSTANTS.TILE_SIZE * 0.5;
+            
+            const swirl = ctx.createRadialGradient(x, y, 0, x, y, GAME_CONSTANTS.TILE_SIZE * 0.3);
+            swirl.addColorStop(0, 'rgba(255, 200, 0, 0.4)');
+            swirl.addColorStop(0.5, 'rgba(255, 100, 0, 0.2)');
+            swirl.addColorStop(1, 'rgba(255, 50, 0, 0)');
+            
+            ctx.fillStyle = swirl;
+            ctx.beginPath();
+            ctx.arc(x, y, GAME_CONSTANTS.TILE_SIZE * 0.3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Add bubbles with enhanced glow
         for (let i = 0; i < 4; i++) {
             const bubbleX = screenX + (Math.sin(time * 3 + i * 7) + 1) * GAME_CONSTANTS.TILE_SIZE/3;
             const bubbleY = screenY + ((time * (0.3 + i * 0.2) + Math.sin(time + i)) % 1) * GAME_CONSTANTS.TILE_SIZE;
@@ -155,38 +189,28 @@ class Level {
             // Bubble glow
             const bubbleGlow = ctx.createRadialGradient(
                 bubbleX, bubbleY, 0,
-                bubbleX, bubbleY, bubbleSize * 2
+                bubbleX, bubbleY, bubbleSize * 3
             );
-            bubbleGlow.addColorStop(0, 'rgba(255, 200, 100, 0.8)');
-            bubbleGlow.addColorStop(0.5, 'rgba(255, 100, 0, 0.4)');
-            bubbleGlow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+            bubbleGlow.addColorStop(0, 'rgba(255, 220, 150, 0.8)');
+            bubbleGlow.addColorStop(0.5, 'rgba(255, 150, 50, 0.4)');
+            bubbleGlow.addColorStop(1, 'rgba(255, 50, 0, 0)');
             
             ctx.fillStyle = bubbleGlow;
             ctx.beginPath();
-            ctx.arc(bubbleX, bubbleY, bubbleSize * 2, 0, Math.PI * 2);
+            ctx.arc(bubbleX, bubbleY, bubbleSize * 3, 0, Math.PI * 2);
             ctx.fill();
 
             // Bubble core
-            ctx.fillStyle = 'rgba(255, 220, 180, 0.9)';
+            const coreGlow = ctx.createRadialGradient(
+                bubbleX, bubbleY, 0,
+                bubbleX, bubbleY, bubbleSize
+            );
+            coreGlow.addColorStop(0, 'rgba(255, 255, 200, 0.9)');
+            coreGlow.addColorStop(1, 'rgba(255, 200, 100, 0.6)');
+            
+            ctx.fillStyle = coreGlow;
             ctx.beginPath();
             ctx.arc(bubbleX, bubbleY, bubbleSize, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        // Add surface highlights
-        for (let i = 0; i < 3; i++) {
-            const x = screenX + Math.random() * GAME_CONSTANTS.TILE_SIZE;
-            const y = screenY + Math.random() * GAME_CONSTANTS.TILE_SIZE * 0.3;
-            const size = 2 + Math.random() * 3;
-            
-            const highlight = ctx.createRadialGradient(x, y, 0, x, y, size * 2);
-            highlight.addColorStop(0, 'rgba(255, 220, 180, 0.8)');
-            highlight.addColorStop(0.5, 'rgba(255, 160, 0, 0.4)');
-            highlight.addColorStop(1, 'rgba(255, 100, 0, 0)');
-            
-            ctx.fillStyle = highlight;
-            ctx.beginPath();
-            ctx.arc(x, y, size * 2, 0, Math.PI * 2);
             ctx.fill();
         }
     }
