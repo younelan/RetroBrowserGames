@@ -136,6 +136,9 @@ loadScripts().then(() => {
             // Ground collision check
             const isOnGround = this.collisionManager.checkGroundCollision(this.player);
             
+            // Update controls with ground state
+            this.controls.setOnGround(isOnGround);
+            
             // Update player movement based on controls
             this.updatePlayerMovement(deltaTime, isOnGround);
             
@@ -235,8 +238,10 @@ loadScripts().then(() => {
                 this.laser.active = false;
             }
             
-            // Dynamite weapon (X key or bomb button)
-            if (this.controls.isPressed('KeyX') && this.dynamites.length < 3) {
+            // Dynamite weapon (X key, down arrow, or bomb button)
+            // Use proper ground check for arrow down/swipe down
+            if ((this.controls.isPressed('KeyX') || this.controls.canDropDynamite()) && 
+                this.dynamites.length < 3 && isOnGround) {
                 // Create a new dynamite at the player's position
                 const dynamite = new Dynamite(
                     this.player.x + this.player.width / 2,
@@ -252,6 +257,22 @@ loadScripts().then(() => {
                     // When the dynamite timer reaches zero, create an explosion
                     this.addExplosion(dynamite.x, dynamite.y);
                     this.dynamites.splice(i, 1);
+                }
+            }
+            
+            // Update explosions and properly remove them when done
+            for (let i = this.explosions.length - 1; i >= 0; i--) {
+                this.explosions[i].timeLeft -= deltaTime;
+                if (this.explosions[i].timeLeft <= 0) {
+                    this.explosions.splice(i, 1);
+                }
+            }
+
+            // Also update sparkles and remove them when done
+            for (let i = this.sparkles.length - 1; i >= 0; i--) {
+                this.sparkles[i].timeLeft -= deltaTime;
+                if (this.sparkles[i].timeLeft <= 0) {
+                    this.sparkles.splice(i, 1);
                 }
             }
         }
@@ -332,6 +353,33 @@ loadScripts().then(() => {
                 this.ctx.stroke();
                 
                 this.ctx.restore();
+            }
+            
+            // Render explosions - place this before the darkness overlay
+            for (let i = 0; i < this.explosions.length; i++) {
+                const explosion = this.explosions[i];
+                const progress = explosion.timeLeft / explosion.duration;
+                const screenX = explosion.x - this.camera.x;
+                const screenY = explosion.y - this.camera.y;
+                
+                // Only render if timeLeft > 0
+                if (progress > 0) {
+                    // Draw explosion with dynamic opacity based on remaining time
+                    const gradient = this.ctx.createRadialGradient(
+                        screenX, screenY, 0, 
+                        screenX, screenY, explosion.radius * progress
+                    );
+                    gradient.addColorStop(0, `rgba(255, 255, 200, ${progress})`);
+                    gradient.addColorStop(0.2, `rgba(255, 200, 0, ${progress * 0.8})`);
+                    gradient.addColorStop(0.4, `rgba(255, 100, 0, ${progress * 0.6})`);
+                    gradient.addColorStop(0.8, `rgba(255, 50, 0, ${progress * 0.4})`);
+                    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                    
+                    this.ctx.fillStyle = gradient;
+                    this.ctx.beginPath();
+                    this.ctx.arc(screenX, screenY, explosion.radius * progress, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
             }
             
             // Create darkness overlay if lights are out
@@ -450,6 +498,31 @@ loadScripts().then(() => {
             
             this.ctx.restore();
             
+            // Add glow effect for explosions in darkness
+            if (!this.lightsOn) {
+                for (const explosion of this.explosions) {
+                    const progress = explosion.timeLeft / explosion.duration;
+                    
+                    // Only render if timeLeft > 0
+                    if (progress > 0) {
+                        const screenX = explosion.x - this.camera.x;
+                        const screenY = explosion.y - this.camera.y;
+                        
+                        const explosionGradient = this.ctx.createRadialGradient(
+                            screenX, screenY, 0,
+                            screenX, screenY, explosion.radius * 1.5 * progress
+                        );
+                        explosionGradient.addColorStop(0, `rgba(255, 200, 0, ${progress * 0.8})`);
+                        explosionGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
+                        
+                        this.ctx.fillStyle = explosionGradient;
+                        this.ctx.beginPath();
+                        this.ctx.arc(screenX, screenY, explosion.radius * 1.5 * progress, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    }
+                }
+            }
+            
             // Draw game over screen if needed
             if (this.gameOver) {
                 this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -473,14 +546,47 @@ loadScripts().then(() => {
             const playerWidth = tileSize * GAME_CONSTANTS.PLAYER.WIDTH;
             const playerHeight = tileSize * GAME_CONSTANTS.PLAYER.HEIGHT;
 
-            // Draw jetpack (relative to player dimensions)
-            this.ctx.fillStyle = '#FFA000';
+            // Draw jetpack - now properly positioned against the back of the player
+            this.ctx.fillStyle = '#FFA000'; // Jetpack base color
+            
+            // Left side jetpack
             this.ctx.fillRect(
-                screenX,
+                screenX + playerWidth * 0.05,
                 screenY + playerHeight * 0.1,
                 playerWidth * 0.15,
                 playerHeight * 0.4
             );
+            
+            // Right side jetpack
+            this.ctx.fillRect(
+                screenX + playerWidth * 0.8,
+                screenY + playerHeight * 0.1,
+                playerWidth * 0.15,
+                playerHeight * 0.4
+            );
+            
+            // Draw jetpack exhaust flames when flying
+            if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
+                const time = performance.now() / 1000;
+                
+                // Left rocket flame
+                this.drawRocketFlame(
+                    screenX + playerWidth * 0.125, 
+                    screenY + playerHeight * 0.52,
+                    playerWidth * 0.1,
+                    playerHeight * 0.2,
+                    time
+                );
+                
+                // Right rocket flame
+                this.drawRocketFlame(
+                    screenX + playerWidth * 0.875, 
+                    screenY + playerHeight * 0.52,
+                    playerWidth * 0.1,
+                    playerHeight * 0.2,
+                    time + 0.5 // Offset animation slightly
+                );
+            }
             
             // Draw legs
             this.ctx.fillStyle = '#1565C0';
@@ -538,6 +644,73 @@ loadScripts().then(() => {
                 0, 0, Math.PI * 2
             );
             this.ctx.fill();
+        }
+
+        drawRocketFlame(x, y, width, height, time) {
+            const ctx = this.ctx;
+            
+            // Create flame path
+            ctx.save();
+            
+            // Define flame animation parameters
+            const flameHeight = height * (0.8 + Math.sin(time * 10) * 0.2);
+            const flickerX = Math.sin(time * 15) * width * 0.15;
+            
+            // Draw main flame with gradient
+            const gradient = ctx.createLinearGradient(x, y, x, y + flameHeight);
+            gradient.addColorStop(0, '#FFFFFF');
+            gradient.addColorStop(0.3, '#FFFF00');
+            gradient.addColorStop(0.6, '#FF9500');
+            gradient.addColorStop(1, '#FF5500');
+            
+            ctx.fillStyle = gradient;
+            
+            // Draw flame shape
+            ctx.beginPath();
+            ctx.moveTo(x - width/2, y);
+            ctx.quadraticCurveTo(
+                x + flickerX, y + flameHeight * 0.7,
+                x - width/3 + flickerX/2, y + flameHeight
+            );
+            ctx.quadraticCurveTo(
+                x + width/4, y + flameHeight * 0.9,
+                x + width/2, y
+            );
+            ctx.fill();
+            
+            // Add inner glow
+            const innerGradient = ctx.createLinearGradient(x, y, x, y + flameHeight * 0.7);
+            innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            innerGradient.addColorStop(1, 'rgba(255, 255, 100, 0)');
+            
+            ctx.fillStyle = innerGradient;
+            ctx.beginPath();
+            ctx.moveTo(x - width/4, y);
+            ctx.quadraticCurveTo(
+                x + flickerX/2, y + flameHeight * 0.5,
+                x, y + flameHeight * 0.7
+            );
+            ctx.quadraticCurveTo(
+                x + width/8, y + flameHeight * 0.5,
+                x + width/4, y
+            );
+            ctx.fill();
+            
+            // Add glow effect
+            ctx.globalCompositeOperation = 'screen';
+            const glowGradient = ctx.createRadialGradient(
+                x, y + flameHeight/2, 0,
+                x, y + flameHeight/2, flameHeight
+            );
+            glowGradient.addColorStop(0, 'rgba(255, 200, 50, 0.5)');
+            glowGradient.addColorStop(1, 'rgba(255, 100, 50, 0)');
+            
+            ctx.fillStyle = glowGradient;
+            ctx.beginPath();
+            ctx.arc(x, y + flameHeight/2, flameHeight, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
         }
 
         gameLoop(currentTime) {

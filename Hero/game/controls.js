@@ -19,6 +19,9 @@ class Controls {
         this.touchId = null;
         this.lastTap = 0;
 
+        // Add property to track when the down/dynamite controls were activated
+        this.downControlStartedOnGround = false;
+
         // Bind keyboard event handlers
         window.addEventListener('keydown', (e) => {
             if (e.key === ' ' || e.key === 'x') {
@@ -69,17 +72,24 @@ class Controls {
             bombBtn.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 this.touchControls.dynamite = true;
-                setTimeout(() => {
-                    this.touchControls.dynamite = false;
-                }, 100); // Short press to prevent multiple bombs
+                // Remove the setTimeout to allow the press to be detected properly
+            });
+            
+            bombBtn.addEventListener('touchend', () => {
+                this.touchControls.dynamite = false;
             });
             
             // Mouse events for dynamite button (desktop testing)
             bombBtn.addEventListener('mousedown', () => {
                 this.touchControls.dynamite = true;
-                setTimeout(() => {
-                    this.touchControls.dynamite = false;
-                }, 100); // Short press to prevent multiple bombs
+            });
+            
+            bombBtn.addEventListener('mouseup', () => {
+                this.touchControls.dynamite = false;
+            });
+            
+            bombBtn.addEventListener('mouseleave', () => {
+                this.touchControls.dynamite = false;
             });
         }
     }
@@ -95,6 +105,9 @@ class Controls {
                 this.touchId = touch.identifier;
                 this.touchStart = { x: touch.clientX, y: touch.clientY };
                 this.isDrawingJoystick = true;
+                
+                // Reset the ground tracking state on new touch
+                this.downControlStartedOnGround = false;
             }
         }, { passive: false });
         
@@ -249,6 +262,24 @@ class Controls {
         ctx.arc(stickX, stickY, stickRadius, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
+    }
+
+    // Track if controls should allow dynamite based on being on ground
+    setOnGround(isOnGround) {
+        // If player is on ground and pressing down, mark this as a valid dynamite trigger
+        if (isOnGround && (this.touchControls.down || this.pressedKeys.has('arrowdown') || this.pressedKeys.has('s'))) {
+            this.downControlStartedOnGround = true;
+        }
+        
+        // If player is not on ground anymore, they can't drop dynamite
+        if (!isOnGround) {
+            this.downControlStartedOnGround = false;
+        }
+    }
+    
+    canDropDynamite() {
+        return this.downControlStartedOnGround && 
+               (this.touchControls.down || this.pressedKeys.has('arrowdown') || this.pressedKeys.has('s'));
     }
 }
 

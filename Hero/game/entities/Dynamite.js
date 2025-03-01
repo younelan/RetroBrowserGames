@@ -6,12 +6,13 @@ class Dynamite {
         this.velocityY = -300; // Initial upward toss
         this.width = GAME_CONSTANTS.TILE_SIZE / 2;
         this.height = GAME_CONSTANTS.TILE_SIZE / 2;
-        this.timer = 2.0; // 2 seconds fuse
+        this.timer = 1.5; // 1.5 seconds fuse
         this.gravity = 800;
         this.sparkles = [];
         this.fuseSparkles = [];
         this.bounceCount = 0;
         this.maxBounces = 2;
+        this.hasExploded = false;
     }
 
     update(deltaTime) {
@@ -42,7 +43,13 @@ class Dynamite {
         // Update existing sparkles
         this.updateSparkles(deltaTime);
 
-        return this.timer <= 0; // Return true when ready to explode
+        // Return true when ready to explode
+        if (this.timer <= 0 && !this.hasExploded) {
+            this.hasExploded = true;
+            return true;
+        }
+        
+        return false;
     }
 
     addFuseSpark() {
