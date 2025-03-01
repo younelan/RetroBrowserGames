@@ -9,7 +9,11 @@ class Controls {
             up: false,
             down: false,
             laser: false,
-            dynamite: false
+            dynamite: false,
+            leftIntensity: 0,
+            rightIntensity: 0,
+            upIntensity: 0,
+            downIntensity: 0
         };
 
         // Touch tracking
@@ -125,11 +129,39 @@ class Controls {
                         y: touch.clientY - this.touchStart.y
                     };
                     
-                    // Update control states based on drag direction
-                    this.touchControls.left = this.touchDrag.x < -DRAG_THRESHOLD;
-                    this.touchControls.right = this.touchDrag.x > DRAG_THRESHOLD;
-                    this.touchControls.up = this.touchDrag.y < -DRAG_THRESHOLD;
-                    this.touchControls.down = this.touchDrag.y > DRAG_THRESHOLD;
+                    // Calculate normalized intensity (0-1+) based on drag distance
+                    const MAX_DRAG = 80; // Maximum distance for full speed
+                    
+                    // Reset all directional values first to handle direction changes properly
+                    this.touchControls.leftIntensity = 0;
+                    this.touchControls.rightIntensity = 0;
+                    this.touchControls.upIntensity = 0;
+                    this.touchControls.downIntensity = 0;
+                    this.touchControls.left = false;
+                    this.touchControls.right = false;
+                    this.touchControls.up = false;
+                    this.touchControls.down = false;
+                    
+                    // Get horizontal and vertical intensities separately
+                    const horizontalIntensity = Math.min(Math.abs(this.touchDrag.x) / MAX_DRAG, 1.5);
+                    const verticalIntensity = Math.min(Math.abs(this.touchDrag.y) / MAX_DRAG, 1.5);
+                    
+                    // Set the appropriate direction based on current drag
+                    if (this.touchDrag.x < -DRAG_THRESHOLD) {
+                        this.touchControls.leftIntensity = horizontalIntensity;
+                        this.touchControls.left = true;
+                    } else if (this.touchDrag.x > DRAG_THRESHOLD) {
+                        this.touchControls.rightIntensity = horizontalIntensity;
+                        this.touchControls.right = true;
+                    }
+                    
+                    if (this.touchDrag.y < -DRAG_THRESHOLD) {
+                        this.touchControls.upIntensity = verticalIntensity;
+                        this.touchControls.up = true;
+                    } else if (this.touchDrag.y > DRAG_THRESHOLD) {
+                        this.touchControls.downIntensity = verticalIntensity;
+                        this.touchControls.down = true;
+                    }
                     
                     break;
                 }
@@ -280,6 +312,33 @@ class Controls {
     canDropDynamite() {
         return this.downControlStartedOnGround && 
                (this.touchControls.down || this.pressedKeys.has('arrowdown') || this.pressedKeys.has('s'));
+    }
+
+    // Add new methods to get movement intensities (0-1+)
+    getHorizontalIntensity() {
+        if (this.pressedKeys.has('arrowleft') || this.pressedKeys.has('a')) {
+            return -1; // Full intensity for keyboard
+        } else if (this.pressedKeys.has('arrowright') || this.pressedKeys.has('d')) {
+            return 1; // Full intensity for keyboard
+        } else if (this.touchControls.left) {
+            return -this.touchControls.leftIntensity;
+        } else if (this.touchControls.right) {
+            return this.touchControls.rightIntensity;
+        }
+        return 0;
+    }
+
+    getVerticalIntensity() {
+        if (this.pressedKeys.has('arrowup') || this.pressedKeys.has('w')) {
+            return -1; // Full intensity for keyboard
+        } else if (this.pressedKeys.has('arrowdown') || this.pressedKeys.has('s')) {
+            return 1; // Full intensity for keyboard
+        } else if (this.touchControls.up) {
+            return -this.touchControls.upIntensity;
+        } else if (this.touchControls.down) {
+            return this.touchControls.downIntensity;
+        }
+        return 0;
     }
 }
 

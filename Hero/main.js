@@ -197,21 +197,30 @@ loadScripts().then(() => {
         }
         
         updatePlayerMovement(deltaTime, isOnGround) {
-            // Set horizontal velocity based on controls
-            if (this.controls.isPressed('ArrowLeft')) {
-                this.player.velocityX = -GAME_CONSTANTS.PLAYER.MOVE_SPEED;
-                this.player.facingLeft = true;
-            } else if (this.controls.isPressed('ArrowRight')) {
-                this.player.velocityX = GAME_CONSTANTS.PLAYER.MOVE_SPEED;
-                this.player.facingLeft = false;
+            // Get horizontal and vertical intensities (-1 to +1, can exceed 1 for touch)
+            const horizontalIntensity = this.controls.getHorizontalIntensity();
+            const verticalIntensity = this.controls.getVerticalIntensity();
+            
+            // Set horizontal velocity based on intensity
+            if (horizontalIntensity !== 0) {
+                // Apply the intensity to the base speed
+                this.player.velocityX = horizontalIntensity * GAME_CONSTANTS.PLAYER.MOVE_SPEED;
+                
+                // Update facing direction based on current movement
+                this.player.facingLeft = horizontalIntensity < 0;
             } else {
                 this.player.velocityX = 0;
             }
             
             // Set vertical velocity for jetpack (flying)
-            if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
-                this.player.velocityY = -GAME_CONSTANTS.PLAYER.FLY_SPEED;
-                this.fuel = Math.max(0, this.fuel - GAME_CONSTANTS.PLAYER.FUEL_CONSUMPTION * deltaTime);
+            if (verticalIntensity < 0 && this.fuel > 0) { // Negative means up
+                // Apply the intensity to the jetpack speed
+                const flySpeed = Math.abs(verticalIntensity) * GAME_CONSTANTS.PLAYER.FLY_SPEED;
+                this.player.velocityY = -flySpeed;
+                
+                // Fuel consumption is proportional to intensity
+                const fuelRate = GAME_CONSTANTS.PLAYER.FUEL_CONSUMPTION * Math.abs(verticalIntensity);
+                this.fuel = Math.max(0, this.fuel - fuelRate * deltaTime);
             } else if (!isOnGround) {
                 // Apply gravity with a cap to prevent excessive falling speed
                 const maxFallSpeed = GAME_CONSTANTS.PLAYER.GRAVITY * 0.5;
@@ -579,61 +588,61 @@ loadScripts().then(() => {
             const screenY = this.player.y - this.camera.y;
             const tileSize = GAME_CONSTANTS.TILE_SIZE;
             
-            // All measurements relative to player size (2x2 tiles)
-            const playerWidth = tileSize * GAME_CONSTANTS.PLAYER.WIDTH;
-            const playerHeight = tileSize * GAME_CONSTANTS.PLAYER.HEIGHT;
+            // Always use the constants from the player object
+            const playerWidth = this.player.width;
+            const playerHeight = this.player.height;
             
             // Draw rotor above head
             this.drawRotor(
                 screenX + playerWidth * 0.5, 
-                screenY - playerHeight * 0.1,  // Position above the head
-                playerWidth * 0.7,             // Rotor width (percentage of player width)
+                screenY - playerHeight * 0.1,
+                playerWidth * 0.7,
                 this.player.rotorAngle || 0
             );
 
-            // Draw jetpack - now wider and closer to the player
-            this.ctx.fillStyle = '#FFA000'; // Jetpack base color
+            // Draw jetpack - positioned correctly relative to player size
+            this.ctx.fillStyle = '#FFA000';
             
-            // Left side jetpack - wider and closer to player
+            // Left side jetpack
             this.ctx.fillRect(
-                screenX + playerWidth * 0.15, // Moved closer to player (was 0.05)
+                screenX + playerWidth * 0.15,
                 screenY + playerHeight * 0.1,
-                playerWidth * 0.20, // Made wider (was 0.15)
+                playerWidth * 0.20,
                 playerHeight * 0.4
             );
             
-            // Right side jetpack - wider and closer to player
+            // Right side jetpack
             this.ctx.fillRect(
-                screenX + playerWidth * 0.65, // Moved closer to player (was 0.8)
+                screenX + playerWidth * 0.65,
                 screenY + playerHeight * 0.1,
-                playerWidth * 0.20, // Made wider (was 0.15)
+                playerWidth * 0.20,
                 playerHeight * 0.4
             );
             
-            // Draw jetpack exhaust flames when flying
+            // Draw jetpack flames
             if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
                 const time = performance.now() / 1000;
                 
-                // Left rocket flame - adjust position to match widened jetpack
+                // Left flame
                 this.drawRocketFlame(
-                    screenX + playerWidth * 0.25, // Centered on wider jetpack (was 0.125)
+                    screenX + playerWidth * 0.25,
                     screenY + playerHeight * 0.52,
-                    playerWidth * 0.15, // Made flame wider (was 0.1)
-                    playerHeight * 0.25, // Made flame taller (was 0.2)
+                    playerWidth * 0.15,
+                    playerHeight * 0.25,
                     time
                 );
                 
-                // Right rocket flame - adjust position to match widened jetpack
+                // Right flame
                 this.drawRocketFlame(
-                    screenX + playerWidth * 0.75, // Centered on wider jetpack (was 0.875)
+                    screenX + playerWidth * 0.75,
                     screenY + playerHeight * 0.52,
-                    playerWidth * 0.15, // Made flame wider (was 0.1)
-                    playerHeight * 0.25, // Made flame taller (was 0.2)
-                    time + 0.5 // Offset animation slightly
+                    playerWidth * 0.15,
+                    playerHeight * 0.25,
+                    time + 0.5
                 );
             }
             
-            // Draw legs
+            // Draw legs - positioned correctly relative to player size
             this.ctx.fillStyle = '#1565C0';
             this.ctx.fillRect(
                 screenX + playerWidth * 0.3,
@@ -648,17 +657,16 @@ loadScripts().then(() => {
                 playerHeight * 0.5
             );
             
-            // Draw body
+            // Draw body - positioned correctly relative to player size
             this.ctx.fillStyle = '#2196F3';
             this.ctx.beginPath();
-            // Adjusted body shape to connect better with jetpacks
             this.ctx.moveTo(screenX + playerWidth * 0.33, screenY + playerHeight * 0.5);
             this.ctx.lineTo(screenX + playerWidth * 0.25, screenY + playerHeight * 0.1);
             this.ctx.lineTo(screenX + playerWidth * 0.75, screenY + playerHeight * 0.1);
             this.ctx.lineTo(screenX + playerWidth * 0.67, screenY + playerHeight * 0.5);
             this.ctx.fill();
             
-            // Draw head
+            // Draw head - positioned correctly relative to player size
             this.ctx.fillStyle = '#FFB74D';
             this.ctx.beginPath();
             this.ctx.arc(
@@ -670,7 +678,7 @@ loadScripts().then(() => {
             );
             this.ctx.fill();
 
-            // Draw goggles
+            // Draw goggles - positioned correctly relative to player size
             this.ctx.fillStyle = '#424242';
             this.ctx.beginPath();
             this.ctx.ellipse(

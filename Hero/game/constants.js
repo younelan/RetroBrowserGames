@@ -12,14 +12,15 @@ const GAME_CONSTANTS = {
     // Player settings
     PLAYER: {
         SCALE: 2.0,  // Player scale factor
-        WIDTH: 2,  // Player is 2 tiles wide
-        HEIGHT: 2, // Player is 2 tiles tall
-        MOVE_SPEED: 200,
-        FLY_SPEED: 300,
+        WIDTH: 2,  // Restored to 2 tiles width
+        HEIGHT: 2, // Restored to 2 tiles height
+        MOVE_SPEED: 200, // Base speed for desktop
+        FLY_SPEED: 250,  // Base speed for desktop
         GRAVITY: 600,
-        MAX_FUEL: 1000,
-        FUEL_CONSUMPTION: 100, // per second
-        STARTING_LIVES: 10,
+        MAX_FUEL: 100,
+        FUEL_CONSUMPTION: 30, // per second
+        STARTING_LIVES: 3,
+        MAX_MOBILE_SPEED_MULTIPLIER: 1.5, // Allow mobile to go up to 150% of desktop speed
         EMOJI: {
             STANDING: '🦸',
             HOVERING: '🚁',
