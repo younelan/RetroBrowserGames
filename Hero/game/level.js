@@ -56,7 +56,7 @@ class Level {
             return false;
         }
         const tile = this.map[y][x];
-        return tile === '!' || tile === '^' || tile === '&' || 
+        return tile === '!' || tile === '|' || tile === '^' || tile === '&' || 
                tile === '~' || tile === '/' || tile === '_';
     }
 
@@ -64,6 +64,7 @@ class Level {
         if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[0].length) {
             return false;
         }
+        // Note: '|' is not included here since it's unbreakable
         return this.map[y][x] === '=' || this.map[y][x] === '!';
     }
 
@@ -342,7 +343,7 @@ class Level {
                             2, 
                             brickHeight
                         );
-                    } else if (tile === '!') {
+                    } else if (tile === '!' || tile === '|') {
                         this.renderLava(ctx, screenX, screenY, time);
                         continue; // Skip the default tile rendering
                     } else if (tile === '~') {

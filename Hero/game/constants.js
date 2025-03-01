@@ -117,6 +117,7 @@ const GAME_CONSTANTS = {
         
         // Special tiles
         LAVA: '!',
+        LAVA_PIPE: '|',  // Add unbreakable lava pipe
         MINER: '+',
         PLAYER: '@',
         BAT: '/',    // Add bat symbol

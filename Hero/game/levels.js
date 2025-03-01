@@ -7,20 +7,20 @@ B     =              /   &   B
 B     =                      B
 B     =                      B
 B     =      .      *      o B
-BBBBBBBBBBBBBB    BBBBB~BBBBBB
+BBBBBBBBBBBBBB    BBBBB~BBBBB
 B                            B
-B                       !!   B
-B                       !!   B
-B    (                $ !!  )B
+B                       !!|  B
+B                       !!|  B
+B    (                $ !!| )B
 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`,
         viewport: 30,
     },
     {
         map: `BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
 B@      =    L               B
-B     + =    L        +      B
-B       =    L               B
-B     + =    L         +     B
+B     + =    L        +  ||| B
+B       =    L           ||| B
+B     + =    L         + ||| B
 BRRRRRRRR           RRRRRRRRRB
 B                            B
 B     +      L         +     B
