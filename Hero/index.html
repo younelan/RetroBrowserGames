@@ -11,6 +11,48 @@
     .hud {
         display: flex;
     }
+    
+    /* Updated mobile controls styling */
+    #mobile-controls {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 10;
+    }
+    
+    .weapon-btn {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        color: white;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+    }
+    
+    #laserBtn {
+        right: 20px;
+        bottom: 100px;
+    }
+    
+    #bombBtn {
+        right: 20px;
+        bottom: 20px;
+    }
+
+    @media (min-width: 768px) {
+        .mobile-only {
+            display: none;
+        }
+    }
 </style>
 <body>
     <div id="game-container">
@@ -21,16 +63,10 @@
             <div id="score">💎 0</div>
             <div id="level"></div>
         </div>
-    </div>
-    
-    <div id="mobile-controls">
-        <div class="control-group">
-            <button id="leftBtn" class="control-btn">⬅️</button>
-            <button id="rightBtn" class="control-btn">➡️</button>
-        </div>
-        <div class="control-group">
-            <button id="upBtn" class="control-btn">⬆️</button>
-            <button id="drillBtn" class="control-btn">⚡</button>
+        
+        <div id="mobile-controls" class="mobile-only">
+            <div id="laserBtn" class="weapon-btn">🔫</div>
+            <div id="bombBtn" class="weapon-btn">💣</div>
         </div>
     </div>
 

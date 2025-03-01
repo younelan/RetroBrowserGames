@@ -35,27 +35,8 @@ loadScripts().then(() => {
             this.canvas = document.getElementById('gameCanvas');
             this.ctx = this.canvas.getContext('2d');
             
-            // Initialize controls
-            this.controls = {
-                ArrowLeft: false,
-                ArrowRight: false,
-                ArrowUp: false,
-                ArrowDown: false,
-                ' ': false  // Space bar for laser
-            };
-            
-            // Add event listeners for controls
-            window.addEventListener('keydown', (e) => {
-                if (this.controls.hasOwnProperty(e.key)) {
-                    this.controls[e.key] = true;
-                }
-            });
-            
-            window.addEventListener('keyup', (e) => {
-                if (this.controls.hasOwnProperty(e.key)) {
-                    this.controls[e.key] = false;
-                }
-            });
+            // Use our Controls class
+            this.controls = new Controls();
             
             // Initialize level first to get viewport size
             this.level = new Level(LEVELS[0]);
@@ -155,65 +136,12 @@ loadScripts().then(() => {
             // Ground collision check
             const isOnGround = this.collisionManager.checkGroundCollision(this.player);
             
-            // Update player movement
-            this.player.update(deltaTime, this.controls, isOnGround);
+            // Update player movement based on controls
+            this.updatePlayerMovement(deltaTime, isOnGround);
             
-            // Handle wall collisions after movement
-            this.collisionManager.handleGridCollisions(this.player);
-
-            // Handle weapons
-            if (this.controls[' ']) { // Space bar for laser
-                this.laserActive = true;
-                this.laser.active = true;
-                this.laserPhase += deltaTime * 10;
-                
-                // Check laser collisions with enemies
-                if (this.laser.active) {
-                    const hitEnemies = this.collisionManager.checkLaserCollisions(this.laser, this.enemies);
-                    hitEnemies.forEach(enemy => {
-                        enemy.hit();
-                        this.score += 100;
-                    });
-                }
-            } else {
-                this.laserActive = false;
-                this.laser.active = false;
-            }
-
-            // Handle dynamite through WeaponSystem
-            if (this.controls['ArrowDown'] && isOnGround) {
-                this.weaponSystem.addDynamite(
-                    this.player.x + this.player.width / 2,
-                    this.player.y + this.player.height
-                );
-            }
-
-            // Replace the immediate explosion with proper dynamite drop
-            if (this.controls['ArrowDown'] && isOnGround) {
-                if (this.dynamites.length < 3) { // Limit number of active dynamites
-                    const dynamite = new Dynamite(
-                        this.player.x + this.player.width / 2,
-                        this.player.y + this.player.height
-                    );
-                    this.dynamites.push(dynamite);
-                }
-            }
-
-            // Update dynamites
-            for (let i = this.dynamites.length - 1; i >= 0; i--) {
-                if (this.dynamites[i].update(deltaTime)) {
-                    this.dynamites.splice(i, 1);
-                }
-            }
-
-            // Update sparkles
-            for (let i = this.sparkles.length - 1; i >= 0; i--) {
-                this.sparkles[i].timeLeft -= deltaTime;
-                if (this.sparkles[i].timeLeft <= 0) {
-                    this.sparkles.splice(i, 1);
-                }
-            }
-
+            // Handle weapon inputs from unified controls
+            this.handleWeaponInputs(deltaTime, isOnGround);
+            
             // Rest of collision checks
             if (this.collisionManager.checkHazardCollisions(this.player) ||
                 this.collisionManager.checkEnemyCollisions(this.player, this.enemies)) {
@@ -227,25 +155,6 @@ loadScripts().then(() => {
                 this.score += GAME_CONSTANTS.COLLECTIBLES[collectible.type].POINTS;
                 collectible.collected = true;
             });
-
-            // Handle weapons
-            if (this.controls[' ']) { // Space bar for laser
-                this.laser.active = true;
-                this.laserActive = true;  // For rendering
-                this.laserPhase += deltaTime * 10;
-            } else {
-                this.laser.active = false;
-                this.laserActive = false;
-            }
-
-            if (this.controls['x'] && isOnGround) { // X key for dynamite
-                if (this.dynamites.length < 3) {
-                    this.dynamites.push(new Dynamite(
-                        this.player.x + this.player.width / 2,
-                        this.player.y + this.player.height
-                    ));
-                }
-            }
 
             // Update weapon systems
             this.laser.update(deltaTime, this.player, this.level);
@@ -270,6 +179,80 @@ loadScripts().then(() => {
             if (levelExit) {
                 this.loadLevel(this.currentLevel + 1);
                 return;
+            }
+        }
+        
+        updatePlayerMovement(deltaTime, isOnGround) {
+            // Set horizontal velocity based on controls
+            if (this.controls.isPressed('ArrowLeft')) {
+                this.player.velocityX = -GAME_CONSTANTS.PLAYER.MOVE_SPEED;
+                this.player.facingLeft = true;
+            } else if (this.controls.isPressed('ArrowRight')) {
+                this.player.velocityX = GAME_CONSTANTS.PLAYER.MOVE_SPEED;
+                this.player.facingLeft = false;
+            } else {
+                this.player.velocityX = 0;
+            }
+            
+            // Set vertical velocity for jetpack (flying)
+            if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
+                this.player.velocityY = -GAME_CONSTANTS.PLAYER.FLY_SPEED;
+                this.fuel = Math.max(0, this.fuel - GAME_CONSTANTS.PLAYER.FUEL_CONSUMPTION * deltaTime);
+            } else if (!isOnGround) {
+                this.player.velocityY += GAME_CONSTANTS.PLAYER.GRAVITY * deltaTime;
+            } else {
+                this.player.velocityY = 0;
+                if (this.fuel < GAME_CONSTANTS.PLAYER.MAX_FUEL) {
+                    this.fuel += GAME_CONSTANTS.PLAYER.FUEL_CONSUMPTION * deltaTime;
+                }
+            }
+            
+            // Apply velocities with deltaTime
+            this.player.x += this.player.velocityX * deltaTime;
+            this.player.y += this.player.velocityY * deltaTime;
+            
+            // Handle wall collisions after movement
+            this.collisionManager.handleGridCollisions(this.player);
+        }
+        
+        handleWeaponInputs(deltaTime, isOnGround) {
+            // Laser weapon (space bar or laser button)
+            if (this.controls.isPressed(' ')) {
+                this.laserActive = true;
+                this.laser.active = true;
+                this.laserPhase += deltaTime * 10;
+                
+                // Check laser collisions with enemies
+                if (this.laser.active) {
+                    const hitEnemies = this.collisionManager.checkLaserCollisions(this.laser, this.enemies);
+                    hitEnemies.forEach(enemy => {
+                        enemy.hit();
+                        this.score += 100;
+                    });
+                }
+            } else {
+                this.laserActive = false;
+                this.laser.active = false;
+            }
+            
+            // Dynamite weapon (X key or bomb button)
+            if (this.controls.isPressed('KeyX') && this.dynamites.length < 3) {
+                // Create a new dynamite at the player's position
+                const dynamite = new Dynamite(
+                    this.player.x + this.player.width / 2,
+                    this.player.y + this.player.height
+                );
+                this.dynamites.push(dynamite);
+            }
+            
+            // Update dynamites
+            for (let i = this.dynamites.length - 1; i >= 0; i--) {
+                const dynamite = this.dynamites[i];
+                if (dynamite.update(deltaTime)) {
+                    // When the dynamite timer reaches zero, create an explosion
+                    this.addExplosion(dynamite.x, dynamite.y);
+                    this.dynamites.splice(i, 1);
+                }
             }
         }
 
@@ -476,6 +459,9 @@ loadScripts().then(() => {
                 this.ctx.textAlign = 'center';
                 this.ctx.fillText('Game Over', this.canvas.width / 2, this.canvas.height / 2);
             }
+            
+            // Draw virtual joystick for touch controls
+            this.controls.drawVirtualJoystick(this.ctx);
         }
         
         drawPlayer() {
@@ -653,6 +639,20 @@ loadScripts().then(() => {
                         this.destroyConnectedWalls(tileX + dx, tileY + dy);
                     }
                 }
+            }
+            
+            // Add visual spark effects
+            for (let i = 0; i < 20; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 150 + 50;
+                this.sparkles.push({
+                    x: explosion.x,
+                    y: explosion.y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: Math.random() * 4 + 2,
+                    timeLeft: Math.random() * 0.5 + 0.3
+                });
             }
         }
 
