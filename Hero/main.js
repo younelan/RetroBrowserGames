@@ -128,7 +128,26 @@ loadScripts().then(() => {
                 }
             }
         }
-        
+
+        handlePlayerDeath() {
+            this.lives--;
+            if (this.lives <= 0) {
+                this.gameOver = true;
+            } else {
+                // Reset player position to start
+                const startPos = this.level.findPlayerStart();
+                this.player.x = startPos.x * GAME_CONSTANTS.TILE_SIZE;
+                this.player.y = startPos.y * GAME_CONSTANTS.TILE_SIZE;
+                this.player.velocityX = 0;
+                this.player.velocityY = 0;
+                this.fuel = GAME_CONSTANTS.PLAYER.MAX_FUEL;
+                this.dynamites = [];
+                this.explosions = [];
+                this.sparkles = [];
+                this.lasers = [];
+            }
+        }
+
         update(deltaTime) {
             if (this.gameOver || this.gameWon) return;
 
