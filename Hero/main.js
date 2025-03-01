@@ -546,22 +546,22 @@ loadScripts().then(() => {
             const playerWidth = tileSize * GAME_CONSTANTS.PLAYER.WIDTH;
             const playerHeight = tileSize * GAME_CONSTANTS.PLAYER.HEIGHT;
 
-            // Draw jetpack - now properly positioned against the back of the player
+            // Draw jetpack - now wider and closer to the player
             this.ctx.fillStyle = '#FFA000'; // Jetpack base color
             
-            // Left side jetpack
+            // Left side jetpack - wider and closer to player
             this.ctx.fillRect(
-                screenX + playerWidth * 0.05,
+                screenX + playerWidth * 0.15, // Moved closer to player (was 0.05)
                 screenY + playerHeight * 0.1,
-                playerWidth * 0.15,
+                playerWidth * 0.20, // Made wider (was 0.15)
                 playerHeight * 0.4
             );
             
-            // Right side jetpack
+            // Right side jetpack - wider and closer to player
             this.ctx.fillRect(
-                screenX + playerWidth * 0.8,
+                screenX + playerWidth * 0.65, // Moved closer to player (was 0.8)
                 screenY + playerHeight * 0.1,
-                playerWidth * 0.15,
+                playerWidth * 0.20, // Made wider (was 0.15)
                 playerHeight * 0.4
             );
             
@@ -569,21 +569,21 @@ loadScripts().then(() => {
             if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
                 const time = performance.now() / 1000;
                 
-                // Left rocket flame
+                // Left rocket flame - adjust position to match widened jetpack
                 this.drawRocketFlame(
-                    screenX + playerWidth * 0.125, 
+                    screenX + playerWidth * 0.25, // Centered on wider jetpack (was 0.125)
                     screenY + playerHeight * 0.52,
-                    playerWidth * 0.1,
-                    playerHeight * 0.2,
+                    playerWidth * 0.15, // Made flame wider (was 0.1)
+                    playerHeight * 0.25, // Made flame taller (was 0.2)
                     time
                 );
                 
-                // Right rocket flame
+                // Right rocket flame - adjust position to match widened jetpack
                 this.drawRocketFlame(
-                    screenX + playerWidth * 0.875, 
+                    screenX + playerWidth * 0.75, // Centered on wider jetpack (was 0.875)
                     screenY + playerHeight * 0.52,
-                    playerWidth * 0.1,
-                    playerHeight * 0.2,
+                    playerWidth * 0.15, // Made flame wider (was 0.1)
+                    playerHeight * 0.25, // Made flame taller (was 0.2)
                     time + 0.5 // Offset animation slightly
                 );
             }
@@ -606,10 +606,11 @@ loadScripts().then(() => {
             // Draw body
             this.ctx.fillStyle = '#2196F3';
             this.ctx.beginPath();
-            this.ctx.moveTo(screenX + playerWidth * 0.3, screenY + playerHeight * 0.5);
+            // Adjusted body shape to connect better with jetpacks
+            this.ctx.moveTo(screenX + playerWidth * 0.33, screenY + playerHeight * 0.5);
             this.ctx.lineTo(screenX + playerWidth * 0.25, screenY + playerHeight * 0.1);
             this.ctx.lineTo(screenX + playerWidth * 0.75, screenY + playerHeight * 0.1);
-            this.ctx.lineTo(screenX + playerWidth * 0.7, screenY + playerHeight * 0.5);
+            this.ctx.lineTo(screenX + playerWidth * 0.67, screenY + playerHeight * 0.5);
             this.ctx.fill();
             
             // Draw head
@@ -659,9 +660,10 @@ loadScripts().then(() => {
             // Draw main flame with gradient
             const gradient = ctx.createLinearGradient(x, y, x, y + flameHeight);
             gradient.addColorStop(0, '#FFFFFF');
-            gradient.addColorStop(0.3, '#FFFF00');
-            gradient.addColorStop(0.6, '#FF9500');
-            gradient.addColorStop(1, '#FF5500');
+            gradient.addColorStop(0.2, '#FFFF00');
+            gradient.addColorStop(0.5, '#FF9500');
+            gradient.addColorStop(0.8, '#FF5500');
+            gradient.addColorStop(1, '#FF2200');
             
             ctx.fillStyle = gradient;
             
@@ -680,7 +682,8 @@ loadScripts().then(() => {
             
             // Add inner glow
             const innerGradient = ctx.createLinearGradient(x, y, x, y + flameHeight * 0.7);
-            innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            innerGradient.addColorStop(0.5, 'rgba(255, 255, 150, 0.5)');
             innerGradient.addColorStop(1, 'rgba(255, 255, 100, 0)');
             
             ctx.fillStyle = innerGradient;
@@ -696,18 +699,37 @@ loadScripts().then(() => {
             );
             ctx.fill();
             
+            // Add spark particles
+            const sparkCount = 3;
+            for (let i = 0; i < sparkCount; i++) {
+                const sparkTime = (time * 8 + i * 2.1) % 5;
+                const sparkProgress = sparkTime / 5;
+                
+                if (sparkProgress < 1) {
+                    const sparkX = x + (Math.random() - 0.5) * width * 0.8;
+                    const sparkY = y + sparkProgress * flameHeight;
+                    const sparkSize = (1 - sparkProgress) * 3;
+                    
+                    ctx.fillStyle = 'rgba(255, 255, 255, ' + (1 - sparkProgress) + ')';
+                    ctx.beginPath();
+                    ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
             // Add glow effect
             ctx.globalCompositeOperation = 'screen';
             const glowGradient = ctx.createRadialGradient(
                 x, y + flameHeight/2, 0,
-                x, y + flameHeight/2, flameHeight
+                x, y + flameHeight/2, flameHeight * 1.2
             );
             glowGradient.addColorStop(0, 'rgba(255, 200, 50, 0.5)');
-            glowGradient.addColorStop(1, 'rgba(255, 100, 50, 0)');
+            glowGradient.addColorStop(0.5, 'rgba(255, 100, 50, 0.3)');
+            glowGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
             
             ctx.fillStyle = glowGradient;
             ctx.beginPath();
-            ctx.arc(x, y + flameHeight/2, flameHeight, 0, Math.PI * 2);
+            ctx.arc(x, y + flameHeight/2, flameHeight * 1.2, 0, Math.PI * 2);
             ctx.fill();
             
             ctx.restore();
