@@ -217,7 +217,6 @@ class Level {
     }
 
     initializeEntities() {
-        // Create enemies from level map
         this.enemies = [];
         for (let y = 0; y < this.map.length; y++) {
             for (let x = 0; x < this.map[y].length; x++) {
@@ -226,7 +225,7 @@ class Level {
                     this.enemies.push(new Snake(x, y));
                 } else if (tile === '^') {
                     this.enemies.push(new Spider(x, y));
-                } else if (tile === '/') {
+                } else if (tile === '-') {  // Changed from '/' to '-'
                     this.enemies.push(new Bat(x, y));
                 } else if (tile === '_') {
                     this.enemies.push(new Moth(x, y));

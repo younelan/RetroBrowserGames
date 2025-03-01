@@ -120,7 +120,7 @@ const GAME_CONSTANTS = {
         LAVA_PIPE: '|',  // Add unbreakable lava pipe
         MINER: '+',
         PLAYER: '@',
-        BAT: '/',    // Add bat symbol
+        BAT: '-',    // Add bat symbol
         MOTH: '_',   // Add moth symbol
     },
 

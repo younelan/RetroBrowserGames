@@ -1,6 +1,6 @@
 class Bat extends Enemy {
     constructor(x, y) {
-        super(x, y, '/');
+        super(x, y, '-');  // Changed from '/' to '-'
     }
 
     render(ctx, cameraX, cameraY) {
