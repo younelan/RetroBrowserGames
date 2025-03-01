@@ -7,7 +7,7 @@ B     =                  &   B
 B     =                      B
 B     =                      B
 B     =      .      *      o B
-BBBBBBBBBBBBBBBB  BBBBB~BBBBBB
+BBBBBBBBBBBBBB    BBBBB~BBBBBB
 B                            B
 B                        !   B
 B                        !   B

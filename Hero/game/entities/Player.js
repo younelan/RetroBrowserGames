@@ -1,15 +1,15 @@
 class Player {
     constructor(x, y) {
         this.x = x * GAME_CONSTANTS.TILE_SIZE;
-        this.y = y * GAME_CONSTANTS.TILE_SIZE;
+        this.y = y * GAME_CONSTANTS.TILE_SIZE; // Remove the 0.5 tile offset
         this.width = 2 * GAME_CONSTANTS.TILE_SIZE;     // 2 tiles wide
-        this.height = 2 * GAME_CONSTANTS.TILE_SIZE;    // 2 tiles high
+        this.height = 2 * GAME_CONSTANTS.TILE_SIZE;    // 2 tiles high (not 2.5)
         this.velocityX = 0;
         this.velocityY = 0;
         this.facingLeft = false;
-        this.rotorAngle = 0;
         this.isFlying = false;
         this.fuel = GAME_CONSTANTS.PLAYER.MAX_FUEL;
+        this.wingAngle = 0;  // Replace rotorAngle with wingAngle
     }
 
     handlePlayerDeath() {
@@ -24,18 +24,24 @@ class Player {
         const screenX = this.x - camera.x;
         const screenY = this.y - camera.y;
         const time = performance.now() / 1000;
-        
-        this.fuel = fuel; // Store current fuel value for flame rendering
-        
-        // Draw enhanced 3D player
-        this.renderRotor(ctx, screenX, screenY);
-        this.renderJetpack(ctx, screenX, screenY);
-        this.renderBody(ctx, screenX, screenY);
-        this.renderHead(ctx, screenX, screenY, time);
-        
-        // Draw jetpack flames if flying
+        this.fuel = fuel;
+
+        // Update wing animation
         if (controls.isPressed('ArrowUp') && this.fuel > 0) {
-            this.renderFlames(ctx, screenX, screenY, time);
+            this.wingAngle += 15 * (time - this.lastTime || 0); // Faster flapping when flying
+        } else {
+            this.wingAngle += 3 * (time - this.lastTime || 0);  // Slower idle flapping
+        }
+        this.lastTime = time;
+
+        // Draw in new order: body -> wings -> head
+        this.renderBody(ctx, screenX, screenY, time);
+        this.renderWings(ctx, screenX, screenY, time);
+        this.renderHead(ctx, screenX, screenY, time);
+
+        // Replace jetpack flames with magical sparkle effect when flying
+        if (controls.isPressed('ArrowUp') && this.fuel > 0) {
+            this.renderMagicSparkles(ctx, screenX, screenY, time);
         }
     }
 
@@ -48,7 +54,7 @@ class Player {
         
         // Special effects for darkness - use a glowing outline
         ctx.globalAlpha = 0.7;
-        ctx.globalCompositeOperation = 'screen'; // Makes the player glow in the dark
+        ctx.globalCompositeOperation = 'lighter'; // Makes the player glow in the dark
         
         // Render a simplified glowing player silhouette
         this.renderGlowingSilhouette(ctx, screenX, screenY);
@@ -124,12 +130,11 @@ class Player {
     }
 
     renderHelmetLight(ctx, x, y, time) {
-        // Create a flashlight effect from the goggles
         const direction = this.facingLeft ? -1 : 1;
         const lightX = x + this.width * (this.facingLeft ? 0.4 : 0.6);
-        const lightY = y + this.height * 0.1;
+        const lightY = y + this.height * 0.05; // Adjusted to match new head position (was 0.1)
         
-        // Light cone
+        // Create a flashlight effect from the goggles
         const gradient = ctx.createRadialGradient(
             lightX, lightY, 0,
             lightX + direction * this.width, lightY, this.width * 2
@@ -162,324 +167,293 @@ class Player {
         ctx.fill();
     }
     
-    renderRotor(ctx, x, y) {
+    renderBody(ctx, x, y, time) {
         const centerX = x + this.width * 0.5;
-        const centerY = y - this.height * 0.1;
-        const rotorWidth = this.width * 0.7;
+        const centerY = y + this.height * 0.5;
         
-        // Create metallic rotor with 3D effect
-        const rotorHeight = rotorWidth * 0.1;
-        const stemWidth = rotorWidth * 0.1;
-        const stemHeight = rotorWidth * 0.15;
-        
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(this.rotorAngle || 0);
-        
-        // Draw metal stem with gradient
-        const stemGradient = ctx.createLinearGradient(-stemWidth/2, -stemHeight, stemWidth/2, 0);
-        stemGradient.addColorStop(0, '#707070');  // Darker gray
-        stemGradient.addColorStop(0.5, '#A0A0A0'); // Light gray highlight
-        stemGradient.addColorStop(1, '#505050');  // Dark gray shadow
-        
-        ctx.fillStyle = stemGradient;
-        ctx.fillRect(-stemWidth/2, -stemHeight, stemWidth, stemHeight);
-        
-        // Draw 3D rotor blades with gradient
-        const bladeGradient = ctx.createLinearGradient(-rotorWidth/2, 0, rotorWidth/2, 0);
-        bladeGradient.addColorStop(0, '#404040'); // Dark edge
-        bladeGradient.addColorStop(0.5, '#606060'); // Light middle
-        bladeGradient.addColorStop(1, '#303030');  // Dark edge
-        
-        ctx.fillStyle = bladeGradient;
+        // Dragon body - more elongated and less circular
         ctx.beginPath();
-        ctx.moveTo(-rotorWidth/2, -rotorHeight/2);
-        ctx.lineTo(rotorWidth/2, -rotorHeight/2);
-        ctx.lineTo(rotorWidth/2, rotorHeight/2);
-        ctx.lineTo(-rotorWidth/2, rotorHeight/2);
-        ctx.closePath();
-        ctx.fill();
+        ctx.moveTo(centerX - this.width * 0.4, centerY - this.height * 0.2);
         
-        // Add metal shine on top edge
-        ctx.strokeStyle = '#909090';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(-rotorWidth/2, -rotorHeight/2);
-        ctx.lineTo(rotorWidth/2, -rotorHeight/2);
-        ctx.stroke();
-        
-        ctx.restore();
-    }
-    
-    renderJetpack(ctx, x, y) {
-        // Draw cylindrical rocket jetpacks with metallic effect
-        
-        // Left jetpack - cylindrical with 3D effect
-        this.renderRocketTank(ctx, 
-            x + this.width * 0.15, 
-            y + this.height * 0.1,
-            this.width * 0.20, 
-            this.height * 0.4,
-            true  // Left side
+        // Back curve
+        ctx.quadraticCurveTo(
+            centerX - this.width * 0.2, centerY - this.height * 0.3,
+            centerX + this.width * 0.2, centerY - this.height * 0.2
         );
         
-        // Right jetpack - cylindrical with 3D effect
-        this.renderRocketTank(ctx, 
-            x + this.width * 0.65, 
-            y + this.height * 0.1,
-            this.width * 0.20, 
-            this.height * 0.4,
-            false // Right side
+        // Tail section
+        ctx.quadraticCurveTo(
+            centerX + this.width * 0.3, centerY,
+            centerX + this.width * 0.2, centerY + this.height * 0.2
+        );
+        
+        // Bottom curve
+        ctx.quadraticCurveTo(
+            centerX, centerY + this.height * 0.25,
+            centerX - this.width * 0.4, centerY + this.height * 0.2
+        );
+        
+        // Close the path
+        ctx.closePath();
+
+        // Fill with gradient
+        const bodyGradient = ctx.createLinearGradient(
+            centerX - this.width * 0.4, centerY,
+            centerX + this.width * 0.4, centerY
+        );
+        bodyGradient.addColorStop(0, '#90EE90');
+        bodyGradient.addColorStop(0.5, '#32CD32');
+        bodyGradient.addColorStop(1, '#228B22');
+        
+        ctx.fillStyle = bodyGradient;
+        ctx.fill();
+
+        // Add scales and spikes
+        this.renderScales(ctx, centerX, centerY);
+        this.renderSpikes(ctx, centerX, centerY - this.height * 0.25);
+        
+        // Render legs
+        this.renderDragonLegs(ctx, centerX, centerY);
+    }
+
+    renderDragonLegs(ctx, centerX, centerY) {
+        // Front leg
+        this.renderDragonLeg(ctx, 
+            centerX - this.width * 0.25, 
+            centerY, 
+            true
+        );
+        
+        // Back leg
+        this.renderDragonLeg(ctx,
+            centerX + this.width * 0.1,
+            centerY,
+            false
         );
     }
 
-    renderRocketTank(ctx, x, y, width, height, isLeftSide) {
-        // Create cylindrical 3D effect for rocket tanks
-        ctx.save();
-        
-        // Base color gradient for the cylinder (vertical gradient)
-        const mainGradient = ctx.createLinearGradient(
+    renderDragonLeg(ctx, x, y, isFront) {
+        const legGradient = ctx.createLinearGradient(
             x, y,
-            x, y + height
+            x, y + this.height * 0.4
         );
-        mainGradient.addColorStop(0, '#FFD700'); // Gold highlight at top
-        mainGradient.addColorStop(0.3, '#FFA000'); // Orange middle
-        mainGradient.addColorStop(0.7, '#FF8000'); // Darker orange
-        mainGradient.addColorStop(1, '#CC4400'); // Dark shadow at bottom
+        legGradient.addColorStop(0, '#228B22');
+        legGradient.addColorStop(1, '#006400');
         
-        // Draw main cylinder body
-        ctx.fillStyle = mainGradient;
+        ctx.fillStyle = legGradient;
         
-        // Left side has light on left, right side has light on right (for 3D effect)
-        const highlightX = isLeftSide ? x : x + width * 0.7;
-        const baseX = isLeftSide ? x + width * 0.7 : x;
-        const controlX = isLeftSide ? x + width * 0.3 : x + width * 0.7;
-        
-        // Draw a rounded rectangle for cylinder
+        // Upper leg
         ctx.beginPath();
-        
-        // Top rounded cap
-        ctx.arc(
-            x + width / 2,
-            y + width / 2,
-            width / 2,
-            Math.PI, 0, false
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(
+            x - this.width * 0.1,
+            y + this.height * 0.2,
+            x + this.width * 0.05,
+            y + this.height * 0.25
         );
         
-        // Right side
-        ctx.lineTo(x + width, y + height - width / 2);
-        
-        // Bottom rounded cap
-        ctx.arc(
-            x + width / 2,
-            y + height - width / 2,
-            width / 2,
-            0, Math.PI, false
+        // Lower leg with digitigrade joint
+        ctx.quadraticCurveTo(
+            x + this.width * 0.1,
+            y + this.height * 0.35,
+            x,
+            y + this.height * 0.4
         );
         
-        // Left side
-        ctx.lineTo(x, y + width / 2);
+        // Foot
+        ctx.lineTo(x - this.width * 0.1, y + this.height * 0.4);
+        ctx.quadraticCurveTo(
+            x - this.width * 0.05,
+            y + this.height * 0.3,
+            x,
+            y
+        );
         
-        ctx.closePath();
         ctx.fill();
-        
-        // Add side highlight for 3D cylindrical effect
-        const sideHighlightGradient = ctx.createLinearGradient(
-            baseX, y,
-            highlightX, y
-        );
-        sideHighlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
-        sideHighlightGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0.3)');
-        sideHighlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        
-        ctx.fillStyle = sideHighlightGradient;
-        ctx.beginPath();
-        
-        // Draw highlight that follows same shape but with transparency
-        // Top rounded cap
-        ctx.arc(
-            x + width / 2,
-            y + width / 2,
-            width / 2,
-            Math.PI, 0, false
-        );
-        
-        // Right side
-        ctx.lineTo(x + width, y + height - width / 2);
-        
-        // Bottom rounded cap
-        ctx.arc(
-            x + width / 2,
-            y + height - width / 2,
-            width / 2,
-            0, Math.PI, false
-        );
-        
-        // Left side
-        ctx.lineTo(x, y + width / 2);
-        
-        ctx.closePath();
-        ctx.fill();
-        
-        // Add rocket engine nozzle at bottom
-        this.renderRocketNozzle(ctx, x, y, width, height);
-        
-        // Add technical details - tubing and connectors
-        this.renderTechnicalDetails(ctx, x, y, width, height, isLeftSide);
-        
-        ctx.restore();
-    }
 
-    renderRocketNozzle(ctx, x, y, width, height) {
-        // Draw nozzle at the bottom of the tank
-        const nozzleWidth = width * 0.6;
-        const nozzleHeight = width * 0.3;
-        
-        // Nozzle base (darker color)
-        ctx.fillStyle = '#333333';
-        ctx.beginPath();
-        ctx.moveTo(x + (width - nozzleWidth) / 2, y + height - width / 4);
-        ctx.lineTo(x + (width + nozzleWidth) / 2, y + height - width / 4);
-        ctx.lineTo(x + (width + nozzleWidth) / 2 + nozzleWidth * 0.1, y + height);
-        ctx.lineTo(x + (width - nozzleWidth) / 2 - nozzleWidth * 0.1, y + height);
-        ctx.closePath();
-        ctx.fill();
-        
-        // Nozzle interior (gradient for depth)
-        const nozzleGradient = ctx.createLinearGradient(
-            x + width / 2, y + height - width / 4,
-            x + width / 2, y + height
-        );
-        nozzleGradient.addColorStop(0, '#666');
-        nozzleGradient.addColorStop(0.7, '#222');
-        nozzleGradient.addColorStop(1, '#000');
-        
-        ctx.fillStyle = nozzleGradient;
-        ctx.beginPath();
-        ctx.moveTo(x + (width - nozzleWidth * 0.8) / 2, y + height - width / 4);
-        ctx.lineTo(x + (width + nozzleWidth * 0.8) / 2, y + height - width / 4);
-        ctx.lineTo(x + (width + nozzleWidth * 0.6) / 2, y + height - width / 10);
-        ctx.lineTo(x + (width - nozzleWidth * 0.6) / 2, y + height - width / 10);
-        ctx.closePath();
-        ctx.fill();
-    }
-
-    renderTechnicalDetails(ctx, x, y, width, height, isLeftSide) {
-        // Position of details depends on which side we're drawing
-        const detailX = isLeftSide ? x + width * 0.7 : x + width * 0.1;
-        
-        // Add fuel gauge with dynamic level based on fuel percentage
-        const fuelPercentage = this.fuel / GAME_CONSTANTS.PLAYER.MAX_FUEL;
-        const gaugeHeight = height * 0.6;
-        const gaugeWidth = width * 0.2;
-        const gaugeX = isLeftSide ? x + width * 0.7 : x + width * 0.1;
-        const gaugeY = y + height * 0.2;
-        
-        // Gauge background
-        ctx.fillStyle = '#333333';
-        ctx.fillRect(gaugeX, gaugeY, gaugeWidth, gaugeHeight);
-        
-        // Gauge level with color based on amount
-        let fuelColor;
-        if (fuelPercentage > 0.6) {
-            fuelColor = '#00FF00'; // Green for high fuel
-        } else if (fuelPercentage > 0.3) {
-            fuelColor = '#FFFF00'; // Yellow for medium fuel
-        } else {
-            fuelColor = '#FF0000'; // Red for low fuel
-        }
-        
-        // Draw fuel level from bottom up
-        const fuelHeight = gaugeHeight * fuelPercentage;
-        ctx.fillStyle = fuelColor;
-        ctx.fillRect(
-            gaugeX, 
-            gaugeY + gaugeHeight - fuelHeight, 
-            gaugeWidth, 
-            fuelHeight
-        );
-        
-        // Add gauge markings
-        ctx.strokeStyle = '#999999';
-        ctx.lineWidth = 1;
-        
-        // Draw tick marks
-        for (let i = 0; i <= 4; i++) {
-            const tickY = gaugeY + gaugeHeight * i / 4;
+        // Add claws
+        ctx.fillStyle = '#1B4B1B';
+        for (let i = 0; i < 3; i++) {
+            const clawX = x - this.width * 0.08 + (i * this.width * 0.04);
             ctx.beginPath();
-            ctx.moveTo(gaugeX, tickY);
-            ctx.lineTo(gaugeX + gaugeWidth, tickY);
-            ctx.stroke();
-        }
-        
-        // Add connection tubes
-        ctx.strokeStyle = '#666666';
-        ctx.lineWidth = 2;
-        
-        // Draw tube connecting jetpack to body
-        const tubeStartX = isLeftSide ? x + width : x;
-        const tubeStartY = y + height * 0.3;
-        const tubeEndX = isLeftSide ? x + width + width * 0.2 : x - width * 0.2;
-        const tubeEndY = tubeStartY;
-        
-        ctx.beginPath();
-        ctx.moveTo(tubeStartX, tubeStartY);
-        ctx.lineTo(tubeEndX, tubeEndY);
-        ctx.stroke();
-        
-        // Add bolts/rivets
-        ctx.fillStyle = '#999999';
-        const boltCount = 3;
-        for (let i = 0; i < boltCount; i++) {
-            const boltY = y + height * 0.2 + (height * 0.6 * i / (boltCount - 1));
-            const boltX = isLeftSide ? x + width - 2 : x + 2;
-            ctx.beginPath();
-            ctx.arc(boltX, boltY, 2, 0, Math.PI * 2);
+            ctx.moveTo(clawX, y + this.height * 0.4);
+            ctx.lineTo(clawX - this.width * 0.02, y + this.height * 0.43);
+            ctx.lineTo(clawX + this.width * 0.02, y + this.height * 0.43);
+            ctx.closePath();
             ctx.fill();
         }
     }
     
-    renderBody(ctx, x, y) {
-        // Create 3D body with shaded gradient
-        const bodyGradient = ctx.createLinearGradient(
-            x + this.width * 0.25, y + this.height * 0.1,
-            x + this.width * 0.75, y + this.height * 0.5
+    renderScales(ctx, centerX, centerY) {
+        ctx.fillStyle = '#228B22';  // Darker green for scales
+        const scaleRows = 3;
+        const scalesPerRow = 5;
+        const scaleSize = this.width * 0.1;
+        
+        for (let row = 0; row < scaleRows; row++) {
+            for (let i = 0; i < scalesPerRow; i++) {
+                const x = centerX - this.width * 0.3 + (i * scaleSize * 1.2);
+                const y = centerY - this.height * 0.1 + (row * scaleSize * 0.8);
+                
+                // Draw scale shape
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + scaleSize, y);
+                ctx.lineTo(x + scaleSize/2, y + scaleSize);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+    }
+
+    renderSpikes(ctx, centerX, centerY) {
+        ctx.fillStyle = '#1B8B1B';  // Slightly darker green for spikes
+        const spikeCount = 5;
+        
+        for (let i = 0; i < spikeCount; i++) {
+            const x = centerX - this.width * 0.2 + (i * this.width * 0.1);
+            const y = centerY - this.height * 0.3;
+            const height = this.height * 0.15;
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + this.width * 0.03, y - height);
+            ctx.lineTo(x + this.width * 0.06, y);
+            ctx.fill();
+        }
+    }
+    
+    renderWings(ctx, x, y, time) {
+        const centerX = x + this.width * 0.5;
+        const centerY = y + this.height * 0.35;
+        const wingSpan = this.width * 1.2;
+        const wingHeight = this.height * 0.6;
+        
+        // Wing flap animation
+        const flapOffset = Math.sin(this.wingAngle) * 0.5;
+        
+        ['left', 'right'].forEach(side => {
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            if (side === 'right') ctx.scale(-1, 1);
+            
+            // Draw main wing membrane
+            const wingGradient = ctx.createLinearGradient(0, -wingHeight/2, -wingSpan/2, wingHeight/2);
+            wingGradient.addColorStop(0, '#98FB98');
+            wingGradient.addColorStop(0.5, '#32CD32');
+            wingGradient.addColorStop(1, '#228B22');
+            
+            ctx.fillStyle = wingGradient;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            
+            // Create dragon wing shape with spikes
+            ctx.quadraticCurveTo(
+                -wingSpan * 0.3, -wingHeight * (0.5 + flapOffset),
+                -wingSpan * 0.5, -wingHeight * (0.3 + flapOffset)
+            );
+            // Add wing finger detail
+            for (let i = 0; i < 3; i++) {
+                const x = -wingSpan * (0.5 - i * 0.15);
+                const y = -wingHeight * (0.3 - i * 0.15);
+                ctx.lineTo(x, y * (1 + flapOffset));
+            }
+            ctx.quadraticCurveTo(
+                -wingSpan * 0.2, wingHeight * 0.2,
+                0, wingHeight * 0.1
+            );
+            ctx.fill();
+            
+            // Add wing bone structure
+            ctx.strokeStyle = '#1B8B1B';
+            ctx.lineWidth = 3;
+            // Draw wing bones here...
+            
+            ctx.restore();
+        });
+    }
+
+    renderArms(ctx, x, y) {
+        const time = performance.now() / 1000;
+        const armSwing = Math.sin(time * 2) * 0.1;
+        
+        // Use metallic white like legs
+        const armGradient = ctx.createLinearGradient(
+            x, y + this.height * 0.2,
+            x + this.width, y + this.height * 0.2
         );
-        bodyGradient.addColorStop(0, '#64B5F6'); // Light blue highlight
-        bodyGradient.addColorStop(0.5, '#2196F3'); // Medium blue
-        bodyGradient.addColorStop(1, '#0D47A1'); // Dark blue shadow
+        armGradient.addColorStop(0, '#FFFFFF');
+        armGradient.addColorStop(0.4, '#E0E0E0');
+        armGradient.addColorStop(0.6, '#F5F5F5');
+        armGradient.addColorStop(1, '#FFFFFF');
         
-        ctx.fillStyle = bodyGradient;
+        ctx.fillStyle = armGradient;
+        ctx.strokeStyle = '#CCCCCC';
+        ctx.lineWidth = 2;
+
+        // Extended arms that go more to the sides
+        // Left arm
+        ctx.save();
+        ctx.translate(x + this.width * 0.1, y + this.height * 0.2);
+        ctx.rotate(-0.2 + armSwing);
+        this.renderArm(ctx, true);
+        ctx.restore();
+
+        // Right arm
+        ctx.save();
+        ctx.translate(x + this.width * 0.9, y + this.height * 0.2);
+        ctx.rotate(0.2 - armSwing);
+        this.renderArm(ctx, false);
+        ctx.restore();
+    }
+
+    renderArm(ctx, isLeft) {
+        // Thinner but longer arms
+        const armWidth = this.width * 0.08;
+        const armLength = this.height * 0.4;
+        
+        // Draw simple rectangular arm with rounded ends
         ctx.beginPath();
-        ctx.moveTo(x + this.width * 0.33, y + this.height * 0.5); // Bottom left
-        ctx.lineTo(x + this.width * 0.25, y + this.height * 0.1); // Top left
-        ctx.lineTo(x + this.width * 0.75, y + this.height * 0.1); // Top right
-        ctx.lineTo(x + this.width * 0.67, y + this.height * 0.5); // Bottom right
-        ctx.closePath();
+        if (isLeft) {
+            ctx.roundRect(-armWidth, 0, armWidth, armLength, 4);
+        } else {
+            ctx.roundRect(0, 0, armWidth, armLength, 4);
+        }
         ctx.fill();
-        
-        // Add body highlights for 3D effect
-        ctx.strokeStyle = '#90CAF9';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x + this.width * 0.25, y + this.height * 0.1);
-        ctx.lineTo(x + this.width * 0.33, y + this.height * 0.5);
         ctx.stroke();
+    }
+
+    renderMetallicJoint(ctx, x, y, size) {
+        const jointRadius = this.width * size;
+        const jointGradient = ctx.createRadialGradient(
+            x, y, 0,
+            x, y, jointRadius
+        );
+        jointGradient.addColorStop(0, '#FFFFFF');
+        jointGradient.addColorStop(0.5, '#E0E0E0');
+        jointGradient.addColorStop(1, '#CCCCCC');
         
-        // Render legs with 3D gradient
-        this.renderLegs(ctx, x, y);
+        ctx.fillStyle = jointGradient;
+        ctx.beginPath();
+        ctx.arc(x, y, jointRadius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
     }
     
     renderLegs(ctx, x, y) {
-        // Left leg with gradient for 3D effect
-        const leftLegGradient = ctx.createLinearGradient(
+        // Create metallic white gradient for legs
+        const legGradient = ctx.createLinearGradient(
             x + this.width * 0.3, y + this.height * 0.5,
-            x + this.width * 0.45, y + this.height * 0.5
+            x + this.width * 0.7, y + this.height * 0.5
         );
-        leftLegGradient.addColorStop(0, '#1565C0'); // Light blue
-        leftLegGradient.addColorStop(1, '#0D47A1'); // Dark blue
+        legGradient.addColorStop(0, '#FFFFFF'); // Pure white
+        legGradient.addColorStop(0.4, '#E0E0E0'); // Light metallic
+        legGradient.addColorStop(0.6, '#F5F5F5'); // Slightly lighter
+        legGradient.addColorStop(1, '#FFFFFF'); // Back to white
         
-        ctx.fillStyle = leftLegGradient;
+        ctx.fillStyle = legGradient;
+        
+        // Left leg with metallic sheen
         ctx.fillRect(
             x + this.width * 0.3,
             y + this.height * 0.5,
@@ -487,15 +461,7 @@ class Player {
             this.height * 0.5
         );
         
-        // Right leg with gradient for 3D effect
-        const rightLegGradient = ctx.createLinearGradient(
-            x + this.width * 0.55, y + this.height * 0.5,
-            x + this.width * 0.7, y + this.height * 0.5
-        );
-        rightLegGradient.addColorStop(0, '#0D47A1'); // Dark blue
-        rightLegGradient.addColorStop(1, '#1565C0'); // Light blue
-        
-        ctx.fillStyle = rightLegGradient;
+        // Right leg with metallic sheen
         ctx.fillRect(
             x + this.width * 0.55,
             y + this.height * 0.5,
@@ -503,65 +469,189 @@ class Player {
             this.height * 0.5
         );
         
-        // Add knee pads for detail
-        this.renderKneePads(ctx, x, y);
-    }
-    
-    renderKneePads(ctx, x, y) {
-        // Left knee pad
-        ctx.fillStyle = '#555555';
-        ctx.beginPath();
-        ctx.ellipse(
-            x + this.width * 0.375, 
-            y + this.height * 0.65, 
-            this.width * 0.075, 
-            this.height * 0.05, 
-            0, 0, Math.PI * 2
+        // Add metallic highlights to legs
+        const highlightGradient = ctx.createLinearGradient(
+            x + this.width * 0.3, y + this.height * 0.5,
+            x + this.width * 0.45, y + this.height
         );
-        ctx.fill();
+        highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+        highlightGradient.addColorStop(0.5, 'rgba(220, 220, 220, 0.3)');
+        highlightGradient.addColorStop(1, 'rgba(200, 200, 200, 0.4)');
         
-        // Right knee pad
-        ctx.beginPath();
-        ctx.ellipse(
-            x + this.width * 0.625, 
-            y + this.height * 0.65, 
-            this.width * 0.075, 
-            this.height * 0.05, 
-            0, 0, Math.PI * 2
-        );
-        ctx.fill();
-    }
-    
-    renderHead(ctx, x, y, time) {
-        // 3D head with shaded gradient
-        const headGradient = ctx.createRadialGradient(
-            x + this.width * 0.5, y + this.height * 0.1, 0,
-            x + this.width * 0.5, y + this.height * 0.1, this.width * 0.25
-        );
-        headGradient.addColorStop(0, '#FFD0A1'); // Center highlight
-        headGradient.addColorStop(0.7, '#FFB74D'); // Medium tone
-        headGradient.addColorStop(1, '#FF9800'); // Edge shadow
+        ctx.fillStyle = highlightGradient;
         
-        ctx.fillStyle = headGradient;
+        // Apply highlights to both legs
+        ctx.fillRect(
+            x + this.width * 0.3,
+            y + this.height * 0.5,
+            this.width * 0.15,
+            this.height * 0.5
+        );
+        
+        ctx.fillRect(
+            x + this.width * 0.55,
+            y + this.height * 0.5,
+            this.width * 0.15,
+            this.height * 0.5
+        );
+        
+        // Add knee joints (metallic circles)
+        this.renderKneeJoints(ctx, x, y);
+    }
+
+    renderKneeJoints(ctx, x, y) {
+        ctx.fillStyle = '#D3D3D3';
+        
+        // Left knee joint
         ctx.beginPath();
         ctx.arc(
-            x + this.width * 0.5,
-            y + this.height * 0.1,
-            this.width * 0.25,
+            x + this.width * 0.375,
+            y + this.height * 0.65,
+            this.width * 0.06,
             0, Math.PI * 2
         );
         ctx.fill();
         
-        // Add high-tech goggles with animated glow
-        this.renderGoggles(ctx, x, y, time);
+        // Right knee joint
+        ctx.beginPath();
+        ctx.arc(
+            x + this.width * 0.625,
+            y + this.height * 0.65,
+            this.width * 0.06,
+            0, Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Add metallic shine to joints
+        const jointShine = ctx.createRadialGradient(
+            x + this.width * 0.375, y + this.height * 0.65, 0,
+            x + this.width * 0.375, y + this.height * 0.65, this.width * 0.06
+        );
+        jointShine.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        jointShine.addColorStop(0.5, 'rgba(255, 255, 255, 0.2)');
+        jointShine.addColorStop(1, 'rgba(200, 200, 200, 0)');
+        
+        ctx.fillStyle = jointShine;
+        ctx.fill();
+    }
+    
+    renderHead(ctx, x, y, time) {
+        const centerX = x + this.width * 0.5;
+        const centerY = y + this.height * 0.15; // Moved up to ear level (was 0.3)
+
+        // Draw cute dragon head with repositioned elements
+        const headGradient = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, this.width * 0.3
+        );
+        headGradient.addColorStop(0, '#90EE90');
+        headGradient.addColorStop(0.7, '#32CD32');
+        headGradient.addColorStop(1, '#228B22');
+
+        ctx.fillStyle = headGradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, this.width * 0.25, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Adjust eye position to new head position
+        const eyeY = centerY - this.height * 0.02; // Adjusted relative to new head position
+        this.renderDragonEyes(ctx, centerX, eyeY, time);
+
+        // Adjust snout position
+        this.renderSnout(ctx, centerX, centerY + this.height * 0.05); // Adjusted for new head position
+
+        // Adjust horn position
+        this.renderHorns(ctx, centerX, centerY - this.height * 0.1); // Adjusted for new head position
+    }
+
+    renderDragonEyes(ctx, centerX, eyeY, time) {
+        // White background for eyes
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(centerX - this.width * 0.12, eyeY, this.width * 0.08, 0, Math.PI * 2);
+        ctx.arc(centerX + this.width * 0.12, eyeY, this.width * 0.08, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cute black pupils that follow movement direction
+        const pupilOffset = this.facingLeft ? -0.02 : 0.02;
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(centerX - this.width * (0.12 - pupilOffset), eyeY, this.width * 0.04, 0, Math.PI * 2);
+        ctx.arc(centerX + this.width * (0.12 + pupilOffset), eyeY, this.width * 0.04, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Add eye shine
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(centerX - this.width * 0.14, eyeY - this.height * 0.02, this.width * 0.02, 0, Math.PI * 2);
+        ctx.arc(centerX + this.width * 0.10, eyeY - this.height * 0.02, this.width * 0.02, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    renderSnout(ctx, centerX, centerY) {
+        // Cute rounded snout
+        const snoutGradient = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, this.width * 0.15
+        );
+        snoutGradient.addColorStop(0, '#98FB98');
+        snoutGradient.addColorStop(1, '#32CD32');
+
+        ctx.fillStyle = snoutGradient;
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, this.width * 0.15, this.height * 0.1, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Nostrils
+        ctx.fillStyle = '#228B22';
+        ctx.beginPath();
+        ctx.arc(centerX - this.width * 0.05, centerY, this.width * 0.02, 0, Math.PI * 2);
+        ctx.arc(centerX + this.width * 0.05, centerY, this.width * 0.02, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    renderHorns(ctx, centerX, centerY) {
+        const hornGradient = ctx.createLinearGradient(
+            centerX, centerY,
+            centerX, centerY - this.height * 0.1
+        );
+        hornGradient.addColorStop(0, '#FFE4B5');
+        hornGradient.addColorStop(1, '#DEB887');
+
+        ctx.fillStyle = hornGradient;
+        
+        // Left horn
+        ctx.beginPath();
+        ctx.moveTo(centerX - this.width * 0.15, centerY);
+        ctx.quadraticCurveTo(
+            centerX - this.width * 0.2,
+            centerY - this.height * 0.15,
+            centerX - this.width * 0.15,
+            centerY - this.height * 0.2
+        );
+        ctx.lineTo(centerX - this.width * 0.1, centerY);
+        ctx.fill();
+
+        // Right horn
+        ctx.beginPath();
+        ctx.moveTo(centerX + this.width * 0.15, centerY);
+        ctx.quadraticCurveTo(
+            centerX + this.width * 0.2,
+            centerY - this.height * 0.15,
+            centerX + this.width * 0.15,
+            centerY - this.height * 0.2
+        );
+        ctx.lineTo(centerX + this.width * 0.1, centerY);
+        ctx.fill();
     }
     
     renderGoggles(ctx, x, y, time) {
-        // Pulsing glow effect for goggles
         const glowIntensity = Math.sin(time * 2) * 0.1 + 0.9;
         
-        // Left eye glow
-        ctx.fillStyle = '#212121';
+        // Goggles base (dark tint)
+        ctx.fillStyle = '#1A0000';
+        
+        // Left goggle
         ctx.beginPath();
         ctx.ellipse(
             x + this.width * 0.4,
@@ -572,7 +662,7 @@ class Player {
         );
         ctx.fill();
         
-        // Right eye glow
+        // Right goggle
         ctx.beginPath();
         ctx.ellipse(
             x + this.width * 0.6,
@@ -583,11 +673,12 @@ class Player {
         );
         ctx.fill();
         
-        // Goggle frames
-        ctx.strokeStyle = `rgba(150, 255, 255, ${glowIntensity})`;
+        // Add red glow effect to goggles
+        const glowColor = `rgba(255, 0, 0, ${glowIntensity * 0.3})`;
+        ctx.strokeStyle = glowColor;
         ctx.lineWidth = 2;
         
-        // Left goggle frame
+        // Left goggle glow
         ctx.beginPath();
         ctx.ellipse(
             x + this.width * 0.4,
@@ -598,7 +689,7 @@ class Player {
         );
         ctx.stroke();
         
-        // Right goggle frame
+        // Right goggle glow
         ctx.beginPath();
         ctx.ellipse(
             x + this.width * 0.6,
@@ -609,117 +700,56 @@ class Player {
         );
         ctx.stroke();
         
-        // Add lens reflections
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        // Add subtle reflection highlights
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
         ctx.beginPath();
         ctx.ellipse(
-            x + this.width * 0.38, 
+            x + this.width * 0.38,
             y + this.height * 0.08,
-            this.width * 0.03, 
+            this.width * 0.03,
             this.width * 0.02,
-            0, 0, Math.PI * 2
+            -Math.PI / 4,
+            0, Math.PI * 2
         );
         ctx.fill();
         
         ctx.beginPath();
         ctx.ellipse(
-            x + this.width * 0.58, 
+            x + this.width * 0.58,
             y + this.height * 0.08,
-            this.width * 0.03, 
+            this.width * 0.03,
             this.width * 0.02,
-            0, 0, Math.PI * 2
+            -Math.PI / 4,
+            0, Math.PI * 2
         );
         ctx.fill();
     }
     
-    renderFlames(ctx, x, y, time) {
-        // Left flame
-        this.renderFlame(ctx, 
-            x + this.width * 0.25, // Left jetpack center
-            y + this.height * 0.52, // Bottom of jetpack
-            this.width * 0.15,
-            this.height * 0.25,
-            time
-        );
+    renderMagicSparkles(ctx, x, y, time) {
+        const centerX = x + this.width * 0.5;
+        const centerY = y + this.height * 0.7;
+        const sparkleCount = 8;
         
-        // Right flame (with offset timing)
-        this.renderFlame(ctx,
-            x + this.width * 0.75, // Right jetpack center
-            y + this.height * 0.52, // Bottom of jetpack
-            this.width * 0.15,
-            this.height * 0.25,
-            time + 0.5 // Offset for animation variety
-        );
-    }
-    
-    renderFlame(ctx, x, y, width, height, time) {
-        ctx.save();
-        
-        // Dynamic flame parameters
-        const flameHeight = height * (0.8 + Math.sin(time * 10) * 0.2);
-        const flickerX = Math.sin(time * 15) * width * 0.15;
-        
-        // Flame gradient
-        const gradient = ctx.createLinearGradient(x, y, x, y + flameHeight);
-        gradient.addColorStop(0, '#FFFFFF');   // White hot core
-        gradient.addColorStop(0.2, '#FFFF00');  // Yellow
-        gradient.addColorStop(0.5, '#FF9500');  // Orange
-        gradient.addColorStop(0.8, '#FF5500');  // Red-orange
-        gradient.addColorStop(1, '#FF2200');    // Red edge
-        
-        ctx.fillStyle = gradient;
-        
-        // Draw flame shape
-        ctx.beginPath();
-        ctx.moveTo(x - width/2, y); // Left edge start
-        ctx.quadraticCurveTo(
-            x + flickerX, y + flameHeight * 0.7, // Control point with flicker
-            x - width/3 + flickerX/2, y + flameHeight // End point with flicker
-        );
-        ctx.quadraticCurveTo(
-            x + width/4, y + flameHeight * 0.9, // Control point for right curve
-            x + width/2, y // Right edge end
-        );
-        ctx.fill();
-        
-        // Add inner glow
-        const innerGradient = ctx.createLinearGradient(x, y, x, y + flameHeight * 0.7);
-        innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-        innerGradient.addColorStop(0.5, 'rgba(255, 255, 150, 0.5)');
-        innerGradient.addColorStop(1, 'rgba(255, 255, 100, 0)');
-        
-        ctx.fillStyle = innerGradient;
-        ctx.beginPath();
-        ctx.moveTo(x - width/4, y);
-        ctx.quadraticCurveTo(
-            x + flickerX/2, y + flameHeight * 0.5,
-            x, y + flameHeight * 0.7
-        );
-        ctx.quadraticCurveTo(
-            x + width/8, y + flameHeight * 0.5,
-            x + width/4, y
-        );
-        ctx.fill();
-        
-        // Add spark particles
-        const sparkCount = 3;
-        for (let i = 0; i < sparkCount; i++) {
-            const sparkTime = (time * 8 + i * 2.1) % 5;
-            const sparkProgress = sparkTime / 5;
+        for (let i = 0; i < sparkleCount; i++) {
+            const angle = (i / sparkleCount) * Math.PI * 2 + time * 3;
+            const radius = 20 + Math.sin(time * 5 + i) * 10;
+            const sparkleX = centerX + Math.cos(angle) * radius;
+            const sparkleY = centerY + Math.sin(angle) * radius;
             
-            if (sparkProgress < 1) {
-                const sparkX = x + (Math.random() - 0.5) * width * 0.8;
-                const sparkY = y + sparkProgress * flameHeight;
-                const sparkSize = (1 - sparkProgress) * 3;
-                
-                ctx.fillStyle = `rgba(255, 255, 255, ${1 - sparkProgress})`;
-                ctx.beginPath();
-                ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            // Draw sparkle
+            const gradient = ctx.createRadialGradient(
+                sparkleX, sparkleY, 0,
+                sparkleX, sparkleY, 5
+            );
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(150, 255, 150, 0.5)');
+            gradient.addColorStop(1, 'rgba(50, 200, 50, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(sparkleX, sparkleY, 5, 0, Math.PI * 2);
+            ctx.fill();
         }
-        
-        ctx.restore();
     }
 }
 

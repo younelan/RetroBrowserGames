@@ -245,13 +245,47 @@ class CollisionManager {
     }
 
     checkLightSwitchCollisions(player) {
+        // Get all tiles the player is overlapping with
         const tiles = this.getEntityTiles(player);
+        
+        // Check each tile to see if it's a light switch
         for (const {x, y} of tiles) {
             if (this.level.isLightSwitch(x, y)) {
-                return {x, y};
+                return {x, y}; // Return the position of the first light switch found
             }
         }
-        return null;
+        
+        // Also check tiles immediately in front of the player
+        // This helps with better interaction when standing next to a switch
+        const facingTiles = this.getFacingTiles(player);
+        for (const {x, y} of facingTiles) {
+            if (this.level.isLightSwitch(x, y)) {
+                return {x, y}; // Return the position of the first light switch found
+            }
+        }
+        
+        return null; // No light switch found
+    }
+    
+    // Helper method to get tiles immediately in front of the player
+    getFacingTiles(player) {
+        const tiles = [];
+        const playerCenterX = Math.floor((player.x + player.width / 2) / this.tileSize);
+        const playerTopY = Math.floor(player.y / this.tileSize);
+        const playerBottomY = Math.floor((player.y + player.height) / this.tileSize);
+        
+        // Determine which direction the player is facing
+        const facingOffset = player.facingLeft ? -1 : 1;
+        
+        // Add tiles in front of the player at different heights
+        for (let y = playerTopY; y <= playerBottomY; y++) {
+            tiles.push({
+                x: playerCenterX + facingOffset,
+                y: y
+            });
+        }
+        
+        return tiles;
     }
 
     checkLevelExitCollision(player) {
