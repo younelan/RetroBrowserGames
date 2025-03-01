@@ -572,7 +572,15 @@ loadScripts().then(() => {
                 return;
             }
             
+            // Create new level instance
             this.level = new Level(LEVELS[levelNumber]);
+            
+            // Set canvas size based on viewport if needed
+            if (this.canvas.width !== this.level.viewport * GAME_CONSTANTS.TILE_SIZE) {
+                this.canvas.width = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
+                this.canvas.height = this.level.viewport * GAME_CONSTANTS.TILE_SIZE;
+            }
+            
             const startPos = this.level.findPlayerStart();
             
             // Reset player position
@@ -588,6 +596,18 @@ loadScripts().then(() => {
             this.sparkles = [];
             this.lasers = [];
             this.lightsOn = this.level.initialLightsOn; // Set initial light state
+            
+            // Reinitialize entities for the new level
+            this.initializeEntities();
+            
+            // Create a new collision manager for the new level
+            this.collisionManager = new CollisionManager(this.level);
+            
+            // Reset camera
+            this.camera = {
+                x: 0,
+                y: 0
+            };
         }
 
         gameWon() {
