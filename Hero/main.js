@@ -235,30 +235,29 @@ loadScripts().then(() => {
                 }
             }
             
-            // Use a more careful collision approach with smaller steps
-            const steps = 4; // Increase steps for more precise collision detection
+            // Move player with proper collision detection
+            // Use smaller steps for precise collision detection
+            const steps = 5; // Increase steps for more precise collision detection
             const stepDeltaTime = deltaTime / steps;
             
             for (let i = 0; i < steps; i++) {
-                // Store original velocities
-                const originalVX = this.player.velocityX;
-                const originalVY = this.player.velocityY;
-                
                 // Move along X-axis first
-                if (originalVX !== 0) {
-                    this.player.x += originalVX * stepDeltaTime;
-                    // Check for collisions and resolve
+                const originalX = this.player.x;
+                if (this.player.velocityX !== 0) {
+                    this.player.x += this.player.velocityX * stepDeltaTime;
+                    // Check for collisions on X-axis movement
                     if (this.collisionManager.handleGridCollisions(this.player)) {
-                        // X-collision detected - velocity was reset by the collision manager
+                        // X-collision detected, position already corrected by collision handler
                     }
                 }
                 
                 // Then move along Y-axis
-                if (originalVY !== 0) {
-                    this.player.y += originalVY * stepDeltaTime;
-                    // Check for collisions and resolve
+                const originalY = this.player.y;
+                if (this.player.velocityY !== 0) {
+                    this.player.y += this.player.velocityY * stepDeltaTime;
+                    // Check for collisions on Y-axis movement
                     if (this.collisionManager.handleGridCollisions(this.player)) {
-                        // Y-collision detected - velocity was reset by the collision manager
+                        // Y-collision detected, position already corrected by collision handler
                     }
                 }
             }

@@ -147,136 +147,55 @@ class CollisionManager {
         player.x = Math.max(0, Math.min(player.x, levelWidth - player.width));
         player.y = Math.max(0, Math.min(player.y, levelHeight - player.height));
 
-        // Get surrounding tiles with a slightly expanded check area
-        const expandedTiles = this.getExpandedEntityTiles(player);
-        
-        // Before attempting collision resolution, store current position
-        const originalX = player.x;
-        const originalY = player.y;
+        // Get all tiles the player is overlapping with
+        const tiles = this.getEntityTiles(player);
         let collided = false;
 
-        // First pass: collect all wall collision tiles
-        const collisionTiles = expandedTiles.filter(({x, y}) => this.level.isWall(x, y)).map(({x, y}) => ({
-            x: x * this.tileSize,
-            y: y * this.tileSize,
-            width: this.tileSize,
-            height: this.tileSize
-        }));
-
-        if (collisionTiles.length === 0) {
-            return false; // No collisions
-        }
-
-        // Simplify collision handling - separate X and Y axis resolution
-        
-        // First, try to resolve X-axis collisions
-        let xResolved = false;
-        if (player.velocityX !== 0) {
-            for (const wall of collisionTiles) {
-                // Skip if we don't have an horizontal overlap
-                if (player.y >= wall.y + wall.height || player.y + player.height <= wall.y) {
-                    continue;
-                }
-                
-                // Going right and hit left side of wall
-                if (player.velocityX > 0 && player.x + player.width > wall.x && player.x < wall.x) {
-                    player.x = wall.x - player.width;
-                    player.velocityX = 0;
-                    xResolved = true;
-                    collided = true;
-                    break;
-                }
-                // Going left and hit right side of wall
-                else if (player.velocityX < 0 && player.x < wall.x + wall.width && player.x + player.width > wall.x + wall.width) {
-                    player.x = wall.x + wall.width;
-                    player.velocityX = 0;
-                    xResolved = true;
-                    collided = true;
-                    break;
-                }
-            }
-        }
-        
-        // Then, try to resolve Y-axis collisions
-        let yResolved = false;
-        if (player.velocityY !== 0) {
-            for (const wall of collisionTiles) {
-                // Skip if we don't have a vertical overlap
-                if (player.x >= wall.x + wall.width || player.x + player.width <= wall.x) {
-                    continue;
-                }
-                
-                // Going down and hit top side of wall
-                if (player.velocityY > 0 && player.y + player.height > wall.y && player.y < wall.y) {
-                    player.y = wall.y - player.height;
-                    player.velocityY = 0;
-                    yResolved = true;
-                    collided = true;
-                    break;
-                }
-                // Going up and hit bottom side of wall
-                else if (player.velocityY < 0 && player.y < wall.y + wall.height && player.y + player.height > wall.y + wall.height) {
-                    player.y = wall.y + wall.height;
-                    player.velocityY = 0;
-                    yResolved = true;
-                    collided = true;
-                    break;
-                }
-            }
-        }
-        
-        // After both resolutions, check if we're still colliding with any walls
-        // This could happen in corners or small spaces
-        if (collided) {
-            // Check if we still have collisions after resolution
-            const stillColliding = collisionTiles.some(wall => this.hasCollision(player, wall));
-            
-            if (stillColliding) {
-                // If we moved horizontally but not vertically, try just the vertical movement
-                if (xResolved && !yResolved) {
-                    player.x = originalX;
-                    
-                    // Try vertical resolution again
-                    for (const wall of collisionTiles) {
-                        if (this.hasCollision(player, wall)) {
-                            if (player.velocityY > 0) {
-                                player.y = wall.y - player.height;
-                            } else {
-                                player.y = wall.y + wall.height;
-                            }
-                            player.velocityY = 0;
-                            break;
-                        }
-                    }
-                }
-                // If we moved vertically but not horizontally, try just the horizontal movement
-                else if (yResolved && !xResolved) {
-                    player.y = originalY;
-                    
-                    // Try horizontal resolution again
-                    for (const wall of collisionTiles) {
-                        if (this.hasCollision(player, wall)) {
-                            if (player.velocityX > 0) {
-                                player.x = wall.x - player.width;
-                            } else {
-                                player.x = wall.x + wall.width;
-                            }
-                            player.velocityX = 0;
-                            break;
-                        }
-                    }
-                }
-                // If both were resolved or neither were resolved, just restore original position
-                else {
-                    player.x = originalX;
-                    player.y = originalY;
-                    player.velocityX = 0;
-                    player.velocityY = 0;
-                }
+        // Check each tile for collision
+        for (const {x, y} of tiles) {
+            if (this.level.isWall(x, y)) {
+                // A wall collision was detected
+                this.resolveWallCollision(player, {
+                    x: x * this.tileSize,
+                    y: y * this.tileSize,
+                    width: this.tileSize,
+                    height: this.tileSize
+                });
+                collided = true;
             }
         }
 
         return collided;
+    }
+
+    resolveWallCollision(player, wall) {
+        // Calculate overlap on each axis
+        const overlapLeft = player.x + player.width - wall.x;
+        const overlapRight = wall.x + wall.width - player.x;
+        const overlapTop = player.y + player.height - wall.y;
+        const overlapBottom = wall.y + wall.height - player.y;
+
+        // Find the smallest overlap to determine which direction to push the player
+        const minOverlap = Math.min(overlapLeft, overlapRight, overlapTop, overlapBottom);
+
+        // Resolve collision based on the smallest overlap
+        if (minOverlap === overlapLeft) {
+            // Collision from the right side of player
+            player.x = wall.x - player.width;
+            player.velocityX = Math.min(player.velocityX, 0); // Stop any rightward movement
+        } else if (minOverlap === overlapRight) {
+            // Collision from the left side of player
+            player.x = wall.x + wall.width;
+            player.velocityX = Math.max(player.velocityX, 0); // Stop any leftward movement
+        } else if (minOverlap === overlapTop) {
+            // Collision from the bottom of player
+            player.y = wall.y - player.height;
+            player.velocityY = Math.min(player.velocityY, 0); // Stop any downward movement
+        } else if (minOverlap === overlapBottom) {
+            // Collision from the top of player
+            player.y = wall.y + wall.height;
+            player.velocityY = Math.max(player.velocityY, 0); // Stop any upward movement
+        }
     }
 
     getExpandedEntityTiles(entity, margin = 1) {
