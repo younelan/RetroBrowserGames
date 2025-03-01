@@ -5,8 +5,10 @@ const scripts = [
     'game/levels.js',
     'game/controls.js',
     'game/collision/CollisionManager.js',
-    'game/entities/Player.js',
     'game/entities/Enemy.js',
+    'game/entities/Spider.js',    // Add Spider class
+    'game/entities/Snake.js',     // Add Snake class
+    'game/entities/Player.js',
     'game/entities/Collectible.js',
     'game/entities/Dynamite.js',
     'game/entities/Laser.js',
@@ -115,8 +117,10 @@ loadScripts().then(() => {
             for (let y = 0; y < this.level.map.length; y++) {
                 for (let x = 0; x < this.level.map[y].length; x++) {
                     const tile = this.level.map[y][x];
-                    if (tile === '&' || tile === '^') {
-                        this.enemies.push(new Enemy(x, y, tile));
+                    if (tile === '&') {
+                        this.enemies.push(new Snake(x, y));
+                    } else if (tile === '^') {
+                        this.enemies.push(new Spider(x, y));
                     }
                 }
             }
@@ -348,11 +352,19 @@ loadScripts().then(() => {
         }
 
         render(deltaTime) {
-            const time = performance.now() / 1000;  // Add this line
+            const time = performance.now() / 1000;
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             
-            // Pass time to level.render
+            // Render level first
             this.level.render(this.ctx, this.camera.x, this.camera.y, time);
+            
+            // Render all enemies
+            this.enemies.forEach(enemy => {
+                if (enemy.alive) {
+                    enemy.update(deltaTime);
+                    enemy.render(this.ctx, this.camera.x, this.camera.y);
+                }
+            });
             
             // Draw the player using the Player class's render method
             this.ctx.save();

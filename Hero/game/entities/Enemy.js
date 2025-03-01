@@ -6,6 +6,7 @@ class Enemy {
         this.height = GAME_CONSTANTS.TILE_SIZE;
         this.type = type;
         this.alive = true;
+        this.time = 0;
     }
     
     hit() {
@@ -13,7 +14,11 @@ class Enemy {
     }
     
     update(deltaTime) {
-        // Future enemy behavior updates
+        this.time += deltaTime;
+    }
+
+    render(ctx, cameraX, cameraY) {
+        // Each enemy type will implement their own render method
     }
 }
 
