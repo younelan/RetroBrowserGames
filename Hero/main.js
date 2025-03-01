@@ -11,7 +11,8 @@ const scripts = [
     'game/entities/Dynamite.js',
     'game/entities/Laser.js',
     'game/weapons/WeaponSystem.js',
-    'game/systems/CollectibleSystem.js'
+    'game/systems/CollectibleSystem.js',
+    'game/ui/EndScreens.js'  // Add the new EndScreens class
 ];
 
 // Load scripts sequentially
@@ -59,6 +60,9 @@ loadScripts().then(() => {
             this.drowningStartTime = 0;
             this.currentLampTile = null; // Track which lamp tile the player is currently on
             
+            // Create end screens manager
+            this.endScreens = new EndScreens();
+            
             // Replace player object with Player instance
             const startPos = this.level.findPlayerStart();
             this.player = new Player(startPos.x, startPos.y);
@@ -92,6 +96,14 @@ loadScripts().then(() => {
             // Start game loop
             this.lastTime = performance.now();
             requestAnimationFrame(this.gameLoop.bind(this));
+
+            // Add click listener for restart button
+            this.canvas.addEventListener('click', this.handleCanvasClick.bind(this));
+            this.canvas.addEventListener('touchend', (e) => {
+                // Prevent default to avoid unwanted scrolling or zooming
+                e.preventDefault();
+                this.handleCanvasClick(e);
+            }, { passive: false });
         }
         
         initializeEntities() {
@@ -114,6 +126,8 @@ loadScripts().then(() => {
             this.lives--;
             if (this.lives <= 0) {
                 this.gameOver = true;
+                this.endScreens.setGameOverTime(performance.now() / 1000);
+                this.endScreens.updateScore(this.score);
             } else {
                 // Reset player position to start
                 const startPos = this.level.findPlayerStart();
@@ -370,100 +384,6 @@ loadScripts().then(() => {
             }
             this.ctx.globalAlpha = 1;
             
-            // Draw laser beam (before darkness overlay so it's visible in dark)
-            if (this.laserActive) {
-                const direction = this.player.facingLeft ? -1 : 1;
-                // Position laser at eye level (from goggles)
-                const eyeY = this.player.y - this.camera.y + this.player.height * 0.1; // Match goggle position
-                const eyeX = this.player.x - this.camera.x + (this.player.facingLeft ? 
-                    this.player.width * 0.4 : this.player.width * 0.6); // Left or right eye
-                const fullLaserLength = GAME_CONSTANTS.TILE_SIZE * 3; // Shorter laser length
-                this.ctx.save();
-                // Make laser glow in dark
-                this.ctx.globalCompositeOperation = 'screen';
-                
-                // Main beam
-                this.ctx.strokeStyle = '#FF0000';
-                this.ctx.lineWidth = 2;
-                
-                // Animated beam pattern
-                for (let i = 0; i < 3; i++) {
-                    const offset = Math.sin(this.laserPhase + i * Math.PI / 2) * 2;
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(eyeX, eyeY + offset);
-                    this.ctx.lineTo(eyeX + fullLaserLength * direction, eyeY + offset);
-                    this.ctx.stroke();
-                }
-                
-                // Add glow effect
-                const gradient = this.ctx.createLinearGradient(
-                    eyeX, eyeY,
-                    eyeX + fullLaserLength * direction, eyeY
-                );
-                gradient.addColorStop(0, 'rgba(255, 0, 0, 0.5)');
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                
-                this.ctx.strokeStyle = gradient;
-                this.ctx.lineWidth = 6;
-                this.ctx.beginPath();
-                this.ctx.moveTo(eyeX, eyeY);
-                this.ctx.lineTo(eyeX + fullLaserLength * direction, eyeY);
-                this.ctx.stroke();
-                
-                this.ctx.restore();
-            }
-            
-            // Render explosions - place this before the darkness overlay
-            for (let i = 0; i < this.explosions.length; i++) {
-                const explosion = this.explosions[i];
-                const progress = explosion.timeLeft / explosion.duration;
-                const screenX = explosion.x - this.camera.x;
-                const screenY = explosion.y - this.camera.y;
-                
-                // Only render if timeLeft > 0
-                if (progress > 0) {
-                    // Draw explosion with dynamic opacity based on remaining time
-                    const gradient = this.ctx.createRadialGradient(
-                        screenX, screenY, 0, 
-                        screenX, screenY, explosion.radius * progress
-                    );
-                    gradient.addColorStop(0, `rgba(255, 255, 200, ${progress})`);
-                    gradient.addColorStop(0.2, `rgba(255, 200, 0, ${progress * 0.8})`);
-                    gradient.addColorStop(0.4, `rgba(255, 100, 0, ${progress * 0.6})`);
-                    gradient.addColorStop(0.8, `rgba(255, 50, 0, ${progress * 0.4})`);
-                    gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                    
-                    this.ctx.fillStyle = gradient;
-                    this.ctx.beginPath();
-                    this.ctx.arc(screenX, screenY, explosion.radius * progress, 0, Math.PI * 2);
-                    this.ctx.fill();
-                }
-            }
-            
-            // Create darkness overlay if lights are out
-            if (!this.lightsOn) { // Changed from this.lightsOn to !this.lightsOn
-                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-                
-                // Draw visible circle around player
-                const gradient = this.ctx.createRadialGradient(
-                    this.player.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/2,
-                    this.player.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/2,
-                    0,
-                    this.player.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE/2,
-                    this.player.y - this.camera.y + GAME_CONSTANTS.TILE_SIZE/2,
-                    GAME_CONSTANTS.TILE_SIZE * 2
-                );
-                gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-                gradient.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
-                this.ctx.fillStyle = gradient;
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-            }
-            
-            // Always visible elements (even in darkness)
-            this.ctx.save();
-            this.ctx.globalCompositeOperation = 'screen';
-            
             // Draw lava with glow
             for (let y = 0; y < this.level.map.length; y++) {
                 for (let x = 0; x < this.level.map[y].length; x++) {
@@ -485,14 +405,6 @@ loadScripts().then(() => {
                         this.ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
                     }
                 }
-            }
-            
-            // Draw player in dark
-            if (!this.lightsOn) {
-                this.ctx.save();
-                this.ctx.globalAlpha = 0.5;
-                this.drawPlayer();
-                this.ctx.restore();
             }
             
             // Draw laser beam
@@ -561,19 +473,17 @@ loadScripts().then(() => {
             if (!this.lightsOn) {
                 for (const explosion of this.explosions) {
                     const progress = explosion.timeLeft / explosion.duration;
+                    const screenX = explosion.x - this.camera.x;
+                    const screenY = explosion.y - this.camera.y;
                     
                     // Only render if timeLeft > 0
                     if (progress > 0) {
-                        const screenX = explosion.x - this.camera.x;
-                        const screenY = explosion.y - this.camera.y;
-                        
                         const explosionGradient = this.ctx.createRadialGradient(
                             screenX, screenY, 0,
                             screenX, screenY, explosion.radius * 1.5 * progress
                         );
                         explosionGradient.addColorStop(0, `rgba(255, 200, 0, ${progress * 0.8})`);
                         explosionGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
-                        
                         this.ctx.fillStyle = explosionGradient;
                         this.ctx.beginPath();
                         this.ctx.arc(screenX, screenY, explosion.radius * 1.5 * progress, 0, Math.PI * 2);
@@ -584,12 +494,9 @@ loadScripts().then(() => {
             
             // Draw game over screen if needed
             if (this.gameOver) {
-                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-                this.ctx.fillStyle = 'white';
-                this.ctx.font = '48px Arial';
-                this.ctx.textAlign = 'center';
-                this.ctx.fillText('Game Over', this.canvas.width / 2, this.canvas.height / 2);
+                this.endScreens.renderGameOverScreen(this.ctx, this.canvas.width, this.canvas.height);
+            } else if (this.gameWon) {
+                this.endScreens.renderWinScreen(this.ctx, this.canvas.width, this.canvas.height);
             }
             
             // Draw virtual joystick for touch controls
@@ -686,6 +593,7 @@ loadScripts().then(() => {
             
             this.update(deltaTime);
             this.render();
+            
             requestAnimationFrame(this.gameLoop.bind(this));
         }
 
@@ -695,6 +603,8 @@ loadScripts().then(() => {
             // Check if we've completed all levels
             if (levelNumber >= LEVELS.length) {
                 this.gameWon = true;
+                this.endScreens.setWinTime(performance.now() / 1000);
+                this.endScreens.updateScore(this.score);
                 return;
             }
             
@@ -768,12 +678,11 @@ loadScripts().then(() => {
             }
             
             this.explosions.push(explosion);
-
+            
             // Damage walls in explosion radius
             const tileX = Math.floor(x / GAME_CONSTANTS.TILE_SIZE);
             const tileY = Math.floor(y / GAME_CONSTANTS.TILE_SIZE);
             const radius = 3;
-
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
                     if (dx * dx + dy * dy <= radius * radius) {
@@ -831,7 +740,52 @@ loadScripts().then(() => {
             this.camera.y = Math.max(0, Math.min(targetY, 
                 this.level.map.length * GAME_CONSTANTS.TILE_SIZE - this.canvas.height));
         }
-    }
+
+        handleCanvasClick(event) {
+            // Get restart button area from end screens
+            const restartButton = this.endScreens.getRestartButton();
+            if (!restartButton) return;
+            
+            // Get click coordinates
+            let x, y;
+            if (event.type === 'touchend') {
+                const rect = event.target.getBoundingClientRect();
+                const touch = event.changedTouches[0];
+                x = touch.clientX - rect.left;
+                y = touch.clientY - rect.top;
+            } else {
+                const rect = this.canvas.getBoundingClientRect();
+                x = event.clientX - rect.left;
+                y = event.clientY - rect.top;
+            }
+            
+            // Check if click is within button bounds
+            if (x >= restartButton.x && 
+                x <= restartButton.x + restartButton.width &&
+                y >= restartButton.y && 
+                y <= restartButton.y + restartButton.height) {
+                // Reset the game
+                this.restartGame();
+            }
+        }
+
+        restartGame() {
+            // Reset game state
+            this.currentLevel = 0;
+            this.score = 0;
+            this.fuel = GAME_CONSTANTS.PLAYER.MAX_FUEL;
+            this.lives = GAME_CONSTANTS.PLAYER.STARTING_LIVES;
+            this.gameOver = false;
+            this.gameWon = false;
+            this.dynamites = [];
+            this.explosions = [];
+            this.sparkles = [];
+
+            // Load the first level
+            this.loadLevel(0);
+        };
+    };
+    
     // Start the game
     new Game();
 }).catch(error => {

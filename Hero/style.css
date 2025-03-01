@@ -85,3 +85,49 @@ body, html {
         height: 100vmin;
     }
 }
+
+/* Animation for game over and victory screens */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+@keyframes glow {
+    0% { text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+    50% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 165, 0, 0.6); }
+    100% { text-shadow: 0 0 5px rgba(255, 215, 0, 0.5); }
+}
+
+.restart-btn {
+    background: linear-gradient(to bottom, #B8860B, #FFD700, #B8860B);
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    transition: all 0.3s;
+    animation: pulse 1.5s infinite;
+}
+
+.restart-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 1);
+}
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+    .restart-btn {
+        padding: 12px 24px;
+        font-size: 18px;
+    }
+}

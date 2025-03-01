@@ -40,9 +40,11 @@ B     +      !         +     B
 B            !               B
 B     +      !         +     B
 BRRRRRRR     !      RRRRRRRRRB
+B            G               B
 B                            B
 B     +      G         +     B
 BBBBBBBBB    G     BBBBBBBBBBB
+B            G               B
 B            G               B
 B     +      G         +     B
 BRRRRRRR            RRRRRRRRRB

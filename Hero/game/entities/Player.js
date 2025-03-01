@@ -38,6 +38,129 @@ class Player {
             this.renderFlames(ctx, screenX, screenY, time);
         }
     }
+
+    renderInDarkness(ctx, camera) {
+        const screenX = this.x - camera.x;
+        const screenY = this.y - camera.y;
+        const time = performance.now() / 1000;
+        
+        ctx.save();
+        
+        // Special effects for darkness - use a glowing outline
+        ctx.globalAlpha = 0.7;
+        ctx.globalCompositeOperation = 'screen'; // Makes the player glow in the dark
+        
+        // Render a simplified glowing player silhouette
+        this.renderGlowingSilhouette(ctx, screenX, screenY);
+        
+        // Add helmet light effect
+        this.renderHelmetLight(ctx, screenX, screenY, time);
+        
+        ctx.restore();
+    }
+
+    renderGlowingSilhouette(ctx, x, y) {
+        // Body silhouette with glow
+        const gradient = ctx.createLinearGradient(
+            x, y,
+            x + this.width, y + this.height
+        );
+        gradient.addColorStop(0, 'rgba(150, 200, 255, 0.6)');
+        gradient.addColorStop(1, 'rgba(100, 150, 255, 0.4)');
+        
+        ctx.fillStyle = gradient;
+        
+        // Draw a simplified player shape
+        ctx.beginPath();
+        // Head
+        ctx.arc(
+            x + this.width * 0.5,
+            y + this.height * 0.1,
+            this.width * 0.25,
+            0, Math.PI * 2
+        );
+        
+        // Body
+        ctx.moveTo(x + this.width * 0.33, y + this.height * 0.5);
+        ctx.lineTo(x + this.width * 0.25, y + this.height * 0.1);
+        ctx.lineTo(x + this.width * 0.75, y + this.height * 0.1);
+        ctx.lineTo(x + this.width * 0.67, y + this.height * 0.5);
+        
+        // Legs
+        ctx.fillRect(
+            x + this.width * 0.3,
+            y + this.height * 0.5,
+            this.width * 0.15,
+            this.height * 0.5
+        );
+        
+        ctx.fillRect(
+            x + this.width * 0.55,
+            y + this.height * 0.5,
+            this.width * 0.15,
+            this.height * 0.5
+        );
+        
+        ctx.fill();
+        
+        // Goggles glow
+        ctx.fillStyle = 'rgba(150, 255, 255, 0.8)';
+        ctx.beginPath();
+        ctx.ellipse(
+            x + this.width * 0.4,
+            y + this.height * 0.1,
+            this.width * 0.1,
+            this.width * 0.06,
+            0, 0, Math.PI * 2
+        );
+        ctx.ellipse(
+            x + this.width * 0.6,
+            y + this.height * 0.1,
+            this.width * 0.1,
+            this.width * 0.06,
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+    }
+
+    renderHelmetLight(ctx, x, y, time) {
+        // Create a flashlight effect from the goggles
+        const direction = this.facingLeft ? -1 : 1;
+        const lightX = x + this.width * (this.facingLeft ? 0.4 : 0.6);
+        const lightY = y + this.height * 0.1;
+        
+        // Light cone
+        const gradient = ctx.createRadialGradient(
+            lightX, lightY, 0,
+            lightX + direction * this.width, lightY, this.width * 2
+        );
+        gradient.addColorStop(0, 'rgba(200, 255, 255, 0.5)');
+        gradient.addColorStop(0.5, 'rgba(100, 200, 255, 0.2)');
+        gradient.addColorStop(1, 'rgba(50, 100, 255, 0)');
+        
+        ctx.fillStyle = gradient;
+        
+        // Draw light cone in direction player is facing
+        ctx.beginPath();
+        ctx.moveTo(lightX, lightY);
+        ctx.lineTo(
+            lightX + direction * this.width * 2,
+            lightY - this.width * 0.7
+        );
+        ctx.lineTo(
+            lightX + direction * this.width * 2,
+            lightY + this.width * 0.7
+        );
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add pulsing effect for helmet light
+        const pulseSize = 5 + Math.sin(time * 3) * 2;
+        ctx.fillStyle = 'rgba(200, 255, 255, 0.8)';
+        ctx.beginPath();
+        ctx.arc(lightX, lightY, pulseSize, 0, Math.PI * 2);
+        ctx.fill();
+    }
     
     renderRotor(ctx, x, y) {
         const centerX = x + this.width * 0.5;
