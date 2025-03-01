@@ -160,50 +160,29 @@ loadScripts().then(() => {
                 this.laser.active = false;
             }
 
-            // Handle dynamite (Down arrow only)
+            // Handle dynamite through WeaponSystem
             if (this.controls['ArrowDown'] && isOnGround) {
-                const explosionRadius = 3;  // Bigger radius
-                const centerX = Math.floor((this.player.x + this.player.width/2) / GAME_CONSTANTS.TILE_SIZE);
-                const centerY = Math.floor((this.player.y + this.player.height) / GAME_CONSTANTS.TILE_SIZE);
-
-                // Create explosion effect
-                this.addExplosion(
-                    (centerX * GAME_CONSTANTS.TILE_SIZE) + GAME_CONSTANTS.TILE_SIZE/2,
-                    (centerY * GAME_CONSTANTS.TILE_SIZE) + GAME_CONSTANTS.TILE_SIZE/2,
-                    '#FF4500'
+                this.weaponSystem.addDynamite(
+                    this.player.x + this.player.width / 2,
+                    this.player.y + this.player.height
                 );
+            }
 
-                // Destroy walls in a circular pattern
-                for (let dy = -explosionRadius; dy <= explosionRadius; dy++) {
-                    for (let dx = -explosionRadius; dx <= explosionRadius; dx++) {
-                        // Create circular explosion pattern
-                        if (dx*dx + dy*dy <= explosionRadius*explosionRadius) {
-                            // Check all adjacent tiles for connected destructible walls
-                            this.destroyConnectedWalls(centerX + dx, centerY + dy);
-                        }
-                    }
+            // Replace the immediate explosion with proper dynamite drop
+            if (this.controls['ArrowDown'] && isOnGround) {
+                if (this.dynamites.length < 3) { // Limit number of active dynamites
+                    const dynamite = new Dynamite(
+                        this.player.x + this.player.width / 2,
+                        this.player.y + this.player.height
+                    );
+                    this.dynamites.push(dynamite);
                 }
             }
 
-            // Update explosions with proper animation
-            for (let i = this.explosions.length - 1; i >= 0; i--) {
-                const explosion = this.explosions[i];
-                explosion.timeLeft -= deltaTime;
-
-                // Update explosion sparkles
-                for (let j = explosion.sparkles.length - 1; j >= 0; j--) {
-                    const sparkle = explosion.sparkles[j];
-                    sparkle.x += sparkle.vx * deltaTime;
-                    sparkle.y += sparkle.vy * deltaTime;
-                    sparkle.vy += 500 * deltaTime; // Add gravity to sparkles
-                    sparkle.timeLeft -= deltaTime;
-                    if (sparkle.timeLeft <= 0) {
-                        explosion.sparkles.splice(j, 1);
-                    }
-                }
-
-                if (explosion.timeLeft <= 0) {
-                    this.explosions.splice(i, 1);
+            // Update dynamites
+            for (let i = this.dynamites.length - 1; i >= 0; i--) {
+                if (this.dynamites[i].update(deltaTime)) {
+                    this.dynamites.splice(i, 1);
                 }
             }
 
@@ -250,60 +229,9 @@ loadScripts().then(() => {
             // Update weapon systems
             this.laser.update(deltaTime, this.player, this.level);
             
-            // Update dynamites
-            for (let i = this.dynamites.length - 1; i >= 0; i--) {
-                if (this.dynamites[i].update(deltaTime)) {
-                    this.explosions.push(this.dynamites[i].createExplosion());
-                    this.dynamites.splice(i, 1);
-                }
-            }
-
             // Update systems
-            this.weaponSystem.update(deltaTime, this.player);
+            this.weaponSystem.update(deltaTime, this.player, this.level);
             this.updateCamera();
-            
-            // Handle dynamite through WeaponSystem
-            if (this.controls['ArrowDown'] && isOnGround) {
-                this.weaponSystem.addDynamite(
-                    this.player.x + this.player.width / 2,
-                    this.player.y + this.player.height
-                );
-            }
-
-            // Replace the immediate explosion with proper dynamite drop
-            if (this.controls['ArrowDown'] && isOnGround) {
-                if (this.dynamites.length < 3) { // Limit number of active dynamites
-                    const dynamite = new Dynamite(
-                        this.player.x + this.player.width / 2,
-                        this.player.y + this.player.height
-                    );
-                    this.dynamites.push(dynamite);
-                }
-            }
-
-            // Update dynamites
-            for (let i = this.dynamites.length - 1; i >= 0; i--) {
-                const dynamite = this.dynamites[i];
-                if (dynamite.update(deltaTime)) { // Returns true when timer expires
-                    // Create explosion on timer expiration
-                    this.addExplosion(dynamite.x, dynamite.y, '#FF4500');
-                    
-                    // Destroy nearby walls
-                    const tileX = Math.floor(dynamite.x / GAME_CONSTANTS.TILE_SIZE);
-                    const tileY = Math.floor(dynamite.y / GAME_CONSTANTS.TILE_SIZE);
-                    const radius = 3;
-
-                    for (let dy = -radius; dy <= radius; dy++) {
-                        for (let dx = -radius; dx <= radius; dx++) {
-                            if (dx * dx + dy * dy <= radius * radius) {
-                                this.destroyConnectedWalls(tileX + dx, tileY + dy);
-                            }
-                        }
-                    }
-                    
-                    this.dynamites.splice(i, 1);
-                }
-            }
         }
         
         render() {
@@ -326,32 +254,6 @@ loadScripts().then(() => {
             this.dynamites.forEach(dynamite => {
                 dynamite.render(this.ctx, this.camera.x, this.camera.y);
             });
-            
-            // Render explosions
-            for (const explosion of this.explosions) {
-                if (!Number.isFinite(explosion.x) || !Number.isFinite(explosion.y) || !Number.isFinite(explosion.radius)) {
-                    continue;
-                }
-                const progress = explosion.timeLeft / explosion.duration;
-                if (!Number.isFinite(progress)) {
-                    continue;
-                }
-                // Main explosion
-                const x = explosion.x - this.camera.x;
-                const y = explosion.y - this.camera.y;
-                const radius = explosion.radius;
-                const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, `rgba(255, 255, 200, ${progress})`);
-                gradient.addColorStop(0.2, `rgba(255, 200, 0, ${progress * 0.8})`);
-                gradient.addColorStop(0.4, `rgba(255, 100, 0, ${progress * 0.6})`);
-                gradient.addColorStop(0.8, `rgba(255, 50, 0, ${progress * 0.4})`);
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                
-                this.ctx.fillStyle = gradient;
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, radius, 0, Math.PI * 2);
-                this.ctx.fill();
-            }
             
             // Render sparkles
             this.ctx.fillStyle = '#FFD700';
@@ -524,31 +426,6 @@ loadScripts().then(() => {
                 }
             }
             
-            // Draw explosions with glow
-            for (const explosion of this.explosions) {
-                if (!Number.isFinite(explosion.x) || !Number.isFinite(explosion.y) || !Number.isFinite(explosion.radius)) {
-                    continue;
-                }
-                const progress = explosion.timeLeft / explosion.duration;
-                if (!Number.isFinite(progress)) {
-                    continue;
-                }
-                const x = explosion.x - this.camera.x;
-                const y = explosion.y - this.camera.y;
-                const radius = explosion.radius;
-                
-                const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, radius);
-                gradient.addColorStop(0, `rgba(255, 255, 200, ${progress})`);
-                gradient.addColorStop(0.2, `rgba(255, 200, 0, ${progress * 0.8})`);
-                gradient.addColorStop(0.4, `rgba(255, 100, 0, ${progress * 0.6})`);
-                gradient.addColorStop(0.8, `rgba(255, 50, 0, ${progress * 0.4})`);
-                gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
-                
-                this.ctx.fillStyle = gradient;
-                this.ctx.beginPath();
-                this.ctx.arc(x, y, radius, 0, Math.PI * 2);
-                this.ctx.fill();
-            }
             this.ctx.restore();
             
             // Draw game over screen if needed
