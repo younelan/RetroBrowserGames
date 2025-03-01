@@ -248,7 +248,7 @@ loadScripts().then(() => {
                     // Check for collisions on X-axis movement
                     if (this.collisionManager.handleGridCollisions(this.player)) {
                         // X-collision detected, position already corrected by collision handler
-                    }
+                    } 
                 }
                 
                 // Then move along Y-axis
@@ -341,13 +341,13 @@ loadScripts().then(() => {
             // Draw the level
             this.level.render(this.ctx, this.camera.x, this.camera.y);
             
-            // Draw the player
+            // Draw the player using the Player class's render method
             this.ctx.save();
             if (this.drowning) {
                 // Make player semi-transparent when drowning
                 this.ctx.globalAlpha = 0.5 + Math.sin(performance.now() / 200) * 0.5;
             }
-            this.drawPlayer();
+            this.player.render(this.ctx, this.camera, this.controls, this.fuel);
             this.ctx.restore();
             
             // Render dynamites
@@ -594,248 +594,90 @@ loadScripts().then(() => {
             
             // Draw virtual joystick for touch controls
             this.controls.drawVirtualJoystick(this.ctx);
-        }
-        
-        drawPlayer() {
-            const screenX = this.player.x - this.camera.x;
-            const screenY = this.player.y - this.camera.y;
-            const tileSize = GAME_CONSTANTS.TILE_SIZE;
-            
-            // Always use the constants from the player object
-            const playerWidth = this.player.width;
-            const playerHeight = this.player.height;
-            
-            // Draw rotor above head
-            this.drawRotor(
-                screenX + playerWidth * 0.5, 
-                screenY - playerHeight * 0.1,
-                playerWidth * 0.7,
-                this.player.rotorAngle || 0
-            );
 
-            // Draw jetpack - positioned correctly relative to player size
-            this.ctx.fillStyle = '#FFA000';
-            
-            // Left side jetpack
-            this.ctx.fillRect(
-                screenX + playerWidth * 0.15,
-                screenY + playerHeight * 0.1,
-                playerWidth * 0.20,
-                playerHeight * 0.4
-            );
-            
-            // Right side jetpack
-            this.ctx.fillRect(
-                screenX + playerWidth * 0.65,
-                screenY + playerHeight * 0.1,
-                playerWidth * 0.20,
-                playerHeight * 0.4
-            );
-            
-            // Draw jetpack flames
-            if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
-                const time = performance.now() / 1000;
-                
-                // Left flame
-                this.drawRocketFlame(
-                    screenX + playerWidth * 0.25,
-                    screenY + playerHeight * 0.52,
-                    playerWidth * 0.15,
-                    playerHeight * 0.25,
-                    time
-                );
-                
-                // Right flame
-                this.drawRocketFlame(
-                    screenX + playerWidth * 0.75,
-                    screenY + playerHeight * 0.52,
-                    playerWidth * 0.15,
-                    playerHeight * 0.25,
-                    time + 0.5
-                );
-            }
-            
-            // Draw legs - positioned correctly relative to player size
-            this.ctx.fillStyle = '#1565C0';
-            this.ctx.fillRect(
-                screenX + playerWidth * 0.3,
-                screenY + playerHeight * 0.5,
-                playerWidth * 0.15,
-                playerHeight * 0.5
-            );
-            this.ctx.fillRect(
-                screenX + playerWidth * 0.55,
-                screenY + playerHeight * 0.5,
-                playerWidth * 0.15,
-                playerHeight * 0.5
-            );
-            
-            // Draw body - positioned correctly relative to player size
-            this.ctx.fillStyle = '#2196F3';
-            this.ctx.beginPath();
-            this.ctx.moveTo(screenX + playerWidth * 0.33, screenY + playerHeight * 0.5);
-            this.ctx.lineTo(screenX + playerWidth * 0.25, screenY + playerHeight * 0.1);
-            this.ctx.lineTo(screenX + playerWidth * 0.75, screenY + playerHeight * 0.1);
-            this.ctx.lineTo(screenX + playerWidth * 0.67, screenY + playerHeight * 0.5);
-            this.ctx.fill();
-            
-            // Draw head - positioned correctly relative to player size
-            this.ctx.fillStyle = '#FFB74D';
-            this.ctx.beginPath();
-            this.ctx.arc(
-                screenX + playerWidth * 0.5,
-                screenY + playerHeight * 0.1,
-                playerWidth * 0.25,
-                0,
-                Math.PI * 2
-            );
-            this.ctx.fill();
-
-            // Draw goggles - positioned correctly relative to player size
-            this.ctx.fillStyle = '#424242';
-            this.ctx.beginPath();
-            this.ctx.ellipse(
-                screenX + playerWidth * 0.4,
-                screenY + playerHeight * 0.1,
-                playerWidth * 0.1,
-                playerWidth * 0.06,
-                0, 0, Math.PI * 2
-            );
-            this.ctx.fill();
-            this.ctx.beginPath();
-            this.ctx.ellipse(
-                screenX + playerWidth * 0.6,
-                screenY + playerHeight * 0.1,
-                playerWidth * 0.1,
-                playerWidth * 0.06,
-                0, 0, Math.PI * 2
-            );
-            this.ctx.fill();
+            // Draw HUD elements after game world rendering
+            this.renderHUD();
         }
 
-        drawRotor(centerX, centerY, rotorWidth, angle) {
-            const ctx = this.ctx;
-            const rotorHeight = rotorWidth * 0.1;  // Thin rotor blades
-            const stemWidth = rotorWidth * 0.1;    // Width of central stem
-            const stemHeight = rotorWidth * 0.15;  // Height of the stem
+        renderHUD() {
+            // Draw game status indicators
+            const padding = 10;
+            const fuelBarWidth = 150;
+            const barHeight = 20;
             
-            ctx.save();
-            ctx.translate(centerX, centerY);
-            ctx.rotate(angle);
-            
-            // Draw central stem (vertical part of the T)
-            ctx.fillStyle = '#505050';
-            ctx.fillRect(-stemWidth/2, -stemHeight, stemWidth, stemHeight);
-            
-            // Draw rotor blades (horizontal part of the T)
-            ctx.fillStyle = '#303030';
-            
-            // Draw the main blade with tapered ends for better appearance
-            ctx.beginPath();
-            ctx.moveTo(-rotorWidth/2, -rotorHeight/2);
-            ctx.lineTo(rotorWidth/2, -rotorHeight/2);
-            ctx.lineTo(rotorWidth/2, rotorHeight/2);
-            ctx.lineTo(-rotorWidth/2, rotorHeight/2);
-            ctx.closePath();
-            ctx.fill();
-            
-            // Add highlights to make the rotor more visible
-            ctx.strokeStyle = '#707070';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(-rotorWidth/2, -rotorHeight/2);
-            ctx.lineTo(rotorWidth/2, -rotorHeight/2);
-            ctx.stroke();
-            
-            ctx.restore();
-        }
-
-        drawRocketFlame(x, y, width, height, time) {
-            const ctx = this.ctx;
-            
-            // Create flame path
-            ctx.save();
-            
-            // Define flame animation parameters
-            const flameHeight = height * (0.8 + Math.sin(time * 10) * 0.2);
-            const flickerX = Math.sin(time * 15) * width * 0.15;
-            
-            // Draw main flame with gradient
-            const gradient = ctx.createLinearGradient(x, y, x, y + flameHeight);
-            gradient.addColorStop(0, '#FFFFFF');
-            gradient.addColorStop(0.2, '#FFFF00');
-            gradient.addColorStop(0.5, '#FF9500');
-            gradient.addColorStop(0.8, '#FF5500');
-            gradient.addColorStop(1, '#FF2200');
-            
-            ctx.fillStyle = gradient;
-            
-            // Draw flame shape
-            ctx.beginPath();
-            ctx.moveTo(x - width/2, y);
-            ctx.quadraticCurveTo(
-                x + flickerX, y + flameHeight * 0.7,
-                x - width/3 + flickerX/2, y + flameHeight
-            );
-            ctx.quadraticCurveTo(
-                x + width/4, y + flameHeight * 0.9,
-                x + width/2, y
-            );
-            ctx.fill();
-            
-            // Add inner glow
-            const innerGradient = ctx.createLinearGradient(x, y, x, y + flameHeight * 0.7);
-            innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-            innerGradient.addColorStop(0.5, 'rgba(255, 255, 150, 0.5)');
-            innerGradient.addColorStop(1, 'rgba(255, 255, 100, 0)');
-            
-            ctx.fillStyle = innerGradient;
-            ctx.beginPath();
-            ctx.moveTo(x - width/4, y);
-            ctx.quadraticCurveTo(
-                x + flickerX/2, y + flameHeight * 0.5,
-                x, y + flameHeight * 0.7
-            );
-            ctx.quadraticCurveTo(
-                x + width/8, y + flameHeight * 0.5,
-                x + width/4, y
-            );
-            ctx.fill();
-            
-            // Add spark particles
-            const sparkCount = 3;
-            for (let i = 0; i < sparkCount; i++) {
-                const sparkTime = (time * 8 + i * 2.1) % 5;
-                const sparkProgress = sparkTime / 5;
+            // Get HUD element
+            const hud = document.getElementById('hud');
+            if (hud) {
+                // Update lives display
+                const livesElement = document.getElementById('lives');
+                if (livesElement) {
+                    livesElement.textContent = `❤️ ${this.lives}`;
+                }
                 
-                if (sparkProgress < 1) {
-                    const sparkX = x + (Math.random() - 0.5) * width * 0.8;
-                    const sparkY = y + sparkProgress * flameHeight;
-                    const sparkSize = (1 - sparkProgress) * 3;
+                // Update score display
+                const scoreElement = document.getElementById('score');
+                if (scoreElement) {
+                    scoreElement.textContent = `💎 ${this.score}`;
+                }
+                
+                // Clear fuel element to replace with visual bar
+                const fuelElement = document.getElementById('fuel');
+                if (fuelElement) {
+                    fuelElement.innerHTML = ''; // Clear text content
                     
-                    ctx.fillStyle = 'rgba(255, 255, 255, ' + (1 - sparkProgress) + ')';
-                    ctx.beginPath();
-                    ctx.arc(sparkX, sparkY, sparkSize, 0, Math.PI * 2);
-                    ctx.fill();
+                    // Create fuel bar container
+                    const fuelBar = document.createElement('div');
+                    fuelBar.style.display = 'flex';
+                    fuelBar.style.alignItems = 'center';
+                    fuelBar.style.gap = '5px';
+                    
+                    // Add fuel icon
+                    const fuelIcon = document.createElement('span');
+                    fuelIcon.textContent = '⛽';
+                    fuelBar.appendChild(fuelIcon);
+                    
+                    // Create outer bar container
+                    const barContainer = document.createElement('div');
+                    barContainer.style.width = `${fuelBarWidth}px`;
+                    barContainer.style.height = `${barHeight}px`;
+                    barContainer.style.border = '1px solid white';
+                    barContainer.style.borderRadius = '3px';
+                    barContainer.style.overflow = 'hidden';
+                    barContainer.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                    
+                    // Create inner bar that shows fuel level
+                    const innerBar = document.createElement('div');
+                    const fuelPercentage = (this.fuel / GAME_CONSTANTS.PLAYER.MAX_FUEL) * 100;
+                    
+                    // Set color based on fuel level
+                    let barColor;
+                    if (fuelPercentage > 60) {
+                        barColor = '#2ECC71'; // Green for high fuel
+                    } else if (fuelPercentage > 30) {
+                        barColor = '#F1C40F'; // Yellow for medium fuel
+                    } else {
+                        barColor = '#E74C3C'; // Red for low fuel
+                    }
+                    
+                    innerBar.style.width = `${fuelPercentage}%`;
+                    innerBar.style.height = '100%';
+                    innerBar.style.backgroundColor = barColor;
+                    innerBar.style.transition = 'width 0.3s, background-color 0.5s';
+                    
+                    // Add inner bar to container
+                    barContainer.appendChild(innerBar);
+                    
+                    // Add bar container to fuel element
+                    fuelBar.appendChild(barContainer);
+                    fuelElement.appendChild(fuelBar);
+                }
+                
+                // Update level display
+                const levelElement = document.getElementById('level');
+                if (levelElement) {
+                    levelElement.textContent = `Level: ${this.currentLevel + 1}`;
                 }
             }
-            
-            // Add glow effect
-            ctx.globalCompositeOperation = 'screen';
-            const glowGradient = ctx.createRadialGradient(
-                x, y + flameHeight/2, 0,
-                x, y + flameHeight/2, flameHeight * 1.2
-            );
-            glowGradient.addColorStop(0, 'rgba(255, 200, 50, 0.5)');
-            glowGradient.addColorStop(0.5, 'rgba(255, 100, 50, 0.3)');
-            glowGradient.addColorStop(1, 'rgba(255, 50, 0, 0)');
-            
-            ctx.fillStyle = glowGradient;
-            ctx.beginPath();
-            ctx.arc(x, y + flameHeight/2, flameHeight * 1.2, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.restore();
         }
 
         gameLoop(currentTime) {
