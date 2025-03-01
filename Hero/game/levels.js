@@ -2,8 +2,8 @@
 const LEVELS = [
     {
         map: `BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
-B@    =                ^     B
-B     =                  &   B
+B@    =             _   ^    B
+B     =              /   &   B
 B     =                      B
 B     =                      B
 B     =      .      *      o B

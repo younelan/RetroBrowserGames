@@ -118,7 +118,9 @@ const GAME_CONSTANTS = {
         // Special tiles
         LAVA: '!',
         MINER: '+',
-        PLAYER: '@'
+        PLAYER: '@',
+        BAT: '/',    // Add bat symbol
+        MOTH: '_',   // Add moth symbol
     },
 
     // Add scaling helper

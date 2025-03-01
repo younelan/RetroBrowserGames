@@ -56,7 +56,8 @@ class Level {
             return false;
         }
         const tile = this.map[y][x];
-        return tile === '!' || tile === '^' || tile === '&' || tile === '~';  // Lava, spider, snake, water
+        return tile === '!' || tile === '^' || tile === '&' || 
+               tile === '~' || tile === '/' || tile === '_';  // Add Bat and Moth as hazards
     }
 
     isDestructible(x, y) {
@@ -192,6 +193,10 @@ class Level {
                     this.enemies.push(new Snake(x, y));
                 } else if (tile === '^') {
                     this.enemies.push(new Spider(x, y));
+                } else if (tile === '/') {
+                    this.enemies.push(new Bat(x, y));
+                } else if (tile === '_') {
+                    this.enemies.push(new Moth(x, y));
                 }
             }
         }
@@ -217,7 +222,7 @@ class Level {
                 const tile = this.map[row][col];
                 
                 // Skip rendering enemy tiles since they're now handled by their own classes
-                if (tile === '^' || tile === '&') continue;
+                if (tile === '^' || tile === '&' || tile === '/' || tile === '_') continue;
                 
                 // Calculate exact pixel positions without any subpixel values
                 const screenX = Math.floor(col * GAME_CONSTANTS.TILE_SIZE - offsetX);
@@ -493,6 +498,16 @@ class Level {
                     }
                 }
             }
+        }
+
+        // Render all enemies
+        if (this.enemies) {
+            this.enemies.forEach(enemy => {
+                if (enemy && enemy.alive) {  // Add null check
+                    enemy.update(deltaTime);
+                    enemy.render(ctx, offsetX, offsetY);
+                }
+            });
         }
     }
 

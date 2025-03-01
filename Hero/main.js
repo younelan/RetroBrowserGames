@@ -8,6 +8,8 @@ const scripts = [
     'game/entities/Enemy.js',
     'game/entities/Spider.js',    // Add Spider class
     'game/entities/Snake.js',     // Add Snake class
+    'game/entities/Moth.js',
+    'game/entities/Bat.js',
     'game/entities/Player.js',
     'game/entities/Collectible.js',
     'game/entities/Dynamite.js',
@@ -121,6 +123,10 @@ loadScripts().then(() => {
                         this.enemies.push(new Snake(x, y));
                     } else if (tile === '^') {
                         this.enemies.push(new Spider(x, y));
+                    } else if (tile === '/') {
+                        this.enemies.push(new Bat(x, y));   // Add Bat initialization
+                    } else if (tile === '_') {
+                        this.enemies.push(new Moth(x, y));  // Add Moth initialization
                     }
                 }
             }
@@ -360,7 +366,7 @@ loadScripts().then(() => {
             
             // Render all enemies
             this.enemies.forEach(enemy => {
-                if (enemy.alive) {
+                if (enemy && enemy.alive) {  
                     enemy.update(deltaTime);
                     enemy.render(this.ctx, this.camera.x, this.camera.y);
                 }
