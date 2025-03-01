@@ -288,25 +288,36 @@ class Level {
                             ctx.stroke();
                         }
                         
-                        // Spider body with enhanced gradient
+                        // Spider body with enhanced gradient - lighter colors
                         const bodyGradient = ctx.createRadialGradient(
                             centerX, centerY + bobY, 0,
                             centerX, centerY + bobY, 12
                         );
-                        bodyGradient.addColorStop(0, '#440000');
-                        bodyGradient.addColorStop(0.6, '#220000');
-                        bodyGradient.addColorStop(1, '#110000');
+                        bodyGradient.addColorStop(0, '#660000');  // Lighter red core
+                        bodyGradient.addColorStop(0.6, '#440000'); // Mid red
+                        bodyGradient.addColorStop(1, '#220000');   // Dark edge
                         
                         // Draw main body segments
                         ctx.fillStyle = bodyGradient;
                         
-                        // Abdomen (rear segment)
+                        // Add metallic sheen
+                        const sheenGradient = ctx.createLinearGradient(
+                            centerX - 8, centerY + bobY - 8,
+                            centerX + 8, centerY + bobY + 8
+                        );
+                        sheenGradient.addColorStop(0, 'rgba(255, 255, 255, 0.1)');
+                        sheenGradient.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+                        sheenGradient.addColorStop(1, 'rgba(255, 255, 255, 0.1)');
+                        
+                        // Abdomen with more detail
                         ctx.beginPath();
                         ctx.ellipse(centerX, centerY + bobY + 4, 8, 10, 0, 0, Math.PI * 2);
                         ctx.fill();
+                        ctx.fillStyle = sheenGradient;
+                        ctx.fill();
                         
-                        // Add texture pattern to abdomen
-                        ctx.strokeStyle = '#660000';
+                        // Segments pattern
+                        ctx.strokeStyle = '#880000';  // Lighter pattern color
                         ctx.lineWidth = 0.5;
                         for (let i = 0; i < 3; i++) {
                             ctx.beginPath();
@@ -314,29 +325,33 @@ class Level {
                             ctx.stroke();
                         }
                         
-                        // Cephalothorax (front segment)
+                        // Thorax (front segment) with enhanced detail
+                        ctx.fillStyle = bodyGradient;
                         ctx.beginPath();
                         ctx.ellipse(centerX, centerY + bobY - 4, 6, 7, 0, 0, Math.PI * 2);
                         ctx.fill();
+                        ctx.fillStyle = sheenGradient;
+                        ctx.fill();
                         
-                        // Glowing red eyes with pulse effect
+                        // Enhanced eyes with brighter glow
                         const eyeGlow = Math.sin(time * 3) * 0.3 + 0.7;
-                        const eyeGradient = ctx.createRadialGradient(
-                            centerX - 3, centerY + bobY - 6, 0,
-                            centerX - 3, centerY + bobY - 6, 2
-                        );
-                        eyeGradient.addColorStop(0, `rgba(255, 0, 0, ${eyeGlow})`);
-                        eyeGradient.addColorStop(1, 'rgba(100, 0, 0, 0)');
-                        
-                        // Draw each eye with glow effect
                         for (let i = -1; i <= 1; i += 2) {
+                            // Outer glow
+                            const eyeGradient = ctx.createRadialGradient(
+                                centerX + (i * 3), centerY + bobY - 6, 0,
+                                centerX + (i * 3), centerY + bobY - 6, 3
+                            );
+                            eyeGradient.addColorStop(0, `rgba(255, 50, 50, ${eyeGlow})`);
+                            eyeGradient.addColorStop(0.5, `rgba(255, 0, 0, ${eyeGlow * 0.5})`);
+                            eyeGradient.addColorStop(1, 'rgba(100, 0, 0, 0)');
+                            
                             ctx.fillStyle = eyeGradient;
                             ctx.beginPath();
-                            ctx.arc(centerX + (i * 3), centerY + bobY - 6, 2, 0, Math.PI * 2);
+                            ctx.arc(centerX + (i * 3), centerY + bobY - 6, 3, 0, Math.PI * 2);
                             ctx.fill();
                             
-                            // Add bright center to eyes
-                            ctx.fillStyle = '#FF0000';
+                            // Bright center
+                            ctx.fillStyle = '#FF5555';
                             ctx.beginPath();
                             ctx.arc(centerX + (i * 3), centerY + bobY - 6, 1, 0, Math.PI * 2);
                             ctx.fill();
@@ -384,59 +399,94 @@ class Level {
                         const time = performance.now() / 1000;
                         const wiggle = Math.sin(time * 3) * 6;
                         
-                        // Snake body
-                        const gradient = ctx.createLinearGradient(
-                            screenX, centerY,
-                            screenX + GAME_CONSTANTS.TILE_SIZE, centerY
-                        );
-                        gradient.addColorStop(0, '#50C878');  // Emerald green
-                        gradient.addColorStop(1, '#228B22');  // Forest green
+                        // Enhanced snake with realistic scales and patterns
+                        const snakeWidth = 12;
+                        const segments = 8;
                         
-                        ctx.strokeStyle = gradient;
-                        ctx.lineWidth = 10;
-                        ctx.lineCap = 'round';
-                        
-                        // Wavy body
-                        ctx.beginPath();
-                        ctx.moveTo(screenX + 6, centerY);
-                        const points = 3;
-                        for (let i = 0; i <= points; i++) {
-                            const x = screenX + 6 + (GAME_CONSTANTS.TILE_SIZE - 12) * (i/points);
-                            const y = centerY + Math.sin(time * 4 + i * 2) * wiggle;
-                            if (i === 0) ctx.moveTo(x, y);
-                            else ctx.lineTo(x, y);
+                        // Draw snake body segments with scales
+                        for (let i = 0; i < segments; i++) {
+                            const segX = screenX + 6 + (GAME_CONSTANTS.TILE_SIZE - 12) * (i/segments);
+                            const segY = centerY + Math.sin(time * 4 + i * 1.5) * wiggle;
+                            
+                            // Create gradient for each segment
+                            const segGradient = ctx.createRadialGradient(
+                                segX, segY, 0,
+                                segX, segY, snakeWidth
+                            );
+                            segGradient.addColorStop(0, '#90EE90');  // Light green center
+                            segGradient.addColorStop(0.4, '#32CD32'); // Lime green
+                            segGradient.addColorStop(1, '#228B22');   // Forest green edge
+                            
+                            // Draw segment
+                            ctx.fillStyle = segGradient;
+                            ctx.beginPath();
+                            ctx.arc(segX, segY, snakeWidth/2, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Add scale pattern
+                            ctx.strokeStyle = '#006400';
+                            ctx.lineWidth = 0.5;
+                            
+                            // Draw diamond pattern scales
+                            for (let j = 0; j < 4; j++) {
+                                const scaleAngle = (j / 4) * Math.PI * 2 + time + i;
+                                ctx.beginPath();
+                                ctx.arc(
+                                    segX + Math.cos(scaleAngle) * 3,
+                                    segY + Math.sin(scaleAngle) * 3,
+                                    2,
+                                    0, Math.PI * 2
+                                );
+                                ctx.stroke();
+                            }
                         }
-                        ctx.stroke();
                         
-                        // Head
-                        const headX = screenX + GAME_CONSTANTS.TILE_SIZE - 6;
+                        // Enhanced snake head
+                        const headX = screenX + GAME_CONSTANTS.TILE_SIZE - 8;
                         const headY = centerY + Math.sin(time * 4 + 6) * wiggle;
                         
-                        ctx.fillStyle = '#228B22';  // Forest green
+                        // Head gradient
+                        const headGradient = ctx.createRadialGradient(
+                            headX, headY, 0,
+                            headX, headY, 8
+                        );
+                        headGradient.addColorStop(0, '#90EE90');
+                        headGradient.addColorStop(0.6, '#32CD32');
+                        headGradient.addColorStop(1, '#228B22');
+                        
+                        // Draw head
+                        ctx.fillStyle = headGradient;
                         ctx.beginPath();
-                        ctx.ellipse(headX, headY, 6, 5, 0, 0, Math.PI * 2);
+                        ctx.ellipse(headX, headY, 8, 6, 0, 0, Math.PI * 2);
                         ctx.fill();
                         
-                        // Eyes
-                        ctx.fillStyle = 'white';
-                        ctx.beginPath();
-                        ctx.arc(headX + 2, headY - 2, 2, 0, Math.PI * 2);
-                        ctx.fill();
-                        ctx.fillStyle = 'black';
-                        ctx.beginPath();
-                        ctx.arc(headX + 2, headY - 2, 1, 0, Math.PI * 2);
-                        ctx.fill();
+                        // Eyes with glossy effect
+                        for (let i = -1; i <= 1; i += 2) {
+                            // Eye socket
+                            ctx.fillStyle = '#006400';
+                            ctx.beginPath();
+                            ctx.arc(headX + 3 * i, headY - 2, 2, 0, Math.PI * 2);
+                            ctx.fill();
+                            
+                            // Eye shine
+                            ctx.fillStyle = 'white';
+                            ctx.beginPath();
+                            ctx.arc(headX + 3 * i, headY - 2, 1, 0, Math.PI * 2);
+                            ctx.fill();
+                        }
                         
-                        // Tongue
+                        // Flickering tongue
                         const tongueTime = time * 8;
-                        const tongueLength = (Math.sin(tongueTime) + 1) * 3;  // Flicking animation
+                        const tongueLength = (Math.sin(tongueTime) + 1) * 4;
                         ctx.strokeStyle = '#FF3333';
                         ctx.lineWidth = 1;
+                        
+                        // Forked tongue
                         ctx.beginPath();
-                        ctx.moveTo(headX + 4, headY);
-                        ctx.lineTo(headX + 4 + tongueLength, headY - 2);
-                        ctx.moveTo(headX + 4 + tongueLength - 1, headY);
-                        ctx.lineTo(headX + 4 + tongueLength, headY + 2);
+                        ctx.moveTo(headX + 6, headY);
+                        ctx.lineTo(headX + 6 + tongueLength, headY - 2);
+                        ctx.moveTo(headX + 6 + tongueLength - 1, headY);
+                        ctx.lineTo(headX + 6 + tongueLength, headY + 2);
                         ctx.stroke();
                     } else if (tile === '*' || tile === 'o') {
                         const centerX = screenX + GAME_CONSTANTS.TILE_SIZE/2;
