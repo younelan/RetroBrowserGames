@@ -2,35 +2,70 @@ class Dynamite {
     constructor(x, y) {
         this.x = x;
         this.y = y;
+        this.velocityX = 0;
+        this.velocityY = -300; // Initial upward toss
         this.width = GAME_CONSTANTS.TILE_SIZE / 2;
-        this.height = GAME_CONSTANTS.TILE_SIZE;
-        this.timeLeft = 1.5; // 1.5 seconds until explosion
+        this.height = GAME_CONSTANTS.TILE_SIZE / 2;
+        this.timer = 2.0; // 2 seconds fuse
+        this.gravity = 800;
         this.sparkles = [];
+        this.fuseSparkles = [];
+        this.bounceCount = 0;
+        this.maxBounces = 2;
     }
 
     update(deltaTime) {
-        this.timeLeft -= deltaTime;
-        this.updateSparkles(deltaTime);
-        return this.timeLeft <= 0;
-    }
+        // Apply gravity and movement
+        this.velocityY += this.gravity * deltaTime;
+        this.y += this.velocityY * deltaTime;
 
-    updateSparkles(deltaTime) {
-        // Add new sparkles
+        // Ground collision and bounce
+        const groundY = Math.floor((this.y + this.height) / GAME_CONSTANTS.TILE_SIZE) * GAME_CONSTANTS.TILE_SIZE;
+        if (this.y + this.height > groundY) {
+            this.y = groundY - this.height;
+            if (this.bounceCount < this.maxBounces) {
+                this.velocityY = -this.velocityY * 0.5;
+                this.bounceCount++;
+            } else {
+                this.velocityY = 0;
+            }
+        }
+
+        // Update timer
+        this.timer -= deltaTime;
+
+        // Add fuse sparkles
         if (Math.random() < 0.3) {
-            const progress = 1 - (this.timeLeft / 1.5);
-            this.sparkles.push({
-                x: this.x + (Math.random() * 6 - 3),
-                y: this.y - 12 - (progress * 12),
-                size: Math.random() * 2 + 1,
-                timeLeft: 0.2
-            });
+            this.addFuseSpark();
         }
 
         // Update existing sparkles
-        for (let i = this.sparkles.length - 1; i >= 0; i--) {
-            this.sparkles[i].timeLeft -= deltaTime;
-            if (this.sparkles[i].timeLeft <= 0) {
-                this.sparkles.splice(i, 1);
+        this.updateSparkles(deltaTime);
+
+        return this.timer <= 0; // Return true when ready to explode
+    }
+
+    addFuseSpark() {
+        this.fuseSparkles.push({
+            x: this.x + (Math.random() - 0.5) * 4,
+            y: this.y - this.height/2,
+            vx: (Math.random() - 0.5) * 50,
+            vy: -Math.random() * 50,
+            timeLeft: 0.3,
+            size: Math.random() * 2 + 1
+        });
+    }
+
+    updateSparkles(deltaTime) {
+        // Update and remove old sparkles
+        for (let i = this.fuseSparkles.length - 1; i >= 0; i--) {
+            const sparkle = this.fuseSparkles[i];
+            sparkle.x += sparkle.vx * deltaTime;
+            sparkle.y += sparkle.vy * deltaTime;
+            sparkle.vy += this.gravity * deltaTime;
+            sparkle.timeLeft -= deltaTime;
+            if (sparkle.timeLeft <= 0) {
+                this.fuseSparkles.splice(i, 1);
             }
         }
     }
@@ -115,10 +150,11 @@ class Dynamite {
         return {
             x: this.x,
             y: this.y,
-            radius: GAME_CONSTANTS.TILE_SIZE,
-            timeLeft: 0.5,
-            duration: 0.5,
-            color: '#FF0000'
+            radius: GAME_CONSTANTS.TILE_SIZE * 2.5,
+            timeLeft: 0.8,
+            duration: 0.8,
+            sparkCount: 20,
+            sparkles: []
         };
     }
 }

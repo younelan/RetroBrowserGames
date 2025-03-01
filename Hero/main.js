@@ -1,9 +1,9 @@
 // Load dependencies in order
 const scripts = [
     'game/constants.js',
+    'game/level.js',     // Move up - needed by CollisionManager
     'game/levels.js',
     'game/controls.js',
-    'game/level.js',
     'game/collision/CollisionManager.js',
     'game/entities/Player.js',
     'game/entities/Enemy.js',
@@ -41,7 +41,7 @@ loadScripts().then(() => {
                 ArrowRight: false,
                 ArrowUp: false,
                 ArrowDown: false,
-                ' ': false  // Space bar
+                ' ': false  // Space bar for laser
             };
             
             // Add event listeners for controls
@@ -140,8 +140,82 @@ loadScripts().then(() => {
             
             // Handle wall collisions after movement
             this.collisionManager.handleGridCollisions(this.player);
-            
-            // Additional collision checks
+
+            // Handle weapons
+            if (this.controls[' ']) { // Space bar for laser
+                this.laserActive = true;
+                this.laser.active = true;
+                this.laserPhase += deltaTime * 10;
+                
+                // Check laser collisions with enemies
+                if (this.laser.active) {
+                    const hitEnemies = this.collisionManager.checkLaserCollisions(this.laser, this.enemies);
+                    hitEnemies.forEach(enemy => {
+                        enemy.hit();
+                        this.score += 100;
+                    });
+                }
+            } else {
+                this.laserActive = false;
+                this.laser.active = false;
+            }
+
+            // Handle dynamite (Down arrow only)
+            if (this.controls['ArrowDown'] && isOnGround) {
+                const explosionRadius = 3;  // Bigger radius
+                const centerX = Math.floor((this.player.x + this.player.width/2) / GAME_CONSTANTS.TILE_SIZE);
+                const centerY = Math.floor((this.player.y + this.player.height) / GAME_CONSTANTS.TILE_SIZE);
+
+                // Create explosion effect
+                this.addExplosion(
+                    (centerX * GAME_CONSTANTS.TILE_SIZE) + GAME_CONSTANTS.TILE_SIZE/2,
+                    (centerY * GAME_CONSTANTS.TILE_SIZE) + GAME_CONSTANTS.TILE_SIZE/2,
+                    '#FF4500'
+                );
+
+                // Destroy walls in a circular pattern
+                for (let dy = -explosionRadius; dy <= explosionRadius; dy++) {
+                    for (let dx = -explosionRadius; dx <= explosionRadius; dx++) {
+                        // Create circular explosion pattern
+                        if (dx*dx + dy*dy <= explosionRadius*explosionRadius) {
+                            // Check all adjacent tiles for connected destructible walls
+                            this.destroyConnectedWalls(centerX + dx, centerY + dy);
+                        }
+                    }
+                }
+            }
+
+            // Update explosions with proper animation
+            for (let i = this.explosions.length - 1; i >= 0; i--) {
+                const explosion = this.explosions[i];
+                explosion.timeLeft -= deltaTime;
+
+                // Update explosion sparkles
+                for (let j = explosion.sparkles.length - 1; j >= 0; j--) {
+                    const sparkle = explosion.sparkles[j];
+                    sparkle.x += sparkle.vx * deltaTime;
+                    sparkle.y += sparkle.vy * deltaTime;
+                    sparkle.vy += 500 * deltaTime; // Add gravity to sparkles
+                    sparkle.timeLeft -= deltaTime;
+                    if (sparkle.timeLeft <= 0) {
+                        explosion.sparkles.splice(j, 1);
+                    }
+                }
+
+                if (explosion.timeLeft <= 0) {
+                    this.explosions.splice(i, 1);
+                }
+            }
+
+            // Update sparkles
+            for (let i = this.sparkles.length - 1; i >= 0; i--) {
+                this.sparkles[i].timeLeft -= deltaTime;
+                if (this.sparkles[i].timeLeft <= 0) {
+                    this.sparkles.splice(i, 1);
+                }
+            }
+
+            // Rest of collision checks
             if (this.collisionManager.checkHazardCollisions(this.player) ||
                 this.collisionManager.checkEnemyCollisions(this.player, this.enemies)) {
                 this.handlePlayerDeath();
@@ -154,6 +228,36 @@ loadScripts().then(() => {
                 this.score += collectible.collect();
             });
             
+            // Handle weapons
+            if (this.controls[' ']) { // Space bar for laser
+                this.laser.active = true;
+                this.laserActive = true;  // For rendering
+                this.laserPhase += deltaTime * 10;
+            } else {
+                this.laser.active = false;
+                this.laserActive = false;
+            }
+
+            if (this.controls['x'] && isOnGround) { // X key for dynamite
+                if (this.dynamites.length < 3) {
+                    this.dynamites.push(new Dynamite(
+                        this.player.x + this.player.width / 2,
+                        this.player.y + this.player.height
+                    ));
+                }
+            }
+
+            // Update weapon systems
+            this.laser.update(deltaTime, this.player, this.level);
+            
+            // Update dynamites
+            for (let i = this.dynamites.length - 1; i >= 0; i--) {
+                if (this.dynamites[i].update(deltaTime)) {
+                    this.explosions.push(this.dynamites[i].createExplosion());
+                    this.dynamites.splice(i, 1);
+                }
+            }
+
             // Update systems
             this.weaponSystem.update(deltaTime, this.player);
             this.updateCamera();
@@ -164,6 +268,41 @@ loadScripts().then(() => {
                     this.player.x + this.player.width / 2,
                     this.player.y + this.player.height
                 );
+            }
+
+            // Replace the immediate explosion with proper dynamite drop
+            if (this.controls['ArrowDown'] && isOnGround) {
+                if (this.dynamites.length < 3) { // Limit number of active dynamites
+                    const dynamite = new Dynamite(
+                        this.player.x + this.player.width / 2,
+                        this.player.y + this.player.height
+                    );
+                    this.dynamites.push(dynamite);
+                }
+            }
+
+            // Update dynamites
+            for (let i = this.dynamites.length - 1; i >= 0; i--) {
+                const dynamite = this.dynamites[i];
+                if (dynamite.update(deltaTime)) { // Returns true when timer expires
+                    // Create explosion on timer expiration
+                    this.addExplosion(dynamite.x, dynamite.y, '#FF4500');
+                    
+                    // Destroy nearby walls
+                    const tileX = Math.floor(dynamite.x / GAME_CONSTANTS.TILE_SIZE);
+                    const tileY = Math.floor(dynamite.y / GAME_CONSTANTS.TILE_SIZE);
+                    const radius = 3;
+
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        for (let dx = -radius; dx <= radius; dx++) {
+                            if (dx * dx + dy * dy <= radius * radius) {
+                                this.destroyConnectedWalls(tileX + dx, tileY + dy);
+                            }
+                        }
+                    }
+                    
+                    this.dynamites.splice(i, 1);
+                }
             }
         }
         
@@ -542,12 +681,65 @@ loadScripts().then(() => {
             const explosion = {
                 x: Number(x),
                 y: Number(y),
-                radius: GAME_CONSTANTS.TILE_SIZE,
-                timeLeft: 0.5,
-                duration: 0.5,
-                color: color || '#FF0000'
+                radius: GAME_CONSTANTS.TILE_SIZE * 2.5,
+                timeLeft: 0.8,
+                duration: 0.8,
+                sparkCount: 20,
+                sparkles: [],
+                color: color || '#FF4500'
             };
+            
+            // Add initial sparkles
+            for (let i = 0; i < explosion.sparkCount; i++) {
+                const angle = (Math.PI * 2 * i) / explosion.sparkCount;
+                const speed = Math.random() * 200 + 100;
+                explosion.sparkles.push({
+                    x: explosion.x,
+                    y: explosion.y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: Math.random() * 3 + 2,
+                    timeLeft: Math.random() * 0.5 + 0.3
+                });
+            }
+            
             this.explosions.push(explosion);
+
+            // Damage walls in explosion radius
+            const tileX = Math.floor(x / GAME_CONSTANTS.TILE_SIZE);
+            const tileY = Math.floor(y / GAME_CONSTANTS.TILE_SIZE);
+            const radius = 3;
+
+            for (let dy = -radius; dy <= radius; dy++) {
+                for (let dx = -radius; dx <= radius; dx++) {
+                    if (dx * dx + dy * dy <= radius * radius) {
+                        this.destroyConnectedWalls(tileX + dx, tileY + dy);
+                    }
+                }
+            }
+        }
+
+        destroyConnectedWalls(startX, startY) {
+            const visited = new Set();
+            const toExplore = [{x: startX, y: startY}];
+            
+            while (toExplore.length > 0) {
+                const {x, y} = toExplore.pop();
+                const key = `${x},${y}`;
+                
+                if (visited.has(key)) continue;
+                visited.add(key);
+                
+                // If this is a destructible wall or lava
+                if (this.level.isDestructible(x, y)) {
+                    this.level.damageWall(x, y);
+                    
+                    // Check adjacent tiles
+                    [[-1,0], [1,0], [0,-1], [0,1]].forEach(([dx, dy]) => {
+                        toExplore.push({x: x + dx, y: y + dy});
+                    });
+                }
+            }
         }
 
         updateCamera() {

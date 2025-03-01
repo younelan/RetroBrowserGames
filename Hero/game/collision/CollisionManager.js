@@ -125,13 +125,19 @@ class CollisionManager {
     }
 
     handleGridCollisions(player) {
-        const prevX = player.x;
-        const prevY = player.y;
-        
+        // First check and handle level boundaries
+        const levelWidth = this.level.map[0].length * this.tileSize;
+        const levelHeight = this.level.map.length * this.tileSize;
+
+        // Keep player within level bounds
+        player.x = Math.max(0, Math.min(player.x, levelWidth - player.width));
+        player.y = Math.max(0, Math.min(player.y, levelHeight - player.height));
+
         // Get surrounding tiles
         const tiles = this.getEntityTiles(player);
         let collided = false;
 
+        // Handle wall collisions
         for (const {x, y} of tiles) {
             if (this.level.isWall(x, y)) {
                 const wall = {

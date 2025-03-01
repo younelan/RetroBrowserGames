@@ -54,11 +54,10 @@ class Level {
         if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[0].length) {
             return false;
         }
-        const tile = this.map[y][x];
-        return tile === '=' || tile === '!';  // Both destructible wall and lava can be destroyed
+        return this.map[y][x] === '=' || this.map[y][x] === '!';
     }
 
-    damageWall(x, y, damage) {
+    damageWall(x, y) {
         if (this.isDestructible(x, y)) {
             this.map[y][x] = ' ';  // Replace with empty space
             return true;

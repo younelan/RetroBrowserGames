@@ -2,37 +2,29 @@ class Laser {
     constructor() {
         this.active = false;
         this.phase = 0;
+        this.direction = 1;
+        this.x = 0;
+        this.y = 0;
         this.length = GAME_CONSTANTS.TILE_SIZE * 3;
     }
 
-    update(deltaTime, player, level) {
-        if (!this.active) return;
+    update(deltaTime, player) {
+        if (!this.active) return false;
         
         this.phase = (this.phase + deltaTime * 10) % (Math.PI * 2);
-        const direction = player.facingLeft ? -1 : 1;
-        const startX = player.x + player.width * 0.5;
-        const startY = player.y + player.height * 0.25;
-        const endX = startX + this.length * direction;
-
-        // Check for enemy hits
-        const tileY = Math.floor(startY / GAME_CONSTANTS.TILE_SIZE);
-        const startTileX = Math.floor(Math.min(startX, endX) / GAME_CONSTANTS.TILE_SIZE);
-        const endTileX = Math.floor(Math.max(startX, endX) / GAME_CONSTANTS.TILE_SIZE);
-
-        for (let x = startTileX; x <= endTileX; x++) {
-            if (level.checkAndDamageEnemy(x, tileY)) {
-                return true; // Hit something
-            }
-        }
-        return false;
+        this.direction = player.facingLeft ? -1 : 1;
+        // Position laser at eye level (about 1/4 from top of player)
+        this.x = player.x + (player.facingLeft ? 0 : player.width);
+        this.y = player.y + player.height * 0.25;
+        
+        return true; // Return true when laser is active
     }
 
     render(ctx, player, cameraX, cameraY) {
         if (!this.active) return;
         
-        const direction = player.facingLeft ? -1 : 1;
-        const eyeY = player.y + player.height * 0.25 - cameraY;
-        const eyeX = player.x + player.width * 0.5 - cameraX;
+        const eyeY = this.y - cameraY;
+        const eyeX = this.x - cameraX;
 
         ctx.save();
         ctx.globalCompositeOperation = 'screen';
@@ -40,11 +32,11 @@ class Laser {
         // Draw laser beams
         for (let i = 0; i < 3; i++) {
             const offset = Math.sin(this.phase + i * Math.PI / 2) * 2;
-            this.drawBeam(ctx, eyeX, eyeY + offset, direction);
+            this.drawBeam(ctx, eyeX, eyeY + offset, this.direction);
         }
 
         // Draw glow effect
-        this.drawGlow(ctx, eyeX, eyeY, direction);
+        this.drawGlow(ctx, eyeX, eyeY, this.direction);
         ctx.restore();
     }
 

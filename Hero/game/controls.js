@@ -1,19 +1,28 @@
 class Controls {
     constructor() {
-        // Initialize pressed keys Set
         this.pressedKeys = new Set();
         
-        // Initialize touch state
+        // Add weapon keys to touch controls
         this.touchControls = {
             left: false,
             right: false,
             up: false,
-            drill: false
+            drill: false,
+            laser: false,  // Space bar
+            dynamite: false // X key
         };
 
         // Bind keyboard event handlers
-        window.addEventListener('keydown', this.handleKeyDown.bind(this));
-        window.addEventListener('keyup', this.handleKeyUp.bind(this));
+        window.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'x') {
+                e.preventDefault(); // Prevent page scroll
+            }
+            this.pressedKeys.add(e.key.toLowerCase());
+        });
+
+        window.addEventListener('keyup', (e) => {
+            this.pressedKeys.delete(e.key.toLowerCase());
+        });
 
         // Bind touch event handlers
         const leftBtn = document.getElementById('leftBtn');
@@ -43,6 +52,24 @@ class Controls {
         rightBtn?.addEventListener('mouseup', () => this.touchControls.right = false);
         upBtn?.addEventListener('mouseup', () => this.touchControls.up = false);
         drillBtn?.addEventListener('mouseup', () => this.touchControls.drill = false);
+
+        // Add weapon touch controls
+        const laserBtn = document.getElementById('laserBtn');
+        const dynamiteBtn = document.getElementById('dynamiteBtn');
+
+        if (laserBtn) {
+            laserBtn.addEventListener('touchstart', () => this.touchControls.laser = true);
+            laserBtn.addEventListener('touchend', () => this.touchControls.laser = false);
+            laserBtn.addEventListener('mousedown', () => this.touchControls.laser = true);
+            laserBtn.addEventListener('mouseup', () => this.touchControls.laser = false);
+        }
+
+        if (dynamiteBtn) {
+            dynamiteBtn.addEventListener('touchstart', () => this.touchControls.dynamite = true);
+            dynamiteBtn.addEventListener('touchend', () => this.touchControls.dynamite = false);
+            dynamiteBtn.addEventListener('mousedown', () => this.touchControls.dynamite = true);
+            dynamiteBtn.addEventListener('mouseup', () => this.touchControls.dynamite = false);
+        }
 
         // Touch controls
         document.addEventListener('touchstart', (e) => {
@@ -101,6 +128,9 @@ class Controls {
                     return this.touchDrag.y < -DRAG_THRESHOLD || this.touchControls.up;
             }
         }
-        return this.pressedKeys.has(key) || (key === 'Space' && this.touchControls.drill);
+        // Add weapon controls to touch check
+        if (key === 'Space') return this.pressedKeys.has(key.toLowerCase()) || this.touchControls.laser;
+        if (key === 'KeyX') return this.pressedKeys.has(key.toLowerCase()) || this.touchControls.dynamite;
+        return this.pressedKeys.has(key.toLowerCase()) || (key === 'Space' && this.touchControls.drill);
     }
 }
