@@ -63,9 +63,6 @@ loadScripts().then(() => {
             // Create end screens manager
             this.endScreens = new EndScreens();
             
-            // Enable button debugging if needed
-            window.DEBUG_BUTTONS = false; // Set to true to see button boundaries
-            
             // Replace player object with Player instance
             const startPos = this.level.findPlayerStart();
             this.player = new Player(startPos.x, startPos.y);
@@ -212,7 +209,7 @@ loadScripts().then(() => {
                 return;
             }
         }
-        
+
         updatePlayerMovement(deltaTime, isOnGround) {
             // Get horizontal and vertical intensities (-1 to +1, can exceed 1 for touch)
             const horizontalIntensity = this.controls.getHorizontalIntensity();
@@ -437,6 +434,73 @@ loadScripts().then(() => {
                         Math.PI * 2
                     );
                     this.ctx.fill();
+                }
+            }
+            
+            // Draw darkness overlay when lights are off
+            if (!this.lightsOn) {
+                // Fill entire screen with darkness
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Create player visibility circle (player can see around themselves in darkness)
+                const playerCenterX = this.player.x + this.player.width/2 - this.camera.x;
+                const playerCenterY = this.player.y + this.player.height/2 - this.camera.y;
+                const visibilityRadius = GAME_CONSTANTS.TILE_SIZE * 2; // Player can see 2 tiles around
+                
+                // Create a visible circle around player using destination-out composite operation
+                this.ctx.save();
+                this.ctx.globalCompositeOperation = 'destination-out';
+                const visibilityGradient = this.ctx.createRadialGradient(
+                    playerCenterX, playerCenterY, 0,
+                    playerCenterX, playerCenterY, visibilityRadius
+                );
+                visibilityGradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                visibilityGradient.addColorStop(0.7, 'rgba(255, 255, 255, 0.5)');
+                visibilityGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                
+                this.ctx.fillStyle = visibilityGradient;
+                this.ctx.beginPath();
+                this.ctx.arc(playerCenterX, playerCenterY, visibilityRadius, 0, Math.PI * 2);
+                this.ctx.fill();
+                this.ctx.restore();
+                
+                // Draw lit lamps (if any)
+                for (let y = 0; y < this.level.map.length; y++) {
+                    for (let x = 0; x < this.level.map[y].length; x++) {
+                        if (this.level.map[y][x] === '*') { // Lit lamp
+                            const lampX = x * GAME_CONSTANTS.TILE_SIZE - this.camera.x + GAME_CONSTANTS.TILE_SIZE/2;
+                            const lampY = y * GAME_CONSTANTS.TILE_SIZE - this.camera.y + GAME_CONSTANTS.TILE_SIZE/2;
+                            
+                            // Draw lamp light
+                            this.ctx.save();
+                            this.ctx.globalCompositeOperation = 'lighter';
+                            const lampGlow = this.ctx.createRadialGradient(
+                                lampX, lampY, 0,
+                                lampX, lampY, GAME_CONSTANTS.TILE_SIZE * 3
+                            );
+                            lampGlow.addColorStop(0, 'rgba(255, 255, 150, 0.8)');
+                            lampGlow.addColorStop(0.5, 'rgba(255, 255, 100, 0.4)');
+                            lampGlow.addColorStop(1, 'rgba(255, 255, 0, 0)');
+                            
+                            this.ctx.fillStyle = lampGlow;
+                            this.ctx.beginPath();
+                            this.ctx.arc(lampX, lampY, GAME_CONSTANTS.TILE_SIZE * 3, 0, Math.PI * 2);
+                            this.ctx.fill();
+                            this.ctx.restore();
+                        }
+                    }
+                }
+                
+                // Draw glowing objects in darkness using special rendering
+                this.player.renderInDarkness(this.ctx, this.camera);
+                
+                // Render laser glow effect in darkness (if active)
+                if (this.laserActive) {
+                    this.ctx.save();
+                    this.ctx.globalCompositeOperation = 'lighter';
+                    this.laser.renderGlow(this.ctx, this.laser.x - this.camera.x, this.laser.y - this.camera.y);
+                    this.ctx.restore();
                 }
             }
             
@@ -743,9 +807,8 @@ loadScripts().then(() => {
             x *= scaleX;
             y *= scaleY;
             
-            // Check if click is within restart button (using new helper method)
+            // Check if click is within restart button (using helper method)
             if (this.endScreens.isPointInButton(x, y)) {
-                console.log("Button clicked! Restarting game...");
                 this.restartGame();
                 return;
             }

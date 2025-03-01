@@ -151,12 +151,6 @@ class EndScreens {
                 height: buttonHeight,
                 active: true // Add active flag to indicate button is ready
             };
-            
-            // Draw debug outline around button (only for testing)
-            if (window.DEBUG_BUTTONS) {
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-                ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
-            }
         }
         
         ctx.restore();
@@ -339,14 +333,8 @@ class EndScreens {
             y: buttonY,
             width: buttonWidth,
             height: buttonHeight,
-            active: true // Add active flag to indicate button is ready
+            active: true
         };
-        
-        // Draw debug outline around button (only for testing)
-        if (window.DEBUG_BUTTONS) {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-            ctx.strokeRect(buttonX, buttonY, buttonWidth, buttonHeight);
-        }
     }
 
     drawVictorySparkles(ctx, centerX, centerY, time) {

@@ -79,6 +79,7 @@ class Level {
             return false;
         }
         const tile = this.map[y][x];
+        // Remove debug log
         return tile === '*' || tile === 'o';
     }
 

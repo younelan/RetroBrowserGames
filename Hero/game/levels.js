@@ -6,8 +6,8 @@ B@    =                ^     B
 B     =                  &   B
 B     =                      B
 B     =                      B
-B     =      .        *    o B
-BBBBBBBBBBBBBBBB    BBBB~~BBBB
+B     =      .      *      o B
+BBBBBBBBBBBBBBBB  BBBBB~BBBBBB
 B                            B
 B                        !   B
 B                        !   B
