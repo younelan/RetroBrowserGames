@@ -55,22 +55,39 @@ const GAME_CONSTANTS = {
             SYMBOL: '$',
             POINTS: 100,
             COLOR: '#FFD700',
-            EMOJI: '🪙'
+            EMOJI: '💰'  // Gold bag
         },
         '+': {
             SYMBOL: '+',
             POINTS: 500,
-            COLOR: '#FF0000',
-            EMOJI: '👷'
+            COLOR: '#FF1493',
+            EMOJI: '💎'  // Crystal
         },
         '.': {
             SYMBOL: '.',
+            POINTS: 200,
+            COLOR: '#E6E6FA',
+            EMOJI: '🌟'  // Star
+        },
+        '}': {
+            SYMBOL: '*',
+            POINTS: 300,
+            COLOR: '#8A2BE2',
+            EMOJI: '💍'  // Ring
+        },
+        '#': {
+            SYMBOL: '#',
+            POINTS: 400,
+            COLOR: '#00FFFF',
+            EMOJI: '💠'  // Diamond
+        },
+        '{': {
+            SYMBOL: '@',
             POINTS: 1000,
-            COLOR: '#00FF00',
-            EMOJI: '💎'
+            COLOR: '#FF69B4',
+            EMOJI: '🪙'  // Crown
         }
-    },
-    
+    },    
     // Colors
     COLORS: {
         WALL: '#0000FF',      // Blue wall

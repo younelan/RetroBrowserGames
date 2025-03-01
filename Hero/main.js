@@ -585,7 +585,7 @@ loadScripts().then(() => {
             // Draw game status indicators
             const padding = 10;
             const fuelBarWidth = 150;
-            const barHeight = 20;
+            const barHeight = 15;
             
             // Get HUD element
             const hud = document.getElementById('hud');
@@ -599,7 +599,7 @@ loadScripts().then(() => {
                 // Update score display
                 const scoreElement = document.getElementById('score');
                 if (scoreElement) {
-                    scoreElement.textContent = `💎 ${this.score}`;
+                    scoreElement.textContent = `⭐ ${this.score}`;  // Changed from 💎 to ⭐
                 }
                 
                 // Clear fuel element to replace with visual bar
@@ -620,6 +620,7 @@ loadScripts().then(() => {
                     
                     // Create outer bar container
                     const barContainer = document.createElement('div');
+                    const fuelBarWidth = window.innerWidth <= 768 ? 100 : 150; // Smaller on mobile
                     barContainer.style.width = `${fuelBarWidth}px`;
                     barContainer.style.height = `${barHeight}px`;
                     barContainer.style.border = '1px solid white';
@@ -657,7 +658,7 @@ loadScripts().then(() => {
                 // Update level display
                 const levelElement = document.getElementById('level');
                 if (levelElement) {
-                    levelElement.textContent = `Level: ${this.currentLevel + 1}`;
+                    levelElement.textContent = `🎮 ${this.currentLevel + 1}`;  // Changed to game controller emoji
                 }
             }
         }

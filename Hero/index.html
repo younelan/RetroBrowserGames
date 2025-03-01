@@ -8,8 +8,44 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <style>
-    .hud {
+    #hud {
+        position: absolute;
+        top: 0;
+        left: 0;
+        margin: 0;
+        padding: 5px;
         display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        font-size: 16px;  /* Reduced font size */
+        border-radius: 5px;
+        text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+    }
+    
+    #hud > div {
+        white-space: nowrap;
+    }
+
+    /* Reduce fuel bar width on mobile */
+    @media (max-width: 768px) {
+        #hud {
+            padding: 0;
+            margin: 0;
+            background: rgba(0, 0, 0, 0.2);
+            font-size: 14px;  /* Even smaller on mobile */
+            gap: 10px;
+            width:100%;
+            max-width: 100%;
+            border-radius: 0;
+        }
+        
+        #hud > div {
+            padding: 2px 5px;
+        }
+
+        #fuel .bar-container {
+            width: 100px !important;  /* Override any other width settings */
+        }
     }
     
     /* Updated mobile controls styling */
@@ -60,8 +96,8 @@
         <div id="hud">
             <div id="lives">❤️ 10</div>
             <div id="fuel">⛽ 100</div>
-            <div id="score">💎 0</div>
-            <div id="level"></div>
+            <div id="score">⭐ 0</div>  <!-- Changed from 💎 to ⭐ -->
+            <div id="level">🎮 1</div>
         </div>
         
         <div id="mobile-controls" class="mobile-only">
