@@ -8,9 +8,14 @@ class Player {
         this.velocityY = 0;
         this.fuel = GAME_CONSTANTS.PLAYER.MAX_FUEL;
         this.facingLeft = false;
+        this.rotorAngle = 0; // Add rotorAngle property
+        this.isFlying = false;
     }
 
     update(deltaTime, controls, isOnGround) {
+        // Update flying state based on controls
+        this.isFlying = controls.isPressed('ArrowUp');
+        
         this.handleInput(deltaTime, controls, isOnGround);
         this.applyPhysics(deltaTime, isOnGround);
     }

@@ -139,6 +139,17 @@ loadScripts().then(() => {
             // Update controls with ground state
             this.controls.setOnGround(isOnGround);
             
+            // Update rotor animation
+            if (this.controls.isPressed('ArrowUp') && this.fuel > 0) {
+                // When flying, rotor spins actively
+                this.player.rotorAngle = (this.player.rotorAngle + deltaTime * 15) % (Math.PI * 2);
+                this.rotorStopTimer = 0.5; // Set timer for slowing down after releasing up button
+            } else if (this.rotorStopTimer > 0) {
+                // Slow down rotor after releasing up button
+                this.player.rotorAngle = (this.player.rotorAngle + deltaTime * 5) % (Math.PI * 2); 
+                this.rotorStopTimer -= deltaTime;
+            }
+            
             // Update player movement based on controls
             this.updatePlayerMovement(deltaTime, isOnGround);
             
@@ -545,6 +556,14 @@ loadScripts().then(() => {
             // All measurements relative to player size (2x2 tiles)
             const playerWidth = tileSize * GAME_CONSTANTS.PLAYER.WIDTH;
             const playerHeight = tileSize * GAME_CONSTANTS.PLAYER.HEIGHT;
+            
+            // Draw rotor above head
+            this.drawRotor(
+                screenX + playerWidth * 0.5, 
+                screenY - playerHeight * 0.1,  // Position above the head
+                playerWidth * 0.7,             // Rotor width (percentage of player width)
+                this.player.rotorAngle || 0
+            );
 
             // Draw jetpack - now wider and closer to the player
             this.ctx.fillStyle = '#FFA000'; // Jetpack base color
@@ -645,6 +664,43 @@ loadScripts().then(() => {
                 0, 0, Math.PI * 2
             );
             this.ctx.fill();
+        }
+
+        drawRotor(centerX, centerY, rotorWidth, angle) {
+            const ctx = this.ctx;
+            const rotorHeight = rotorWidth * 0.1;  // Thin rotor blades
+            const stemWidth = rotorWidth * 0.1;    // Width of central stem
+            const stemHeight = rotorWidth * 0.15;  // Height of the stem
+            
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.rotate(angle);
+            
+            // Draw central stem (vertical part of the T)
+            ctx.fillStyle = '#505050';
+            ctx.fillRect(-stemWidth/2, -stemHeight, stemWidth, stemHeight);
+            
+            // Draw rotor blades (horizontal part of the T)
+            ctx.fillStyle = '#303030';
+            
+            // Draw the main blade with tapered ends for better appearance
+            ctx.beginPath();
+            ctx.moveTo(-rotorWidth/2, -rotorHeight/2);
+            ctx.lineTo(rotorWidth/2, -rotorHeight/2);
+            ctx.lineTo(rotorWidth/2, rotorHeight/2);
+            ctx.lineTo(-rotorWidth/2, rotorHeight/2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Add highlights to make the rotor more visible
+            ctx.strokeStyle = '#707070';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-rotorWidth/2, -rotorHeight/2);
+            ctx.lineTo(rotorWidth/2, -rotorHeight/2);
+            ctx.stroke();
+            
+            ctx.restore();
         }
 
         drawRocketFlame(x, y, width, height, time) {
@@ -769,6 +825,7 @@ loadScripts().then(() => {
             this.player.y = startPos.y * GAME_CONSTANTS.TILE_SIZE;
             this.player.velocityX = 0;
             this.player.velocityY = 0;
+            this.player.rotorAngle = 0; // Reset rotor angle for new level
             
             // Reset state
             this.fuel = GAME_CONSTANTS.PLAYER.MAX_FUEL;
