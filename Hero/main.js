@@ -361,9 +361,10 @@ loadScripts().then(() => {
             // Draw laser beam (before darkness overlay so it's visible in dark)
             if (this.laserActive) {
                 const direction = this.player.facingLeft ? -1 : 1;
-                // Position laser at head level (matching where we draw the head)
-                const eyeY = this.player.y - this.camera.y - GAME_CONSTANTS.TILE_SIZE/2 - 4; // Match head position from level.js
-                const eyeX = this.player.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE / 2; // Center of player
+                // Position laser at eye level (from goggles)
+                const eyeY = this.player.y - this.camera.y + this.player.height * 0.1; // Match goggle position
+                const eyeX = this.player.x - this.camera.x + (this.player.facingLeft ? 
+                    this.player.width * 0.4 : this.player.width * 0.6); // Left or right eye
                 const fullLaserLength = GAME_CONSTANTS.TILE_SIZE * 3; // Shorter laser length
                 this.ctx.save();
                 // Make laser glow in dark
@@ -485,8 +486,9 @@ loadScripts().then(() => {
             // Draw laser beam
             if (this.laserActive) {
                 const direction = this.player.facingLeft ? -1 : 1;
-                const eyeY = this.player.y - this.camera.y - GAME_CONSTANTS.TILE_SIZE/2 - 4;
-                const eyeX = this.player.x - this.camera.x + GAME_CONSTANTS.TILE_SIZE / 2;
+                const eyeY = this.player.y - this.camera.y + this.player.height * 0.1; // Match goggle position
+                const eyeX = this.player.x - this.camera.x + (this.player.facingLeft ? 
+                    this.player.width * 0.4 : this.player.width * 0.6); // Left or right eye
                 const fullLaserLength = GAME_CONSTANTS.TILE_SIZE * 3;
                 
                 // Animated beam pattern
