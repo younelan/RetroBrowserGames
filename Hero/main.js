@@ -213,7 +213,12 @@ loadScripts().then(() => {
                 this.player.velocityY = -GAME_CONSTANTS.PLAYER.FLY_SPEED;
                 this.fuel = Math.max(0, this.fuel - GAME_CONSTANTS.PLAYER.FUEL_CONSUMPTION * deltaTime);
             } else if (!isOnGround) {
-                this.player.velocityY += GAME_CONSTANTS.PLAYER.GRAVITY * deltaTime;
+                // Apply gravity with a cap to prevent excessive falling speed
+                const maxFallSpeed = GAME_CONSTANTS.PLAYER.GRAVITY * 0.5;
+                this.player.velocityY = Math.min(
+                    this.player.velocityY + GAME_CONSTANTS.PLAYER.GRAVITY * deltaTime,
+                    maxFallSpeed
+                );
             } else {
                 this.player.velocityY = 0;
                 if (this.fuel < GAME_CONSTANTS.PLAYER.MAX_FUEL) {
@@ -221,12 +226,33 @@ loadScripts().then(() => {
                 }
             }
             
-            // Apply velocities with deltaTime
-            this.player.x += this.player.velocityX * deltaTime;
-            this.player.y += this.player.velocityY * deltaTime;
+            // Use a more careful collision approach with smaller steps
+            const steps = 4; // Increase steps for more precise collision detection
+            const stepDeltaTime = deltaTime / steps;
             
-            // Handle wall collisions after movement
-            this.collisionManager.handleGridCollisions(this.player);
+            for (let i = 0; i < steps; i++) {
+                // Store original velocities
+                const originalVX = this.player.velocityX;
+                const originalVY = this.player.velocityY;
+                
+                // Move along X-axis first
+                if (originalVX !== 0) {
+                    this.player.x += originalVX * stepDeltaTime;
+                    // Check for collisions and resolve
+                    if (this.collisionManager.handleGridCollisions(this.player)) {
+                        // X-collision detected - velocity was reset by the collision manager
+                    }
+                }
+                
+                // Then move along Y-axis
+                if (originalVY !== 0) {
+                    this.player.y += originalVY * stepDeltaTime;
+                    // Check for collisions and resolve
+                    if (this.collisionManager.handleGridCollisions(this.player)) {
+                        // Y-collision detected - velocity was reset by the collision manager
+                    }
+                }
+            }
         }
         
         handleWeaponInputs(deltaTime, isOnGround) {
