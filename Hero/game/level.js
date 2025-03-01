@@ -6,6 +6,7 @@ class Level {
         this.viewport = levelData.viewport;
         this.collectibles = [];
         this.initialLightsOn = (levelData.lights === false) ? false : true; // Store initial light state
+        this.exits = [];
         
         // Find collectibles in the level
         for (let y = 0; y < this.map.length; y++) {
@@ -17,6 +18,13 @@ class Level {
                         y: y * GAME_CONSTANTS.TILE_SIZE, 
                         type: tile, 
                         collected: false 
+                    });
+                }
+                if (tile === '(' || tile === ')') {
+                    this.exits.push({
+                        x: x,
+                        y: y,
+                        facingRight: tile === ')'
                     });
                 }
             }
@@ -74,6 +82,18 @@ class Level {
         return tile === '*' || tile === 'o';
     }
 
+    isExit(x, y) {
+        if (y < 0 || y >= this.map.length || x < 0 || x >= this.map[0].length) {
+            return false;
+        }
+        const tile = this.map[y][x];
+        return tile === '(' || tile === ')';
+    }
+
+    getExitAt(x, y) {
+        return this.exits.find(exit => exit.x === x && exit.y === y);
+    }
+
     isComplete() {
         return this.collectibles.every(c => c.collected);
     }
@@ -113,6 +133,9 @@ class Level {
                         ctx.fillRect(screenX, screenY + GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
                         ctx.fillRect(screenX, screenY + 2*GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
                         ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY, 2, GAME_CONSTANTS.TILE_SIZE);
+                    } else if (tile === '(' || tile === ')') {
+                        const facingRight = tile === ')';
+                        this.renderSittingPerson(ctx, screenX, screenY, facingRight);
                     } else if (tile === '!') {
                         ctx.fillStyle = GAME_CONSTANTS.COLORS.LAVA;
                         ctx.fillRect(screenX, screenY, GAME_CONSTANTS.TILE_SIZE, GAME_CONSTANTS.TILE_SIZE);
@@ -439,6 +462,124 @@ class Level {
                 }
             }
         }
+    }
+
+    renderSittingPerson(ctx, x, y, facingRight) {
+        const centerX = x + GAME_CONSTANTS.TILE_SIZE / 2;
+        const centerY = y + GAME_CONSTANTS.TILE_SIZE / 2;
+        const scale = GAME_CONSTANTS.TILE_SIZE / 32; // Adjust drawing scale based on tile size
+        
+        // Save context for transformations
+        ctx.save();
+        
+        // Mirror if facing right
+        if (facingRight) {
+            ctx.scale(-1, 1);
+            ctx.translate(-2 * centerX, 0);
+        }
+        
+        // Draw sitting person
+        // Head
+        ctx.fillStyle = '#FFB74D'; // Skin tone
+        ctx.beginPath();
+        ctx.arc(centerX, centerY - 10 * scale, 7 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Body
+        ctx.fillStyle = '#4CAF50'; // Green clothing
+        ctx.beginPath();
+        ctx.ellipse(
+            centerX, 
+            centerY + 2 * scale, 
+            8 * scale, 
+            10 * scale, 
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Arms
+        ctx.lineWidth = 4 * scale;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#4CAF50';
+        
+        // Left arm (wrapped around knees)
+        ctx.beginPath();
+        ctx.arc(
+            centerX + 2 * scale, 
+            centerY + 2 * scale, 
+            8 * scale, 
+            Math.PI * 0.9, 
+            Math.PI * 1.5
+        );
+        ctx.stroke();
+        
+        // Legs (crossed sitting position)
+        ctx.strokeStyle = '#1565C0'; // Blue pants
+        ctx.lineWidth = 5 * scale;
+        
+        // Left leg
+        ctx.beginPath();
+        ctx.arc(
+            centerX + 2 * scale, 
+            centerY + 4 * scale, 
+            8 * scale, 
+            Math.PI * 1.3, 
+            Math.PI * 1.8
+        );
+        ctx.stroke();
+        
+        // Right leg
+        ctx.beginPath();
+        ctx.arc(
+            centerX - 4 * scale, 
+            centerY + 5 * scale, 
+            9 * scale, 
+            Math.PI * 1.5, 
+            Math.PI * 1.9
+        );
+        ctx.stroke();
+        
+        // Face details
+        ctx.fillStyle = 'black';
+        
+        // Eyes
+        ctx.beginPath();
+        ctx.ellipse(
+            centerX - 2 * scale, 
+            centerY - 11 * scale, 
+            1.5 * scale, 
+            1 * scale, 
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Smile
+        ctx.beginPath();
+        ctx.arc(
+            centerX, 
+            centerY - 9 * scale, 
+            3 * scale, 
+            0.1, 
+            Math.PI - 0.1
+        );
+        ctx.stroke();
+        
+        // Add subtle glow effect
+        const glowRadius = GAME_CONSTANTS.TILE_SIZE * 0.7;
+        const gradient = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, glowRadius
+        );
+        gradient.addColorStop(0, 'rgba(100, 255, 255, 0.3)');
+        gradient.addColorStop(1, 'rgba(100, 255, 255, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Restore context after transformations
+        ctx.restore();
     }
 }
 

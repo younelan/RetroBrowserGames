@@ -11,7 +11,7 @@ BBBBBBBBBBBBBBBB    BBBBBBBBBB
 B                            B
 B                          ! B
 B                          ! B
-B +                   $    ! B
+B (                   $    ! B
 BBBBBBBBBBBBBBBBBBBBBBBB~~BBBB`,
         viewport: 30,
     },

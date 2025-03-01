@@ -264,8 +264,15 @@ loadScripts().then(() => {
                     this.lightsOn = false; // Turn off light
                 }
             }
+
+            // Handle level exit collisions
+            const levelExit = this.collisionManager.checkLevelExitCollision(this.player);
+            if (levelExit) {
+                this.loadLevel(this.currentLevel + 1);
+                return;
+            }
         }
-        
+
         render() {
             // Clear the canvas
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -345,7 +352,7 @@ loadScripts().then(() => {
             }
             
             // Create darkness overlay if lights are out
-            if (!this.lightsOn) {
+            if (!this.lightsOn) { // Changed from this.lightsOn to !this.lightsOn
                 this.ctx.fillStyle = 'rgba(0, 0, 0, 0.95)';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 
@@ -546,7 +553,7 @@ loadScripts().then(() => {
             );
             this.ctx.fill();
         }
-        
+
         gameLoop(currentTime) {
             const deltaTime = (currentTime - this.lastTime) / 1000;
             this.lastTime = currentTime;
@@ -555,7 +562,7 @@ loadScripts().then(() => {
             this.render();
             requestAnimationFrame(this.gameLoop.bind(this));
         }
-        
+
         loadLevel(levelNumber) {
             this.currentLevel = levelNumber;
             
@@ -582,11 +589,11 @@ loadScripts().then(() => {
             this.lasers = [];
             this.lightsOn = this.level.initialLightsOn; // Set initial light state
         }
-        
+
         gameWon() {
             alert('Congratulations! You won!');
         }
-        
+
         addExplosion(x, y, color) {
             const explosion = {
                 x: Number(x),

@@ -196,6 +196,16 @@ class CollisionManager {
         }
         return null;
     }
+
+    checkLevelExitCollision(player) {
+        const tiles = this.getEntityTiles(player);
+        for (const {x, y} of tiles) {
+            if (this.level.isExit(x, y)) {
+                return this.level.getExitAt(x, y);
+            }
+        }
+        return null;
+    }
 }
 
 window.CollisionManager = CollisionManager;
