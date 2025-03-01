@@ -30,7 +30,11 @@ class CollisionManager {
 
     checkEnemyCollisions(player, enemies) {
         return enemies.some(enemy => {
-            return enemy.alive && this.hasCollision(player, enemy);
+            if (enemy.alive && this.hasCollision(player, enemy)) {
+                player.handlePlayerDeath();
+                return true;
+            }
+            return false;
         });
     }
 
@@ -138,7 +142,7 @@ class CollisionManager {
         let collided = false;
 
         // Handle wall collisions
-        for (const {x, y} of tiles) {
+        for (const {x, y}of tiles) {
             if (this.level.isWall(x, y)) {
                 const wall = {
                     x: x * this.tileSize,

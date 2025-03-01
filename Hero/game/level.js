@@ -39,7 +39,7 @@ class Level {
             return true;
         }
         const tile = this.map[y][x];
-        return (tile in WALLS) || tile === '=' || tile === '^' || tile === '&' || tile === '!' || tile === '~';
+        return (tile in WALLS) || tile === '=' || tile === '!' || tile === '~';
     }
 
     isHazard(x, y) {
