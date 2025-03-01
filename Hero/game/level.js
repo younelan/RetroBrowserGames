@@ -134,8 +134,13 @@ class Level {
                             GAME_CONSTANTS.TILE_SIZE
                         );
                     } else if (tile === '=') {
-                        // Draw destructible wall base
-                        ctx.fillStyle = GAME_CONSTANTS.COLORS.DESTRUCTIBLE_WALL;
+                        // Draw destructible wall with enhanced brick pattern
+                        const brickColor = '#8B4513';  // Base brown color
+                        const morterColor = '#696969'; // Darker grout color
+                        const highlightColor = '#A0522D'; // Lighter brick highlight
+                        
+                        // Fill base color
+                        ctx.fillStyle = brickColor;
                         ctx.fillRect(
                             screenX, 
                             screenY, 
@@ -143,11 +148,62 @@ class Level {
                             GAME_CONSTANTS.TILE_SIZE
                         );
                         
-                        // Add brick pattern
-                        ctx.fillStyle = '#800000';
-                        ctx.fillRect(screenX, screenY + GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
-                        ctx.fillRect(screenX, screenY + 2*GAME_CONSTANTS.TILE_SIZE/3, GAME_CONSTANTS.TILE_SIZE, 2);
-                        ctx.fillRect(screenX + GAME_CONSTANTS.TILE_SIZE/2, screenY, 2, GAME_CONSTANTS.TILE_SIZE);
+                        // Draw brick pattern
+                        ctx.fillStyle = highlightColor;
+                        
+                        // Draw two bricks with highlight
+                        const brickHeight = GAME_CONSTANTS.TILE_SIZE / 3;
+                        
+                        // Top brick
+                        ctx.fillRect(
+                            screenX, 
+                            screenY, 
+                            GAME_CONSTANTS.TILE_SIZE * 0.6, 
+                            brickHeight - 2
+                        );
+                        
+                        // Middle brick (offset)
+                        ctx.fillRect(
+                            screenX + GAME_CONSTANTS.TILE_SIZE * 0.2, 
+                            screenY + brickHeight + 2, 
+                            GAME_CONSTANTS.TILE_SIZE * 0.8,
+                            brickHeight - 2
+                        );
+                        
+                        // Bottom brick
+                        ctx.fillRect(
+                            screenX, 
+                            screenY + 2 * brickHeight + 2, 
+                            GAME_CONSTANTS.TILE_SIZE * 0.7,
+                            brickHeight - 2
+                        );
+                        
+                        // Add mortar lines
+                        ctx.fillStyle = morterColor;
+                        // Horizontal mortar lines
+                        ctx.fillRect(screenX, screenY + brickHeight, GAME_CONSTANTS.TILE_SIZE, 2);
+                        ctx.fillRect(screenX, screenY + 2 * brickHeight, GAME_CONSTANTS.TILE_SIZE, 2);
+                        
+                        // Vertical mortar lines - vary by row for pattern
+                        const verticalOffset = (Math.floor(screenY / GAME_CONSTANTS.TILE_SIZE) % 2) * 0.5;
+                        ctx.fillRect(
+                            screenX + GAME_CONSTANTS.TILE_SIZE * (0.6 + verticalOffset), 
+                            screenY, 
+                            2, 
+                            brickHeight
+                        );
+                        ctx.fillRect(
+                            screenX + GAME_CONSTANTS.TILE_SIZE * (0.3 + verticalOffset), 
+                            screenY + brickHeight, 
+                            2, 
+                            brickHeight
+                        );
+                        ctx.fillRect(
+                            screenX + GAME_CONSTANTS.TILE_SIZE * (0.7 + verticalOffset), 
+                            screenY + 2 * brickHeight, 
+                            2, 
+                            brickHeight
+                        );
                     } else if (tile === '!') {
                         // Draw lava base
                         ctx.fillStyle = GAME_CONSTANTS.COLORS.LAVA;
