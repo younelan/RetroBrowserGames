@@ -222,11 +222,12 @@ loadScripts().then(() => {
             }
 
             // Handle collectible collisions through CollectionManager
-            const collidedCollectibles = this.collisionManager.checkCollectibleCollisions(this.player, this.collectibles);
+            const collidedCollectibles = this.collisionManager.checkCollectibleCollisions(this.player, this.level.collectibles);
             collidedCollectibles.forEach(collectible => {
-                this.score += collectible.collect();
+                this.score += GAME_CONSTANTS.COLLECTIBLES[collectible.type].POINTS;
+                collectible.collected = true;
             });
-            
+
             // Handle weapons
             if (this.controls[' ']) { // Space bar for laser
                 this.laser.active = true;

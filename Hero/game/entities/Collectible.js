@@ -10,10 +10,6 @@ class Collectible {
     }
 
     update(player) {
-        if (!this.collected && this.checkCollision(player)) {
-            this.collected = true;
-            return this.value;
-        }
         return 0;
     }
 
@@ -48,13 +44,6 @@ class Collectible {
             centerX,
             centerY
         );
-    }
-
-    checkCollision(player) {
-        return player.x < this.x + this.width &&
-               player.x + player.width > this.x &&
-               player.y < this.y + this.height &&
-               player.y + player.height > this.y;
     }
 }
 

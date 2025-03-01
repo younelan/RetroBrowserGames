@@ -60,9 +60,19 @@ class CollisionManager {
     }
 
     checkCollectibleCollisions(player, collectibles) {
-        return collectibles.filter(collectible => {
-            return !collectible.collected && this.hasCollision(player, collectible);
+        const playerTiles = this.getEntityTiles(player);
+        const collected = [];
+
+        playerTiles.forEach(({x, y}) => {
+            collectibles.forEach(collectible => {
+                const collectibleX = Math.floor(collectible.x / this.tileSize);
+                const collectibleY = Math.floor(collectible.y / this.tileSize);
+                if (x === collectibleX && y === collectibleY && !collectible.collected) {
+                    collected.push(collectible);
+                }
+            });
         });
+        return collected;
     }
 
     checkHazardCollisions(player) {
