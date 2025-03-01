@@ -515,94 +515,281 @@ class Level {
             ctx.translate(-2 * centerX, 0);
         }
         
-        // Draw sitting person (scaled and positioned properly for larger portal)
-        // Head
-        ctx.fillStyle = '#FFB74D'; // Skin tone
+        // Draw enhanced 3D person with glow effects
+        this.renderEnhanced3DPerson(ctx, centerX, centerY, scale);
+        
+        // Restore context after transformations
+        ctx.restore();
+    }
+
+    // New method to render an enhanced 3D-looking person with glow effects
+    renderEnhanced3DPerson(ctx, centerX, centerY, scale) {
+        const time = performance.now() / 1000;
+        
+        // Create light source animation
+        const lightPulse = Math.sin(time * 2) * 0.2 + 0.8;
+        
+        // Add ambient glow around character
+        const ambientGlow = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, 40 * scale
+        );
+        ambientGlow.addColorStop(0, 'rgba(100, 255, 250, 0.3)');
+        ambientGlow.addColorStop(0.5, 'rgba(50, 200, 255, 0.2)');
+        ambientGlow.addColorStop(1, 'rgba(0, 100, 200, 0)');
+        
+        ctx.fillStyle = ambientGlow;
         ctx.beginPath();
-        ctx.arc(centerX, centerY - 10 * scale, 7 * scale, 0, Math.PI * 2);
+        ctx.arc(centerX, centerY, 40 * scale, 0, Math.PI * 2);
         ctx.fill();
         
-        // Body
-        ctx.fillStyle = '#4CAF50'; // Green clothing
+        // Create energy field effect
+        ctx.strokeStyle = 'rgba(200, 255, 255, 0.4)';
+        ctx.lineWidth = 1;
+        
+        for (let i = 0; i < 3; i++) {
+            const pulseRadius = (20 + i * 8) * scale * (0.8 + Math.sin(time * 3 + i) * 0.2);
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, pulseRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        
+        // Draw futuristic platform/seat under person
+        // Platform base - metallic look
+        const platformGradient = ctx.createLinearGradient(
+            centerX - 18 * scale, 
+            centerY + 12 * scale,
+            centerX + 18 * scale, 
+            centerY + 15 * scale
+        );
+        platformGradient.addColorStop(0, '#336699');
+        platformGradient.addColorStop(0.5, '#88AADD');
+        platformGradient.addColorStop(1, '#336699');
+        
+        ctx.fillStyle = platformGradient;
         ctx.beginPath();
         ctx.ellipse(
             centerX, 
-            centerY + 2 * scale, 
-            8 * scale, 
-            10 * scale, 
+            centerY + 14 * scale, 
+            18 * scale, 
+            6 * scale, 
             0, 0, Math.PI * 2
         );
         ctx.fill();
         
-        // Arms
-        ctx.lineWidth = 4 * scale;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#4CAF50';
-        
-        // Left arm (wrapped around knees)
+        // Platform rim glow
+        ctx.strokeStyle = 'rgba(100, 200, 255, ' + lightPulse + ')';
+        ctx.lineWidth = 2 * scale;
         ctx.beginPath();
-        ctx.arc(
-            centerX + 2 * scale, 
-            centerY + 2 * scale, 
-            8 * scale, 
-            Math.PI * 0.9, 
-            Math.PI * 1.5
+        ctx.ellipse(
+            centerX, 
+            centerY + 14 * scale, 
+            18 * scale, 
+            6 * scale, 
+            0, 0, Math.PI * 2
         );
         ctx.stroke();
         
-        // Legs (crossed sitting position)
-        ctx.strokeStyle = '#1565C0'; // Blue pants
-        ctx.lineWidth = 5 * scale;
+        // Add tech details to platform
+        ctx.fillStyle = '#1A3366';
+        ctx.beginPath();
+        ctx.ellipse(
+            centerX, 
+            centerY + 14 * scale, 
+            10 * scale, 
+            3 * scale, 
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+        
+        ctx.fillStyle = 'rgba(100, 200, 255, ' + lightPulse + ')';
+        ctx.beginPath();
+        ctx.ellipse(
+            centerX, 
+            centerY + 14 * scale, 
+            4 * scale, 
+            1.5 * scale, 
+            0, 0, Math.PI * 2
+        );
+        ctx.fill();
+        
+        // Draw energy column beneath platform
+        const columnGradient = ctx.createLinearGradient(
+            centerX, centerY + 14 * scale,
+            centerX, centerY + 30 * scale
+        );
+        columnGradient.addColorStop(0, 'rgba(100, 200, 255, 0.8)');
+        columnGradient.addColorStop(1, 'rgba(100, 200, 255, 0)');
+        
+        ctx.fillStyle = columnGradient;
+        ctx.beginPath();
+        ctx.moveTo(centerX - 6 * scale, centerY + 14 * scale);
+        ctx.lineTo(centerX + 6 * scale, centerY + 14 * scale);
+        ctx.lineTo(centerX + 3 * scale, centerY + 30 * scale);
+        ctx.lineTo(centerX - 3 * scale, centerY + 30 * scale);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Draw futuristic humanoid with energy/crystal effects
+        
+        // Body - crystal/energy form
+        const bodyGradient = ctx.createLinearGradient(
+            centerX, centerY - 8 * scale,
+            centerX, centerY + 10 * scale
+        );
+        bodyGradient.addColorStop(0, 'rgba(150, 255, 255, 0.9)');
+        bodyGradient.addColorStop(0.5, 'rgba(50, 180, 255, 0.8)');
+        bodyGradient.addColorStop(1, 'rgba(30, 100, 200, 0.9)');
+        
+        ctx.fillStyle = bodyGradient;
+        ctx.beginPath();
+        ctx.moveTo(centerX - 8 * scale, centerY + 5 * scale);
+        ctx.lineTo(centerX - 6 * scale, centerY - 8 * scale);
+        ctx.lineTo(centerX + 6 * scale, centerY - 8 * scale);
+        ctx.lineTo(centerX + 8 * scale, centerY + 5 * scale);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Add glowing tech lines to body
+        ctx.strokeStyle = 'rgba(200, 255, 255, ' + lightPulse + ')';
+        ctx.lineWidth = scale;
+        
+        // Horizontal lines
+        for (let i = 0; i < 3; i++) {
+            const y = centerY - 5 * scale + i * 4 * scale;
+            const widthReduction = i * 2 * scale;
+            ctx.beginPath();
+            ctx.moveTo(centerX - 6 * scale + widthReduction, y);
+            ctx.lineTo(centerX + 6 * scale - widthReduction, y);
+            ctx.stroke();
+        }
+        
+        // Head - glowing orb/crystal
+        const headGradient = ctx.createRadialGradient(
+            centerX, centerY - 10 * scale, 0,
+            centerX, centerY - 10 * scale, 7 * scale
+        );
+        headGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        headGradient.addColorStop(0.4, 'rgba(150, 220, 255, 0.9)');
+        headGradient.addColorStop(1, 'rgba(100, 180, 255, 0.8)');
+        
+        ctx.fillStyle = headGradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY - 10 * scale, 7 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Create crystalline facets on head
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 0.5 * scale;
+        
+        const facets = 5;
+        for (let i = 0; i < facets; i++) {
+            const angle = (i / facets) * Math.PI;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY - 10 * scale);
+            ctx.lineTo(
+                centerX + Math.cos(angle) * 7 * scale,
+                centerY - 10 * scale + Math.sin(angle) * 7 * scale
+            );
+            ctx.stroke();
+        }
+        
+        // Draw energy patterns inside head
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + (0.5 + Math.sin(time * 3) * 0.3) + ')';
+        ctx.lineWidth = 0.5 * scale;
+        
+        for (let i = 0; i < 3; i++) {
+            const innerRadius = 3 * scale;
+            const angle = time * 2 + i * Math.PI * 2/3;
+            
+            ctx.beginPath();
+            ctx.moveTo(
+                centerX, 
+                centerY - 10 * scale
+            );
+            ctx.lineTo(
+                centerX + Math.cos(angle) * innerRadius,
+                centerY - 10 * scale + Math.sin(angle) * innerRadius
+            );
+            ctx.stroke();
+        }
+        
+        // Draw limbs as energy beams
+        
+        // Arms
+        ctx.strokeStyle = 'rgba(100, 200, 255, 0.7)';
+        ctx.lineWidth = 3 * scale;
+        ctx.lineCap = 'round';
+        
+        // Left arm
+        ctx.beginPath();
+        ctx.moveTo(centerX - 8 * scale, centerY - 4 * scale);
+        ctx.quadraticCurveTo(
+            centerX - 15 * scale,
+            centerY + 2 * scale,
+            centerX - 12 * scale,
+            centerY + 8 * scale
+        );
+        ctx.stroke();
+        
+        // Right arm
+        ctx.beginPath();
+        ctx.moveTo(centerX + 8 * scale, centerY - 4 * scale);
+        ctx.quadraticCurveTo(
+            centerX + 15 * scale,
+            centerY + 2 * scale,
+            centerX + 12 * scale,
+            centerY + 8 * scale
+        );
+        ctx.stroke();
+        
+        // Legs
+        ctx.strokeStyle = 'rgba(100, 200, 255, 0.7)';
         
         // Left leg
         ctx.beginPath();
-        ctx.arc(
-            centerX + 2 * scale, 
-            centerY + 4 * scale, 
-            8 * scale, 
-            Math.PI * 1.3, 
-            Math.PI * 1.8
+        ctx.moveTo(centerX - 6 * scale, centerY + 5 * scale);
+        ctx.quadraticCurveTo(
+            centerX - 10 * scale,
+            centerY + 10 * scale,
+            centerX - 8 * scale,
+            centerY + 15 * scale
         );
         ctx.stroke();
         
         // Right leg
         ctx.beginPath();
-        ctx.arc(
-            centerX - 4 * scale, 
-            centerY + 5 * scale, 
-            9 * scale, 
-            Math.PI * 1.5, 
-            Math.PI * 1.9
+        ctx.moveTo(centerX + 6 * scale, centerY + 5 * scale);
+        ctx.quadraticCurveTo(
+            centerX + 10 * scale,
+            centerY + 10 * scale,
+            centerX + 8 * scale,
+            centerY + 15 * scale
         );
         ctx.stroke();
         
-        // Face details
-        ctx.fillStyle = 'black';
+        // Add energy tendrils connecting to platform
+        ctx.strokeStyle = 'rgba(150, 255, 255, ' + (0.5 + Math.sin(time * 2.5) * 0.3) + ')';
+        ctx.lineWidth = scale;
         
-        // Eyes
-        ctx.beginPath();
-        ctx.ellipse(
-            centerX - 2 * scale, 
-            centerY - 11 * scale, 
-            1.5 * scale, 
-            1 * scale, 
-            0, 0, Math.PI * 2
-        );
-        ctx.fill();
-        
-        // Smile
-        ctx.beginPath();
-        ctx.arc(
-            centerX, 
-            centerY - 9 * scale, 
-            3 * scale, 
-            0.1, 
-            Math.PI - 0.1
-        );
-        ctx.stroke();
-        
-        // Restore context after transformations
-        ctx.restore();
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI + time * 0.5;
+            const feetX = centerX + Math.cos(angle) * 6 * scale;
+            const feetY = centerY + 14 * scale;
+            
+            ctx.beginPath();
+            ctx.moveTo(
+                centerX + Math.cos(angle) * 4 * scale, 
+                centerY + 5 * scale
+            );
+            ctx.quadraticCurveTo(
+                centerX + Math.cos(angle) * 5 * scale,
+                centerY + 10 * scale,
+                feetX,
+                feetY
+            );
+            ctx.stroke();
+        }
     }
 
     // New method to render an impressive portal effect
