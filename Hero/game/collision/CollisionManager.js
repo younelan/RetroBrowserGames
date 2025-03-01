@@ -279,18 +279,22 @@ class CollisionManager {
         return collided;
     }
 
-    getExpandedEntityTiles(entity) {
-        // Use a small margin to ensure we catch tiles that might be overlapping visually
-        const margin = 1;
-        
-        const left = Math.floor((entity.x - margin) / this.tileSize);
-        const right = Math.floor((entity.x + entity.width + margin) / this.tileSize);
-        const top = Math.floor((entity.y - margin) / this.tileSize);
-        const bottom = Math.floor((entity.y + entity.height + margin) / this.tileSize);
+    getExpandedEntityTiles(entity, margin = 1) {
+        const left = Math.floor((entity.x - margin * this.tileSize) / this.tileSize);
+        const right = Math.floor((entity.x + entity.width + margin * this.tileSize) / this.tileSize);
+        const top = Math.floor((entity.y - margin * this.tileSize) / this.tileSize);
+        const bottom = Math.floor((entity.y + entity.height + margin * this.tileSize) / this.tileSize);
 
         const tiles = [];
         for (let y = top; y <= bottom; y++) {
             for (let x = left; x <= right; x++) {
+                // Skip tiles already in the basic entity tiles area
+                if (x >= Math.floor(entity.x / this.tileSize) &&
+                    x <= Math.floor((entity.x + entity.width) / this.tileSize) &&
+                    y >= Math.floor(entity.y / this.tileSize) &&
+                    y <= Math.floor((entity.y + entity.height) / this.tileSize)) {
+                    continue;
+                }
                 tiles.push({x, y});
             }
         }
@@ -308,8 +312,14 @@ class CollisionManager {
     }
 
     checkLevelExitCollision(player) {
+        // Adjust this method to detect collision with the larger exit portal
         const tiles = this.getEntityTiles(player);
-        for (const {x, y} of tiles) {
+        
+        // Additional margin to check nearby tiles for the larger portal
+        const expandedTiles = this.getExpandedEntityTiles(player, 1);
+        
+        // Check first our direct tiles, then expanded tiles for exit collision
+        for (const {x, y} of [...tiles, ...expandedTiles]) {
             if (this.level.isExit(x, y)) {
                 return this.level.getExitAt(x, y);
             }

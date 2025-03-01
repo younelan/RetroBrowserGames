@@ -497,9 +497,14 @@ class Level {
     }
 
     renderSittingPerson(ctx, x, y, facingRight) {
+        // Portal size increased to 2x normal size
         const centerX = x + GAME_CONSTANTS.TILE_SIZE / 2;
         const centerY = y + GAME_CONSTANTS.TILE_SIZE / 2;
-        const scale = GAME_CONSTANTS.TILE_SIZE / 32; // Adjust drawing scale based on tile size
+        const scale = GAME_CONSTANTS.TILE_SIZE / 32; // Base scale for drawing
+        const portalSize = GAME_CONSTANTS.TILE_SIZE * 2; // Doubled portal size
+        
+        // Draw an impressive portal effect first
+        this.renderPortalEffect(ctx, centerX, centerY, portalSize, facingRight);
         
         // Save context for transformations
         ctx.save();
@@ -510,7 +515,7 @@ class Level {
             ctx.translate(-2 * centerX, 0);
         }
         
-        // Draw sitting person
+        // Draw sitting person (scaled and positioned properly for larger portal)
         // Head
         ctx.fillStyle = '#FFB74D'; // Skin tone
         ctx.beginPath();
@@ -596,22 +601,134 @@ class Level {
         );
         ctx.stroke();
         
-        // Add subtle glow effect
-        const glowRadius = GAME_CONSTANTS.TILE_SIZE * 0.7;
-        const gradient = ctx.createRadialGradient(
-            centerX, centerY, 0,
-            centerX, centerY, glowRadius
-        );
-        gradient.addColorStop(0, 'rgba(100, 255, 255, 0.3)');
-        gradient.addColorStop(1, 'rgba(100, 255, 255, 0)');
-        
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
-        ctx.fill();
-        
         // Restore context after transformations
         ctx.restore();
+    }
+
+    // New method to render an impressive portal effect
+    renderPortalEffect(ctx, centerX, centerY, size, facingRight) {
+        const time = performance.now() / 1000;
+        
+        // Save context for portal effect
+        ctx.save();
+        
+        // Draw outer portal glow
+        const outerGradient = ctx.createRadialGradient(
+            centerX, centerY, size * 0.2,
+            centerX, centerY, size * 0.9
+        );
+        outerGradient.addColorStop(0, 'rgba(100, 200, 255, 0.7)');
+        outerGradient.addColorStop(0.5, 'rgba(50, 100, 255, 0.5)');
+        outerGradient.addColorStop(1, 'rgba(50, 50, 255, 0)');
+        
+        ctx.fillStyle = outerGradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, size * 0.9, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw swirling portal energy
+        const swirls = 6;
+        const swirlWidth = 10;
+        const direction = facingRight ? 1 : -1;
+        
+        ctx.strokeStyle = '#40E0FF';
+        ctx.lineWidth = 3;
+        
+        for (let i = 0; i < swirls; i++) {
+            const angle = (time * direction + i * Math.PI / 3) % (Math.PI * 2);
+            const radius = size * 0.4 + Math.sin(time * 3 + i) * 10;
+            
+            ctx.beginPath();
+            ctx.arc(
+                centerX, 
+                centerY, 
+                radius,
+                angle, 
+                angle + Math.PI / swirlWidth
+            );
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.arc(
+                centerX, 
+                centerY, 
+                radius,
+                angle + Math.PI, 
+                angle + Math.PI + Math.PI / swirlWidth
+            );
+            ctx.stroke();
+        }
+        
+        // Draw inner portal core
+        const innerGradient = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, size * 0.45
+        );
+        innerGradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        innerGradient.addColorStop(0.3, 'rgba(150, 230, 255, 0.8)');
+        innerGradient.addColorStop(0.6, 'rgba(100, 200, 255, 0.6)');
+        innerGradient.addColorStop(1, 'rgba(0, 100, 255, 0)');
+        
+        ctx.fillStyle = innerGradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, size * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw pulsing effect
+        const pulseSize = (Math.sin(time * 3) * 0.1 + 0.9) * size * 0.3;
+        const pulseGradient = ctx.createRadialGradient(
+            centerX, centerY, 0,
+            centerX, centerY, pulseSize
+        );
+        pulseGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        pulseGradient.addColorStop(0.5, 'rgba(100, 200, 255, 0.5)');
+        pulseGradient.addColorStop(1, 'rgba(50, 100, 255, 0)');
+        
+        ctx.fillStyle = pulseGradient;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, pulseSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw stars/sparkles
+        const sparkleCount = 12;
+        for (let i = 0; i < sparkleCount; i++) {
+            const sparkAngle = time * 2 + i * (Math.PI * 2 / sparkleCount);
+            const distance = size * 0.35 * (0.8 + Math.sin(time * 4 + i * 7) * 0.2);
+            const sparkX = centerX + Math.cos(sparkAngle) * distance;
+            const sparkY = centerY + Math.sin(sparkAngle) * distance;
+            const sparkSize = 2 + Math.sin(time * 5 + i) * 1;
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            this.drawStar(ctx, sparkX, sparkY, 4, sparkSize, sparkSize/2);
+        }
+        
+        // Restore context
+        ctx.restore();
+    }
+
+    // Helper method to draw stars
+    drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        const step = Math.PI / spikes;
+    
+        ctx.beginPath();
+        
+        for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+            
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+        }
+        
+        ctx.closePath();
+        ctx.fill();
     }
 }
 
