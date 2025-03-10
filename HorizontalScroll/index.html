@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gorilla Bounce</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-overlay">
+            <div id="game-stats">
+                <div id="score">Score: <span id="scoreValue">0</span></div>
+                <div id="level">Level: <span id="levelValue">1</span></div>
+                <div id="bananas">🍌 × <span id="bananaCount">0</span></div>
+            </div>
+            <div id="power-up-indicator" class="hidden">
+                <span id="power-up-icon"></span>
+                <div id="power-up-timer"></div>
+            </div>
+            <div id="start-screen" class="screen">
+                <h1>Gorilla Bounce</h1>
+                <div class="controls-info">
+                    <p>📱 Tap screen or press SPACE to jump</p>
+                    <p>⬅️➡️ Arrow keys to move left/right</p>
+                </div>
+                <div class="objectives">
+                    <h3>Objectives:</h3>
+                    <ul>
+                        <li>Collect bananas to progress</li>
+                        <li>Find power-ups to gain abilities</li>
+                        <li>Complete level challenges</li>
+                    </ul>
+                </div>
+                <button id="startButton">Start Game</button>
+            </div>
+            <div id="level-complete" class="screen hidden">
+                <h2>Level Complete!</h2>
+                <div class="level-stats">
+                    <p>Bananas: <span id="levelBananas">0</span></p>
+                    <p>Score: <span id="levelScore">0</span></p>
+                </div>
+                <button id="nextLevelButton">Next Level</button>
+            </div>
+            <div id="game-over-screen" class="screen hidden">
+                <h2>Game Over!</h2>
+                <div class="final-stats">
+                    <p>Final Score: <span id="finalScore">0</span></p>
+                    <p>Levels Completed: <span id="levelsComplete">0</span></p>
+                    <p>Total Bananas: <span id="totalBananas">0</span></p>
+                </div>
+                <button id="restartButton">Play Again</button>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
