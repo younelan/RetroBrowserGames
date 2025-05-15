@@ -150,6 +150,9 @@
   }
   
   function updateGame(deltaTime) {
+    // Update game time (clock)
+    updateGameClock(deltaTime);
+    
     // Always update ball physics
     if (gameState.ball) {
       gameState.ball.update(deltaTime, gameState, scene);
@@ -160,6 +163,35 @@
     
     // Check for scoring and collisions
     checkCollisions();
+  }
+  
+  // Add function to update game clock
+  function updateGameClock(deltaTime) {
+    // Update total game time
+    gameState.gameTime += deltaTime;
+    
+    // Update clock time (counting down)
+    gameState.clock.seconds -= deltaTime;
+    
+    // Handle minute/second rollover
+    if (gameState.clock.seconds < 0) {
+      gameState.clock.seconds += 60;
+      gameState.clock.minutes--;
+      
+      // Check for end of quarter
+      if (gameState.clock.minutes < 0) {
+        // Reset clock for next quarter
+        gameState.clock.minutes = 12;
+        gameState.clock.seconds = 0;
+        
+        // Update scoreboard
+        scoreBoard.updateQuarter(scoreBoard.quarter + 1);
+        scoreBoard.showMessage(`END OF QUARTER ${scoreBoard.quarter - 1}`);
+      }
+    }
+    
+    // Update scoreboard display
+    scoreBoard.updateGameClock(gameState.clock.minutes, Math.floor(gameState.clock.seconds));
   }
   
   // Helper function to visualize ball trajectory during debugging
@@ -289,6 +321,15 @@
     
     // Reset ball
     resetAfterScore(scoringTeam === 1 ? 2 : 1); // Other team gets the ball
+    
+    // Reset shot clock
+    resetShotClock();
+  }
+  
+  // Add function to reset shot clock
+  function resetShotClock() {
+    // Reset to 24 seconds per NBA rules
+    scoreBoard.updateShotClock(24);
   }
   
   function resetAfterScore(teamWithPossession) {

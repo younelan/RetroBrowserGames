@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <title>3D Basketball Game</title>
+  <!-- Add Orbitron font for digital display look -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <!-- Add Three.js library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
   <div id="gameContainer">
-    <div id="scoreBoard">BLUE: 0 - RED: 0</div>
-    <div id="controls">Controls: Arrow Keys/WASD = Move, F = Shoot, Spacebar = Jump</div>
+    <div id="scoreBoard"></div>
+    <div id="controls">Controls: Arrow Keys/WASD = Move, P = Pass, Spacebar = Shoot/Jump</div>
   </div>
   <script src="controls.js"></script>
   <script src="scoreboard.js"></script>
