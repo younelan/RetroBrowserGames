@@ -3,7 +3,7 @@ class Ball {
     // Physical properties
     this.position = new THREE.Vector3(x, y, z);
     this.velocity = new THREE.Vector3(0, 0, 0);
-    this.radius = 1.2; // Ball radius in 3D units
+    this.radius = 0.6; // SMALLER ball radius (was 1.2)
     this.held = false;
     this.heldBy = null;
     this.bounceCount = 0;
@@ -11,6 +11,11 @@ class Ball {
     this.stealable = false;
     this.isPass = false;
     this.passTarget = null;
+    
+    // Dribbling properties
+    this.dribbleHeight = 0;
+    this.dribblePhase = 0;
+    this.isDribbling = false;
     
     // Create 3D model
     this.createMesh(scene);
@@ -80,28 +85,75 @@ class Ball {
   }
   
   update(deltaTime, gameState, scene) {
-    // Skip physics if ball is held by a player
-    if (this.held) {
-      if (this.heldBy) {
-        // Position ball in player's hands
-        const player = this.heldBy;
-        const holdHeight = 2; // Height to hold the ball
+    // If ball is held by a player, handle dribbling
+    if (this.held && this.heldBy) {
+      const player = this.heldBy;
+      
+      // Check if player is moving - enable dribbling
+      const isMoving = player.velocity && (Math.abs(player.velocity.x) > 0.1 || Math.abs(player.velocity.z) > 0.1);
+      const playerHeight = 4.0; // Match doubled player height
+      
+      if (isMoving) {
+        // Player is moving - dribble the ball
+        this.isDribbling = true;
         
-        // Calculate position based on player direction and dribble animation
+        // Update dribble phase
+        this.dribblePhase += deltaTime * 5; // Adjust for dribble speed
+        
+        // Calculate dribble height using sine wave
+        const dribbleAmplitude = 1.8; // Max height of dribble
+        const minHeight = this.radius; // Lowest point (touching ground)
+        
+        // Calculate height using sine wave
+        this.dribbleHeight = minHeight + Math.abs(Math.sin(this.dribblePhase)) * dribbleAmplitude;
+        
+        // Position ball beside player with dribble height
+        const sideOffset = player.team === 1 ? 0.8 : -0.8; // Side offset
         this.position.set(
-          player.mesh.position.x + (player.direction.x > 0 ? 0.5 : -0.5),
-          player.mesh.position.y + holdHeight,
-          player.mesh.position.z + (player.direction.z > 0 ? 0.5 : -0.5)
+          player.mesh.position.x + sideOffset,
+          this.dribbleHeight,
+          player.mesh.position.z + 0.5
         );
         
-        // Update mesh position
-        this.mesh.position.copy(this.position);
+        // Create bounce effect when ball is at lowest point
+        if (this.dribbleHeight <= minHeight + 0.1 && Math.sin(this.dribblePhase) > 0) {
+          this.createBounceEffect(scene);
+        }
+      } else {
+        // Player is stationary - hold ball in hands
+        this.isDribbling = false;
+        this.dribbleHeight = playerHeight * 0.6; // Hold at 60% of player height
+        
+        // Position ball in player's hands
+        const forwardDir = new THREE.Vector3(
+          -Math.sin(player.mesh.rotation.y),
+          0,
+          -Math.cos(player.mesh.rotation.y)
+        );
+        
+        this.position.set(
+          player.mesh.position.x + forwardDir.x * 0.5,
+          this.dribbleHeight,
+          player.mesh.position.z + forwardDir.z * 0.5
+        );
       }
+      
+      // Update mesh position
+      this.mesh.position.copy(this.position);
+      
+      // Add subtle rotation while dribbling
+      if (this.isDribbling) {
+        this.mesh.rotation.x += 5 * deltaTime;
+        this.mesh.rotation.z += 3 * deltaTime;
+      }
+      
       return;
     }
     
-    // Apply gravity
-    this.velocity.y -= 9.8 * deltaTime;
+    // Not held by player - apply physics
+    
+    // Apply stronger gravity for faster fall
+    this.velocity.y -= 15 * deltaTime;
     
     // Update position based on velocity
     this.position.x += this.velocity.x * deltaTime;
@@ -112,8 +164,8 @@ class Ball {
     this.mesh.position.copy(this.position);
     
     // Apply spin/rotation based on velocity
-    this.mesh.rotation.x += this.velocity.z * deltaTime * 0.1;
-    this.mesh.rotation.z += this.velocity.x * deltaTime * 0.1;
+    this.mesh.rotation.x += this.velocity.z * deltaTime * 0.2;
+    this.mesh.rotation.z += this.velocity.x * deltaTime * 0.2;
     
     // Court boundaries
     const halfWidth = gameState.courtWidth / 2;
@@ -136,21 +188,22 @@ class Ball {
       this.velocity.z *= -0.8;
     }
     
-    // Bounce off floor
+    // Bounce off floor with improved physics
     if (this.position.y < this.radius) {
       this.position.y = this.radius;
       this.bounceCount++;
       
-      // Energy loss on bounce
-      if (this.bounceCount < 5) {
-        this.velocity.y = -this.velocity.y * 0.7;
+      // More energetic bounces with realistic dampening
+      if (this.bounceCount < 8) { // Allow more bounces
+        const bounceFactor = 0.75 - (this.bounceCount * 0.05); // Gradual energy loss
+        this.velocity.y = -this.velocity.y * bounceFactor;
         this.velocity.x *= 0.9;
         this.velocity.z *= 0.9;
         
         // Create bounce effect
         this.createBounceEffect(scene);
       } else {
-        // Ball stops after a few bounces
+        // Ball stops after several bounces
         this.velocity.y = 0;
         this.velocity.x *= 0.95;
         this.velocity.z *= 0.95;

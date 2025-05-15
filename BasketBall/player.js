@@ -5,7 +5,7 @@ class Player {
     this.color = color;
     this.position = position; // basketball position (point guard, etc.)
     this.radius = 1;
-    this.height = 2; // Default height in meters
+    this.height = 4.0; // DOUBLED height from 2 to 4 meters
     this.isUserControlled = false;
     
     // Game stats
@@ -56,52 +56,52 @@ class Player {
     const primaryColor = this.team === 1 ? 0x0066ff : 0xff3300;
     const secondaryColor = this.team === 1 ? 0x99ccff : 0xff9966;
     
-    // Create body (torso) - BIGGER for better visibility
-    const bodyGeometry = new THREE.CylinderGeometry(0.8, 0.6, 2.0, 8);
+    // Create body (torso) - TALLER for doubled height
+    const bodyGeometry = new THREE.CylinderGeometry(0.8, 0.6, 3.0, 8);
     const bodyMaterial = new THREE.MeshStandardMaterial({ color: primaryColor });
     this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.body.position.y = 1.3; // Raised position
+    this.body.position.y = 2.0; // Raised position to match height
     this.body.castShadow = true;
     this.mesh.add(this.body);
     
-    // Create head - BIGGER
-    const headGeometry = new THREE.SphereGeometry(0.6, 16, 16);
+    // Create head - Proportional to new height
+    const headGeometry = new THREE.SphereGeometry(0.7, 16, 16);
     const headMaterial = new THREE.MeshStandardMaterial({ color: 0xf8d8c0 }); // Skin tone
     this.head = new THREE.Mesh(headGeometry, headMaterial);
-    this.head.position.y = 2.6; // Higher position for better proportions
+    this.head.position.y = 4.2; // Higher position for taller player
     this.head.castShadow = true;
     this.mesh.add(this.head);
     
-    // Create legs - THICKER
-    const legGeometry = new THREE.CylinderGeometry(0.3, 0.2, 1.4, 8);
+    // Create legs - LONGER for taller player
+    const legGeometry = new THREE.CylinderGeometry(0.3, 0.2, 2.4, 8);
     const legMaterial = new THREE.MeshStandardMaterial({ color: secondaryColor });
     
     // Left leg
     this.leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-    this.leftLeg.position.set(-0.35, 0.7, 0);
+    this.leftLeg.position.set(-0.35, 1.2, 0);
     this.leftLeg.castShadow = true;
     this.mesh.add(this.leftLeg);
     
     // Right leg
     this.rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-    this.rightLeg.position.set(0.35, 0.7, 0);
+    this.rightLeg.position.set(0.35, 1.2, 0);
     this.rightLeg.castShadow = true;
     this.mesh.add(this.rightLeg);
     
-    // Create arms - LONGER
-    const armGeometry = new THREE.CylinderGeometry(0.2, 0.15, 1.5, 8);
+    // Create arms - LONGER for taller player
+    const armGeometry = new THREE.CylinderGeometry(0.2, 0.15, 2.2, 8);
     const armMaterial = new THREE.MeshStandardMaterial({ color: primaryColor });
     
     // Left arm
     this.leftArm = new THREE.Mesh(armGeometry, armMaterial);
-    this.leftArm.position.set(-0.9, 1.5, 0);
+    this.leftArm.position.set(-1.0, 2.8, 0);
     this.leftArm.rotation.z = Math.PI / 3; // Angle arm outward
     this.leftArm.castShadow = true;
     this.mesh.add(this.leftArm);
     
     // Right arm
     this.rightArm = new THREE.Mesh(armGeometry, armMaterial);
-    this.rightArm.position.set(0.9, 1.5, 0);
+    this.rightArm.position.set(1.0, 2.8, 0);
     this.rightArm.rotation.z = -Math.PI / 3; // Angle arm outward
     this.rightArm.castShadow = true;
     this.mesh.add(this.rightArm);
@@ -109,8 +109,8 @@ class Player {
     // Add jersey number
     this.addJerseyNumber();
     
-    // Create player shadow - BIGGER
-    const shadowGeometry = new THREE.CircleGeometry(1.0, 16);
+    // Create player shadow - BIGGER for taller player
+    const shadowGeometry = new THREE.CircleGeometry(1.2, 16);
     const shadowMaterial = new THREE.MeshBasicMaterial({
       color: 0x000000,
       transparent: true,
@@ -644,12 +644,12 @@ class Player {
     this.animateRunning(speed);
   }
   
-  // Jump
+  // Jump with greater height to match player height
   jump() {
     if (this.isJumping || this.jumpCooldown > 0) return;
     
     this.isJumping = true;
-    this.jumpForce = 10;
+    this.jumpForce = 15; // Higher jump force (was 10)
     this.jumpCooldown = 0.5; // Cooldown in seconds
   }
   
@@ -854,7 +854,7 @@ class Player {
     
     // Set ball velocity for pass
     const passSpeed = 25; // Faster than shooting
-    const arcHeight = 5 + distance * 0.07; // Lower arc than shooting
+    const arcHeight = 7 + distance * 0.07; // Higher arc for taller players
     
     ball.velocity.set(
       passDirection.x * passSpeed,
@@ -862,10 +862,10 @@ class Player {
       passDirection.z * passSpeed
     );
     
-    // Position ball at the passer's hands
+    // Position ball at the passer's hands (at the higher position)
     ball.mesh.position.set(
       this.mesh.position.x + passDirection.x * 0.7,
-      this.mesh.position.y + 1.5,
+      this.mesh.position.y + 2.4, // Higher hand position
       this.mesh.position.z + passDirection.z * 0.7
     );
     ball.position.copy(ball.mesh.position);
@@ -874,7 +874,7 @@ class Player {
     this.passCooldown = 0.5; // Half-second cooldown
   }
   
-  // Pick up the ball
+  // Pick up the ball (adjusted for height)
   pickupBall(ball) {
     if (ball.held) return;
     
@@ -888,10 +888,10 @@ class Player {
     // Reset ball physics
     ball.velocity.set(0, 0, 0);
     
-    // Position ball in player's hands
+    // Position ball in player's hands at the new height
     ball.mesh.position.set(
       this.mesh.position.x + (this.team === 1 ? 0.5 : -0.5),
-      this.mesh.position.y + 1.5,
+      this.mesh.position.y + 2.4, // Higher hand position for taller players
       this.mesh.position.z
     );
     ball.position.copy(ball.mesh.position);
