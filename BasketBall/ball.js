@@ -11,6 +11,8 @@ class Ball {
     this.stealable = false;
     this.isPass = false;
     this.passTarget = null;
+    this.shotBy = null; // Track who shot the ball
+    this.initialShotPosition = new THREE.Vector3(); // Store starting position of shot
     
     // Dribbling properties
     this.dribbleHeight = 0;
@@ -85,7 +87,10 @@ class Ball {
   }
   
   update(deltaTime, gameState, scene) {
-    // If ball is held by a player, handle dribbling
+    // EARLY SAFETY CHECK: If no scene, return to avoid errors
+    if (!scene) return;
+    
+    // PLAYER CONTROL MODE: If ball is held by a player, handle dribbling
     if (this.held && this.heldBy) {
       const player = this.heldBy;
       
@@ -150,28 +155,67 @@ class Ball {
       return;
     }
     
-    // Not held by player - apply physics
+    // INDEPENDENT PHYSICS MODE: Ball is free-flying
+    // Log ball state more frequently for debugging
+    if (!this.held && Math.random() < 0.03) {
+      console.log("FREE BALL - pos y:", this.position.y.toFixed(2), 
+                  "vel y:", this.velocity.y.toFixed(2), 
+                  "bounces:", this.bounceCount);
+    }
     
-    // Apply stronger gravity for faster fall
-    this.velocity.y -= 15 * deltaTime;
+    // Handle passing trajectory - add guidance for passes
+    if (this.isPass && this.passTarget) {
+      // Calculate vector to target player's current position
+      const targetPos = this.passTarget.mesh.position.clone();
+      targetPos.y += 2.4; // Aim for player's hands
+      
+      const toTarget = new THREE.Vector3().subVectors(targetPos, this.position);
+      const distanceToTarget = toTarget.length();
+      
+      // If close to target, let them catch it
+      if (distanceToTarget < 2.5) {
+        // Higher catch probability when closer
+        if (distanceToTarget < 1.5 || Math.random() < 0.4) {
+          console.log("Pass caught by target!");
+          this.passTarget.pickupBall(this);
+          this.isPass = false;
+          this.passTarget = null;
+          return;
+        }
+      }
+      
+      // Gentle homing effect to guide the ball to target
+      if (distanceToTarget < 8) {
+        const homingStrength = Math.min(0.8, 3 / distanceToTarget);
+        const targetVelocity = toTarget.normalize().multiplyScalar(this.velocity.length() * 0.8);
+        
+        // Add slight correction to trajectory
+        this.velocity.lerp(targetVelocity, deltaTime * homingStrength);
+      }
+    }
     
-    // Update position based on velocity
+    // GRAVITY PHYSICS: Always apply even if not shooting or passing
+    
+    // Apply stronger gravity - increase to make ball fall faster
+    this.velocity.y -= 28 * deltaTime; // Increased gravity (was 25)
+    
+    // Move the ball based on velocity
     this.position.x += this.velocity.x * deltaTime;
     this.position.y += this.velocity.y * deltaTime;
     this.position.z += this.velocity.z * deltaTime;
     
-    // Update mesh position
+    // CRITICAL: Always update mesh position to match calculated position
     this.mesh.position.copy(this.position);
     
-    // Apply spin/rotation based on velocity
-    this.mesh.rotation.x += this.velocity.z * deltaTime * 0.2;
-    this.mesh.rotation.z += this.velocity.x * deltaTime * 0.2;
+    // Apply realistic spin based on velocity
+    this.mesh.rotation.x += this.velocity.z * deltaTime * 0.3; // More spin
+    this.mesh.rotation.z -= this.velocity.x * deltaTime * 0.3;
     
-    // Court boundaries
-    const halfWidth = gameState.courtWidth / 2;
-    const halfHeight = gameState.courtHeight / 2;
+    // COURT BOUNDARY COLLISIONS
+    const halfWidth = gameState.courtWidth ? gameState.courtWidth / 2 : 47;
+    const halfHeight = gameState.courtHeight ? gameState.courtHeight / 2 : 25;
     
-    // Bounce off court boundaries
+    // Handle collisions with court boundaries
     if (this.position.x < -halfWidth + this.radius) {
       this.position.x = -halfWidth + this.radius;
       this.velocity.x *= -0.8; // Energy loss on bounce
@@ -188,31 +232,42 @@ class Ball {
       this.velocity.z *= -0.8;
     }
     
-    // Bounce off floor with improved physics
+    // FLOOR BOUNCE: Make more energetic
     if (this.position.y < this.radius) {
       this.position.y = this.radius;
       this.bounceCount++;
       
-      // More energetic bounces with realistic dampening
-      if (this.bounceCount < 8) { // Allow more bounces
-        const bounceFactor = 0.75 - (this.bounceCount * 0.05); // Gradual energy loss
+      // More energetic bounce - first bounce higher, then lose energy faster
+      if (this.bounceCount < 5) {
+        const bounceFactor = this.bounceCount === 1 ? 0.8 : (0.75 - (this.bounceCount * 0.12));
         this.velocity.y = -this.velocity.y * bounceFactor;
+        this.velocity.x *= 0.85; // More friction on court
+        this.velocity.z *= 0.85;
+        
+        // Create visible bounce effect
+        this.createBounceEffect(scene);
+        
+        // Log bounce for debugging
+        console.log(`BOUNCE #${this.bounceCount} - vel y after: ${this.velocity.y.toFixed(2)}`);
+      } else {
+        // Ball stops bouncing after several bounces
+        this.velocity.y = 0;
         this.velocity.x *= 0.9;
         this.velocity.z *= 0.9;
         
-        // Create bounce effect
-        this.createBounceEffect(scene);
-      } else {
-        // Ball stops after several bounces
-        this.velocity.y = 0;
-        this.velocity.x *= 0.95;
-        this.velocity.z *= 0.95;
-        
-        // Stop completely when very slow
-        if (Math.abs(this.velocity.x) < 0.5 && Math.abs(this.velocity.z) < 0.5) {
+        // Stop completely when velocity is low
+        if (Math.abs(this.velocity.x) < 0.8 && Math.abs(this.velocity.z) < 0.8) {
           this.velocity.set(0, 0, 0);
+          console.log("Ball stopped moving");
         }
       }
+    }
+    
+    // Calculate shot distance for scoring if this is a shot
+    if (this.shotBy && this.initialShotPosition.lengthSq() > 0) {
+      const dx = this.position.x - this.initialShotPosition.x;
+      const dz = this.position.z - this.initialShotPosition.z;
+      this.shotDistance = Math.sqrt(dx*dx + dz*dz);
     }
   }
   
@@ -270,6 +325,10 @@ class Ball {
     this.bounceCount = 0;
     this.held = false;
     this.heldBy = null;
+    this.isPass = false;
+    this.passTarget = null;
+    this.shotBy = null;
+    this.initialShotPosition.set(0, 0, 0);
   }
 }
 

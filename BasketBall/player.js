@@ -290,26 +290,143 @@ class Player {
       this.resetLegAnimation();
     }
     
-    // Handle jumping
-    if ((keys[' '] || keys['Spacebar']) && !this.isJumping && this.jumpCooldown <= 0) {
+    // SPACE KEY: Handle shooting when player has the ball
+    if (keys[' '] && this.hasBall && this.shootCooldown <= 0) {
+      console.log("Throwing ball with spacebar");
+      this.shootTheBall(gameState);
+    } 
+    // SPACE KEY: Handle jumping when player doesn't have the ball
+    else if (keys[' '] && !this.isJumping && this.jumpCooldown <= 0) {
       this.jump();
     }
     
-    // Update jump
-    this.updateJump(deltaTime);
-    
-    // Handle shooting
-    if ((keys['f'] || keys['F']) && this.hasBall && this.shootCooldown <= 0) {
-      this.shoot(gameState);
-    }
-    
-    // Handle passing (not implemented yet)
-    if ((keys['e'] || keys['E']) && this.hasBall && this.passCooldown <= 0) {
-      this.findAndPassToTeammate(gameState);
+    // P KEY: Handle passing to teammates
+    if ((keys['p'] || keys['P']) && this.hasBall && this.passCooldown <= 0) {
+      console.log("Passing with P key");
+      this.passToTeammate(gameState);
     }
     
     // Update cooldowns
     this.updateCooldowns(deltaTime);
+    
+    // Update jump physics
+    this.updateJump(deltaTime);
+  }
+  
+  // NEW METHOD: Shoot the ball in current facing direction
+  shootTheBall(gameState) {
+    if (!this.hasBall) return;
+    
+    console.log("SHOOTING: Releasing ball from player control");
+    
+    // Release ball - CRITICAL
+    this.hasBall = false;
+    const ball = gameState.ball;
+    ball.held = false;
+    ball.heldBy = null;
+    
+    // Get player's facing direction
+    const playerDirection = new THREE.Vector3(
+      -Math.sin(this.mesh.rotation.y),
+      0,
+      -Math.cos(this.mesh.rotation.y)
+    );
+    
+    // Position ball in front of player's hands FIRST
+    // Important: This must happen before setting velocity
+    ball.position.set(
+      this.mesh.position.x + playerDirection.x * 1.2, // Move further away
+      this.mesh.position.y + 2.5,
+      this.mesh.position.z + playerDirection.z * 1.2  // Move further away
+    );
+    ball.mesh.position.copy(ball.position);
+    
+    // STRONG shot power for visible movement
+    const shotPower = 25; // Increased power
+    const upwardForce = 15; // Higher arc
+    
+    // Set ball velocity with proper physics
+    ball.velocity.set(
+      playerDirection.x * shotPower,
+      upwardForce, 
+      playerDirection.z * shotPower
+    );
+    
+    // Store data for shot tracking
+    ball.shotBy = this;
+    ball.initialShotPosition = ball.position.clone(); // Use clone for safety
+    ball.shotDistance = 0;
+    ball.bounceCount = 0; // Reset bounce count for new shot
+    
+    // Jump when shooting
+    this.jump();
+    
+    // Set cooldown
+    this.shootCooldown = 1.0;
+    
+    console.log("Ball velocity set to:", ball.velocity);
+  }
+  
+  // NEW METHOD: Pass to a teammate
+  passToTeammate(gameState) {
+    if (!this.hasBall) return;
+    
+    // Find teammates
+    const teammates = gameState.players.filter(p => p.team === this.team && p !== this);
+    if (teammates.length === 0) return;
+    
+    // Sort teammates by distance
+    teammates.sort((a, b) => {
+      const distA = this.mesh.position.distanceTo(a.mesh.position);
+      const distB = this.mesh.position.distanceTo(b.mesh.position);
+      return distA - distB;
+    });
+    
+    // Get closest teammate
+    const closestTeammate = teammates[0];
+    
+    // Release ball
+    this.hasBall = false;
+    const ball = gameState.ball;
+    ball.held = false;
+    ball.heldBy = null;
+    
+    // Set target info for ball
+    ball.isPass = true;
+    ball.passTarget = closestTeammate;
+    
+    // Calculate direction to teammate
+    const passDirection = new THREE.Vector3().subVectors(
+      closestTeammate.mesh.position,
+      this.mesh.position
+    ).normalize();
+    
+    // Calculate distance to determine pass arc
+    const distance = this.mesh.position.distanceTo(closestTeammate.mesh.position);
+    const arcHeight = Math.min(8, 4 + distance * 0.2); // Higher arc for longer passes
+    
+    // Calculate pass power based on distance
+    const passSpeed = Math.min(30, 20 + distance * 0.5);
+    
+    // Set ball velocity for pass - adjust for nice arc
+    ball.velocity.set(
+      passDirection.x * passSpeed,
+      arcHeight, // Upward force creates arc
+      passDirection.z * passSpeed
+    );
+    
+    // CRITICAL: Position ball properly and update both position properties
+    ball.position.set(
+      this.mesh.position.x + passDirection.x * 0.7,
+      this.mesh.position.y + 2.4, // Position at hands
+      this.mesh.position.z + passDirection.z * 0.7
+    );
+    ball.mesh.position.copy(ball.position);
+    
+    // Set cooldown
+    this.passCooldown = 0.5;
+    
+    console.log("Ball passed to:", closestTeammate.position);
   }
   
   // Update for AI offensive player

@@ -91,18 +91,22 @@
     // Get court dimensions
     const courtDimensions = court.getDimensions();
     
-    // Team 1 (blue) - Better distributed across the court
+    // Team 1 (blue) - INCREASED TO 5 PLAYERS with better court positioning
     const blueTeam = [
       { position: 'pointGuard', x: -30, z: 0, isUser: true },
       { position: 'shootingGuard', x: -20, z: -15 },
-      { position: 'center', x: -10, z: 10 }
+      { position: 'smallForward', x: -15, z: 15 },
+      { position: 'powerForward', x: -25, z: -8 },
+      { position: 'center', x: -10, z: 5 }
     ];
     
-    // Team 2 (red) - Better distributed across the court
+    // Team 2 (red) - INCREASED TO 5 PLAYERS with better court positioning
     const redTeam = [
       { position: 'pointGuard', x: 30, z: 0 },
-      { position: 'powerForward', x: 20, z: -15 },
-      { position: 'center', x: 10, z: 10 }
+      { position: 'shootingGuard', x: 20, z: -15 },
+      { position: 'smallForward', x: 15, z: 15 },
+      { position: 'powerForward', x: 25, z: -8 },
+      { position: 'center', x: 10, z: 5 }
     ];
     
     // Create blue team (team 1)
@@ -120,8 +124,8 @@
       gameState.players.push(newPlayer);
     });
     
-    // Ensure we have exactly 6 players
-    console.log(`Created ${gameState.players.length} players (should be 6)`);
+    // Ensure we have exactly 10 players
+    console.log(`Created ${gameState.players.length} players (should be 10)`);
   }
   
   // Main game loop
@@ -146,8 +150,16 @@
   }
   
   function updateGame(deltaTime) {
-    // Update ball physics
+    // Update ball physics - IMPORTANT: This must run even if the ball is not held
     if (gameState.ball) {
+      // Log ball state occasionally during development
+      if (Math.random() < 0.005) {
+        console.log("Ball update - held:", gameState.ball.held, 
+                    "position:", gameState.ball.position.y.toFixed(2), 
+                    "velocity:", gameState.ball.velocity.y.toFixed(2));
+      }
+      
+      // Always update ball physics whether held or free
       gameState.ball.update(deltaTime, gameState, scene);
     }
     
