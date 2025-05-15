@@ -260,6 +260,7 @@ class Court {
     // Key dimensions - standard NBA key ("paint" area)
     const keyWidth = 16;  // Standard NBA key width
     const keyLength = 19; // Length of the rectangular part
+    const outwardOffset = 4.8; // DOUBLED from previous 1.8 to match basket position better
     
     // Use a slightly different material for the filled key areas
     const keyMaterial = new THREE.MeshBasicMaterial({
@@ -269,20 +270,20 @@ class Court {
       opacity: 0.5
     });
     
-    // Create keys at both basket locations
-    this.createFilledKeyArea(-this.width/2 + 5.25, 0, keyWidth, keyLength, true, keyMaterial.clone());
-    this.createFilledKeyArea(this.width/2 - 5.25, 0, keyWidth, keyLength, false, keyMaterial.clone());
+    // Create keys at both basket locations - with doubled offset
+    this.createFilledKeyArea(-this.width/2 + 5.25 - outwardOffset, 0, keyWidth, keyLength, true, keyMaterial.clone());
+    this.createFilledKeyArea(this.width/2 - 5.25 + outwardOffset, 0, keyWidth, keyLength, false, keyMaterial.clone());
     
     // White rectangular outline
     const whiteLineMaterial = material.clone();
     whiteLineMaterial.transparent = false;
     whiteLineMaterial.opacity = 1.0;
     
-    // Create the key outlines correctly
-    this.createFixedKeyOutline(-this.width/2 + 5.25, 0, keyWidth, keyLength, true, whiteLineMaterial);
-    this.createFixedKeyOutline(this.width/2 - 5.25, 0, keyWidth, keyLength, false, whiteLineMaterial);
+    // Create the key outlines correctly - also with doubled offset
+    this.createFixedKeyOutline(-this.width/2 + 5.25 - outwardOffset, 0, keyWidth, keyLength, true, whiteLineMaterial);
+    this.createFixedKeyOutline(this.width/2 - 5.25 + outwardOffset, 0, keyWidth, keyLength, false, whiteLineMaterial);
   }
-
+  
   // Create a filled (solid) key area
   createFilledKeyArea(basketX, basketZ, width, length, isLeftSide, material) {
     // Create a shape for the key area (rectangle + semicircle)
