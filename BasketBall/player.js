@@ -371,7 +371,7 @@ class Player {
     console.log("BALL RELEASED - Velocity:", ball.velocity.toArray(), "Position:", ball.position.toArray());
   }
   
-  // NEW METHOD: Pass to a teammate
+  // NEW METHOD: Pass to a teammate - IMPROVED PASSING MECHANICS
   passToTeammate(gameState) {
     if (!this.hasBall) return;
     
@@ -407,25 +407,28 @@ class Player {
       this.mesh.position
     ).normalize();
     
-    // Calculate distance to determine pass arc
+    // Calculate distance to determine pass arc and speed
     const distance = this.mesh.position.distanceTo(closestTeammate.mesh.position);
-    const arcHeight = Math.min(8, 4 + distance * 0.2); // Higher arc for longer passes
     
-    // Calculate pass power based on distance
-    const passSpeed = Math.min(30, 20 + distance * 0.5);
+    // IMPROVED: Better arc calculation based on distance
+    // Higher arc for longer passes, lower arc for short passes
+    const arcHeight = Math.max(6, 2 + distance * 0.25); // Higher starting arc
     
-    // CRITICAL FIX: Position ball FIRST before setting velocity 
-    // Move ball further from player to prevent immediate re-capture
+    // IMPROVED: Better pass power calculation
+    // Increase min speed for short passes, scale better with distance
+    const passSpeed = Math.min(35, 25 + distance * 0.7); // Stronger initial speed
+    
+    // Position ball FIRST before setting velocity 
     ball.position.set(
-      this.mesh.position.x + passDirection.x * 1.5, // Increased from 0.7
-      this.mesh.position.y + 3.0, // Raised higher (was 2.4)
-      this.mesh.position.z + passDirection.z * 1.5  // Increased from 0.7
+      this.mesh.position.x + passDirection.x * 1.5,
+      this.mesh.position.y + 3.0,
+      this.mesh.position.z + passDirection.z * 1.5
     );
     
-    // FORCE update mesh position immediately
+    // Update mesh position immediately
     ball.mesh.position.copy(ball.position);
     
-    // Set velocity AFTER positioning for clean physics
+    // IMPROVED: Set velocity for more accurate passes
     ball.velocity.set(
       passDirection.x * passSpeed,
       arcHeight,
@@ -435,7 +438,7 @@ class Player {
     // Set cooldown
     this.passCooldown = 0.5;
     
-    console.log("BALL PASSED - Velocity:", ball.velocity.toArray(), "To player at:", closestTeammate.mesh.position.toArray());
+    console.log("PASS THROWN to:", closestTeammate.position, "Distance:", distance.toFixed(2), "Speed:", passSpeed.toFixed(2));
   }
   
   // Update for AI offensive player
@@ -1000,20 +1003,36 @@ class Player {
     this.passCooldown = 0.5; // Half-second cooldown
   }
   
-  // Pick up the ball - FIXED to prevent erroneous pickup
+  // Pick up the ball - IMPROVED CATCHING
   pickupBall(ball) {
-    // CRITICAL FIX: Add velocity check to prevent picking up fast-moving balls
-    const ballSpeed = ball.velocity.length();
-    if (ball.held || ballSpeed > 15) {
-      console.log("Cannot pickup ball - already held or moving too fast:", ballSpeed);
-      return;
+    // IMPROVED: More lenient ball pickup conditions
+    
+    // Don't attempt to pick up if ball is already held
+    if (ball.held) {
+      return false;
     }
     
-    // Check if ball is too high to reach
-    if (ball.position.y > 6) {
-      console.log("Cannot pickup ball - too high to reach:", ball.position.y);
-      return;
+    // Allow catching faster-moving balls during passes
+    const ballSpeed = ball.velocity.length();
+    const isPotentialPass = ball.isPass && ball.passTarget === this;
+    
+    // Only enforce speed limit for non-targeted pickups
+    if (!isPotentialPass && ballSpeed > 18) {
+      console.log("Ball moving too fast to pickup:", ballSpeed);
+      return false;
     }
+    
+    // More lenient height check - players can grab the ball higher
+    // Especially during passes to them
+    const maxCatchHeight = isPotentialPass ? 10 : 7; // Much higher catch for passes
+    
+    if (ball.position.y > maxCatchHeight) {
+      console.log("Ball too high to reach:", ball.position.y);
+      return false;
+    }
+    
+    // Successful catch!
+    console.log("BALL CAUGHT by player:", this.position, "Speed was:", ballSpeed.toFixed(2));
     
     // Update ball state
     this.hasBall = true;
@@ -1033,7 +1052,37 @@ class Player {
     );
     ball.position.copy(ball.mesh.position);
     
-    console.log("BALL PICKED UP by:", this.position);
+    // NEW: After successful catch, notify game that control may need to transfer
+    // Check if we're on team 1 (user's team)
+    if (this.team === 1) {
+      // Use custom event to notify game.js about control change
+      const ballCaughtEvent = new CustomEvent('ballCaught', { 
+        detail: { player: this } 
+      });
+      document.dispatchEvent(ballCaughtEvent);
+      
+      console.log(`Control should transfer to ${this.position} who caught the ball`);
+    }
+    
+    return true;
+  }
+  
+  // Add this new method to Player class to toggle visual control indicators
+  setControlIndicators(visible) {
+    // Toggle the control arrow above player
+    if (this.controlArrow) {
+      this.controlArrow.visible = visible;
+    }
+    
+    // Toggle the ring under the player
+    if (this.mesh) {
+      this.mesh.children.forEach(child => {
+        if (child instanceof THREE.Mesh && 
+            child.geometry instanceof THREE.RingGeometry) {
+          child.visible = visible;
+        }
+      });
+    }
   }
   
   // Try to steal the ball
@@ -1109,5 +1158,87 @@ class Player {
         this.justStoleTheBall = false;
       }
     }
+  }
+  
+  // IMPROVED SHOOTING: More accurate and powerful shots
+  shoot(gameState) {
+    if (!this.hasBall) return;
+    
+    // Release ball
+    this.hasBall = false;
+    const ball = gameState.ball;
+    ball.held = false;
+    ball.heldBy = null;
+    
+    // Determine which basket to aim for
+    const basketX = this.team === 1 ? gameState.courtWidth/2 - 5.25 : -gameState.courtWidth/2 + 5.25;
+    const basketPosition = new THREE.Vector3(basketX, 10, 0); // Target the basket ring height
+    
+    // Calculate distance to basket
+    const distance = this.mesh.position.distanceTo(basketPosition);
+    ball.shotDistance = distance;
+    
+    // Calculate direction to basket with improved targeting
+    const direction = new THREE.Vector3().subVectors(
+      basketPosition,
+      new THREE.Vector3(this.mesh.position.x, this.mesh.position.y + 2, this.mesh.position.z)
+    ).normalize();
+    
+    // IMPROVED: Better shot power scaling with distance
+    // More power for longer shots, but better baseline speed
+    const speed = 22 + distance * 0.6; // Increased from 20
+    
+    // EASIER SCORING: Higher baseline accuracy
+    const accuracyFactor = this.isUserControlled ? 0.98 : Math.min(0.95, this.shooting_accuracy + 0.2);
+    // Calculate accuracy based on distance, but make it more forgiving
+    const randomFactor = 1 - ((1 - accuracyFactor) * (distance / 40)); // More forgiving distance penalty
+    
+    // Smaller random variation for more consistent shots
+    const variation = new THREE.Vector3(
+      (Math.random() - 0.5) * (1 - randomFactor) * 0.08, // Reduced from 0.1
+      (Math.random() - 0.5) * (1 - randomFactor) * 0.08,
+      (Math.random() - 0.5) * (1 - randomFactor) * 0.08
+    );
+    
+    // IMPROVED: Better arc height calculation for different distances
+    // Higher arc for medium-range shots, flatter for close and very long
+    let arcHeight;
+    if (distance < 7) {
+      // Close shots - lower arc
+      arcHeight = 10 + distance * 0.5;
+    } else if (distance < 20) {
+      // Mid-range - higher arc
+      arcHeight = 15 + distance * 0.4;
+    } else {
+      // Long shots - flatter trajectory
+      arcHeight = 18 + distance * 0.2;
+    }
+    
+    // Set ball launch velocity with appropriate arc for shot
+    ball.velocity.set(
+      direction.x * speed + variation.x,
+      arcHeight + variation.y,
+      direction.z * speed + variation.z
+    );
+    
+    // Position ball slightly above and in front of hands
+    ball.mesh.position.set(
+      this.mesh.position.x + direction.x * 0.5,
+      this.mesh.position.y + 2.5, // Higher starting position
+      this.mesh.position.z + direction.z * 0.5
+    );
+    ball.position.copy(ball.mesh.position);
+    
+    // Record shot for analytics
+    ball.shotBy = this;
+    ball.initialShotPosition = ball.position.clone();
+    
+    // Set shooting animation - jump when shooting
+    this.jump();
+    
+    // Set cooldown
+    this.shootCooldown = 1.5;
+    
+    console.log("SHOT TAKEN - distance:", distance.toFixed(2), "power:", speed.toFixed(2), "arc:", arcHeight.toFixed(2));
   }
 }

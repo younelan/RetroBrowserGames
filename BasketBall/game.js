@@ -150,17 +150,8 @@
   }
   
   function updateGame(deltaTime) {
-    // CRITICAL FIX: Make sure ball physics always runs
+    // Always update ball physics
     if (gameState.ball) {
-      // Log ball state less frequently to reduce spam
-      if (Math.random() < 0.01) {
-        const ball = gameState.ball;
-        console.log("Ball status - held:", ball.held ? "YES" : "NO", 
-                    "pos:", ball.position.y.toFixed(2), 
-                    "vel:", ball.velocity ? ball.velocity.y.toFixed(2) : "N/A");
-      }
-      
-      // ALWAYS update ball physics
       gameState.ball.update(deltaTime, gameState, scene);
     }
     
@@ -169,11 +160,6 @@
     
     // Check for scoring and collisions
     checkCollisions();
-    
-    // ADDED: Debug rendering to visualize ball velocity
-    if (gameState.ball && !gameState.ball.held && Math.random() < 0.02) {
-      drawDebugLine(gameState.ball);
-    }
   }
   
   // Helper function to visualize ball trajectory during debugging
@@ -243,21 +229,20 @@
       // Get ball position
       const ballPos = gameState.ball.mesh.position;
       
-      // Check if ball is falling
-      if (gameState.ball.velocity.y < 0) {
-        // Check left basket (team 2 scores)
+      // IMPROVED SCORING: Check if ball is near basket height and falling
+      if (gameState.ball.velocity.y < 0 && ballPos.y < 12 && ballPos.y > 8) {
+        // WIDER SCORING ZONE: Increased detection radius
         if (leftBasket && isInBasket(ballPos, leftBasket.position)) {
           scoreBasket(2, gameState.ball.shotDistance);
         }
         
-        // Check right basket (team 1 scores)
         if (rightBasket && isInBasket(ballPos, rightBasket.position)) {
           scoreBasket(1, gameState.ball.shotDistance);
         }
       }
     }
     
-    // Check if loose ball can be picked up
+    // IMPROVED BALL PICKUP: Check if loose ball can be picked up
     if (!gameState.ball.held) {
       gameState.players.forEach(player => {
         if (!player.hasBall) {
@@ -269,8 +254,9 @@
           const dz = playerPos.z - ballPos.z;
           const distanceXZ = Math.sqrt(dx*dx + dz*dz);
           
-          // If close enough to ball
-          if (distanceXZ < 3 && Math.abs(playerPos.y - ballPos.y) < 3) {
+          // LARGER PICKUP RADIUS: Increased from 3 to 4
+          // HIGHER VERTICAL REACH: Increased from 3 to 5
+          if (distanceXZ < 4 && Math.abs(playerPos.y - ballPos.y) < 5) {
             player.pickupBall(gameState.ball);
           }
         }
@@ -278,12 +264,12 @@
     }
   }
   
+  // IMPROVED BASKET DETECTION: Wider scoring area
   function isInBasket(ballPos, basketPos) {
-    // Check if ball is within basket scoring trigger
+    // INCREASED SCORING RADIUS: From 1.5 to 2.0 for easier scoring
     return (
-      Math.abs(ballPos.x - basketPos.x) < 1.5 &&
-      Math.abs(ballPos.y - basketPos.y) < 1.5 &&
-      Math.abs(ballPos.z - basketPos.z) < 1.5
+      Math.abs(ballPos.x - basketPos.x) < 2.0 &&
+      Math.abs(ballPos.z - basketPos.z) < 2.0
     );
   }
   
@@ -348,8 +334,62 @@
       pointGuard.pickupBall(gameState.ball);
     }
     
+    // NEW: Set up event listener for ball control transfers
+    setupControlTransfer();
+    
     // Start game loop
     gameLoop();
+  }
+  
+  // NEW: Function to set up ball control transfer system
+  function setupControlTransfer() {
+    document.addEventListener('ballCaught', (event) => {
+      const newBallHandler = event.detail.player;
+      
+      // Only proceed if this is actually a new player
+      if (!newBallHandler.isUserControlled) {
+        console.log(`Transferring control to ${newBallHandler.position}`);
+        
+        // Remove control from current player
+        gameState.players.forEach(player => {
+          if (player.isUserControlled) {
+            player.isUserControlled = false;
+            
+            // Remove visual indicators of control
+            if (player.controlArrow) {
+              player.controlArrow.visible = false;
+            }
+            
+            // Find and hide the control ring under the player
+            player.mesh.children.forEach(child => {
+              if (child instanceof THREE.Mesh && 
+                  child.geometry instanceof THREE.RingGeometry) {
+                child.visible = false;
+              }
+            });
+          }
+        });
+        
+        // Give control to new player
+        newBallHandler.isUserControlled = true;
+        
+        // Add visual indicators to new controlled player
+        if (newBallHandler.controlArrow) {
+          newBallHandler.controlArrow.visible = true;
+        }
+        
+        // Find and show the control ring under the player
+        newBallHandler.mesh.children.forEach(child => {
+          if (child instanceof THREE.Mesh && 
+              child.geometry instanceof THREE.RingGeometry) {
+            child.visible = true;
+          }
+        });
+        
+        // Show message about the control change
+        scoreBoard.showMessage(`Now controlling: ${newBallHandler.position}`, 1500);
+      }
+    });
   }
   
   // Start game when window loads

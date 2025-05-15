@@ -90,9 +90,8 @@ class Ball {
     // EARLY SAFETY CHECK: If no scene, return to avoid errors
     if (!scene) return;
     
-    // CRITICAL DEBUG - Log whenever ball state changes
+    // Track ball state changes but without console spam
     if (this._lastHeldState !== this.held) {
-      console.log("BALL STATE CHANGED - Now held:", this.held, "By:", this.heldBy ? this.heldBy.position : "NONE");
       this._lastHeldState = this.held;
     }
     
@@ -161,29 +160,28 @@ class Ball {
       return;
     }
     
-    // At this point, the ball is free - not being held by any player
-    
-    // INDEPENDENT PHYSICS MODE: Ball is free-flying - log for debugging
-    if (Math.random() < 0.05) { // Log occasionally
-      console.log("FREE BALL - pos:", this.position.y.toFixed(2), 
-                  "vel:", this.velocity.y.toFixed(2), 
-                  "held:", this.held);
-    }
-    
-    // Handle passing trajectory - add guidance for passes
+    // IMPROVED PASSING: Enhanced logic for passing to teammates
     if (this.isPass && this.passTarget) {
-      // Calculate vector to target player's current position
+      // Get updated target position (aim higher for more reliable catches)
       const targetPos = this.passTarget.mesh.position.clone();
-      targetPos.y += 2.4; // Aim for player's hands
+      targetPos.y += 3.0; // Aim higher (was 2.4)
       
       const toTarget = new THREE.Vector3().subVectors(targetPos, this.position);
       const distanceToTarget = toTarget.length();
       
-      // If close to target, let them catch it
-      if (distanceToTarget < 2.5) {
-        // Higher catch probability when closer
-        if (distanceToTarget < 1.5 || Math.random() < 0.4) {
-          console.log("Pass caught by target!");
+      // SIGNIFICANTLY IMPROVED CATCH DETECTION: Make catching much easier
+      // Increased catch radius from 2.5 to 5.0
+      if (distanceToTarget < 5.0) {
+        // Much higher catch probability (90% chance when close)
+        if (distanceToTarget < 3.0 || Math.random() < 0.9) {
+          // Force ball into player's hands
+          this.position.copy(targetPos);
+          this.mesh.position.copy(this.position);
+          
+          // Reset velocity before pickup
+          this.velocity.set(0, 0, 0);
+          
+          // Let player catch the ball
           this.passTarget.pickupBall(this);
           this.isPass = false;
           this.passTarget = null;
@@ -191,13 +189,20 @@ class Ball {
         }
       }
       
-      // Gentle homing effect to guide the ball to target
-      if (distanceToTarget < 8) {
-        const homingStrength = Math.min(0.8, 3 / distanceToTarget);
-        const targetVelocity = toTarget.normalize().multiplyScalar(this.velocity.length() * 0.8);
+      // MUCH STRONGER HOMING: Greatly improved guidance for passes
+      // Increased homing range and strength for better targeting
+      if (distanceToTarget < 15) { // Increased from 8 to 15
+        // Stronger correction based on distance
+        const homingStrength = Math.min(0.95, 5 / distanceToTarget); // Stronger homing (was 0.8)
         
-        // Add slight correction to trajectory
-        this.velocity.lerp(targetVelocity, deltaTime * homingStrength);
+        // Better trajectory calculation with proper arc
+        const targetVelocity = toTarget.normalize().multiplyScalar(this.velocity.length() * 0.9);
+        
+        // Ensure ball stays airborne with upward component
+        targetVelocity.y = Math.max(targetVelocity.y, 3); // Minimum upward velocity
+        
+        // Apply stronger trajectory correction
+        this.velocity.lerp(targetVelocity, deltaTime * homingStrength * 2.0); // Doubled correction factor
       }
     }
     
