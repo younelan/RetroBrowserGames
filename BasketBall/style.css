@@ -4,26 +4,113 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  background-color: #000;
+  font-family: Arial, sans-serif;
 }
 
-#gameCanvas {
+#gameContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+canvas {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
-@media (orientation: landscape) {
-  #gameCanvas {
-    width: auto;
-    height: 100vh;
-    margin: 0 auto;
-  }
+#scoreBoard {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  width: 100%;
+  text-align: center;
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  z-index: 10;
 }
 
-@media (orientation: portrait) {
-  #gameCanvas {
-    width: 100vw;
-    height: auto;
-    margin: auto 0;
-  }
+#controls {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  color: white;
+  font-size: 14px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+}
+
+/* Touch controls for mobile */
+.touchControls {
+  position: absolute;
+  bottom: 60px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  z-index: 10;
+}
+
+.joystick, .actionButtons {
+  width: 120px;
+  height: 120px;
+  margin: 20px;
+  position: relative;
+}
+
+.joystick {
+  left: 0;
+}
+
+.actionButtons {
+  right: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.button {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  margin: 10px;
+}
+
+.shootBtn {
+  background-color: rgba(255, 0, 0, 0.6);
+}
+
+.jumpBtn {
+  background-color: rgba(0, 0, 255, 0.6);
+}
+
+.game-message {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 20px;
+  font-weight: bold;
+  z-index: 20;
+  animation: messageAppear 0.3s ease-out, messageFade 0.3s ease-in 2.7s;
+}
+
+@keyframes messageAppear {
+  from { opacity: 0; transform: translate(-50%, -20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+@keyframes messageFade {
+  from { opacity: 1; }
+  to { opacity: 0; }
 }

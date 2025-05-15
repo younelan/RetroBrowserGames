@@ -2,14 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Basketball Game</title>
+  <title>3D Basketball Game</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Add Three.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
+  <div id="gameContainer">
+    <div id="scoreBoard">BLUE: 0 - RED: 0</div>
+    <div id="controls">Controls: Arrow Keys/WASD = Move, F = Shoot, Spacebar = Jump</div>
+  </div>
+  <script src="controls.js"></script>
+  <script src="scoreboard.js"></script>
+  <script src="court.js"></script>
   <script src="ball.js"></script>
   <script src="player.js"></script>
-  <script src="controls.js"></script>
   <script src="game.js"></script>
 </body>
 </html>
