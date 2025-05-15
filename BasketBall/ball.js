@@ -90,6 +90,12 @@ class Ball {
     // EARLY SAFETY CHECK: If no scene, return to avoid errors
     if (!scene) return;
     
+    // CRITICAL DEBUG - Log whenever ball state changes
+    if (this._lastHeldState !== this.held) {
+      console.log("BALL STATE CHANGED - Now held:", this.held, "By:", this.heldBy ? this.heldBy.position : "NONE");
+      this._lastHeldState = this.held;
+    }
+    
     // PLAYER CONTROL MODE: If ball is held by a player, handle dribbling
     if (this.held && this.heldBy) {
       const player = this.heldBy;
@@ -155,12 +161,13 @@ class Ball {
       return;
     }
     
-    // INDEPENDENT PHYSICS MODE: Ball is free-flying
-    // Log ball state more frequently for debugging
-    if (!this.held && Math.random() < 0.03) {
-      console.log("FREE BALL - pos y:", this.position.y.toFixed(2), 
-                  "vel y:", this.velocity.y.toFixed(2), 
-                  "bounces:", this.bounceCount);
+    // At this point, the ball is free - not being held by any player
+    
+    // INDEPENDENT PHYSICS MODE: Ball is free-flying - log for debugging
+    if (Math.random() < 0.05) { // Log occasionally
+      console.log("FREE BALL - pos:", this.position.y.toFixed(2), 
+                  "vel:", this.velocity.y.toFixed(2), 
+                  "held:", this.held);
     }
     
     // Handle passing trajectory - add guidance for passes
@@ -194,21 +201,27 @@ class Ball {
       }
     }
     
-    // GRAVITY PHYSICS: Always apply even if not shooting or passing
+    // PHYSICS SIMULATION - This is the critical part for free flying balls
     
-    // Apply stronger gravity - increase to make ball fall faster
-    this.velocity.y -= 28 * deltaTime; // Increased gravity (was 25)
+    // Apply gravity
+    this.velocity.y -= 28 * deltaTime;
     
-    // Move the ball based on velocity
+    // CRITICAL FIX: FORCE CLEAR ANY HELD REFERENCES IF VELOCITY EXISTS
+    // This prevents a player reference from erroneously holding the ball in place
+    if (!this.held && (Math.abs(this.velocity.x) > 0.1 || Math.abs(this.velocity.y) > 0.1 || Math.abs(this.velocity.z) > 0.1)) {
+      this.heldBy = null; // Double-ensure heldBy is null when moving freely
+    }
+    
+    // Move the ball based on velocity - THIS IS CRITICAL
     this.position.x += this.velocity.x * deltaTime;
     this.position.y += this.velocity.y * deltaTime;
     this.position.z += this.velocity.z * deltaTime;
     
-    // CRITICAL: Always update mesh position to match calculated position
-    this.mesh.position.copy(this.position);
+    // EXPLICITLY update mesh position to match calculated position
+    this.mesh.position.set(this.position.x, this.position.y, this.position.z);
     
-    // Apply realistic spin based on velocity
-    this.mesh.rotation.x += this.velocity.z * deltaTime * 0.3; // More spin
+    // Apply spin based on velocity
+    this.mesh.rotation.x += this.velocity.z * deltaTime * 0.3;
     this.mesh.rotation.z -= this.velocity.x * deltaTime * 0.3;
     
     // COURT BOUNDARY COLLISIONS
@@ -317,18 +330,20 @@ class Ball {
     animateRing();
   }
   
-  // Reset ball to center court
+  // Reset ball to center court - FIXED to ensure ball is properly free
   reset() {
     this.velocity.set(0, 0, 0);
     this.position.set(0, 5, 0);
     this.mesh.position.copy(this.position);
     this.bounceCount = 0;
-    this.held = false;
-    this.heldBy = null;
+    this.held = false; // Explicitly set to false
+    this.heldBy = null; // Clear reference
     this.isPass = false;
     this.passTarget = null;
     this.shotBy = null;
     this.initialShotPosition.set(0, 0, 0);
+    
+    console.log("BALL RESET - Now free at position:", this.position.y.toFixed(2));
   }
 }
 

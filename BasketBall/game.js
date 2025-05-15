@@ -150,16 +150,17 @@
   }
   
   function updateGame(deltaTime) {
-    // Update ball physics - IMPORTANT: This must run even if the ball is not held
+    // CRITICAL FIX: Make sure ball physics always runs
     if (gameState.ball) {
-      // Log ball state occasionally during development
-      if (Math.random() < 0.005) {
-        console.log("Ball update - held:", gameState.ball.held, 
-                    "position:", gameState.ball.position.y.toFixed(2), 
-                    "velocity:", gameState.ball.velocity.y.toFixed(2));
+      // Log ball state less frequently to reduce spam
+      if (Math.random() < 0.01) {
+        const ball = gameState.ball;
+        console.log("Ball status - held:", ball.held ? "YES" : "NO", 
+                    "pos:", ball.position.y.toFixed(2), 
+                    "vel:", ball.velocity ? ball.velocity.y.toFixed(2) : "N/A");
       }
       
-      // Always update ball physics whether held or free
+      // ALWAYS update ball physics
       gameState.ball.update(deltaTime, gameState, scene);
     }
     
@@ -168,6 +169,45 @@
     
     // Check for scoring and collisions
     checkCollisions();
+    
+    // ADDED: Debug rendering to visualize ball velocity
+    if (gameState.ball && !gameState.ball.held && Math.random() < 0.02) {
+      drawDebugLine(gameState.ball);
+    }
+  }
+  
+  // Helper function to visualize ball trajectory during debugging
+  function drawDebugLine(ball) {
+    // Create a simple line showing ball's velocity direction
+    if (!ball.debugLine) {
+      const lineMaterial = new THREE.LineBasicMaterial({
+        color: 0xff0000,
+        linewidth: 2
+      });
+      const lineGeometry = new THREE.BufferGeometry();
+      lineGeometry.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 0,0,0], 3));
+      ball.debugLine = new THREE.Line(lineGeometry, lineMaterial);
+      scene.add(ball.debugLine);
+    }
+    
+    // Only update if velocity is significant
+    if (ball.velocity.length() > 1) {
+      const lineScale = 0.1;
+      const startPoint = ball.position.clone();
+      const endPoint = startPoint.clone().add(
+        ball.velocity.clone().multiplyScalar(lineScale)
+      );
+      
+      // Update line geometry
+      const positions = [
+        startPoint.x, startPoint.y, startPoint.z,
+        endPoint.x, endPoint.y, endPoint.z
+      ];
+      ball.debugLine.geometry.setAttribute(
+        'position', 
+        new THREE.Float32BufferAttribute(positions, 3)
+      );
+    }
   }
   
   function updatePlayers(deltaTime) {

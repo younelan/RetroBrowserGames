@@ -319,9 +319,11 @@ class Player {
     
     console.log("SHOOTING: Releasing ball from player control");
     
-    // Release ball - CRITICAL
+    // CRITICAL FIX: Release ball (ensure clean separation)
     this.hasBall = false;
     const ball = gameState.ball;
+    
+    // Force ball to be free (double-ensure state is consistent)
     ball.held = false;
     ball.heldBy = null;
     
@@ -332,20 +334,22 @@ class Player {
       -Math.cos(this.mesh.rotation.y)
     );
     
-    // Position ball in front of player's hands FIRST
-    // Important: This must happen before setting velocity
+    // CRITICAL FIX: Position ball FIRST before setting velocity
+    // Move ball further from player to prevent immediate re-capture
     ball.position.set(
-      this.mesh.position.x + playerDirection.x * 1.2, // Move further away
-      this.mesh.position.y + 2.5,
-      this.mesh.position.z + playerDirection.z * 1.2  // Move further away
+      this.mesh.position.x + playerDirection.x * 2.0, // Moved further away (was 1.2)
+      this.mesh.position.y + 3.0, // Raised higher (was 2.5)
+      this.mesh.position.z + playerDirection.z * 2.0  // Moved further away (was 1.2)
     );
+    
+    // FORCE update mesh position immediately
     ball.mesh.position.copy(ball.position);
     
-    // STRONG shot power for visible movement
-    const shotPower = 25; // Increased power
-    const upwardForce = 15; // Higher arc
+    // Set strong shot power for visible movement
+    const shotPower = 25;
+    const upwardForce = 15;
     
-    // Set ball velocity with proper physics
+    // CRITICAL FIX: Set ball velocity AFTER positioning for clean physics
     ball.velocity.set(
       playerDirection.x * shotPower,
       upwardForce, 
@@ -354,9 +358,9 @@ class Player {
     
     // Store data for shot tracking
     ball.shotBy = this;
-    ball.initialShotPosition = ball.position.clone(); // Use clone for safety
+    ball.initialShotPosition = ball.position.clone();
     ball.shotDistance = 0;
-    ball.bounceCount = 0; // Reset bounce count for new shot
+    ball.bounceCount = 0;
     
     // Jump when shooting
     this.jump();
@@ -364,7 +368,7 @@ class Player {
     // Set cooldown
     this.shootCooldown = 1.0;
     
-    console.log("Ball velocity set to:", ball.velocity);
+    console.log("BALL RELEASED - Velocity:", ball.velocity.toArray(), "Position:", ball.position.toArray());
   }
   
   // NEW METHOD: Pass to a teammate
@@ -385,9 +389,11 @@ class Player {
     // Get closest teammate
     const closestTeammate = teammates[0];
     
-    // Release ball
+    // CRITICAL FIX: Release ball (ensure clean separation)
     this.hasBall = false;
     const ball = gameState.ball;
+    
+    // Force ball to be free (double-ensure state is consistent)
     ball.held = false;
     ball.heldBy = null;
     
@@ -408,25 +414,28 @@ class Player {
     // Calculate pass power based on distance
     const passSpeed = Math.min(30, 20 + distance * 0.5);
     
-    // Set ball velocity for pass - adjust for nice arc
-    ball.velocity.set(
-      passDirection.x * passSpeed,
-      arcHeight, // Upward force creates arc
-      passDirection.z * passSpeed
+    // CRITICAL FIX: Position ball FIRST before setting velocity 
+    // Move ball further from player to prevent immediate re-capture
+    ball.position.set(
+      this.mesh.position.x + passDirection.x * 1.5, // Increased from 0.7
+      this.mesh.position.y + 3.0, // Raised higher (was 2.4)
+      this.mesh.position.z + passDirection.z * 1.5  // Increased from 0.7
     );
     
-    // CRITICAL: Position ball properly and update both position properties
-    ball.position.set(
-      this.mesh.position.x + passDirection.x * 0.7,
-      this.mesh.position.y + 2.4, // Position at hands
-      this.mesh.position.z + passDirection.z * 0.7
-    );
+    // FORCE update mesh position immediately
     ball.mesh.position.copy(ball.position);
+    
+    // Set velocity AFTER positioning for clean physics
+    ball.velocity.set(
+      passDirection.x * passSpeed,
+      arcHeight,
+      passDirection.z * passSpeed
+    );
     
     // Set cooldown
     this.passCooldown = 0.5;
     
-    console.log("Ball passed to:", closestTeammate.position);
+    console.log("BALL PASSED - Velocity:", ball.velocity.toArray(), "To player at:", closestTeammate.mesh.position.toArray());
   }
   
   // Update for AI offensive player
@@ -991,9 +1000,20 @@ class Player {
     this.passCooldown = 0.5; // Half-second cooldown
   }
   
-  // Pick up the ball (adjusted for height)
+  // Pick up the ball - FIXED to prevent erroneous pickup
   pickupBall(ball) {
-    if (ball.held) return;
+    // CRITICAL FIX: Add velocity check to prevent picking up fast-moving balls
+    const ballSpeed = ball.velocity.length();
+    if (ball.held || ballSpeed > 15) {
+      console.log("Cannot pickup ball - already held or moving too fast:", ballSpeed);
+      return;
+    }
+    
+    // Check if ball is too high to reach
+    if (ball.position.y > 6) {
+      console.log("Cannot pickup ball - too high to reach:", ball.position.y);
+      return;
+    }
     
     // Update ball state
     this.hasBall = true;
@@ -1008,10 +1028,12 @@ class Player {
     // Position ball in player's hands at the new height
     ball.mesh.position.set(
       this.mesh.position.x + (this.team === 1 ? 0.5 : -0.5),
-      this.mesh.position.y + 2.4, // Higher hand position for taller players
+      this.mesh.position.y + 2.4,
       this.mesh.position.z
     );
     ball.position.copy(ball.mesh.position);
+    
+    console.log("BALL PICKED UP by:", this.position);
   }
   
   // Try to steal the ball
