@@ -71,6 +71,9 @@ class Court {
     
     // Create three-point lines
     this.createThreePointLines(lineMaterial);
+    
+    // Add the key/paint areas at both ends
+    this.createKeyAreas(lineMaterial);
   }
   
   createPerimeterLines(material) {
@@ -249,6 +252,205 @@ class Court {
     
     this.scene.add(line);
     console.log(`Line added from (${x1},${z1}) to (${x2},${z2})`);
+  }
+  
+  createKeyAreas(material) {
+    console.log("Creating key areas");
+    
+    // Key dimensions - standard NBA key ("paint" area)
+    const keyWidth = 16;  // Standard NBA key width
+    const keyLength = 19; // Length of the rectangular part
+    
+    // Use a slightly different material for the filled key areas
+    const keyMaterial = new THREE.MeshBasicMaterial({
+      color: 0xE5E5E5,  // Light grey color
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.5
+    });
+    
+    // Create keys at both basket locations
+    this.createFilledKeyArea(-this.width/2 + 5.25, 0, keyWidth, keyLength, true, keyMaterial.clone());
+    this.createFilledKeyArea(this.width/2 - 5.25, 0, keyWidth, keyLength, false, keyMaterial.clone());
+    
+    // White rectangular outline
+    const whiteLineMaterial = material.clone();
+    whiteLineMaterial.transparent = false;
+    whiteLineMaterial.opacity = 1.0;
+    
+    // Create the key outlines correctly
+    this.createFixedKeyOutline(-this.width/2 + 5.25, 0, keyWidth, keyLength, true, whiteLineMaterial);
+    this.createFixedKeyOutline(this.width/2 - 5.25, 0, keyWidth, keyLength, false, whiteLineMaterial);
+  }
+
+  // Create a filled (solid) key area
+  createFilledKeyArea(basketX, basketZ, width, length, isLeftSide, material) {
+    // Create a shape for the key area (rectangle + semicircle)
+    const keyShape = new THREE.Shape();
+    const halfWidth = width / 2;
+    
+    // Direction from basket toward center court
+    const direction = isLeftSide ? 1 : -1;
+    
+    // For the left basket, the rectangle extends to the right (positive X)
+    // For the right basket, the rectangle extends to the left (negative X)
+    
+    // Start at the baseline at one corner
+    keyShape.moveTo(0, -halfWidth);
+    
+    // Draw the rectangle (counter-clockwise for proper rendering)
+    keyShape.lineTo(0, halfWidth);
+    keyShape.lineTo(direction * length, halfWidth);
+    keyShape.lineTo(direction * length, -halfWidth);
+    keyShape.lineTo(0, -halfWidth);
+    
+    // Create geometry and mesh for the rectangle
+    const geometry = new THREE.ShapeGeometry(keyShape);
+    const keyArea = new THREE.Mesh(geometry, material);
+    
+    // Position on the floor
+    keyArea.rotation.x = -Math.PI / 2;
+    keyArea.position.set(basketX, 0.03, basketZ); // Just slightly above court
+    
+    this.scene.add(keyArea);
+    
+    // Now create the semicircle separately
+    const arcRadius = halfWidth;
+    const arcSegments = 32;
+    
+    // Create the filled semicircle at the free-throw line
+    const arcShape = new THREE.Shape();
+    const arcCenterX = direction * length;
+    
+    // Starting point for the arc (bottom of the semi-circle)
+    arcShape.moveTo(arcCenterX, -arcRadius);
+    
+    // Draw the arc in the correct orientation
+    if (isLeftSide) {
+      // Left basket: semi-circle opens to the right
+      arcShape.absarc(arcCenterX, 0, arcRadius, -Math.PI/2, Math.PI/2, false);
+    } else {
+      // Right basket: semi-circle opens to the left
+      arcShape.absarc(arcCenterX, 0, arcRadius, Math.PI/2, -Math.PI/2, true);
+    }
+    
+    arcShape.lineTo(arcCenterX, -arcRadius); // Close the shape
+    
+    // Create geometry and mesh for the semicircle
+    const arcGeometry = new THREE.ShapeGeometry(arcShape);
+    const arcMesh = new THREE.Mesh(arcGeometry, material.clone());
+    
+    // Position on the floor
+    arcMesh.rotation.x = -Math.PI / 2;
+    arcMesh.position.set(basketX, 0.03, basketZ); // Same height as the rectangle
+    
+    this.scene.add(arcMesh);
+  }
+
+  // Create the white outline for the key area - fixed version
+  createFixedKeyOutline(basketX, basketZ, width, length, isLeftSide, material) {
+    const lineWidth = 0.5;
+    const halfWidth = width / 2;
+    const direction = isLeftSide ? 1 : -1;
+    //STARTCHANGE
+    // 1. Create baseline (under the basket) - horizontal like center line
+    const baselinePlaneGeometry = new THREE.PlaneGeometry(width, lineWidth);
+    const baselinePlane = new THREE.Mesh(baselinePlaneGeometry, material.clone());
+    baselinePlane.rotation.x = -Math.PI / 2; // Make it horizontal on the court
+    baselinePlane.rotation.z = Math.PI / 2; // Rotate to run side-to-side like the center line
+    baselinePlane.position.set(basketX, 0.09, basketZ); // Position at center of key
+    this.scene.add(baselinePlane);
+
+    // 3. Create free-throw line - horizontal like center line
+    const freeThrowPlaneGeometry = new THREE.PlaneGeometry(width, lineWidth);
+    const freeThrowPlane = new THREE.Mesh(freeThrowPlaneGeometry, material.clone());
+    freeThrowPlane.rotation.x = -Math.PI / 2; // Make it horizontal on the court
+    freeThrowPlane.rotation.z = Math.PI / 2; // Rotate to run side-to-side like the center line
+    freeThrowPlane.position.set(basketX + (direction * length), 0.09, basketZ); // Position at center of key
+    this.scene.add(freeThrowPlane);
+    //ENDCHANGE      
+    // 2. Create side lines - HORIZONTAL lines
+    this.createStraightLine(
+      basketX, basketZ - halfWidth,
+      basketX + (direction * length), basketZ - halfWidth,
+      material,
+      lineWidth
+    );
+    
+    this.createStraightLine(
+      basketX, basketZ + halfWidth,
+      basketX + (direction * length), basketZ + halfWidth,
+      material,
+      lineWidth
+    );
+    
+    
+    // 4. Semi-circle at free throw line 
+    // Create a complete circle first
+    const arcGeometry = new THREE.RingGeometry(
+      halfWidth - lineWidth/2,
+      halfWidth + lineWidth/2,
+      32, // segments
+      1   // rings
+    );
+    
+    // Only use a half of it by creating a special material with clipping
+    const arcMaterial = material.clone();
+    
+    // Create the arc mesh
+    const arc = new THREE.Mesh(arcGeometry, arcMaterial);
+    arc.rotation.x = -Math.PI / 2; // Make it horizontal on the court
+    
+    // Position at the end of the key
+    arc.position.set(basketX + (direction * length), 0.06, basketZ);
+    
+    // Rotate to the correct orientation - semicircle should face AWAY from key
+    arc.rotation.z = isLeftSide ? 0 : Math.PI;
+    
+    // Now manually clip the circle to create a semicircle
+    // We'll achieve this with a custom clip plane
+    if (isLeftSide) {
+      // For left basket, clip the LEFT half of circle (keep right half)
+      arcMaterial.clippingPlanes = [new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0)];
+    } else {
+      // For right basket, clip the RIGHT half of circle (keep left half)
+      arcMaterial.clippingPlanes = [new THREE.Plane(new THREE.Vector3(1, 0, 0), 0)];
+    }
+    
+    arcMaterial.clipIntersection = false;
+    arcMaterial.clipShadows = true;
+    
+    // Enable clipping in the renderer
+    if (this.scene.renderer) {
+      this.scene.renderer.localClippingEnabled = true;
+    }
+    
+    this.scene.add(arc);
+    
+    // 5. Add lane hash marks
+    const hashCount = 4; // NBA has 4 hash marks on each side
+    const hashSpacing = length / (hashCount + 1);
+    const hashLength = 0.6;
+    
+    for (let i = 1; i <= hashCount; i++) {
+      const hashX = basketX + (direction * i * hashSpacing);
+      
+      // Bottom hash mark
+      this.createStraightLine(
+        hashX, basketZ - halfWidth,
+        hashX, basketZ - halfWidth + hashLength,
+        material.clone(),
+        lineWidth
+      );
+      
+      // Top hash mark
+      this.createStraightLine(
+        hashX, basketZ + halfWidth,
+        hashX, basketZ + halfWidth - hashLength,
+        material.clone(),
+        lineWidth
+      );
+    }
   }
   
   createBaskets() {
