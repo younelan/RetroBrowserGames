@@ -151,35 +151,68 @@ class Player {
     // Convert 3D position to 2D screen position
     const pos = to2D(this.x, this.y, this.z);
     const scale = pos.scale;
-
-    // Draw shadow on the ground
-    context.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    
+    // Draw shadow on the ground (more elliptical for perspective)
+    const shadowScale = 1 + (this.z * 0.01);
+    context.fillStyle = 'rgba(0, 0, 0, 0.2)';
     context.beginPath();
     context.ellipse(
       to2D(this.x, this.y, 0).x,
       to2D(this.x, this.y, 0).y,
-      this.radius * scale,
-      this.radius * scale * 0.5,
+      this.radius * scale * 0.8,
+      this.radius * scale * 0.3,
       0, 0, Math.PI * 2
     );
     context.fill();
-
-    // Draw player body (circle for simplified representation)
-    context.fillStyle = this.color;
+    
+    // Draw player with 3D shading
+    // For more 3D feel, we'll use gradient instead of flat color
+    const gradientY = this.radius * scale / 2;
+    const gradient = context.createRadialGradient(
+      pos.x - gradientY, pos.y - gradientY, 1,
+      pos.x, pos.y, this.radius * scale
+    );
+    
+    // Create team colors with highlight/shadow for 3D effect
+    if (this.team === 1) {
+      gradient.addColorStop(0, '#4488ff'); // Highlight
+      gradient.addColorStop(0.7, '#2266dd'); // Base blue
+      gradient.addColorStop(1, '#1144aa'); // Shadow
+    } else {
+      gradient.addColorStop(0, '#ff6644'); // Highlight  
+      gradient.addColorStop(0.7, '#dd3322'); // Base red
+      gradient.addColorStop(1, '#aa1100'); // Shadow
+    }
+    
+    // Draw player body with 3D gradient
     context.beginPath();
     context.arc(pos.x, pos.y, this.radius * scale, 0, Math.PI * 2);
+    context.fillStyle = gradient;
     context.fill();
+    
+    // Add outline
     context.strokeStyle = '#000';
-    context.lineWidth = 1;
+    context.lineWidth = 1.5 * scale;
     context.stroke();
-
-    // Draw jersey number
+    
+    // Draw jersey number with 3D shadow effect
     context.fillStyle = '#fff';
-    context.font = `${12 * scale}px Arial`;
+    context.font = `bold ${14 * scale}px Arial`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
+    
+    // Text shadow for 3D effect
+    context.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    context.shadowBlur = 3 * scale;
+    context.shadowOffsetX = 1 * scale;
+    context.shadowOffsetY = 1 * scale;
+    
+    // Draw the number/letter
     context.fillText(this.team === 1 ? 'B' : 'R', pos.x, pos.y);
-
+    
+    // Reset shadow
+    context.shadowColor = 'transparent';
+    
     // Visual indicator for user-controlled player
     if (this.isUserControlled) {
       context.strokeStyle = '#ffff00';
@@ -187,15 +220,35 @@ class Player {
       context.beginPath();
       context.arc(pos.x, pos.y, (this.radius + 5) * scale, 0, Math.PI * 2);
       context.stroke();
+      
+      // Add a small arrow above player
+      const arrowSize = 8 * scale;
+      context.fillStyle = '#ffff00';
+      context.beginPath();
+      context.moveTo(pos.x, pos.y - this.radius * scale - arrowSize * 2);
+      context.lineTo(pos.x + arrowSize, pos.y - this.radius * scale - arrowSize);
+      context.lineTo(pos.x - arrowSize, pos.y - this.radius * scale - arrowSize);
+      context.closePath();
+      context.fill();
     }
-
-    // Visual indicator for ball possession
+    
+    // Visual indicator for ball possession with glow effect
     if (this.hasBall) {
       context.strokeStyle = '#00ff00';
       context.lineWidth = 2;
       context.beginPath();
       context.arc(pos.x, pos.y, (this.radius + 8) * scale, 0, Math.PI * 2);
       context.stroke();
+      
+      // Add glow
+      const glowSize = 4;
+      for (let i = 0; i < glowSize; i++) {
+        context.strokeStyle = `rgba(0, 255, 0, ${0.1 - 0.02 * i})`;
+        context.lineWidth = 2 + i;
+        context.beginPath();
+        context.arc(pos.x, pos.y, (this.radius + 8 + i) * scale, 0, Math.PI * 2);
+        context.stroke();
+      }
     }
   }
 }

@@ -17,9 +17,10 @@
     gameTime: 0
   };
   
-  // Perspective constants
-  const FLOOR_Y = 0.8; // Position of the floor line (0.8 = 80% down the screen)
-  const SCALE_FACTOR = 0.6; // How much objects scale with distance
+  // Perspective constants - Enhanced for better 3D effect
+  const FLOOR_Y = 0.75; // Position of the floor line (0.75 = 75% down the screen)
+  const SCALE_FACTOR = 0.4; // More dramatic scaling for distant objects
+  const PERSPECTIVE_ANGLE = -0.5; // Angle to tilt the court perspective
   
   // Initialize the game
   function initGame() {
@@ -70,21 +71,25 @@
     }
   }
   
-  // Convert 3D coordinates to 2D screen coordinates with perspective
+  // Convert 3D coordinates to 2D screen coordinates with enhanced perspective
   function to2D(x, y, z) {
     // Start with the canvas center as the vanishing point
     const vanishX = canvas.width / 2;
     const vanishY = canvas.height * FLOOR_Y;
     
-    // Calculate depth (1.0 at floor, smaller as z increases)
-    const depth = 1.0 - (z / 200);
+    // Apply a tilt to create a more 3D view
+    const tiltedY = y * Math.cos(PERSPECTIVE_ANGLE) - z * Math.sin(PERSPECTIVE_ANGLE);
+    const tiltedZ = y * Math.sin(PERSPECTIVE_ANGLE) + z * Math.cos(PERSPECTIVE_ANGLE);
     
-    // Scale coordinates based on depth
+    // Calculate depth (1.0 at floor, smaller as z increases)
+    const depth = 1.0 - (tiltedZ / 300);
+    
+    // Scale coordinates based on depth (more dramatic scaling)
     const scale = SCALE_FACTOR + (1.0 - SCALE_FACTOR) * depth;
     
-    // Apply perspective transformation
+    // Apply perspective transformation with more pronounced effect
     const screenX = vanishX + (x - gameState.courtWidth/2) * scale;
-    const screenY = vanishY - z * 0.5 - (gameState.courtHeight - y) * scale;
+    const screenY = vanishY - tiltedZ * 0.8 - (gameState.courtHeight - tiltedY) * scale * 1.2;
     
     return { x: screenX, y: screenY, scale: scale };
   }
@@ -100,10 +105,10 @@
     context.fillStyle = bgGradient;
     context.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Draw court floor with perspective
-    const floorY = canvas.height * FLOOR_Y;
+    // Draw floor with 3D perspective grid
+    drawFloorGrid();
     
-    // Create court points
+    // Create court points with enhanced perspective
     const courtCorners = [
       to2D(0, 0, 0),                                  // Top-left
       to2D(gameState.courtWidth, 0, 0),               // Top-right
@@ -111,8 +116,15 @@
       to2D(0, gameState.courtHeight, 0)               // Bottom-left
     ];
     
-    // Draw court floor
-    context.fillStyle = '#c69c6d';
+    // Draw court floor with gradient for depth
+    const floorGradient = context.createLinearGradient(
+      courtCorners[0].x, courtCorners[0].y,
+      courtCorners[2].x, courtCorners[2].y
+    );
+    floorGradient.addColorStop(0, '#d4b283'); // Lighter at top
+    floorGradient.addColorStop(1, '#b89b72'); // Darker at bottom
+    
+    context.fillStyle = floorGradient;
     context.beginPath();
     context.moveTo(courtCorners[0].x, courtCorners[0].y);
     context.lineTo(courtCorners[1].x, courtCorners[1].y);
@@ -121,9 +133,9 @@
     context.closePath();
     context.fill();
     
-    // Court outline
+    // Court outline with thicker border
     context.strokeStyle = '#333';
-    context.lineWidth = 2;
+    context.lineWidth = 3;
     context.stroke();
     
     // Mid-court line
@@ -190,44 +202,195 @@
       rightPaintHeight
     );
     
-    // Draw baskets
-    drawBasket(0, gameState.courtHeight/2, 0, true); // Left basket
-    drawBasket(gameState.courtWidth, gameState.courtHeight/2, 0, false); // Right basket
+    // Enhanced basket rendering
+    drawEnhancedBaskets();
   }
   
-  function drawBasket(x, y, z, isLeft) {
-    const pos = to2D(x, y, z);
-    const scale = pos.scale;
+  // New function to draw a 3D grid on the floor
+  function drawFloorGrid() {
+    context.strokeStyle = 'rgba(120, 100, 80, 0.2)';
+    context.lineWidth = 1;
     
-    // Draw backboard
-    const backboardWidth = 30 * scale;
-    const backboardHeight = 20 * scale;
-    const backboardZ = 40 * scale;
-    
-    context.fillStyle = '#fff';
-    if (isLeft) {
-      const backboardPos = to2D(x + 5, y, z + 40);
-      context.fillRect(backboardPos.x - 2, backboardPos.y - backboardHeight/2, 4, backboardHeight);
-    } else {
-      const backboardPos = to2D(x - 5, y, z + 40);
-      context.fillRect(backboardPos.x - 2, backboardPos.y - backboardHeight/2, 4, backboardHeight);
+    // Draw horizontal grid lines
+    for (let y = 0; y <= gameState.courtHeight; y += 30) {
+      const start = to2D(0, y, 0);
+      const end = to2D(gameState.courtWidth, y, 0);
+      context.beginPath();
+      context.moveTo(start.x, start.y);
+      context.lineTo(end.x, end.y);
+      context.stroke();
     }
+    
+    // Draw vertical grid lines
+    for (let x = 0; x <= gameState.courtWidth; x += 30) {
+      const start = to2D(x, 0, 0);
+      const end = to2D(x, gameState.courtHeight, 0);
+      context.beginPath();
+      context.moveTo(start.x, start.y);
+      context.lineTo(end.x, end.y);
+      context.stroke();
+    }
+  }
+  
+  // Enhanced basket rendering with more 3D detail
+  function drawEnhancedBaskets() {
+    // Left basket
+    drawBasket3D(0, gameState.courtHeight/2, 0, true);
+    
+    // Right basket
+    drawBasket3D(gameState.courtWidth, gameState.courtHeight/2, 0, false);
+  }
+  
+  function drawBasket3D(x, y, z, isLeft) {
+    const backboardHeight = 40;
+    const backboardWidth = 60;
+    const poleHeight = 120;
+    
+    // Draw vertical support pole
+    const poleBottom = to2D(x, y, 0);
+    const poleTop = to2D(x, y, poleHeight);
+    
+    // Gradient for pole
+    const poleGradient = context.createLinearGradient(
+      poleBottom.x, poleBottom.y,
+      poleTop.x, poleTop.y
+    );
+    
+    poleGradient.addColorStop(0, '#777');
+    poleGradient.addColorStop(1, '#444');
+    
+    context.strokeStyle = poleGradient;
+    context.lineWidth = 8 * poleBottom.scale;
+    context.beginPath();
+    context.moveTo(poleBottom.x, poleBottom.y);
+    context.lineTo(poleTop.x, poleTop.y);
+    context.stroke();
+    
+    // Draw backboard with 3D effect
+    const backboardOffsetX = isLeft ? 20 : -20;
+    const backboardZ = poleHeight - 20;
+    
+    const backboardTopLeft = to2D(x + backboardOffsetX - backboardWidth/2, y - backboardHeight/2, backboardZ);
+    const backboardTopRight = to2D(x + backboardOffsetX + backboardWidth/2, y - backboardHeight/2, backboardZ);
+    const backboardBottomRight = to2D(x + backboardOffsetX + backboardWidth/2, y + backboardHeight/2, backboardZ);
+    const backboardBottomLeft = to2D(x + backboardOffsetX - backboardWidth/2, y + backboardHeight/2, backboardZ);
+    
+    // Backboard front face
+    context.fillStyle = '#eee';
+    context.beginPath();
+    context.moveTo(backboardTopLeft.x, backboardTopLeft.y);
+    context.lineTo(backboardTopRight.x, backboardTopRight.y);
+    context.lineTo(backboardBottomRight.x, backboardBottomRight.y);
+    context.lineTo(backboardBottomLeft.x, backboardBottomLeft.y);
+    context.closePath();
+    context.fill();
+    
+    // Backboard border
+    context.strokeStyle = '#000';
+    context.lineWidth = 2 * backboardTopLeft.scale;
+    context.stroke();
+    
+    // Backboard target square
+    const targetSize = backboardHeight * 0.4;
+    const targetLeft = to2D(x + backboardOffsetX - targetSize/2, y - targetSize/2, backboardZ + 1);
+    const targetWidth = (backboardTopRight.x - backboardTopLeft.x) * (targetSize / backboardWidth);
+    const targetHeight = (backboardBottomLeft.y - backboardTopLeft.y) * (targetSize / backboardHeight);
+    
+    context.strokeStyle = '#ff4444';
+    context.lineWidth = 2 * backboardTopLeft.scale;
+    context.strokeRect(targetLeft.x, targetLeft.y, targetWidth, targetHeight);
+    
+    // Draw rim with 3D perspective
+    const rimOffsetX = isLeft ? 30 : -30;
+    const rimZ = backboardZ - 5;
+    const rimCenter = to2D(x + rimOffsetX, y, rimZ);
     
     // Draw rim (appears as ellipse due to perspective)
-    const rimRadius = 7.5 * scale;
-    const rimEllipseY = 3.5 * scale;
+    const rimRadius = 15 * rimCenter.scale;
+    const rimEllipseY = 7 * rimCenter.scale; // Flattened for perspective
     
-    context.strokeStyle = '#FFA500';
-    context.lineWidth = 2 * scale;
+    // Rim shadow
+    context.fillStyle = 'rgba(0, 0, 0, 0.3)';
     context.beginPath();
-    if (isLeft) {
-      const rimPos = to2D(x + 15, y, z + 30);
-      context.ellipse(rimPos.x, rimPos.y, rimRadius, rimEllipseY, 0, 0, Math.PI * 2);
-    } else {
-      const rimPos = to2D(x - 15, y, z + 30);
-      context.ellipse(rimPos.x, rimPos.y, rimRadius, rimEllipseY, 0, 0, Math.PI * 2);
-    }
+    context.ellipse(
+      to2D(x + rimOffsetX, y, 0).x,
+      to2D(x + rimOffsetX, y, 0).y,
+      rimRadius * 0.8,
+      rimEllipseY * 0.4,
+      0, 0, Math.PI * 2
+    );
+    context.fill();
+    
+    // Rim with gradient for 3D effect
+    const rimGradient = context.createLinearGradient(
+      rimCenter.x - rimRadius, rimCenter.y,
+      rimCenter.x + rimRadius, rimCenter.y
+    );
+    rimGradient.addColorStop(0, '#ff7722');
+    rimGradient.addColorStop(0.5, '#ffaa44');
+    rimGradient.addColorStop(1, '#ff7722');
+    
+    context.strokeStyle = rimGradient;
+    context.lineWidth = 3 * rimCenter.scale;
+    context.beginPath();
+    context.ellipse(rimCenter.x, rimCenter.y, rimRadius, rimEllipseY, 0, 0, Math.PI * 2);
     context.stroke();
+    
+    // Draw net with 3D effect
+    drawNet3D(x + rimOffsetX, y, rimZ, rimRadius, rimEllipseY, rimCenter.scale);
+  }
+  
+  function drawNet3D(x, y, z, radiusX, radiusY, scale) {
+    const netHeight = 35 * scale;
+    const segments = 12;
+    const verticals = 8;
+    
+    context.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+    context.lineWidth = 1 * scale;
+    
+    // Draw vertical net lines
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      const startX = x + Math.cos(angle) * radiusX;
+      const startY = y + Math.sin(angle) * radiusY;
+      
+      // Calculate position at bottom of net (narrower)
+      const bottomX = x + Math.cos(angle) * radiusX * 0.3;
+      const bottomY = y + Math.sin(angle) * radiusY * 0.3;
+      const bottomZ = z - netHeight;
+      
+      const start = to2D(startX, startY, z);
+      const end = to2D(bottomX, bottomY, bottomZ);
+      
+      context.beginPath();
+      context.moveTo(start.x, start.y);
+      context.lineTo(end.x, end.y);
+      context.stroke();
+    }
+    
+    // Draw horizontal net rings
+    for (let j = 1; j <= verticals; j++) {
+      const ratio = j / verticals;
+      const ringZ = z - ratio * netHeight;
+      const ringRadiusX = radiusX * (1 - ratio * 0.7);
+      const ringRadiusY = radiusY * (1 - ratio * 0.7);
+      
+      context.beginPath();
+      for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2;
+        const ringX = x + Math.cos(angle) * ringRadiusX;
+        const ringY = y + Math.sin(angle) * ringRadiusY;
+        
+        const point = to2D(ringX, ringY, ringZ);
+        
+        if (i === 0) {
+          context.moveTo(point.x, point.y);
+        } else {
+          context.lineTo(point.x, point.y);
+        }
+      }
+      context.stroke();
+    }
   }
   
   function drawScoreboard() {
@@ -410,8 +573,8 @@
     // Draw players (already sorted for correct z-ordering)
     gameState.players.forEach(player => player.draw(context, to2D));
     
-    // Draw the ball
-    gameState.ball.draw(context, to2D);
+    // Draw the ball - Pass gameState as third parameter
+    gameState.ball.draw(context, to2D, gameState);
     
     // Draw scoreboard
     drawScoreboard();

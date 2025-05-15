@@ -178,43 +178,88 @@ class Ball {
     }, 1000); // Delay giving the ball to simulate inbounding
   }
 
-  draw(context, to2D) {
+  draw(context, to2D, gameState) {
     // Convert 3D position to 2D screen coordinates
     const pos = to2D(this.x, this.y, this.z);
     const scale = pos.scale;
-
-    // Draw shadow on the ground
-    context.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    
+    // Enhanced shadow with size based on height
+    const shadowScale = 1 - (this.z * 0.002);
+    context.fillStyle = `rgba(0, 0, 0, ${0.3 * shadowScale})`;
     context.beginPath();
     context.ellipse(
       to2D(this.x, this.y, 0).x,
       to2D(this.x, this.y, 0).y,
-      this.radius * scale * 0.8,
-      this.radius * scale * 0.4,
+      this.radius * scale * 0.8 * shadowScale,
+      this.radius * scale * 0.3 * shadowScale,
       0, 0, Math.PI * 2
     );
     context.fill();
-
-    // Draw ball
-    context.fillStyle = '#ff7f00';
+    
+    // Draw ball with 3D shading using radial gradient
+    const gradientY = this.radius * scale / 3;
+    const gradient = context.createRadialGradient(
+      pos.x - gradientY, pos.y - gradientY, 1,
+      pos.x, pos.y, this.radius * scale
+    );
+    
+    // Basketball coloring with highlight/shadow
+    gradient.addColorStop(0, '#ffaa44'); // Highlight
+    gradient.addColorStop(0.7, '#ff7700'); // Base orange
+    gradient.addColorStop(1, '#cc5500'); // Shadow
+    
     context.beginPath();
     context.arc(pos.x, pos.y, this.radius * scale, 0, Math.PI * 2);
+    context.fillStyle = gradient;
     context.fill();
-
-    // Draw ball details (lines)
-    const rotation = (this.vx * this.vx + this.vy * this.vy + this.vz * this.vz) * 0.01;
-    context.strokeStyle = '#000';
+    
+    // Ball outline
+    context.strokeStyle = '#aa4400';
     context.lineWidth = 1 * scale;
-
-    // Horizontal line
-    context.beginPath();
-    context.arc(pos.x, pos.y, this.radius * scale, rotation, rotation + Math.PI);
     context.stroke();
-
-    // Vertical line
+    
+    // Draw ball details (lines) with 3D rotation effect
+    const gameTime = gameState ? gameState.gameTime : 0;
+    const rotX = Math.sin(this.vx * 0.1 + gameTime) * this.radius * scale;
+    const rotY = Math.cos(this.vy * 0.1 + gameTime) * this.radius * scale;
+    
+    context.strokeStyle = '#552200';
+    context.lineWidth = 1 * scale;
+    
+    // Horizontal curved lines
     context.beginPath();
-    context.arc(pos.x, pos.y, this.radius * scale, rotation + Math.PI/2, rotation + 3*Math.PI/2);
+    context.ellipse(
+      pos.x, 
+      pos.y, 
+      this.radius * scale,
+      this.radius * scale * 0.3,
+      Math.PI/4 + gameTime * (this.vx + this.vy) * 0.01,
+      0, Math.PI * 2
+    );
     context.stroke();
+    
+    // Vertical curved lines
+    context.beginPath();
+    context.ellipse(
+      pos.x, 
+      pos.y, 
+      this.radius * scale * 0.3,
+      this.radius * scale,
+      Math.PI/4 - gameTime * (this.vx + this.vy) * 0.01,
+      0, Math.PI * 2
+    );
+    context.stroke();
+    
+    // Add a highlight spot for more realistic 3D look
+    context.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    context.beginPath();
+    context.arc(
+      pos.x - this.radius * scale * 0.3,
+      pos.y - this.radius * scale * 0.3,
+      this.radius * scale * 0.3,
+      0, Math.PI * 2
+    );
+    context.fill();
   }
 }
 
