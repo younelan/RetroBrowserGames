@@ -115,6 +115,14 @@
     ctx.textBaseline = 'middle';
     ctx.fillText('SHOOT', window.innerWidth - 80, window.innerHeight - 80);
     
+    // Draw jump button
+    ctx.fillStyle = keys[' '] ? '#6666ff' : '#0000ff';
+    ctx.beginPath();
+    ctx.arc(window.innerWidth - 80, window.innerHeight - 170, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText('JUMP', window.innerWidth - 80, window.innerHeight - 170);
+    
     ctx.globalAlpha = 1.0;
   }
 

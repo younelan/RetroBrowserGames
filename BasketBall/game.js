@@ -1,4 +1,4 @@
-(() => {
+(() => {  
   const canvas = document.getElementById('gameCanvas');
   const context = canvas.getContext('2d');
   
@@ -237,6 +237,11 @@
     
     // Draw scores on top of the screen
     context.fillText(`BLUE: ${gameState.team1Score} - RED: ${gameState.team2Score}`, canvas.width/2, 30);
+    
+    // Draw control instructions
+    context.font = '14px Arial';
+    context.textAlign = 'left';
+    context.fillText("Controls: Arrow Keys/WASD = Move, F = Shoot, Spacebar = Jump", 10, canvas.height - 10);
   }
   
   // Update AI players
@@ -247,7 +252,7 @@
         const teamWithBall = gameState.ball.held ? 
           (gameState.ball.heldBy.team === player.team ? true : false) : 
           false;
-          
+        
         // If player's team has the ball (offense)
         if (teamWithBall) {
           updateOffensiveAI(player);
@@ -278,7 +283,7 @@
     if (player.hasBall) {
       // Shoot if close enough to basket
       const distToBasket = Math.sqrt(Math.pow(player.x - offensiveBasketX, 2) + 
-                                    Math.pow(player.y - centerY, 2));
+                                     Math.pow(player.y - centerY, 2));
       
       if (distToBasket < 150 && player.shootCooldown <= 0) {
         player.shoot(ball, gameState);
@@ -292,24 +297,25 @@
     
     // Position based on player's role when team has the ball but this player doesn't
     if (player.position === 'guard') {
-      // Guards stay outside the paint
+      // Guards stay outside the paint - add randomness to prevent clustering
       const targetX = player.team === 1 ? 
-                     gameState.courtWidth * 0.7 : 
-                     gameState.courtWidth * 0.3;
-      const targetY = gameState.courtHeight * 0.3;
+                      gameState.courtWidth * (0.7 + Math.random() * 0.1) : 
+                      gameState.courtWidth * (0.3 - Math.random() * 0.1);
+      const targetY = gameState.courtHeight * (0.3 + Math.random() * 0.1);
       moveToward(player, targetX, targetY, player.speed * 0.5);
     } else if (player.position === 'center') {
-      // Centers stay in the paint
+      // Centers stay in the paint - add variation
       const targetX = player.team === 1 ? 
-                     gameState.courtWidth * 0.8 : 
-                     gameState.courtWidth * 0.2;
-      moveToward(player, targetX, centerY, player.speed * 0.5);
+                      gameState.courtWidth * (0.8 + Math.random() * 0.05) : 
+                      gameState.courtWidth * (0.2 - Math.random() * 0.05);
+      const targetY = centerY + Math.sin(gameState.gameTime * 2) * 20; // Move up and down a bit
+      moveToward(player, targetX, targetY, player.speed * 0.5);
     } else {
-      // Forwards find open space
+      // Forwards find open space - with randomness
       const targetX = player.team === 1 ? 
-                     gameState.courtWidth * 0.6 : 
-                     gameState.courtWidth * 0.4;
-      const targetY = gameState.courtHeight * 0.7;
+                      gameState.courtWidth * (0.6 + Math.random() * 0.1) : 
+                      gameState.courtWidth * (0.4 - Math.random() * 0.1);
+      const targetY = gameState.courtHeight * (0.7 - Math.random() * 0.2);
       moveToward(player, targetX, targetY, player.speed * 0.5);
     }
   }
@@ -340,22 +346,23 @@
     if (player.position === 'guard') {
       // Guards defend the perimeter
       const targetX = player.team === 1 ? 
-                     gameState.courtWidth * 0.3 : 
-                     gameState.courtWidth * 0.7;
-      const targetY = gameState.courtHeight * 0.3;
+                      gameState.courtWidth * (0.3 - Math.random() * 0.1) : 
+                      gameState.courtWidth * (0.7 + Math.random() * 0.1);
+      const targetY = gameState.courtHeight * (0.3 + Math.random() * 0.2);
       moveToward(player, targetX, targetY, player.speed * 0.6);
     } else if (player.position === 'center') {
       // Centers protect the paint
       const targetX = player.team === 1 ? 
-                     gameState.courtWidth * 0.2 : 
-                     gameState.courtWidth * 0.8;
-      moveToward(player, targetX, centerY, player.speed * 0.6);
+                      gameState.courtWidth * (0.2 - Math.random() * 0.05) : 
+                      gameState.courtWidth * (0.8 + Math.random() * 0.05);
+      const randomOffset = Math.sin(gameState.gameTime) * 15;
+      moveToward(player, targetX, centerY + randomOffset, player.speed * 0.6);
     } else {
       // Forwards find defensive position
       const targetX = player.team === 1 ? 
-                     gameState.courtWidth * 0.4 : 
-                     gameState.courtWidth * 0.6;
-      const targetY = gameState.courtHeight * 0.7;
+                      gameState.courtWidth * (0.4 - Math.random() * 0.1) : 
+                      gameState.courtWidth * (0.6 + Math.random() * 0.1);
+      const targetY = gameState.courtHeight * (0.7 - Math.random() * 0.15);
       moveToward(player, targetX, targetY, player.speed * 0.6);
     }
   }
@@ -408,6 +415,11 @@
     
     // Draw scoreboard
     drawScoreboard();
+    
+    // Draw touch controls for mobile
+    if (window.controls.touchControls.active) {
+      window.controls.drawTouchControls(context);
+    }
     
     // Increase game time
     gameState.gameTime += 1/60; // Assume 60fps
