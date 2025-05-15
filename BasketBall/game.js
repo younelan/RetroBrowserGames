@@ -18,9 +18,9 @@
   };
   
   // Perspective constants - Enhanced for better 3D effect
-  const FLOOR_Y = 0.7; // Position of the floor line (70% down the screen)
-  const SCALE_FACTOR = 0.35; // More dramatic scaling for distant objects
-  const PERSPECTIVE_ANGLE = -0.35; // Reduced angle for less distortion
+  const FLOOR_Y = 0.65; // Raised floor line position for better perspective
+  const SCALE_FACTOR = 0.35; // Scale factor for distant objects
+  const PERSPECTIVE_ANGLE = -0.3; // Reduced angle for less distortion
   
   // Initialize the game
   function initGame() {
@@ -333,9 +333,9 @@
   
   // Draw 3D court sides with boards
   function drawCourtSides(corners) {
-    const sideHeight = 30;
+    const sideHeight = 15; // Lower height for more realistic look
     
-    // Get 3D coordinates for board tops
+    // Calculate 3D coordinates for board tops
     const topCorners = [
       to2D(0, 0, sideHeight),
       to2D(gameState.courtWidth, 0, sideHeight),
@@ -343,52 +343,73 @@
       to2D(0, gameState.courtHeight, sideHeight)
     ];
     
-    // Side colors
-    context.fillStyle = '#8B4513';
+    // Draw the sides in the correct order for proper depth
+    const sides = [
+      // Back side (furthest from viewer)
+      {
+        bottom: [corners[0], corners[1]],
+        top: [topCorners[0], topCorners[1]],
+        color: '#8B4513',
+        shadowColor: '#5d2c09'
+      },
+      // Left side
+      {
+        bottom: [corners[0], corners[3]],
+        top: [topCorners[0], topCorners[3]],
+        color: '#9B5523',
+        shadowColor: '#6d3c19'
+      },
+      // Right side
+      {
+        bottom: [corners[1], corners[2]],
+        top: [topCorners[1], topCorners[2]],
+        color: '#9B5523',
+        shadowColor: '#6d3c19'
+      },
+      // Front side (closest to viewer)
+      {
+        bottom: [corners[3], corners[2]],
+        top: [topCorners[3], topCorners[2]],
+        color: '#8B4513', 
+        shadowColor: '#5d2c09'
+      }
+    ];
     
-    // Draw side panels - one for each side of the court
+    // Sort sides by depth for proper rendering order
+    sides.sort((a, b) => {
+      // Calculate average y-coordinate as depth indicator
+      const avgYA = (a.bottom[0].y + a.bottom[1].y) / 2;
+      const avgYB = (b.bottom[0].y + b.bottom[1].y) / 2;
+      return avgYA - avgYB; // Sort from back to front
+    });
     
-    // Front side (closest to viewer)
-    context.beginPath();
-    context.moveTo(corners[3].x, corners[3].y);
-    context.lineTo(corners[2].x, corners[2].y);
-    context.lineTo(topCorners[2].x, topCorners[2].y);
-    context.lineTo(topCorners[3].x, topCorners[3].y);
-    context.closePath();
-    context.fill();
-    context.strokeStyle = '#5d2c09';
-    context.lineWidth = 2;
-    context.stroke();
-    
-    // Right side
-    context.beginPath();
-    context.moveTo(corners[2].x, corners[2].y);
-    context.lineTo(corners[1].x, corners[1].y);
-    context.lineTo(topCorners[1].x, topCorners[1].y);
-    context.lineTo(topCorners[2].x, topCorners[2].y);
-    context.closePath();
-    context.fill();
-    context.stroke();
-    
-    // Back side (furthest from viewer)
-    context.beginPath();
-    context.moveTo(corners[1].x, corners[1].y);
-    context.lineTo(corners[0].x, corners[0].y);
-    context.lineTo(topCorners[0].x, topCorners[0].y);
-    context.lineTo(topCorners[1].x, topCorners[1].y);
-    context.closePath();
-    context.fill();
-    context.stroke();
-    
-    // Left side
-    context.beginPath();
-    context.moveTo(corners[0].x, corners[0].y);
-    context.lineTo(corners[3].x, corners[3].y);
-    context.lineTo(topCorners[3].x, topCorners[3].y);
-    context.lineTo(topCorners[0].x, topCorners[0].y);
-    context.closePath();
-    context.fill();
-    context.stroke();
+    // Draw each side with proper shading
+    sides.forEach(side => {
+      const [b1, b2] = side.bottom;
+      const [t1, t2] = side.top;
+      
+      // Create gradient for 3D effect
+      const gradient = context.createLinearGradient(
+        (b1.x + b2.x) / 2, (b1.y + b2.y) / 2,
+        (t1.x + t2.x) / 2, (t1.y + t2.y) / 2
+      );
+      gradient.addColorStop(0, side.color);
+      gradient.addColorStop(1, side.shadowColor);
+      
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.moveTo(b1.x, b1.y);
+      context.lineTo(b2.x, b2.y);
+      context.lineTo(t2.x, t2.y);
+      context.lineTo(t1.x, t1.y);
+      context.closePath();
+      context.fill();
+      
+      // Add subtle edge highlights
+      context.strokeStyle = side.shadowColor;
+      context.lineWidth = 1;
+      context.stroke();
+    });
     
     // Top edges of the boards
     context.beginPath();
@@ -397,8 +418,8 @@
     context.lineTo(topCorners[2].x, topCorners[2].y);
     context.lineTo(topCorners[3].x, topCorners[3].y);
     context.closePath();
-    context.lineWidth = 3;
-    context.strokeStyle = '#5d2c09';
+    context.lineWidth = 2;
+    context.strokeStyle = '#7d4c29';
     context.stroke();
   }
   
@@ -411,75 +432,124 @@
     drawBasket3D(gameState.courtWidth, gameState.courtHeight/2, 0, false);
   }
   
+  // Improved basket rendering for better 3D appearance
   function drawBasket3D(x, y, z, isLeft) {
     const backboardHeight = 40;
     const backboardWidth = 60;
     const poleHeight = 120;
     
-    // Draw vertical support pole
+    // Draw vertical support pole with increased thickness
     const poleBottom = to2D(x, y, 0);
     const poleTop = to2D(x, y, poleHeight);
     
-    // Gradient for pole
+    // Create improved pole with 3D effect
+    context.beginPath();
+    context.moveTo(poleBottom.x - 4 * poleBottom.scale, poleBottom.y);
+    context.lineTo(poleBottom.x + 4 * poleBottom.scale, poleBottom.y);
+    context.lineTo(poleTop.x + 3 * poleTop.scale, poleTop.y);
+    context.lineTo(poleTop.x - 3 * poleTop.scale, poleTop.y);
+    context.closePath();
+    
+    // Gradient for 3D pole effect
     const poleGradient = context.createLinearGradient(
       poleBottom.x, poleBottom.y,
       poleTop.x, poleTop.y
     );
-    
-    poleGradient.addColorStop(0, '#777');
+    poleGradient.addColorStop(0, '#666');
+    poleGradient.addColorStop(0.5, '#888');
     poleGradient.addColorStop(1, '#444');
     
-    context.strokeStyle = poleGradient;
-    context.lineWidth = 8 * poleBottom.scale;
-    context.beginPath();
-    context.moveTo(poleBottom.x, poleBottom.y);
-    context.lineTo(poleTop.x, poleTop.y);
+    context.fillStyle = poleGradient;
+    context.fill();
+    context.strokeStyle = '#333';
+    context.lineWidth = 1;
     context.stroke();
     
-    // Draw backboard with 3D effect
+    // Improved backboard with better 3D effect
     const backboardOffsetX = isLeft ? 20 : -20;
     const backboardZ = poleHeight - 20;
     
-    const backboardTopLeft = to2D(x + backboardOffsetX - backboardWidth/2, y - backboardHeight/2, backboardZ);
-    const backboardTopRight = to2D(x + backboardOffsetX + backboardWidth/2, y - backboardHeight/2, backboardZ);
-    const backboardBottomRight = to2D(x + backboardOffsetX + backboardWidth/2, y + backboardHeight/2, backboardZ);
-    const backboardBottomLeft = to2D(x + backboardOffsetX - backboardWidth/2, y + backboardHeight/2, backboardZ);
+    // Define backboard corners with proper perspective
+    const backboardCorners = {
+      topLeft: to2D(x + backboardOffsetX - backboardWidth/2, y - backboardHeight/2, backboardZ),
+      topRight: to2D(x + backboardOffsetX + backboardWidth/2, y - backboardHeight/2, backboardZ),
+      bottomRight: to2D(x + backboardOffsetX + backboardWidth/2, y + backboardHeight/2, backboardZ),
+      bottomLeft: to2D(x + backboardOffsetX - backboardWidth/2, y + backboardHeight/2, backboardZ)
+    };
     
-    // Backboard front face
-    context.fillStyle = '#eee';
+    // Draw backboard with depth
+    // First the back face (slightly darker)
+    const backZ = backboardZ - 3;
+    const backboardBack = {
+      topLeft: to2D(x + backboardOffsetX - backboardWidth/2, y - backboardHeight/2, backZ),
+      topRight: to2D(x + backboardOffsetX + backboardWidth/2, y - backboardHeight/2, backZ),
+      bottomRight: to2D(x + backboardOffsetX + backboardWidth/2, y + backboardHeight/2, backZ),
+      bottomLeft: to2D(x + backboardOffsetX - backboardWidth/2, y + backboardHeight/2, backZ)
+    };
+    
+    // Draw back face
+    context.fillStyle = '#ddd';
     context.beginPath();
-    context.moveTo(backboardTopLeft.x, backboardTopLeft.y);
-    context.lineTo(backboardTopRight.x, backboardTopRight.y);
-    context.lineTo(backboardBottomRight.x, backboardBottomRight.y);
-    context.lineTo(backboardBottomLeft.x, backboardBottomLeft.y);
+    context.moveTo(backboardBack.topLeft.x, backboardBack.topLeft.y);
+    context.lineTo(backboardBack.topRight.x, backboardBack.topRight.y);
+    context.lineTo(backboardBack.bottomRight.x, backboardBack.bottomRight.y);
+    context.lineTo(backboardBack.bottomLeft.x, backboardBack.bottomLeft.y);
     context.closePath();
     context.fill();
     
-    // Backboard border
-    context.strokeStyle = '#000';
-    context.lineWidth = 2 * backboardTopLeft.scale;
+    // Draw front face
+    context.fillStyle = '#fff';
+    context.beginPath();
+    context.moveTo(backboardCorners.topLeft.x, backboardCorners.topLeft.y);
+    context.lineTo(backboardCorners.topRight.x, backboardCorners.topRight.y);
+    context.lineTo(backboardCorners.bottomRight.x, backboardCorners.bottomRight.y);
+    context.lineTo(backboardCorners.bottomLeft.x, backboardCorners.bottomLeft.y);
+    context.closePath();
+    context.fill();
+    
+    // Draw edges to connect front and back
+    context.strokeStyle = '#aaa';
+    context.lineWidth = 1;
+    
+    // Connect front to back at corners
+    for (const corner in backboardCorners) {
+      context.beginPath();
+      context.moveTo(backboardCorners[corner].x, backboardCorners[corner].y);
+      context.lineTo(backboardBack[corner].x, backboardBack[corner].y);
+      context.stroke();
+    }
+    
+    // Draw backboard border
+    context.strokeStyle = '#333';
+    context.lineWidth = 2 * backboardCorners.topLeft.scale;
+    context.beginPath();
+    context.moveTo(backboardCorners.topLeft.x, backboardCorners.topLeft.y);
+    context.lineTo(backboardCorners.topRight.x, backboardCorners.topRight.y);
+    context.lineTo(backboardCorners.bottomRight.x, backboardCorners.bottomRight.y);
+    context.lineTo(backboardCorners.bottomLeft.x, backboardCorners.bottomLeft.y);
+    context.closePath();
     context.stroke();
     
-    // Backboard target square
+    // Improved target square with better alignment
     const targetSize = backboardHeight * 0.4;
-    const targetLeft = to2D(x + backboardOffsetX - targetSize/2, y - targetSize/2, backboardZ + 1);
-    const targetWidth = (backboardTopRight.x - backboardTopLeft.x) * (targetSize / backboardWidth);
-    const targetHeight = (backboardBottomLeft.y - backboardTopLeft.y) * (targetSize / backboardHeight);
+    const targetX = x + backboardOffsetX;
+    const targetY = y;
+    const targetPos = to2D(targetX - targetSize/2, targetY - targetSize/2, backboardZ + 0.5);
+    const targetWidth = (backboardCorners.topRight.x - backboardCorners.topLeft.x) * (targetSize / backboardWidth);
+    const targetHeight = (backboardCorners.bottomLeft.y - backboardCorners.topLeft.y) * (targetSize / backboardHeight);
     
-    context.strokeStyle = '#ff4444';
-    context.lineWidth = 2 * backboardTopLeft.scale;
-    context.strokeRect(targetLeft.x, targetLeft.y, targetWidth, targetHeight);
+    context.strokeStyle = '#ff3333';
+    context.lineWidth = 2 * backboardCorners.topLeft.scale;
+    context.strokeRect(targetPos.x, targetPos.y, targetWidth, targetHeight);
     
-    // Draw rim with 3D perspective
+    // Improved rim with better 3D perspective
     const rimOffsetX = isLeft ? 30 : -30;
     const rimZ = backboardZ - 5;
     const rimCenter = to2D(x + rimOffsetX, y, rimZ);
-    
-    // Draw rim (appears as ellipse due to perspective)
     const rimRadius = 15 * rimCenter.scale;
     const rimEllipseY = 7 * rimCenter.scale; // Flattened for perspective
     
-    // Rim shadow
+    // Draw rim shadow
     context.fillStyle = 'rgba(0, 0, 0, 0.3)';
     context.beginPath();
     context.ellipse(
@@ -491,67 +561,87 @@
     );
     context.fill();
     
-    // Rim with gradient for 3D effect
-    const rimGradient = context.createLinearGradient(
-      rimCenter.x - rimRadius, rimCenter.y,
-      rimCenter.x + rimRadius, rimCenter.y
-    );
-    rimGradient.addColorStop(0, '#ff7722');
-    rimGradient.addColorStop(0.5, '#ffaa44');
-    rimGradient.addColorStop(1, '#ff7722');
+    // Draw rim with 3D effect (cylinder)
+    const rimThickness = 3 * rimCenter.scale;
+    const rimDepth = 2 * rimCenter.scale;
     
-    context.strokeStyle = rimGradient;
-    context.lineWidth = 3 * rimCenter.scale;
+    // Draw rim front edge
+    context.strokeStyle = '#ff7722';
+    context.lineWidth = rimThickness;
     context.beginPath();
     context.ellipse(rimCenter.x, rimCenter.y, rimRadius, rimEllipseY, 0, 0, Math.PI * 2);
     context.stroke();
     
-    // Draw net with 3D effect
-    drawNet3D(x + rimOffsetX, y, rimZ, rimRadius, rimEllipseY, rimCenter.scale);
+    // Draw rim with gradient to suggest depth
+    const rimGradient = context.createLinearGradient(
+      rimCenter.x - rimRadius, rimCenter.y - rimEllipseY,
+      rimCenter.x + rimRadius, rimCenter.y + rimEllipseY
+    );
+    rimGradient.addColorStop(0, '#ffaa44');
+    rimGradient.addColorStop(0.5, '#ff7722');
+    rimGradient.addColorStop(1, '#dd5500');
+    
+    context.strokeStyle = rimGradient;
+    context.lineWidth = rimThickness * 0.6;
+    context.beginPath();
+    context.ellipse(rimCenter.x, rimCenter.y, rimRadius * 0.95, rimEllipseY * 0.95, 0, 0, Math.PI * 2);
+    context.stroke();
+    
+    // Draw improved net with better 3D effect
+    drawImprovedNet(x + rimOffsetX, y, rimZ, rimRadius, rimEllipseY, rimCenter.scale);
   }
   
-  function drawNet3D(x, y, z, radiusX, radiusY, scale) {
+  // Improved net drawing for better 3D appearance
+  function drawImprovedNet(x, y, z, radiusX, radiusY, scale) {
     const netHeight = 35 * scale;
     const segments = 12;
-    const verticals = 8;
+    const horizontalLines = 6;
     
-    context.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-    context.lineWidth = 1 * scale;
+    // Translucent white for net
+    context.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+    context.lineWidth = 1.2 * scale;
     
-    // Draw vertical net lines
+    // Draw vertical net strings with better perspective
     for (let i = 0; i < segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
-      const startX = x + Math.cos(angle) * radiusX;
-      const startY = y + Math.sin(angle) * radiusY;
+      const topX = x + Math.cos(angle) * radiusX;
+      const topY = y + Math.sin(angle) * radiusY;
+      const topZ = z;
       
-      // Calculate position at bottom of net (narrower)
-      const bottomX = x + Math.cos(angle) * radiusX * 0.3;
-      const bottomY = y + Math.sin(angle) * radiusY * 0.3;
+      // Bottom point (narrower at bottom)
+      const bottomX = x + Math.cos(angle) * (radiusX * 0.2);
+      const bottomY = y + Math.sin(angle) * (radiusY * 0.2);
       const bottomZ = z - netHeight;
       
-      const start = to2D(startX, startY, z);
-      const end = to2D(bottomX, bottomY, bottomZ);
+      const topPoint = to2D(topX, topY, topZ);
+      const bottomPoint = to2D(bottomX, bottomY, bottomZ);
       
       context.beginPath();
-      context.moveTo(start.x, start.y);
-      context.lineTo(end.x, end.y);
+      context.moveTo(topPoint.x, topPoint.y);
+      context.lineTo(bottomPoint.x, bottomPoint.y);
       context.stroke();
     }
     
-    // Draw horizontal net rings
-    for (let j = 1; j <= verticals; j++) {
-      const ratio = j / verticals;
-      const ringZ = z - ratio * netHeight;
-      const ringRadiusX = radiusX * (1 - ratio * 0.7);
-      const ringRadiusY = radiusY * (1 - ratio * 0.7);
+    // Draw horizontal net rings with proper perspective
+    for (let j = 1; j <= horizontalLines; j++) {
+      const ratio = j / horizontalLines;
+      const currentZ = z - ratio * netHeight;
       
+      // Calculate current radius (smaller as we go down)
+      const currentRadiusX = radiusX * (1 - ratio * 0.8);
+      const currentRadiusY = radiusY * (1 - ratio * 0.8);
+      
+      // Draw complete ring with better perspective
       context.beginPath();
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * Math.PI * 2;
-        const ringX = x + Math.cos(angle) * ringRadiusX;
-        const ringY = y + Math.sin(angle) * ringRadiusY;
+      
+      // Draw points around the rim
+      const numPoints = 24; // More points for smoother ellipse
+      for (let i = 0; i <= numPoints; i++) {
+        const angle = (i / numPoints) * Math.PI * 2;
+        const currentX = x + Math.cos(angle) * currentRadiusX;
+        const currentY = y + Math.sin(angle) * currentRadiusY;
         
-        const point = to2D(ringX, ringY, ringZ);
+        const point = to2D(currentX, currentY, currentZ);
         
         if (i === 0) {
           context.moveTo(point.x, point.y);
@@ -559,6 +649,40 @@
           context.lineTo(point.x, point.y);
         }
       }
+      
+      context.stroke();
+    }
+    
+    // Add some random connecting threads for realism
+    context.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    context.lineWidth = 0.6 * scale;
+    
+    for (let i = 0; i < 8; i++) {
+      const angle1 = Math.random() * Math.PI * 2;
+      const angle2 = Math.random() * Math.PI * 2;
+      const ratio1 = Math.random() * 0.8; // Height ratio for first point
+      const ratio2 = Math.random() * 0.8; // Height ratio for second point
+      
+      const z1 = z - ratio1 * netHeight;
+      const z2 = z - ratio2 * netHeight;
+      
+      // Calculate radius at each height
+      const r1x = radiusX * (1 - ratio1 * 0.8);
+      const r1y = radiusY * (1 - ratio1 * 0.8);
+      const r2x = radiusX * (1 - ratio2 * 0.8);
+      const r2y = radiusY * (1 - ratio2 * 0.8);
+      
+      const x1 = x + Math.cos(angle1) * r1x;
+      const y1 = y + Math.sin(angle1) * r1y;
+      const x2 = x + Math.cos(angle2) * r2x;
+      const y2 = y + Math.sin(angle2) * r2y;
+      
+      const pt1 = to2D(x1, y1, z1);
+      const pt2 = to2D(x2, y2, z2);
+      
+      context.beginPath();
+      context.moveTo(pt1.x, pt1.y);
+      context.lineTo(pt2.x, pt2.y);
       context.stroke();
     }
   }

@@ -15,11 +15,12 @@ class Player {
     this.shootCooldown = 0;
     this.position = ''; // Default position
 
-    // Animation variables
+    // Improved animation variables with dampening
     this.animationStep = 0;
     this.animationSpeed = 0;
     this.lastX = x;
     this.lastY = y;
+    this.movingDirection = { x: 0, y: 0 }; // Smoothed direction vector
     this.direction = 0; // 0: down, 1: up, 2: left, 3: right
   }
 
@@ -117,25 +118,38 @@ class Player {
       gameState.ball.z = this.z + 20; // Hold ball slightly above player
     }
 
-    // Update animation based on movement
+    // Improved animation with dampening to prevent trembling
     const dx = this.x - this.lastX;
     const dy = this.y - this.lastY;
 
-    if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
-      this.animationSpeed = Math.min(10, this.animationSpeed + 0.5);
-      // Set direction based on movement
-      if (Math.abs(dx) > Math.abs(dy)) {
-        this.direction = dx > 0 ? 3 : 2; // right or left
+    // Apply smoothing to direction vector (dampening factor of 0.2)
+    this.movingDirection.x = this.movingDirection.x * 0.8 + dx * 0.2;
+    this.movingDirection.y = this.movingDirection.y * 0.8 + dy * 0.2;
+
+    const movementMagnitude = Math.sqrt(
+      this.movingDirection.x * this.movingDirection.x + 
+      this.movingDirection.y * this.movingDirection.y
+    );
+
+    // Only change animation if there's significant movement
+    if (movementMagnitude > 0.3) {
+      // Set animation speed based on movement magnitude with a cap
+      this.animationSpeed = Math.min(6, movementMagnitude * 2);
+
+      // Set direction based on smoothed movement vector
+      if (Math.abs(this.movingDirection.x) > Math.abs(this.movingDirection.y)) {
+        this.direction = this.movingDirection.x > 0 ? 3 : 2; // right or left
       } else {
-        this.direction = dy > 0 ? 0 : 1; // down or up
+        this.direction = this.movingDirection.y > 0 ? 0 : 1; // down or up
       }
     } else {
-      this.animationSpeed = Math.max(0, this.animationSpeed - 0.5);
+      // Gradually slow down animation when not moving much
+      this.animationSpeed = Math.max(0, this.animationSpeed - 0.2);
     }
 
-    // Update animation step
+    // Update animation step with smoother progression
     if (this.animationSpeed > 0) {
-      this.animationStep = (this.animationStep + this.animationSpeed / 10) % 4;
+      this.animationStep = (this.animationStep + this.animationSpeed / 15) % 4;
     }
   }
 
@@ -196,9 +210,10 @@ class Player {
     );
     context.fill();
 
-    // Set team colors
+    // Set team colors - defined once to ensure consistency
     const primaryColor = this.team === 1 ? '#2266dd' : '#dd3322';
     const secondaryColor = this.team === 1 ? '#4488ff' : '#ff6644';
+    const skinTone = '#f8d8c0';
 
     // Save context for restoration later
     context.save();
@@ -207,16 +222,86 @@ class Player {
     const playerHeight = this.radius * 2.5 * scale;
     const playerWidth = this.radius * 1.5 * scale;
 
+    // Use smoother animation values based on sine wave
+    const animPhase = this.animationStep * Math.PI / 2; // Slower animation cycle
+    const legSpread = Math.sin(animPhase) * playerWidth * 0.25; // Reduced range
+    const armSpread = Math.sin(animPhase + Math.PI) * playerWidth * 0.25; // Opposite phase of legs
+
+    // Draw legs first (behind the body)
+    const legWidth = playerWidth * 0.3;
+    const legHeight = playerHeight * 0.5;
+
+    // Left leg
+    context.fillStyle = secondaryColor;
+    this.drawRoundedRect(
+      context,
+      pos.x - playerWidth/2 - legSpread * 0.5,
+      pos.y + playerHeight * 0.1, 
+      legWidth, 
+      legHeight,
+      legWidth * 0.3
+    );
+
+    // Right leg
+    this.drawRoundedRect(
+      context,
+      pos.x + playerWidth/2 - legWidth + legSpread * 0.5,
+      pos.y + playerHeight * 0.1, 
+      legWidth, 
+      legHeight,
+      legWidth * 0.3
+    );
+
     // Draw player body (torso)
     context.fillStyle = primaryColor;
     this.drawRoundedRect(
       context,
-      pos.x - playerWidth / 2,
-      pos.y - playerHeight / 2,
-      playerWidth,
+      pos.x - playerWidth/2,
+      pos.y - playerHeight/2, 
+      playerWidth, 
       playerHeight * 0.6,
       playerWidth * 0.3
     );
+
+    // Draw arms with consistent coloring and smoother animation
+    const armWidth = playerWidth * 0.25;
+    const armHeight = playerHeight * 0.4;
+
+    // Left arm
+    context.fillStyle = primaryColor; // Same as body for consistency
+    this.drawRoundedRect(
+      context,
+      pos.x - playerWidth/2 - armWidth + armSpread * 0.5,
+      pos.y - playerHeight * 0.25, 
+      armWidth, 
+      armHeight,
+      armWidth * 0.3
+    );
+
+    // Right arm
+    this.drawRoundedRect(
+      context,
+      pos.x + playerWidth/2 - armSpread * 0.5,
+      pos.y - playerHeight * 0.25, 
+      armWidth, 
+      armHeight,
+      armWidth * 0.3
+    );
+
+    // Draw head
+    context.fillStyle = skinTone;
+    context.beginPath();
+    context.arc(
+      pos.x, 
+      pos.y - playerHeight * 0.35, 
+      playerWidth * 0.4, 
+      0, 
+      Math.PI * 2
+    );
+    context.fill();
+    context.strokeStyle = '#000';
+    context.lineWidth = 1 * scale;
+    context.stroke();
 
     // Jersey number
     context.fillStyle = '#fff';
@@ -225,76 +310,7 @@ class Player {
     context.textBaseline = 'middle';
     context.fillText(this.team === 1 ? 'B' : 'R', pos.x, pos.y - playerHeight * 0.1);
 
-    // Draw head
-    context.fillStyle = '#f8d8c0'; // Skin tone
-    context.beginPath();
-    context.arc(
-      pos.x,
-      pos.y - playerHeight * 0.35,
-      playerWidth * 0.4,
-      0,
-      Math.PI * 2
-    );
-    context.fill();
-    context.strokeStyle = '#000';
-    context.lineWidth = 1 * scale;
-    context.stroke();
-
-    // Draw legs with animation
-    const legSpread = Math.sin(this.animationStep * Math.PI) * playerWidth * 0.3;
-    const legWidth = playerWidth * 0.3;
-    const legHeight = playerHeight * 0.5;
-
-    // Left leg
-    context.fillStyle = secondaryColor;
-    this.drawRoundedRect(
-      context,
-      pos.x - playerWidth / 2 - legSpread * 0.5,
-      pos.y + playerHeight * 0.1,
-      legWidth,
-      legHeight,
-      legWidth * 0.3
-    );
-
-    // Right leg
-    this.drawRoundedRect(
-      context,
-      pos.x + playerWidth / 2 - legWidth + legSpread * 0.5,
-      pos.y + playerHeight * 0.1,
-      legWidth,
-      legHeight,
-      legWidth * 0.3
-    );
-
-    // Draw arms with animation
-    const armSpread = Math.sin((this.animationStep + 2) * Math.PI) * playerWidth * 0.3;
-    const armWidth = playerWidth * 0.25;
-    const armHeight = playerHeight * 0.4;
-
-    // Left arm
-    context.fillStyle = primaryColor;
-    this.drawRoundedRect(
-      context,
-      pos.x - playerWidth / 2 - armWidth + armSpread * 0.5,
-      pos.y - playerHeight * 0.25,
-      armWidth,
-      armHeight,
-      armWidth * 0.3
-    );
-
-    // Right arm
-    this.drawRoundedRect(
-      context,
-      pos.x + playerWidth / 2 - armSpread * 0.5,
-      pos.y - playerHeight * 0.25,
-      armWidth,
-      armHeight,
-      armWidth * 0.3
-    );
-
-    // Restore context
-    context.restore();
-
+    // Rest of drawing code (indicators, etc.)
     // Visual indicator for user-controlled player
     if (this.isUserControlled) {
       context.strokeStyle = '#ffff00';
@@ -322,6 +338,8 @@ class Player {
       context.arc(pos.x, pos.y, (this.radius + 12) * scale, 0, Math.PI * 2);
       context.stroke();
     }
+
+    context.restore();
   }
 
   // Helper method to draw rounded rectangles
