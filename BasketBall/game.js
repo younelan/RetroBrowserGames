@@ -18,9 +18,9 @@
   };
   
   // Perspective constants - Enhanced for better 3D effect
-  const FLOOR_Y = 0.75; // Position of the floor line (0.75 = 75% down the screen)
-  const SCALE_FACTOR = 0.4; // More dramatic scaling for distant objects
-  const PERSPECTIVE_ANGLE = -0.5; // Angle to tilt the court perspective
+  const FLOOR_Y = 0.7; // Position of the floor line (70% down the screen)
+  const SCALE_FACTOR = 0.35; // More dramatic scaling for distant objects
+  const PERSPECTIVE_ANGLE = -0.35; // Reduced angle for less distortion
   
   // Initialize the game
   function initGame() {
@@ -71,7 +71,7 @@
     }
   }
   
-  // Convert 3D coordinates to 2D screen coordinates with enhanced perspective
+  // Convert 3D coordinates to 2D screen coordinates with improved perspective
   function to2D(x, y, z) {
     // Start with the canvas center as the vanishing point
     const vanishX = canvas.width / 2;
@@ -82,14 +82,14 @@
     const tiltedZ = y * Math.sin(PERSPECTIVE_ANGLE) + z * Math.cos(PERSPECTIVE_ANGLE);
     
     // Calculate depth (1.0 at floor, smaller as z increases)
-    const depth = 1.0 - (tiltedZ / 300);
+    const depth = 1.0 - (tiltedZ / 400);
     
     // Scale coordinates based on depth (more dramatic scaling)
     const scale = SCALE_FACTOR + (1.0 - SCALE_FACTOR) * depth;
     
     // Apply perspective transformation with more pronounced effect
     const screenX = vanishX + (x - gameState.courtWidth/2) * scale;
-    const screenY = vanishY - tiltedZ * 0.8 - (gameState.courtHeight - tiltedY) * scale * 1.2;
+    const screenY = vanishY - tiltedZ * 0.8 - (gameState.courtHeight - tiltedY) * scale * 1.1;
     
     return { x: screenX, y: screenY, scale: scale };
   }
@@ -97,6 +97,9 @@
   function drawCourt() {
     // Clear canvas
     context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw stadium background first
+    drawStadium();
     
     // Draw sky/background gradient
     const bgGradient = context.createLinearGradient(0, 0, 0, canvas.height);
@@ -206,13 +209,106 @@
     drawEnhancedBaskets();
   }
   
-  // New function to draw a 3D grid on the floor
+  // New function to draw a stadium background
+  function drawStadium() {
+    // Gradient sky background
+    const skyGradient = context.createLinearGradient(0, 0, 0, canvas.height * FLOOR_Y);
+    skyGradient.addColorStop(0, '#1a2738');
+    skyGradient.addColorStop(1, '#2c4356');
+    context.fillStyle = skyGradient;
+    context.fillRect(0, 0, canvas.width, canvas.height * FLOOR_Y);
+    
+    // Stadium floor
+    const floorGradient = context.createLinearGradient(0, canvas.height * FLOOR_Y, 0, canvas.height);
+    floorGradient.addColorStop(0, '#3a3a3a');
+    floorGradient.addColorStop(1, '#222222');
+    context.fillStyle = floorGradient;
+    context.fillRect(0, canvas.height * FLOOR_Y, canvas.width, canvas.height * (1 - FLOOR_Y));
+    
+    // Stadium seats (simplified)
+    const seatRows = 10;
+    const seatHeight = (canvas.height * FLOOR_Y) / seatRows;
+    
+    for (let i = 0; i < seatRows; i++) {
+      const y = i * seatHeight;
+      const color = i % 2 === 0 ? '#3a3a3a' : '#4a4a4a';
+      
+      context.fillStyle = color;
+      context.fillRect(0, y, canvas.width, seatHeight);
+    }
+    
+    // Stadium lights
+    const lightCount = 4;
+    const lightSpacing = canvas.width / (lightCount + 1);
+    
+    for (let i = 1; i <= lightCount; i++) {
+      const x = i * lightSpacing;
+      
+      // Light pole
+      context.fillStyle = '#555';
+      context.fillRect(x - 2, 0, 4, canvas.height * FLOOR_Y * 0.3);
+      
+      // Light glow
+      const gradient = context.createRadialGradient(
+        x, canvas.height * FLOOR_Y * 0.3, 0,
+        x, canvas.height * FLOOR_Y * 0.3, 50
+      );
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+      gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      context.fillStyle = gradient;
+      context.beginPath();
+      context.arc(x, canvas.height * FLOOR_Y * 0.3, 50, 0, Math.PI * 2);
+      context.fill();
+    }
+  }
+  
+  // Enhanced floor grid with better perspective
   function drawFloorGrid() {
+    // Create a radial gradient for the court
+    const centerPt = to2D(gameState.courtWidth / 2, gameState.courtHeight / 2, 0);
+    const cornerPt = to2D(0, 0, 0);
+    const radius = Math.sqrt(
+      Math.pow(centerPt.x - cornerPt.x, 2) + 
+      Math.pow(centerPt.y - cornerPt.y, 2)
+    );
+    
+    const floorGradient = context.createRadialGradient(
+      centerPt.x, centerPt.y, 0,
+      centerPt.x, centerPt.y, radius
+    );
+    floorGradient.addColorStop(0, '#c69c6d');
+    floorGradient.addColorStop(1, '#a58b62');
+    
+    // Create court polygon
+    const courtCorners = [
+      to2D(0, 0, 0),                                  // Top-left
+      to2D(gameState.courtWidth, 0, 0),               // Top-right
+      to2D(gameState.courtWidth, gameState.courtHeight, 0), // Bottom-right
+      to2D(0, gameState.courtHeight, 0)               // Bottom-left
+    ];
+    
+    // Fill court with gradient
+    context.fillStyle = floorGradient;
+    context.beginPath();
+    context.moveTo(courtCorners[0].x, courtCorners[0].y);
+    context.lineTo(courtCorners[1].x, courtCorners[1].y);
+    context.lineTo(courtCorners[2].x, courtCorners[2].y);
+    context.lineTo(courtCorners[3].x, courtCorners[3].y);
+    context.closePath();
+    context.fill();
+    
+    // Court border
+    context.strokeStyle = '#8B4513';
+    context.lineWidth = 4;
+    context.stroke();
+    
+    // Draw grid lines
     context.strokeStyle = 'rgba(120, 100, 80, 0.2)';
     context.lineWidth = 1;
     
-    // Draw horizontal grid lines
-    for (let y = 0; y <= gameState.courtHeight; y += 30) {
+    // Horizontal grid lines
+    const gridSpacing = 20;
+    for (let y = 0; y <= gameState.courtHeight; y += gridSpacing) {
       const start = to2D(0, y, 0);
       const end = to2D(gameState.courtWidth, y, 0);
       context.beginPath();
@@ -221,8 +317,8 @@
       context.stroke();
     }
     
-    // Draw vertical grid lines
-    for (let x = 0; x <= gameState.courtWidth; x += 30) {
+    // Vertical grid lines
+    for (let x = 0; x <= gameState.courtWidth; x += gridSpacing) {
       const start = to2D(x, 0, 0);
       const end = to2D(x, gameState.courtHeight, 0);
       context.beginPath();
@@ -230,6 +326,80 @@
       context.lineTo(end.x, end.y);
       context.stroke();
     }
+    
+    // Court sides: add boards along the perimeter of the court
+    drawCourtSides(courtCorners);
+  }
+  
+  // Draw 3D court sides with boards
+  function drawCourtSides(corners) {
+    const sideHeight = 30;
+    
+    // Get 3D coordinates for board tops
+    const topCorners = [
+      to2D(0, 0, sideHeight),
+      to2D(gameState.courtWidth, 0, sideHeight),
+      to2D(gameState.courtWidth, gameState.courtHeight, sideHeight),
+      to2D(0, gameState.courtHeight, sideHeight)
+    ];
+    
+    // Side colors
+    context.fillStyle = '#8B4513';
+    
+    // Draw side panels - one for each side of the court
+    
+    // Front side (closest to viewer)
+    context.beginPath();
+    context.moveTo(corners[3].x, corners[3].y);
+    context.lineTo(corners[2].x, corners[2].y);
+    context.lineTo(topCorners[2].x, topCorners[2].y);
+    context.lineTo(topCorners[3].x, topCorners[3].y);
+    context.closePath();
+    context.fill();
+    context.strokeStyle = '#5d2c09';
+    context.lineWidth = 2;
+    context.stroke();
+    
+    // Right side
+    context.beginPath();
+    context.moveTo(corners[2].x, corners[2].y);
+    context.lineTo(corners[1].x, corners[1].y);
+    context.lineTo(topCorners[1].x, topCorners[1].y);
+    context.lineTo(topCorners[2].x, topCorners[2].y);
+    context.closePath();
+    context.fill();
+    context.stroke();
+    
+    // Back side (furthest from viewer)
+    context.beginPath();
+    context.moveTo(corners[1].x, corners[1].y);
+    context.lineTo(corners[0].x, corners[0].y);
+    context.lineTo(topCorners[0].x, topCorners[0].y);
+    context.lineTo(topCorners[1].x, topCorners[1].y);
+    context.closePath();
+    context.fill();
+    context.stroke();
+    
+    // Left side
+    context.beginPath();
+    context.moveTo(corners[0].x, corners[0].y);
+    context.lineTo(corners[3].x, corners[3].y);
+    context.lineTo(topCorners[3].x, topCorners[3].y);
+    context.lineTo(topCorners[0].x, topCorners[0].y);
+    context.closePath();
+    context.fill();
+    context.stroke();
+    
+    // Top edges of the boards
+    context.beginPath();
+    context.moveTo(topCorners[0].x, topCorners[0].y);
+    context.lineTo(topCorners[1].x, topCorners[1].y);
+    context.lineTo(topCorners[2].x, topCorners[2].y);
+    context.lineTo(topCorners[3].x, topCorners[3].y);
+    context.closePath();
+    context.lineWidth = 3;
+    context.strokeStyle = '#5d2c09';
+    context.stroke();
   }
   
   // Enhanced basket rendering with more 3D detail

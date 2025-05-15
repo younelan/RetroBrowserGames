@@ -14,9 +14,20 @@ class Player {
     this.isShooting = false;
     this.shootCooldown = 0;
     this.position = ''; // Default position
+
+    // Animation variables
+    this.animationStep = 0;
+    this.animationSpeed = 0;
+    this.lastX = x;
+    this.lastY = y;
+    this.direction = 0; // 0: down, 1: up, 2: left, 3: right
   }
 
   update(gameState) {
+    // Store previous position for animation
+    this.lastX = this.x;
+    this.lastY = this.y;
+
     // Player movement based on controls
     if (this.isUserControlled) {
       const keys = window.controls.keys;
@@ -105,6 +116,27 @@ class Player {
       gameState.ball.y = this.y;
       gameState.ball.z = this.z + 20; // Hold ball slightly above player
     }
+
+    // Update animation based on movement
+    const dx = this.x - this.lastX;
+    const dy = this.y - this.lastY;
+
+    if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+      this.animationSpeed = Math.min(10, this.animationSpeed + 0.5);
+      // Set direction based on movement
+      if (Math.abs(dx) > Math.abs(dy)) {
+        this.direction = dx > 0 ? 3 : 2; // right or left
+      } else {
+        this.direction = dy > 0 ? 0 : 1; // down or up
+      }
+    } else {
+      this.animationSpeed = Math.max(0, this.animationSpeed - 0.5);
+    }
+
+    // Update animation step
+    if (this.animationSpeed > 0) {
+      this.animationStep = (this.animationStep + this.animationSpeed / 10) % 4;
+    }
   }
 
   shoot(ball, gameState) {
@@ -151,9 +183,8 @@ class Player {
     // Convert 3D position to 2D screen position
     const pos = to2D(this.x, this.y, this.z);
     const scale = pos.scale;
-    
-    // Draw shadow on the ground (more elliptical for perspective)
-    const shadowScale = 1 + (this.z * 0.01);
+
+    // Draw shadow on the ground
     context.fillStyle = 'rgba(0, 0, 0, 0.2)';
     context.beginPath();
     context.ellipse(
@@ -164,91 +195,148 @@ class Player {
       0, 0, Math.PI * 2
     );
     context.fill();
-    
-    // Draw player with 3D shading
-    // For more 3D feel, we'll use gradient instead of flat color
-    const gradientY = this.radius * scale / 2;
-    const gradient = context.createRadialGradient(
-      pos.x - gradientY, pos.y - gradientY, 1,
-      pos.x, pos.y, this.radius * scale
+
+    // Set team colors
+    const primaryColor = this.team === 1 ? '#2266dd' : '#dd3322';
+    const secondaryColor = this.team === 1 ? '#4488ff' : '#ff6644';
+
+    // Save context for restoration later
+    context.save();
+
+    // Calculate player height based on z position
+    const playerHeight = this.radius * 2.5 * scale;
+    const playerWidth = this.radius * 1.5 * scale;
+
+    // Draw player body (torso)
+    context.fillStyle = primaryColor;
+    this.drawRoundedRect(
+      context,
+      pos.x - playerWidth / 2,
+      pos.y - playerHeight / 2,
+      playerWidth,
+      playerHeight * 0.6,
+      playerWidth * 0.3
     );
-    
-    // Create team colors with highlight/shadow for 3D effect
-    if (this.team === 1) {
-      gradient.addColorStop(0, '#4488ff'); // Highlight
-      gradient.addColorStop(0.7, '#2266dd'); // Base blue
-      gradient.addColorStop(1, '#1144aa'); // Shadow
-    } else {
-      gradient.addColorStop(0, '#ff6644'); // Highlight  
-      gradient.addColorStop(0.7, '#dd3322'); // Base red
-      gradient.addColorStop(1, '#aa1100'); // Shadow
-    }
-    
-    // Draw player body with 3D gradient
-    context.beginPath();
-    context.arc(pos.x, pos.y, this.radius * scale, 0, Math.PI * 2);
-    context.fillStyle = gradient;
-    context.fill();
-    
-    // Add outline
-    context.strokeStyle = '#000';
-    context.lineWidth = 1.5 * scale;
-    context.stroke();
-    
-    // Draw jersey number with 3D shadow effect
+
+    // Jersey number
     context.fillStyle = '#fff';
-    context.font = `bold ${14 * scale}px Arial`;
+    context.font = `bold ${12 * scale}px Arial`;
     context.textAlign = 'center';
     context.textBaseline = 'middle';
-    
-    // Text shadow for 3D effect
-    context.shadowColor = 'rgba(0, 0, 0, 0.5)';
-    context.shadowBlur = 3 * scale;
-    context.shadowOffsetX = 1 * scale;
-    context.shadowOffsetY = 1 * scale;
-    
-    // Draw the number/letter
-    context.fillText(this.team === 1 ? 'B' : 'R', pos.x, pos.y);
-    
-    // Reset shadow
-    context.shadowColor = 'transparent';
-    
+    context.fillText(this.team === 1 ? 'B' : 'R', pos.x, pos.y - playerHeight * 0.1);
+
+    // Draw head
+    context.fillStyle = '#f8d8c0'; // Skin tone
+    context.beginPath();
+    context.arc(
+      pos.x,
+      pos.y - playerHeight * 0.35,
+      playerWidth * 0.4,
+      0,
+      Math.PI * 2
+    );
+    context.fill();
+    context.strokeStyle = '#000';
+    context.lineWidth = 1 * scale;
+    context.stroke();
+
+    // Draw legs with animation
+    const legSpread = Math.sin(this.animationStep * Math.PI) * playerWidth * 0.3;
+    const legWidth = playerWidth * 0.3;
+    const legHeight = playerHeight * 0.5;
+
+    // Left leg
+    context.fillStyle = secondaryColor;
+    this.drawRoundedRect(
+      context,
+      pos.x - playerWidth / 2 - legSpread * 0.5,
+      pos.y + playerHeight * 0.1,
+      legWidth,
+      legHeight,
+      legWidth * 0.3
+    );
+
+    // Right leg
+    this.drawRoundedRect(
+      context,
+      pos.x + playerWidth / 2 - legWidth + legSpread * 0.5,
+      pos.y + playerHeight * 0.1,
+      legWidth,
+      legHeight,
+      legWidth * 0.3
+    );
+
+    // Draw arms with animation
+    const armSpread = Math.sin((this.animationStep + 2) * Math.PI) * playerWidth * 0.3;
+    const armWidth = playerWidth * 0.25;
+    const armHeight = playerHeight * 0.4;
+
+    // Left arm
+    context.fillStyle = primaryColor;
+    this.drawRoundedRect(
+      context,
+      pos.x - playerWidth / 2 - armWidth + armSpread * 0.5,
+      pos.y - playerHeight * 0.25,
+      armWidth,
+      armHeight,
+      armWidth * 0.3
+    );
+
+    // Right arm
+    this.drawRoundedRect(
+      context,
+      pos.x + playerWidth / 2 - armSpread * 0.5,
+      pos.y - playerHeight * 0.25,
+      armWidth,
+      armHeight,
+      armWidth * 0.3
+    );
+
+    // Restore context
+    context.restore();
+
     // Visual indicator for user-controlled player
     if (this.isUserControlled) {
       context.strokeStyle = '#ffff00';
       context.lineWidth = 2;
       context.beginPath();
-      context.arc(pos.x, pos.y, (this.radius + 5) * scale, 0, Math.PI * 2);
+      context.arc(pos.x, pos.y, (this.radius + 10) * scale, 0, Math.PI * 2);
       context.stroke();
-      
-      // Add a small arrow above player
-      const arrowSize = 8 * scale;
+
+      // Add an arrow above player
+      const arrowSize = 10 * scale;
       context.fillStyle = '#ffff00';
       context.beginPath();
-      context.moveTo(pos.x, pos.y - this.radius * scale - arrowSize * 2);
-      context.lineTo(pos.x + arrowSize, pos.y - this.radius * scale - arrowSize);
-      context.lineTo(pos.x - arrowSize, pos.y - this.radius * scale - arrowSize);
+      context.moveTo(pos.x, pos.y - playerHeight / 2 - arrowSize * 2);
+      context.lineTo(pos.x + arrowSize, pos.y - playerHeight / 2 - arrowSize);
+      context.lineTo(pos.x - arrowSize, pos.y - playerHeight / 2 - arrowSize);
       context.closePath();
       context.fill();
     }
-    
-    // Visual indicator for ball possession with glow effect
+
+    // Visual indicator for ball possession
     if (this.hasBall) {
       context.strokeStyle = '#00ff00';
       context.lineWidth = 2;
       context.beginPath();
-      context.arc(pos.x, pos.y, (this.radius + 8) * scale, 0, Math.PI * 2);
+      context.arc(pos.x, pos.y, (this.radius + 12) * scale, 0, Math.PI * 2);
       context.stroke();
-      
-      // Add glow
-      const glowSize = 4;
-      for (let i = 0; i < glowSize; i++) {
-        context.strokeStyle = `rgba(0, 255, 0, ${0.1 - 0.02 * i})`;
-        context.lineWidth = 2 + i;
-        context.beginPath();
-        context.arc(pos.x, pos.y, (this.radius + 8 + i) * scale, 0, Math.PI * 2);
-        context.stroke();
-      }
     }
+  }
+
+  // Helper method to draw rounded rectangles
+  drawRoundedRect(ctx, x, y, width, height, radius) {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
   }
 }
