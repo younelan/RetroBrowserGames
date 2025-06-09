@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tk Card Game</title>
+    <link rel="stylesheet" href="tk.css">
+</head>
+<body>
+    <div class="game" id="game">
+        <div class="game-header">
+            <div class="header-controls">
+                <button class="btn small" onclick="startNewGame()">New</button>
+                <button class="btn small help-btn" onclick="toggleHelp()">?</button>
+            </div>
+            <h1 class="game-title">Tik</h1>
+            <div class="game-info">
+                <div class="deck-info">Deck: <span id="deck-count">40</span></div>
+                <div class="turn-info"><span id="player-0-name">You</span>: <span id="player-0-score">0</span> | <span id="player-1-name">Computer</span>: <span id="player-1-score">0</span></div>
+                <div class="cards-remaining" style="display: none;">Phase: <span id="game-phase">Dealing</span></div>
+            </div>
+        </div>
+
+        <div class="players-area" id="players-area"></div>
+        <div class="table-area">
+            <div class="relationship-info" id="relationship-info" style="display: none;">
+                No active relationship
+            </div>
+            <div class="table-cards" id="table-cards"></div>
+        </div>
+
+
+        <div class="action-buttons">
+            <button class="btn" id="deal-btn" onclick="dealCards()">Deal 4 Cards</button>
+        </div>
+
+        <div class="game-messages" id="game-messages">
+            Welcome to Tk! Click "Deal 4 Cards" to start playing.
+        </div>
+
+        <div class="game-history" id="game-history" style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; margin-top: 10px; max-height: 150px; overflow-y: auto;">
+            <h4 style="margin: 0 0 10px 0; color: #ccc;">Game History:</h4>
+            <div id="history-content">No moves yet...</div>
+        </div>
+
+        <!-- Help Modal -->
+        <div id="help-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; padding: 20px; box-sizing: border-box; overflow-y: auto;">
+            <div style="max-width: 800px; margin: 0 auto; background: #2c5530; border-radius: 15px; padding: 30px; color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">Tk Card Game Rules</h2>
+                    <button onclick="toggleHelp()" style="background: #f44336; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 1.2rem;">×</button>
+                </div>
+                
+                <div style="line-height: 1.6;">
+                    <h3>Objective</h3>
+                    <p>Win cards by forming relationships on the table. The player with the most points at the end wins.</p>
+                    
+                    <h3>Card Values & Scoring</h3>
+                    <ul>
+                        <li>Spanish deck: 1, 2, 3, 4, 5, 6, 7, 10, 11, 12 (no 8, 9)</li>
+                        <li>Aces (1) = 2 points</li>
+                        <li>All other cards = 1 point</li>
+                    </ul>
+                    
+                    <h3>How to Play</h3>
+                    <ol>
+                        <li>Each player is dealt 4 cards</li>
+                        <li>Players take turns playing cards onto the table</li>
+                        <li>After each card, check if a relationship forms</li>
+                        <li>Once a relationship is active, only relationship cards can be played</li>
+                        <li>Relationship ends when someone plays a non-relationship card or no one has relationship cards left</li>
+                    </ol>
+                    
+                    <h3>Relationships</h3>
+                    <ul>
+                        <li><strong>Two Aces:</strong> Any 2 aces form a relationship</li>
+                        <li><strong>Three Identical:</strong> 3+ cards of same value (e.g., 2♥, 2♠, 2♦)</li>
+                        <li><strong>Pairs + Sequence:</strong> 2+ cards of same value + adjacent cards</li>
+                        <li><strong>Example:</strong> 2♥, 2♠, 3♦ = relationship with values 2, 3</li>
+                        <li><strong>Wrapping:</strong> 12 and 1 are adjacent (12, 1, 2 is valid)</li>
+                    </ul>
+                    
+                    <h3>Winning Relationships</h3>
+                    <ul>
+                        <li><strong>Break relationship:</strong> Play a non-relationship card → previous player wins</li>
+                        <li><strong>No cards left:</strong> Both players out of relationship cards → last player to play relationship card wins</li>
+                        <li><strong>Winner takes:</strong> Only the relationship cards, not all table cards</li>
+                    </ul>
+                    
+                    <h3>Game End</h3>
+                    <p>When deck is empty and all hands are empty, remaining table cards go to the last relationship winner. Player with most points wins!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Game Modal -->
+        <div id="new-game-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; padding: 20px; box-sizing: border-box;">
+            <div style="max-width: 400px; margin: 50px auto; background: #2c5530; border-radius: 15px; padding: 30px; color: white;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2 style="margin: 0;">New Game Settings</h2>
+                    <button onclick="toggleNewGameModal()" style="background: #f44336; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; font-size: 1.2rem;">×</button>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <h3 style="margin-bottom: 10px;">Who goes first?</h3>
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="firstPlayer" value="computer" checked style="margin-right: 8px;">
+                            Computer
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="firstPlayer" value="human" style="margin-right: 8px;">
+                            Human
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 30px;">
+                    <h3 style="margin-bottom: 10px;">Cards per deal:</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="cardsPerDeal" value="4" checked style="margin-right: 8px;">
+                            4 cards
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="radio" name="cardsPerDeal" value="8" style="margin-right: 8px;">
+                            8 cards
+                        </label>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; justify-content: center;">
+                    <button onclick="startNewGameWithSettings()" style="background: #4CAF50; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem;">Start Game</button>
+                    <button onclick="toggleNewGameModal()" style="background: #666; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-size: 1rem;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="tk.js"></script>
+</body>
+</html>
