@@ -163,7 +163,7 @@ class Game {
 
     update() {
         this.player.update(this.input, this.level);
-        this.level.enemies.forEach(e => e.update());
+        this.level.enemies.forEach(e => e.update(this.level));
 
         // Oxygen depletion
         this.oxygen--;

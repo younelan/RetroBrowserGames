@@ -38,15 +38,15 @@ class Level {
                         this.portal = { x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2 };
                         break;
                     case 'E':
-                        this.enemies.push(new Enemy(worldX, worldY, 'H'));
+                        this.enemies.push(new Enemy(worldX, worldY - TILE_SIZE, 'H'));
                         break;
                     case 'V':
-                        this.enemies.push(new Enemy(worldX, worldY, 'V'));
+                        this.enemies.push(new Enemy(worldX, worldY - TILE_SIZE, 'V'));
                         break;
                     case 'Z':
-                        this.enemies.push(new Enemy(worldX, worldY, 'C'));
+                        this.enemies.push(new Enemy(worldX, worldY - TILE_SIZE, 'C'));
                         break;
-                    case 'H':
+                    case 'C':
                         this.crumblingPlatforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, decay: 0 });
                         break;
                     case 'H':

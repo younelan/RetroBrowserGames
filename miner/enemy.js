@@ -3,7 +3,7 @@ class Enemy {
         this.x = x;
         this.y = y;
         this.width = TILE_SIZE;
-        this.height = TILE_SIZE;
+        this.height = 2 * TILE_SIZE;
         this.type = type;
         this.direction = 1;
         if (this.type === 'C') {
@@ -13,9 +13,33 @@ class Enemy {
         }
     }
 
-    update() {
+    update(level) {
         if (this.type === 'H') { // Horizontal
-            this.x += this.direction * 2;
+            const nextX = this.x + this.direction * 2;
+            const nextFeetRect = { x: nextX, y: this.y + this.height - 1, width: this.width, height: 1 }; // 1-pixel high strip at the bottom
+
+            let nextStepHasPlatformBelow = false;
+            const checkPlatformBelow = (p) => {
+                // Check if the platform is directly below the enemy's next horizontal position
+                if (nextX < p.x + p.width &&
+                    nextX + this.width > p.x &&
+                    this.y + this.height < p.y + p.height && // Enemy's bottom is above platform's bottom
+                    this.y + this.height >= p.y) { // Enemy's bottom is at or below platform's top
+                    nextStepHasPlatformBelow = true;
+                }
+            };
+
+            level.platforms.forEach(checkPlatformBelow);
+            level.brickFloors.forEach(checkPlatformBelow);
+            level.movingLeftFloors.forEach(checkPlatformBelow);
+            level.movingRightFloors.forEach(checkPlatformBelow);
+
+            // Check for edge of platform (no platform below) or world bounds
+            if (!nextStepHasPlatformBelow || nextX < 0 || nextX + this.width > LEVEL_WIDTH * TILE_SIZE) {
+                this.direction *= -1;
+            } else {
+                this.x = nextX;
+            }
         } else if (this.type === 'V') { // Vertical
             this.y += this.direction * 2;
         } else if (this.type === 'C') { // Complex
@@ -32,14 +56,19 @@ class Enemy {
             }
         }
 
-        // Simple boundary collision
-        if (this.x > LEVEL_WIDTH * TILE_SIZE - TILE_SIZE || this.x < 0) {
-            this.direction *= -1;
+        // Simple boundary collision for vertical movement (for V and C types)
+        if (this.type === 'V' || this.type === 'C') {
+            if (this.y < 0 || this.y + this.height > (LEVEL_HEIGHT - UI_HEIGHT_TILES) * TILE_SIZE) {
+                this.direction *= -1;
+            }
         }
-        // Simple boundary collision for vertical movement
-        if (this.y > (LEVEL_HEIGHT - UI_HEIGHT_TILES) * TILE_SIZE - TILE_SIZE || this.y < 0) {
-            this.direction *= -1;
-        }
+    }
+
+    checkCollision(rect1, rect2) {
+        return rect1.x < rect2.x + rect2.width &&
+               rect1.x + rect1.width > rect2.x &&
+               rect1.y < rect2.y + rect2.height &&
+               rect1.y + rect1.height > rect2.y;
     }
 
     draw(context) {
