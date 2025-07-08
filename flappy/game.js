@@ -35,6 +35,12 @@ const difficulties = {
     hard: { speed: 210, gravity: 1000, flap: 380, obstacleDist: 350, pipeGap: 200, spinnerSpeed: 2.2, crusherSpeed: 160, platformSpeed: 160, collectibleChance: 0.3 }
 };
 
+function resizeCanvas() {
+    const size = Math.min(window.innerWidth, window.innerHeight) * 0.95;
+    canvas.width = size;
+    canvas.height = size;
+}
+
 function scaleToVirtual(value) {
     return value * (VIRTUAL_WIDTH / canvas.width);
 }
