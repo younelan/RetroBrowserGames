@@ -92,16 +92,20 @@ class Level {
             context.fillStyle = 'gold';
             const s = k.width / 16; // Scale factor for a 16x16 sprite
 
-            // Key Bow (circular part) - drawn as if it's the top of a vertical key
+            // Key Bow (circular outline)
             context.beginPath();
             context.arc(8 * s, 4 * s, 4 * s, 0, Math.PI * 2); // Center at (8s, 4s), radius 4s
-            context.fill();
+            context.strokeStyle = 'gold';
+            context.lineWidth = 2;
+            context.stroke();
 
-            // Key Shaft (rectangle) - extends downwards from the bow
-            context.fillRect(7 * s, 8 * s, 2 * s, 6 * s); // From (7s, 8s), width 2s, height 6s
+            // Key Shaft (rectangle)
+            context.fillStyle = 'gold';
+            context.fillRect(7.5 * s, 8 * s, 1 * s, 8 * s); // From (7.5s, 8s), width 1s, height 8s
 
-            // Key Bit (teeth) - at the bottom of the shaft
-            context.fillRect(5 * s, 14 * s, 6 * s, 2 * s); // From (5s, 14s), width 6s, height 2s
+            // Key Bit (teeth)
+            context.fillRect(6 * s, 14 * s, 1 * s, 2 * s); // Left tooth
+            context.fillRect(9 * s, 14 * s, 1 * s, 2 * s); // Right tooth
 
             context.restore(); // Restore context to original state
         });

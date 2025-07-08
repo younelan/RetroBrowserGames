@@ -239,6 +239,9 @@ class Game {
     }
 
     playerDie() {
+        if (this.player.playerState === 'DYING') {
+            return; // Already dying, prevent multiple calls
+        }
         this.player.playerState = 'DYING';
         this.gameMusic.pause();
         this.deathSound.currentTime = 0;
