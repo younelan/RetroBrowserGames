@@ -12,8 +12,8 @@ X                              X
 X   @                          X
 X  XXX                         X
 X                  X           X
-X     K            B  B   E    X
-X   XXXCC          XXXCBRLX XCCX
+X     K            B   E       X
+X   XXXCC          XXXCBRLXXXCCX
 X                              X
 X                              X
 X   P         S         Z      X

@@ -32,11 +32,27 @@ class Enemy {
                 }
             }
 
+            // Check for wall collision in the next horizontal step
+            let isAboutToHitWall = false;
+            const nextHorizontalRect = { x: nextX, y: this.y, width: this.width, height: this.height };
+
+            const checkWallCollision = (p) => {
+                if (this.checkCollision(nextHorizontalRect, p)) {
+                    isAboutToHitWall = true;
+                }
+            };
+
+            level.platforms.forEach(checkWallCollision);
+            level.brickFloors.forEach(checkWallCollision);
+            level.movingLeftFloors.forEach(checkWallCollision);
+            level.movingRightFloors.forEach(checkWallCollision);
+            level.crumblingPlatforms.forEach(checkWallCollision); // Crumbling platforms are also solid walls
+
             // Check for world bounds
             const atWorldEdge = (nextX < 0 || nextX + this.width > LEVEL_WIDTH * TILE_SIZE);
 
-            // Turn around if no platform below or at world edge
-            if (!nextStepHasPlatformBelow || atWorldEdge) {
+            // Turn around if no platform below, about to hit a wall, or at world edge
+            if (!nextStepHasPlatformBelow || isAboutToHitWall || atWorldEdge) {
                 this.direction *= -1;
             } else {
                 this.x = nextX;
