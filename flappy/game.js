@@ -618,68 +618,62 @@ function update(currentTime) {
 
 // --- HELPERS & UI ---
 function drawBackground() {
-    // Deep Space Background
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, VIRTUAL_HEIGHT);
-    bgGrad.addColorStop(0, '#0a0a1a'); // Darker top
-    bgGrad.addColorStop(0.5, '#1a1a3a'); // Mid-range blue-purple
-    bgGrad.addColorStop(1, '#2a2a4a'); // Lighter bottom
-    ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+    // Sky Gradient (Sunset colors)
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, VIRTUAL_HEIGHT);
+    skyGrad.addColorStop(0, '#4a0000'); // Dark red
+    skyGrad.addColorStop(0.3, '#8b0000'); // Darker red
+    skyGrad.addColorStop(0.6, '#ff4500'); // OrangeRed
+    skyGrad.addColorStop(1, '#ffd700'); // Gold
+    ctx.fillStyle = skyGrad; ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
-    // Distant Stars (smaller, slower)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-    for(let i=0; i<150; i++) {
-        const x = (Math.sin(i * 1234) * VIRTUAL_WIDTH * 2 + performance.now() * 0.005 * (i%5+1)) % VIRTUAL_WIDTH;
-        const y = (Math.cos(i * 5678) * VIRTUAL_HEIGHT * 2 + performance.now() * 0.005 * (i%5+1)) % VIRTUAL_HEIGHT;
-        const size = Math.random() * 1.5;
-        ctx.fillRect(x, y, size, size);
-    }
-
-    // Closer Stars (larger, faster)
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    for(let i=0; i<50; i++) {
-        const x = (Math.sin(i * 9876) * VIRTUAL_WIDTH * 1.5 + performance.now() * 0.01 * (i%5+1)) % VIRTUAL_WIDTH;
-        const y = (Math.cos(i * 5432) * VIRTUAL_HEIGHT * 1.5 + performance.now() * 0.01 * (i%5+1)) % VIRTUAL_HEIGHT;
-        const size = Math.random() * 2.5;
-        ctx.fillRect(x, y, size, size);
-    }
-
-    // Nebulae/Gas Clouds (subtle, large, slow parallax)
-    drawNebula('rgba(100, 100, 200, 0.1)', 0.02, 1);
-    drawNebula('rgba(200, 100, 100, 0.08)', 0.03, 2);
-
-    // Distant Planets/Moons (static, but adds depth)
-    ctx.fillStyle = '#555';
+    // Sun (soft glow)
+    ctx.fillStyle = 'rgba(255, 255, 0, 0.5)';
     ctx.beginPath();
-    ctx.arc(VIRTUAL_WIDTH * 0.8, VIRTUAL_HEIGHT * 0.2, VIRTUAL_WIDTH * 0.08, 0, Math.PI * 2);
+    ctx.arc(VIRTUAL_WIDTH * 0.8, VIRTUAL_HEIGHT * 0.2, 80, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#777';
-    ctx.beginPath();
-    ctx.arc(VIRTUAL_WIDTH * 0.15, VIRTUAL_HEIGHT * 0.1, VIRTUAL_WIDTH * 0.05, 0, Math.PI * 2);
-    ctx.fill();
+
+    // Mountain Layer 1 (Farthest, darkest, slowest parallax)
+    ctx.fillStyle = '#220000'; // Very dark red-brown
+    drawMountainLayer(0.005, 0.7, 150, 1);
+
+    // Mountain Layer 2 (Mid-distance, slightly lighter, faster parallax)
+    ctx.fillStyle = '#330000'; // Dark red-brown
+    drawMountainLayer(0.01, 0.6, 100, 2);
+
+    // Mountain Layer 3 (Closest, lightest, fastest parallax)
+    ctx.fillStyle = '#440000'; // Red-brown
+    drawMountainLayer(0.02, 0.5, 80, 3);
 }
 
-function drawNebula(color, speed, seed) {
-    ctx.fillStyle = color;
+function drawMountainLayer(speed, heightRatio, peakVariation, seed) {
     const offset = (performance.now() * speed) % VIRTUAL_WIDTH;
-    for (let i = 0; i < 3; i++) {
-        ctx.beginPath();
-        ctx.arc((i * VIRTUAL_WIDTH / 2 + offset + seed * 100) % VIRTUAL_WIDTH, VIRTUAL_HEIGHT * 0.3 + Math.sin(i * 0.5 + seed) * 50, VIRTUAL_WIDTH * 0.3, 0, Math.PI * 2);
-        ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-offset, VIRTUAL_HEIGHT);
+    for (let i = -VIRTUAL_WIDTH; i < VIRTUAL_WIDTH * 2; i += 100) {
+        const x = i - offset;
+        const y = VIRTUAL_HEIGHT * heightRatio + Math.sin(x * 0.01 + seed) * peakVariation;
+        ctx.lineTo(x, y);
     }
+    ctx.lineTo(VIRTUAL_WIDTH * 2, VIRTUAL_HEIGHT);
+    ctx.closePath();
+    ctx.fill();
 }
 
 function drawGround() {
     const groundHeight = VIRTUAL_HEIGHT * 0.1;
     const grad = ctx.createLinearGradient(0, VIRTUAL_HEIGHT - groundHeight, 0, VIRTUAL_HEIGHT);
-    grad.addColorStop(0, '#2c3e50'); grad.addColorStop(1, '#1a2531');
+    grad.addColorStop(0, '#552200'); // Dark brown
+    grad.addColorStop(1, '#331100'); // Darker brown
     ctx.fillStyle = grad;
     ctx.fillRect(0, VIRTUAL_HEIGHT - groundHeight, VIRTUAL_WIDTH, groundHeight);
 
-    // Add some subtle ground details
-    ctx.fillStyle = 'rgba(0,0,0,0.2)';
-    const groundDetailOffset = (performance.now() * 0.05) % 40;
-    for (let i = -groundDetailOffset; i < VIRTUAL_WIDTH; i += 40) {
-        ctx.fillRect(i, VIRTUAL_HEIGHT - groundHeight + 5, 20, 5);
+    // Subtle ground texture (rocks/details)
+    ctx.fillStyle = 'rgba(0,0,0,0.1)';
+    const detailOffset = (performance.now() * 0.05) % 50;
+    for (let i = -VIRTUAL_WIDTH; i < VIRTUAL_WIDTH * 2; i += 30) {
+        ctx.beginPath();
+        ctx.arc(i - detailOffset, VIRTUAL_HEIGHT - groundHeight + (Math.sin(i * 0.05) * 5) + 10, 5 + Math.random() * 5, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
