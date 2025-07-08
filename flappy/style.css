@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
+
 body, html {
     margin: 0;
     padding: 0;
@@ -6,22 +8,22 @@ body, html {
     display: flex;
     justify-content: center;
     align-items: center;
-    background-color: #1a1a1a;
+    background: #1a1a1a;
     font-family: 'Helvetica Neue', Arial, sans-serif;
     color: white;
+    -webkit-tap-highlight-color: transparent;
 }
 
 #game-container {
     width: 100vmin;
     height: 100vmin;
-    max-width: 800px;
-    max-height: 800px;
+    max-width: 900px;
+    max-height: 900px;
     position: relative;
     overflow: hidden;
-    background-color: #70c5ce;
-    border: 5px solid #333;
-    border-radius: 15px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2), 0 6px 6px rgba(0,0,0,0.25);
+    border: 8px solid #4a4a4a;
+    border-radius: 25px;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.3), 0 10px 10px rgba(0,0,0,0.25);
 }
 
 canvas {
@@ -40,70 +42,69 @@ canvas {
     justify-content: center;
     align-items: center;
     text-align: center;
-    pointer-events: none; /* Allow clicks to pass through to canvas */
+    pointer-events: none;
 }
 
 #start-screen, #game-over-screen {
-    background: rgba(0, 0, 0, 0.6);
-    padding: 30px;
-    border-radius: 15px;
-    backdrop-filter: blur(5px);
-    pointer-events: all; /* Enable clicks on UI elements */
+    background: rgba(0, 0, 0, 0.7);
+    padding: 5vmin;
+    border-radius: 3vmin;
+    backdrop-filter: blur(8px);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    pointer-events: all;
+    width: 80%;
+    box-sizing: border-box;
 }
 
 #game-ui {
     position: absolute;
-    top: 20px;
+    top: 2vmin;
     left: 0;
     width: 100%;
     display: flex;
     justify-content: space-around;
-    font-size: 1.5em;
-    font-weight: bold;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    font-family: 'Bangers', cursive;
+    font-size: clamp(16px, 5vmin, 40px);
+    letter-spacing: 2px;
+    text-shadow: 0.5vmin 0.5vmin 1vmin rgba(0,0,0,0.7);
 }
 
 h1 {
-    margin-top: 0;
-    font-size: 2.5em;
-    text-shadow: 3px 3px 5px rgba(0,0,0,0.5);
+    margin: 0 0 2vmin 0;
+    font-family: 'Bangers', cursive;
+    font-size: clamp(28px, 12vmin, 90px);
+    color: #ffde00;
+    text-shadow: 0.6vmin 0.6vmin 1.2vmin rgba(0,0,0,0.7);
+    letter-spacing: 3px;
 }
 
-#difficulty-buttons button {
-    padding: 12px 25px;
-    font-size: 1.1em;
+p {
+    font-size: clamp(12px, 3vmin, 24px);
+    margin: 2vmin 0;
+}
+
+#difficulty-buttons button, #restart {
+    padding: 2vmin 4vmin;
+    font-size: clamp(14px, 4vmin, 32px);
+    font-family: 'Bangers', cursive;
+    letter-spacing: 1px;
     cursor: pointer;
     border: none;
-    border-radius: 8px;
-    background-color: #ffde00;
+    border-radius: 2vmin;
+    background: linear-gradient(145deg, #ffde00, #ffc400);
     color: #333;
-    margin: 10px;
-    transition: background-color 0.3s, transform 0.1s;
+    margin: 1vmin;
+    transition: transform 0.2s;
+    box-shadow: 0 0.5vmin 1vmin rgba(0,0,0,0.2);
 }
 
-#difficulty-buttons button:hover {
-    background-color: #ffe95c;
-    transform: scale(1.05);
-}
-
-#restart {
-    padding: 15px 30px;
-    font-size: 1.2em;
-    cursor: pointer;
-    border: none;
-    border-radius: 8px;
-    background-color: #ffde00;
-    color: #333;
-    margin-top: 20px;
-    transition: background-color 0.3s, transform 0.1s;
-}
-
-#restart:hover {
-    background-color: #ffe95c;
-    transform: scale(1.05);
+#difficulty-buttons button:hover, #restart:hover {
+    transform: translateY(-3px) scale(1.05);
 }
 
 .high-score {
-    margin-top: 20px;
-    font-size: 1.2em;
+    margin-top: 3vmin;
+    font-size: clamp(14px, 3.5vmin, 28px);
+    font-family: 'Bangers', cursive;
+    letter-spacing: 1px;
 }

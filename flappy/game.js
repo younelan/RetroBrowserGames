@@ -1,6 +1,10 @@
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 
+// --- VIRTUAL RESOLUTION --- 
+const VIRTUAL_WIDTH = 800;
+const VIRTUAL_HEIGHT = 800;
+
 // UI Elements
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
@@ -19,330 +23,372 @@ const hardBtn = document.getElementById('hard');
 const restartBtn = document.getElementById('restart');
 
 // Game State
-let bird, pipes, collectibles, score, level, difficulty, gameLoop, highScore;
-let gameStarted = false;
-let gameOver = false;
-let frameCount = 0;
-let lastDifficulty = 'easy';
+let bird, obstacles, collectibles, score, level, difficulty, gameLoop, highScore;
+let gameStarted = false, gameOver = false, frameCount = 0, lastDifficulty = 'easy';
+let particles = [], lastTime = 0;
+const obstacleTypes = ['pipe', 'spinner', 'crusher', 'moving_platform'];
+let lastObstacleType = '';
 
 const difficulties = {
-    easy: { pipeSpeed: 2, pipeGap: 320, gravity: 0.2, flapStrength: 6, collectibleChance: 0.7, pipeDistance: 380 },
-    medium: { pipeSpeed: 3, pipeGap: 280, gravity: 0.25, flapStrength: 6.5, collectibleChance: 0.5, pipeDistance: 320 },
-    hard: { pipeSpeed: 4, pipeGap: 240, gravity: 0.3, flapStrength: 7, collectibleChance: 0.3, pipeDistance: 280 }
+    easy: { speed: 150, gravity: 900, flap: 320, obstacleDist: 450, pipeGap: 280, spinnerSpeed: 1.5, crusherSpeed: 100, platformSpeed: 100, collectibleChance: 0.7 },
+    medium: { speed: 180, gravity: 950, flap: 350, obstacleDist: 400, pipeGap: 240, spinnerSpeed: 1.8, crusherSpeed: 130, platformSpeed: 130, collectibleChance: 0.5 },
+    hard: { speed: 210, gravity: 1000, flap: 380, obstacleDist: 350, pipeGap: 200, spinnerSpeed: 2.2, crusherSpeed: 160, platformSpeed: 160, collectibleChance: 0.3 }
 };
 
-function resizeCanvas() {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.95;
-    canvas.width = size;
-    canvas.height = size;
+function scaleToVirtual(value) {
+    return value * (VIRTUAL_WIDTH / canvas.width);
 }
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
 
+// --- ENTITIES ---
 function Bird() {
-    this.x = canvas.width / 4;
-    this.y = canvas.height / 2;
-    this.radius = canvas.width / 30;
-    this.velocity = 0;
-    this.gravity = difficulty.gravity;
-    this.flapStrength = difficulty.flapStrength;
-    this.angle = 0;
+    this.x = VIRTUAL_WIDTH / 4; this.y = VIRTUAL_HEIGHT / 2; this.radius = VIRTUAL_WIDTH / 35;
+    this.velocity = 0; this.angle = 0; this.shielded = false; this.shieldTime = 0;
 
     this.draw = function() {
         ctx.save();
         ctx.translate(this.x, this.y);
-        this.angle = Math.atan2(this.velocity, 10);
+        this.angle = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.velocity / 400));
         ctx.rotate(this.angle);
 
-        // Body with 3D effect
-        const gradient = ctx.createRadialGradient(0, 0, this.radius / 2, 0, 0, this.radius);
-        gradient.addColorStop(0, '#ffffb3');
-        gradient.addColorStop(1, '#ffc400');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = '#c69f00';
-        ctx.lineWidth = 2;
-        ctx.stroke();
+        if (this.shielded) {
+            const shieldGrad = ctx.createRadialGradient(0, 0, this.radius, 0, 0, this.radius * 1.5);
+            shieldGrad.addColorStop(0, 'rgba(52, 152, 219, 0.2)'); shieldGrad.addColorStop(1, 'rgba(52, 152, 219, 0.8)');
+            ctx.fillStyle = shieldGrad;
+            ctx.beginPath(); ctx.arc(0, 0, this.radius * 1.5, 0, Math.PI * 2); ctx.fill();
+        }
 
-        // Eye
-        ctx.beginPath();
-        ctx.arc(this.radius / 2.5, -this.radius / 2.5, this.radius / 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'white';
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(this.radius / 2.5 + 2, -this.radius / 2.5, this.radius / 7, 0, Math.PI * 2);
-        ctx.fillStyle = 'black';
-        ctx.fill();
+        const grad = ctx.createRadialGradient(0, 0, this.radius / 2, 0, 0, this.radius);
+        grad.addColorStop(0, '#ffffb3'); grad.addColorStop(1, '#ffc400');
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#c69f00'; ctx.lineWidth = 3; ctx.stroke();
 
-        // Wing
-        ctx.beginPath();
-        ctx.moveTo(-this.radius / 2, 0);
-        ctx.arc(-this.radius / 2, 0, this.radius / 1.2, 0.2 - Math.sin(frameCount * 0.4) * 0.2, Math.PI - 0.2 + Math.sin(frameCount * 0.4) * 0.2, false);
-        ctx.fillStyle = '#ffde00';
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(this.radius / 2, -this.radius / 2, this.radius / 3.5, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
+        ctx.beginPath(); ctx.arc(this.radius / 2 + 2, -this.radius / 2, this.radius / 6, 0, Math.PI * 2); ctx.fillStyle = 'black'; ctx.fill();
+
+        ctx.beginPath(); ctx.moveTo(-this.radius / 1.5, 0);
+        ctx.arc(-this.radius / 1.5, 0, this.radius, 0.3 - Math.sin(frameCount * 0.5) * 0.3, Math.PI - 0.3 + Math.sin(frameCount * 0.5) * 0.3, false);
+        ctx.fillStyle = '#ffde00'; ctx.fill();
 
         ctx.restore();
     }
 
-    this.update = function() {
-        this.velocity += this.gravity;
-        this.y += this.velocity;
+    this.update = function(dt) {
+        this.velocity += difficulty.gravity * dt;
+        this.y += this.velocity * dt;
 
-        if (this.y > canvas.height - this.radius - (canvas.height * 0.1)) {
-            endGame();
+        if (this.shielded) {
+            this.shieldTime -= dt;
+            if (this.shieldTime <= 0) this.shielded = false;
         }
-        if (this.y < this.radius) {
-            this.y = this.radius;
-            this.velocity = 0;
+
+        if (this.y > VIRTUAL_HEIGHT - this.radius - (VIRTUAL_HEIGHT * 0.1) || this.y < -this.radius * 2) {
+            endGame();
         }
     }
 
     this.flap = function() {
-        this.velocity = -this.flapStrength;
+        this.velocity = -difficulty.flap;
+        for (let i = 0; i < 5; i++) particles.push(new Particle(this.x, this.y, 'rgba(255, 255, 255, 0.7)', 2, 80));
     }
 }
 
 function Pipe() {
-    this.x = canvas.width;
-    this.width = canvas.width / 6;
-    this.topHeight = Math.random() * (canvas.height - difficulty.pipeGap - (canvas.height * 0.3)) + (canvas.height * 0.15);
-    this.bottomHeight = canvas.height - this.topHeight - difficulty.pipeGap;
-    this.passed = false;
-
-    this.draw = function() {
-        const gradient = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-        gradient.addColorStop(0, '#28a745');
-        gradient.addColorStop(0.5, '#34c759');
-        gradient.addColorStop(1, '#28a745');
-        ctx.fillStyle = gradient;
-
-        // Top pipe
-        ctx.fillRect(this.x, 0, this.width, this.topHeight);
-        ctx.fillRect(this.x - 10, this.topHeight - 30, this.width + 20, 30);
-        
-        // Bottom pipe
-        ctx.fillRect(this.x, canvas.height - this.bottomHeight, this.width, this.bottomHeight);
-        ctx.fillRect(this.x - 10, canvas.height - this.bottomHeight, this.width + 20, 30);
-
-        ctx.strokeStyle = '#1e7e34';
-        ctx.lineWidth = 4;
-        ctx.strokeRect(this.x, 0, this.width, this.topHeight);
-        ctx.strokeRect(this.x, canvas.height - this.bottomHeight, this.width, this.bottomHeight);
-    }
-
-    this.update = function() {
-        this.x -= difficulty.pipeSpeed;
-    }
+    this.type = 'pipe'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 5; this.gap = difficulty.pipeGap;
+    this.topHeight = Math.random() * (VIRTUAL_HEIGHT - this.gap - (VIRTUAL_HEIGHT * 0.3)) + (VIRTUAL_HEIGHT * 0.15);
+    this.bottomHeight = VIRTUAL_HEIGHT - this.topHeight - this.gap; this.passed = false;
+    this.draw = function() { 
+        const grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+        grad.addColorStop(0, '#28a745'); grad.addColorStop(0.5, '#34c759'); grad.addColorStop(1, '#28a745');
+        ctx.fillStyle = grad; ctx.strokeStyle = '#1e7e34'; ctx.lineWidth = 4;
+        ctx.fillRect(this.x, 0, this.width, this.topHeight); ctx.strokeRect(this.x, 0, this.width, this.topHeight);
+        ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight); ctx.strokeRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight);
+    };
+    this.update = function(dt) { this.x -= difficulty.speed * dt; }
+    this.collidesWith = (b) => !b.shielded && b.x + b.radius > this.x && b.x - b.radius < this.x + this.width && (b.y - b.radius < this.topHeight || b.y + b.radius > VIRTUAL_HEIGHT - this.bottomHeight);
 }
 
-function Collectible(pipe) {
-    this.radius = canvas.width / 35;
-    this.x = pipe.x + pipe.width / 2;
-    this.y = pipe.topHeight + difficulty.pipeGap / 2;
-    this.angle = 0;
-
+function Spinner() {
+    this.type = 'spinner'; this.x = VIRTUAL_WIDTH; this.y = VIRTUAL_HEIGHT / 2; this.radius = VIRTUAL_WIDTH / 7;
+    this.angle = 0; this.speed = difficulty.spinnerSpeed; this.gap = Math.PI / 2.5; this.passed = false;
     this.draw = function() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        this.angle += 0.05;
-        ctx.rotate(this.angle);
-        ctx.beginPath();
-        for (let i = 0; i < 5; i++) {
-            ctx.lineTo(Math.cos(i * 2 * Math.PI / 5) * this.radius, Math.sin(i * 2 * Math.PI / 5) * this.radius);
-            ctx.lineTo(Math.cos((i + 0.5) * 2 * Math.PI / 5) * this.radius / 2, Math.sin((i + 0.5) * 2 * Math.PI / 5) * this.radius / 2);
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.strokeStyle = '#a52a2a'; ctx.lineWidth = 8;
+        for (let i = 0; i < 3; i++) {
+            const grad = ctx.createLinearGradient(-this.radius, -this.radius, this.radius, this.radius);
+            grad.addColorStop(0, '#e74c3c'); grad.addColorStop(1, '#c0392b');
+            ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(0, 0);
+            ctx.arc(0, 0, this.radius, i * 2 * Math.PI / 3 + this.gap / 2, (i + 1) * 2 * Math.PI / 3 - this.gap / 2);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
         }
-        ctx.closePath();
-        const gradient = ctx.createRadialGradient(0, 0, 1, 0, 0, this.radius);
-        gradient.addColorStop(0, '#ffff00');
-        gradient.addColorStop(1, '#ffc107');
-        ctx.fillStyle = gradient;
-        ctx.fill();
-        ctx.strokeStyle = '#c69f00';
-        ctx.stroke();
         ctx.restore();
-    }
-
-    this.update = function() {
-        this.x -= difficulty.pipeSpeed;
-    }
+    };
+    this.update = function(dt) { this.x -= difficulty.speed * dt; this.angle += this.speed * dt; }
+    this.collidesWith = function(b) {
+        if (b.shielded) return false;
+        const dist = Math.hypot(b.x - this.x, b.y - this.y);
+        if (dist > this.radius + b.radius || dist < this.radius / 4 - b.radius) return false;
+        let birdAngle = (Math.atan2(b.y - this.y, b.x - this.x) - this.angle) % (2 * Math.PI);
+        if (birdAngle < 0) birdAngle += 2 * Math.PI;
+        for (let i = 0; i < 3; i++) {
+            if (birdAngle > i * 2 * Math.PI / 3 + this.gap / 2 && birdAngle < (i + 1) * 2 * Math.PI / 3 - this.gap / 2) return true;
+        }
+        return false;
+    };
 }
 
-function drawBackground() {
-    ctx.fillStyle = '#70c5ce';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Parallax Mountains
-    drawMountains('#a0d8e0', 0.2, 0.6, 150);
-    drawMountains('#8ac9d3', 0.4, 0.7, 100);
+function Crusher() {
+    this.type = 'crusher'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 8; this.minGap = 180; this.maxGap = 350;
+    this.gap = this.maxGap; this.speed = difficulty.crusherSpeed; this.direction = -1; this.passed = false;
+    this.draw = function() {
+        const grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+        grad.addColorStop(0, '#7f8c8d'); grad.addColorStop(0.5, '#95a5a6'); grad.addColorStop(1, '#7f8c8d');
+        ctx.fillStyle = grad; ctx.strokeStyle = '#566573'; ctx.lineWidth = 4;
+        const topY = (VIRTUAL_HEIGHT - this.gap) / 2; const bottomY = (VIRTUAL_HEIGHT + this.gap) / 2;
+        ctx.fillRect(this.x, 0, this.width, topY); ctx.strokeRect(this.x, 0, this.width, topY);
+        ctx.fillRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY); ctx.strokeRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
+    };
+    this.update = function(dt) { this.x -= difficulty.speed * dt; this.gap += this.speed * this.direction * dt; if (this.gap < this.minGap || this.gap > this.maxGap) this.direction *= -1; }
+    this.collidesWith = (b) => !b.shielded && b.x + b.radius > this.x && b.x - b.radius < this.x + this.width && (b.y - b.radius < (VIRTUAL_HEIGHT - this.gap) / 2 || b.y + b.radius > (VIRTUAL_HEIGHT + this.gap) / 2);
 }
 
-function drawMountains(color, speed, height, variation) {
-    ctx.fillStyle = color;
-    const mountainOffset = (frameCount * speed) % canvas.width;
-    ctx.beginPath();
-    ctx.moveTo(-mountainOffset, canvas.height);
-    for (let i = 0; i < canvas.width * 2; i += 150) {
-        ctx.lineTo(i - mountainOffset, canvas.height * height + Math.sin(i * 0.1) * variation);
-    }
-    ctx.lineTo(canvas.width - mountainOffset + canvas.width, canvas.height);
-    ctx.fill();
+function MovingPlatform() {
+    this.type = 'moving_platform'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 4; this.height = 20;
+    this.gap = 220; this.y = VIRTUAL_HEIGHT / 2; this.speed = difficulty.platformSpeed; this.direction = 1; this.passed = false;
+    this.draw = function() {
+        const grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+        grad.addColorStop(0, '#d35400'); grad.addColorStop(1, '#e67e22');
+        ctx.fillStyle = grad; ctx.strokeStyle = '#a04000'; ctx.lineWidth = 4;
+        ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height); ctx.strokeRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
+        ctx.fillRect(this.x, this.y + this.gap/2, this.width, this.height); ctx.strokeRect(this.x, this.y + this.gap/2, this.width, this.height);
+    };
+    this.update = function(dt) { this.x -= difficulty.speed * dt; this.y += this.speed * this.direction * dt; if (this.y < this.gap / 2 + this.height || this.y > VIRTUAL_HEIGHT - this.gap/2 - this.height) this.direction *= -1; }
+    this.collidesWith = (b) => {
+        if (b.shielded) return false;
+        const birdTouchesHorizontal = b.x + b.radius > this.x && b.x - b.radius < this.x + this.width;
+        if (!birdTouchesHorizontal) return false;
+
+        const topPlatformBottom = this.y - this.gap / 2;
+        const bottomPlatformTop = this.y + this.gap / 2;
+
+        const hitsTop = b.y - b.radius < topPlatformBottom && b.y + b.radius > topPlatformBottom - this.height;
+        const hitsBottom = b.y + b.radius > bottomPlatformTop && b.y - b.radius < bottomPlatformTop + this.height;
+
+        return hitsTop || hitsBottom;
+    };
 }
 
-function drawGround() {
-    const groundHeight = canvas.height * 0.1;
-    const groundGradient = ctx.createLinearGradient(0, canvas.height - groundHeight, 0, canvas.height);
-    groundGradient.addColorStop(0, '#8B4513');
-    groundGradient.addColorStop(1, '#654321');
-    ctx.fillStyle = groundGradient;
-    ctx.fillRect(0, canvas.height - groundHeight, canvas.width, groundHeight);
-
-    ctx.fillStyle = '#A0522D';
-    const groundOffset = (frameCount * difficulty.pipeSpeed) % 40;
-    for (let i = -groundOffset; i < canvas.width; i += 40) {
-        ctx.fillRect(i, canvas.height - groundHeight, 20, 10);
-    }
+function Collectible(x, y, type) {
+    this.x = x; this.y = y; this.type = type; this.radius = VIRTUAL_WIDTH / (type === 'shield' ? 35 : 40);
+    this.angle = 0; this.value = type === 'shield' ? 0 : 10; this.pulse = 0; this.pulseSpeed = 3;
+    this.draw = function() {
+        const pulseRadius = this.radius + Math.sin(this.pulse) * 3;
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
+        const grad = ctx.createRadialGradient(0, 0, 1, 0, 0, pulseRadius);
+        if (this.type === 'shield') {
+            grad.addColorStop(0, '#8e44ad'); grad.addColorStop(1, '#9b59b6');
+            ctx.shadowColor = '#8e44ad';
+        } else {
+            grad.addColorStop(0, '#a9fffd'); grad.addColorStop(1, '#00c2ff');
+            ctx.shadowColor = '#00c2ff';
+        }
+        ctx.fillStyle = grad; ctx.shadowBlur = 15;
+        ctx.beginPath(); ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2); ctx.fill();
+        ctx.shadowBlur = 0; ctx.restore();
+    };
+    this.update = function(dt) { this.x -= difficulty.speed * dt; this.angle += 2 * dt; this.pulse += this.pulseSpeed * dt; }
 }
 
-function loadHighScore() {
-    highScore = localStorage.getItem('flappyHighScore') || 0;
-    highScoreStartEl.textContent = highScore;
-    highScoreEndEl.textContent = highScore;
+function Particle(x, y, color, size, speed) {
+    this.x = x; this.y = y; this.color = color; this.size = Math.random() * size + 1; this.life = 1;
+    this.vx = (Math.random() - 0.5) * speed; this.vy = (Math.random() - 0.5) * speed;
+    this.draw = function() { ctx.fillStyle = this.color; ctx.globalAlpha = this.life; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+    this.update = function(dt) { this.x += this.vx * dt; this.y += this.vy * dt; this.life -= 2 * dt; }
 }
 
-function saveHighScore() {
-    if (score > highScore) {
-        highScore = score;
-        localStorage.setItem('flappyHighScore', highScore);
+// --- GAME LOGIC ---
+function addObstacle() {
+    let availableTypes = obstacleTypes.filter(t => t !== lastObstacleType);
+    let type = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+    lastObstacleType = type;
+    let obs;
+    if (type === 'pipe') obs = new Pipe();
+    else if (type === 'spinner') obs = new Spinner();
+    else if (type === 'crusher') obs = new Crusher();
+    else if (type === 'moving_platform') obs = new MovingPlatform();
+    obstacles.push(obs);
+    addCollectible(obs);
+}
+
+function addCollectible(obs) {
+    if (Math.random() < difficulty.collectibleChance) {
+        const x = obs.x + (obs.width || obs.radius || 0) + difficulty.obstacleDist / 2;
+        const y = VIRTUAL_HEIGHT / 2 + (Math.random() - 0.5) * (VIRTUAL_HEIGHT / 4);
+        const type = Math.random() < 0.2 ? 'shield' : 'gem';
+        collectibles.push(new Collectible(x, y, type));
     }
 }
 
 function startGame(diff) {
     lastDifficulty = diff;
     difficulty = { ...difficulties[diff] };
-    startScreen.style.display = 'none';
-    gameOverScreen.style.display = 'none';
-    gameUi.style.display = 'flex';
-    gameStarted = true;
-    gameOver = false;
-    score = 0;
-    level = 1;
-    frameCount = 0;
-    bird = new Bird();
-    pipes = [new Pipe()];
-    collectibles = [];
-    if (Math.random() < difficulty.collectibleChance) {
-        collectibles.push(new Collectible(pipes[0]));
-    }
+    startScreen.style.display = 'none'; gameOverScreen.style.display = 'none'; gameUi.style.display = 'flex';
+    gameStarted = true; gameOver = false;
+    score = 0; level = 1; frameCount = 0;
+    bird = new Bird(); obstacles = []; collectibles = []; particles = [];
+    addObstacle();
     updateUi();
-    gameLoop = setInterval(update, 1000 / 60);
+    lastTime = performance.now();
+    if(gameLoop) cancelAnimationFrame(gameLoop);
+    gameLoop = requestAnimationFrame(update);
 }
 
 function endGame() {
     if(gameOver) return;
-    clearInterval(gameLoop);
-    gameOver = true;
-    gameStarted = false;
-    saveHighScore();
-    loadHighScore();
-    gameOverScreen.style.display = 'flex';
-    gameUi.style.display = 'none';
-    scoreEl.textContent = score;
-    levelEl.textContent = level;
+    cancelAnimationFrame(gameLoop);
+    gameOver = true; gameStarted = false;
+    saveHighScore(); loadHighScore();
+    gameOverScreen.style.display = 'flex'; gameUi.style.display = 'none';
+    scoreEl.textContent = score; levelEl.textContent = level;
 }
 
-function updateUi() {
-    gameScoreEl.textContent = score;
-    gameLevelEl.textContent = level;
-}
+function update(currentTime) {
+    if(gameOver) return;
+    const dt = (currentTime - lastTime) / 1000; // Delta time in seconds
+    lastTime = currentTime;
 
-function update() {
     frameCount++;
+    
+    // Clear and scale canvas
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.scale(canvas.width / VIRTUAL_WIDTH, canvas.height / VIRTUAL_HEIGHT);
+
     drawBackground();
 
-    // Pipes
-    if (frameCount % Math.round(difficulty.pipeDistance / difficulty.pipeSpeed) === 0) {
-        const newPipe = new Pipe();
-        pipes.push(newPipe);
-        if (Math.random() < difficulty.collectibleChance) {
-            collectibles.push(new Collectible(newPipe));
-        }
-    }
+    obstacles.forEach(obs => { obs.update(dt); obs.draw(); });
+    collectibles.forEach(c => { c.update(dt); c.draw(); });
+    particles.forEach(p => { p.update(dt); p.draw(); });
+    bird.update(dt); bird.draw();
+    drawGround();
 
-    for (let i = pipes.length - 1; i >= 0; i--) {
-        pipes[i].update();
-        pipes[i].draw();
-
-        if (pipes[i].x + pipes[i].width < bird.x && !pipes[i].passed) {
-            pipes[i].passed = true;
-            score++;
-            if (score > 0 && score % 10 === 0) {
-                level++;
-                difficulty.pipeSpeed += 0.05;
-                difficulty.pipeGap = Math.max(200, difficulty.pipeGap - 5);
-            }
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        if (obs.collidesWith(bird)) endGame();
+        if (obs.x + (obs.width || obs.radius || 0) < bird.x && !obs.passed) {
+            obs.passed = true; score++;
+            if (score > 0 && score % 5 === 0) { level++; difficulty.speed += 10; }
             updateUi();
         }
-
-        if (pipes[i].x + pipes[i].width < 0) {
-            pipes.splice(i, 1);
-        }
-
-        if (
-            bird.x + bird.radius > pipes[i].x &&
-            bird.x - bird.radius < pipes[i].x + pipes[i].width &&
-            (bird.y - bird.radius < pipes[i].topHeight || bird.y + bird.radius > canvas.height - pipes[i].bottomHeight)
-        ) {
-            endGame();
-        }
+        if (obs.x + (obs.width || obs.radius || 0) < -50) obstacles.splice(i, 1);
     }
 
-    // Collectibles
+    if (obstacles.length === 0 || obstacles[obstacles.length - 1].x < VIRTUAL_WIDTH - difficulty.obstacleDist) {
+        addObstacle();
+    }
+
     for (let i = collectibles.length - 1; i >= 0; i--) {
-        collectibles[i].update();
-        collectibles[i].draw();
-
-        const dist = Math.hypot(bird.x - collectibles[i].x, bird.y - collectibles[i].y);
-        if (dist < bird.radius + collectibles[i].radius) {
+        const c = collectibles[i];
+        if (Math.hypot(bird.x - c.x, bird.y - c.y) < bird.radius + c.radius) {
+            if (c.type === 'shield') {
+                bird.shielded = true;
+                bird.shieldTime = 5; // 5 seconds
+            } else {
+                score += c.value;
+            }
+            for (let j = 0; j < 15; j++) particles.push(new Particle(c.x, c.y, c.type === 'shield' ? '#8e44ad' : '#00c2ff', 3, 100));
             collectibles.splice(i, 1);
-            score += 5;
             updateUi();
         }
-
-        if (collectibles[i] && collectibles[i].x + collectibles[i].radius < 0) {
-            collectibles.splice(i, 1);
-        }
+        if (c.x + c.radius < 0) collectibles.splice(i, 1);
     }
     
-    drawGround();
-    bird.update();
-    bird.draw();
+    particles = particles.filter(p => p.life > 0);
+
+    ctx.restore(); // Restore canvas scaling
+
+    gameLoop = requestAnimationFrame(update);
 }
 
-function handleUserAction(e) {
-    if (e.code === 'Space' || e.type === 'touchstart') {
-        e.preventDefault();
-        if (!gameStarted && !gameOver) {
+// --- HELPERS & UI ---
+function drawBackground() {
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, VIRTUAL_HEIGHT);
+    bgGrad.addColorStop(0, '#1c2a3e'); bgGrad.addColorStop(1, '#3a506b');
+    ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    for(let i=0; i<100; i++) {
+        const x = (Math.sin(i * 1234) * VIRTUAL_WIDTH * 1.5 + frameCount * 0.01 * (i%5+1)) % VIRTUAL_WIDTH;
+        const y = (Math.cos(i * 5678) * VIRTUAL_HEIGHT * 1.5 + frameCount * 0.01 * (i%5+1)) % VIRTUAL_HEIGHT;
+        const size = Math.random() * 2;
+        ctx.fillRect(x, y, size, size);
+    }
+}
+
+function drawGround() {
+    const groundHeight = VIRTUAL_HEIGHT * 0.1;
+    const grad = ctx.createLinearGradient(0, VIRTUAL_HEIGHT - groundHeight, 0, VIRTUAL_HEIGHT);
+    grad.addColorStop(0, '#2c3e50'); grad.addColorStop(1, '#1a2531');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, VIRTUAL_HEIGHT - groundHeight, VIRTUAL_WIDTH, groundHeight);
+}
+
+function updateUi() { gameScoreEl.textContent = score; gameLevelEl.textContent = level; }
+
+function loadHighScore() {
+    highScore = localStorage.getItem('jumpyMcFlapFaceHighScore') || 0;
+    highScoreStartEl.textContent = highScore; highScoreEndEl.textContent = highScore;
+}
+
+function saveHighScore() {
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('jumpyMcFlapFaceHighScore', highScore);
+    }
+}
+
+function showStartScreen() {
+    startScreen.style.display = 'flex';
+    gameOverScreen.style.display = 'none';
+}
+
+function masterController(e) {
+    e.preventDefault();
+    const target = e.target;
+
+    if (target.tagName === 'BUTTON') return;
+
+    if (gameOver) {
+        showStartScreen();
+        return;
+    }
+
+    if (gameStarted) {
+        bird.flap();
+    } else {
+        startGame(lastDifficulty);
+    }
+}
+
+// --- INITIAL SETUP ---
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+loadHighScore();
+
+easyBtn.addEventListener('click', (e) => { e.stopPropagation(); startGame('easy'); });
+mediumBtn.addEventListener('click', (e) => { e.stopPropagation(); startGame('medium'); });
+hardBtn.addEventListener('click', (e) => { e.stopPropagation(); startGame('hard'); });
+restartBtn.addEventListener('click', (e) => { e.stopPropagation(); showStartScreen(); });
+
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' || e.code === 'Enter') {
+        if (gameOver) {
+            showStartScreen();
+        } else if (!gameStarted) {
             startGame(lastDifficulty);
-        } else if (gameStarted && !gameOver) {
+        } else {
             bird.flap();
         }
     }
-    if (e.code === 'Enter' && gameOver) {
-        restartBtn.click();
-    }
-}
-
-// Initial Setup
-loadHighScore();
-easyBtn.addEventListener('click', () => startGame('easy'));
-mediumBtn.addEventListener('click', () => startGame('medium'));
-hardBtn.addEventListener('click', () => startGame('hard'));
-restartBtn.addEventListener('click', () => {
-    startScreen.style.display = 'flex';
-    gameOverScreen.style.display = 'none';
 });
 
-document.addEventListener('keydown', handleUserAction);
-document.addEventListener('touchstart', handleUserAction, { passive: false });
+canvas.addEventListener('click', masterController);
+canvas.addEventListener('touchstart', masterController, { passive: false });
