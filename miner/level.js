@@ -11,7 +11,6 @@ class Level {
         this.movingLeftFloors = [];
         this.movingRightFloors = [];
         this.decorativeElements = [];
-        console.log('Level constructor: decorativeElements initialized', this.decorativeElements);
         this.portal = null;
         this.playerStart = { x: 0, y: 0 };
 
@@ -59,7 +58,6 @@ class Level {
                         this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'FIRE' });
                         break;
                     case '%':
-                        console.log('Parsing Shrub at:', worldX, worldY);
                         this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'SHRUB' });
                         break;
                     
@@ -81,8 +79,7 @@ class Level {
     }
 
     draw(context, frameCounter, allKeysCollected) {
-        console.log('Level draw: decorativeElements content', this.decorativeElements);
-        // Draw platforms
+        const s = TILE_SIZE / 16; // Scale factor for drawing details (moved to top)
         this.platforms.forEach(p => {
             context.fillStyle = '#888';
             context.fillRect(p.x, p.y, p.width, p.height);
@@ -296,7 +293,6 @@ class Level {
                     context.fill();
                     break;
                 case 'SHRUB': // Shrub/Bush
-                    console.log('Drawing Shrub at:', d.x, d.y);
                     const shrubColor = '#228B22'; // ForestGreen
                     const darkerShrubColor = '#186F18'; // Darker green
 

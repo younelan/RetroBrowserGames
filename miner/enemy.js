@@ -112,23 +112,30 @@ class Enemy {
                 context.fillRect(this.x + 5 * s, this.y + 5 * s, 1 * s, 1 * s);
                 context.fillRect(this.x + 10 * s, this.y + 5 * s, 1 * s, 1 * s);
                 break;
-            case 'V': // Vertical Enemy (e.g., Slime)
+            case 'V': // Vertical Enemy (e.g., Slime) - 2 cells high, remains circular
                 context.fillStyle = '#00FF00'; // Green slime
                 context.beginPath();
                 context.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
                 context.fill();
-                // Drip effect
+                // Drip effect (adjusted for 2 cells high)
                 context.fillRect(this.x + this.width / 2 - 2 * s, this.y + this.height - 4 * s, 4 * s, 4 * s);
                 break;
-            case 'C': // Complex Enemy (e.g., Robot)
+            case 'C': // Complex Enemy (Robot) - Side view with treads
                 context.fillStyle = '#888'; // Light grey robot body
-                context.fillRect(this.x, this.y, this.width, this.height);
-                // Head
+                context.fillRect(this.x + 2 * s, this.y + 2 * s, 12 * s, 10 * s); // Main body (2 cells high)
+
+                // Head/Top
                 context.fillStyle = '#666';
-                context.fillRect(this.x + 4 * s, this.y - 4 * s, 8 * s, 4 * s);
-                // Antenna
-                context.fillStyle = 'red';
-                context.fillRect(this.x + 7 * s, this.y - 8 * s, 2 * s, 4 * s);
+                context.fillRect(this.x + 4 * s, this.y - 2 * s, 8 * s, 4 * s);
+
+                // Treads (simple animation)
+                context.fillStyle = '#444'; // Dark grey treads
+                const treadOffset = (Math.floor(this.x / 4) % 4) * s; // Animate treads
+                context.fillRect(this.x + 2 * s, this.y + 12 * s, 12 * s, 4 * s); // Tread base
+                context.fillStyle = '#222';
+                context.fillRect(this.x + 2 * s + treadOffset, this.y + 12 * s, 2 * s, 4 * s);
+                context.fillRect(this.x + 6 * s + treadOffset, this.y + 12 * s, 2 * s, 4 * s);
+                context.fillRect(this.x + 10 * s + treadOffset, this.y + 12 * s, 2 * s, 4 * s);
                 break;
             default: // Fallback for unknown types
                 context.fillStyle = 'red';

@@ -46,7 +46,7 @@ class Player {
             // Play jump sound - assuming 'game' object is accessible or passed
             // For now, we'll assume 'game' is globally accessible or passed to player.update
             // A better solution would be to use an event system.
-            if (window.game && window.game.jumpSound) {
+            if (window.game && window.game.jumpSound && window.game.soundEnabled) {
                 window.game.jumpSound.currentTime = 0;
                 window.game.jumpSound.play();
             }
