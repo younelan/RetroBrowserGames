@@ -4,6 +4,7 @@ body, html {
     overflow: hidden;
     background-color: #000;
     display: flex;
+    flex-direction: column; /* Arrange items vertically */
     justify-content: center;
     align-items: center;
     height: 100vh;
@@ -13,4 +14,13 @@ body, html {
 canvas {
     background-color: #000;
     display: block;
+}
+
+#controls {
+    margin-top: 10px; /* Space between canvas and controls */
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }

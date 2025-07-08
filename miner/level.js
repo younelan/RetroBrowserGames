@@ -7,6 +7,9 @@ class Level {
         this.enemies = [];
         this.hazards = [];
         this.crumblingPlatforms = [];
+        this.brickFloors = [];
+        this.movingLeftFloors = [];
+        this.movingRightFloors = [];
         this.portal = null;
         this.playerStart = { x: 0, y: 0 };
 
@@ -40,11 +43,23 @@ class Level {
                     case 'V':
                         this.enemies.push(new Enemy(worldX, worldY, 'V'));
                         break;
-                    case 'C':
+                    case 'Z':
+                        this.enemies.push(new Enemy(worldX, worldY, 'C'));
+                        break;
+                    case 'H':
                         this.crumblingPlatforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, decay: 0 });
                         break;
                     case 'H':
                         this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        break;
+                    case 'B':
+                        this.brickFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        break;
+                    case 'L':
+                        this.movingLeftFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        break;
+                    case 'R':
+                        this.movingRightFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
                         break;
                 }
             }
@@ -92,6 +107,54 @@ class Level {
         this.crumblingPlatforms.forEach(p => {
             context.fillStyle = 'brown'; // Or some other distinct color
             context.fillRect(p.x, p.y, p.width, p.height);
+        });
+
+        // Draw brick floors
+        this.brickFloors.forEach(b => {
+            context.fillStyle = '#8B4513'; // SaddleBrown
+            context.fillRect(b.x, b.y, b.width, b.height);
+            // Add some brick-like details
+            context.strokeStyle = '#5A2C0B';
+            context.lineWidth = 2;
+            context.strokeRect(b.x, b.y, b.width, b.height);
+            context.beginPath();
+            context.moveTo(b.x + b.width / 2, b.y);
+            context.lineTo(b.x + b.width / 2, b.y + b.height);
+            context.stroke();
+        });
+
+        // Draw moving left floors
+        this.movingLeftFloors.forEach(l => {
+            context.fillStyle = '#00FF00'; // Green
+            context.fillRect(l.x, l.y, l.width, l.height);
+            // Add left arrow animation
+            const arrowWidth = l.width / 3;
+            const arrowHeight = l.height / 3;
+            const arrowX = l.x + l.width / 2 - arrowWidth / 2;
+            const arrowY = l.y + l.height / 2 - arrowHeight / 2;
+            context.fillStyle = 'black';
+            context.beginPath();
+            context.moveTo(arrowX + arrowWidth, arrowY);
+            context.lineTo(arrowX, arrowY + arrowHeight / 2);
+            context.lineTo(arrowX + arrowWidth, arrowY + arrowHeight);
+            context.fill();
+        });
+
+        // Draw moving right floors
+        this.movingRightFloors.forEach(r => {
+            context.fillStyle = '#0000FF'; // Blue
+            context.fillRect(r.x, r.y, r.width, r.height);
+            // Add right arrow animation
+            const arrowWidth = r.width / 3;
+            const arrowHeight = r.height / 3;
+            const arrowX = r.x + r.width / 2 - arrowWidth / 2;
+            const arrowY = r.y + r.height / 2 - arrowHeight / 2;
+            context.fillStyle = 'black';
+            context.beginPath();
+            context.moveTo(arrowX, arrowY);
+            context.lineTo(arrowX + arrowWidth, arrowY + arrowHeight / 2);
+            context.lineTo(arrowX, arrowY + arrowHeight);
+            context.fill();
         });
 
         // Draw enemies

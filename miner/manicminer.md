@@ -118,17 +118,20 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ### Map Legend
 The `map` string is a direct visual representation of the level. Each character corresponds to a game element:
 
-| Character | Element                 | Description                                         |
-| :-------: | ----------------------- | --------------------------------------------------- |
-|   ` `     | Empty Space             | Willy can fall through this.                        |
-|    `@`    | Player Start            | Willy's initial position for the level.             |
-|    `X`    | Wall / Platform         | Solid ground. Blocks movement.                      |
-|    `C`    | Crumbling Platform      | Disappears after Willy walks off it.                |
-|    `K`    | Key                     | An item to be collected.                            |
-|    `P`    | Portal                  | The exit, becomes active after all keys are taken.  |
+| Character | Element                 | Description                                            |
+| :-------: | ----------------------- | ------------------------------------------------------ |
+|   ` `     | Empty Space             | Willy can fall through this.                           |
+|    `@`    | Player Start            | Willy's initial position for the level.                |
+|    `X`    | Wall / Platform         | Solid ground. Blocks movement.                         |
+|    `C`    | Crumbling Platform      | Disappears after Willy walks off it.                   |
+|    `K`    | Key                     | An item to be collected.                               |
+|    `P`    | Portal                  | The exit, becomes active after all keys are taken.     |
 |    `H`    | Hazard                  | A static object that is deadly to touch (e.g. spikes). |
-|    `E`    | Enemy (Horizontal)      | A simple enemy patrolling horizontally.             |
-|    `V`    | Enemy (Vertical)        | A simple enemy patrolling vertically.               |
+|    `E`    | Enemy (Horizontal)      | A simple enemy patrolling horizontally.                |
+|    `V`    | Enemy (Vertical)        | A simple enemy patrolling vertically.                  |
+|    `B`    | Brick Floor             | like a regular platform but looks like a brick.        |
+|    `L`    | Moving left floor.      | kinda like moving walkways. animated+moves player left |
+|    `R`    | Moving right floor      | kinda like moving walkways. animated+moves player right|
 
 This format allows us to design levels visually right in the code.
 

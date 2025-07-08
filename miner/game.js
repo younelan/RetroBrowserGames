@@ -6,8 +6,10 @@ class Game {
         this.input = { left: false, right: false, jump: false };
         this.frameCounter = 0;
         this.score = 0;
-        this.lives = 3;
-        this.oxygen = 1000;
+        this.lives = START_LIVES;
+        this.oxygen = START_OXYGEN;
+        this.oxygen = START_OXYGEN;
+        this.gameState = 'START'; // 'START', 'PLAYING', 'GAME_OVER'
 
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -15,6 +17,39 @@ class Game {
         this.loadLevel(this.currentLevelIndex);
         this.setupInput();
         this.startGameLoop();
+
+        // Audio elements
+        this.titleMusic = document.getElementById('titleMusic');
+        this.gameMusic = document.getElementById('gameMusic');
+        this.jumpSound = document.getElementById('jumpSound');
+        this.keySound = document.getElementById('keySound');
+        this.deathSound = document.getElementById('deathSound');
+        this.levelCompleteSound = document.getElementById('levelCompleteSound');
+
+        // Sound toggle
+        this.soundToggle = document.getElementById('soundToggle');
+        this.soundEnabled = this.soundToggle.checked; // Initialize with checkbox state
+        this.soundToggle.addEventListener('change', () => {
+            this.soundEnabled = this.soundToggle.checked;
+            if (!this.soundEnabled) {
+                // Pause all sounds if disabled
+                this.titleMusic.pause();
+                this.gameMusic.pause();
+                this.jumpSound.pause();
+                this.keySound.pause();
+                this.deathSound.pause();
+                this.levelCompleteSound.pause();
+            } else if (this.gameState === 'START') {
+                this.titleMusic.play().catch(e => console.log("Title music autoplay blocked:", e));
+            } else if (this.gameState === 'PLAYING') {
+                this.gameMusic.play().catch(e => console.log("Game music autoplay blocked:", e));
+            }
+        });
+
+        // Play title music on start (only if sound is enabled)
+        if (this.soundEnabled) {
+            this.titleMusic.play().catch(e => console.log("Title music autoplay blocked:", e));
+        }
     }
 
     resizeCanvas() {
@@ -27,7 +62,7 @@ class Game {
     loadLevel(levelIndex) {
         this.level = new Level(levels[levelIndex]);
         this.player = new Player(this.level.playerStart.x, this.level.playerStart.y);
-        this.oxygen = 1000; // Reset oxygen on level load
+        this.oxygen = START_OXYGEN; // Reset oxygen on level load
     }
 
     setupInput() {
@@ -35,7 +70,12 @@ class Game {
         window.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') this.input.left = true;
             if (e.key === 'ArrowRight') this.input.right = true;
-            if (e.key === ' ' || e.key === 'ArrowUp') this.input.jump = true;
+            if (e.key === ' ' || e.key === 'ArrowUp') {
+                this.input.jump = true;
+                if (this.gameState === 'START' || this.gameState === 'GAME_OVER') {
+                    this.resetGame();
+                }
+            }
         });
         window.addEventListener('keyup', (e) => {
             if (e.key === 'ArrowLeft') this.input.left = false;
@@ -50,6 +90,10 @@ class Game {
             e.preventDefault();
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
+
+            if (this.gameState === 'START' || this.gameState === 'GAME_OVER') {
+                this.resetGame();
+            }
         });
 
         this.canvas.addEventListener('touchmove', (e) => {
@@ -105,8 +149,10 @@ class Game {
             lastTimestamp = currentTimestamp;
 
             while (accumulatedTime >= MS_PER_UPDATE) {
-                this.frameCounter++;
-                this.update();
+                if (this.gameState === 'PLAYING') {
+                    this.frameCounter++;
+                    this.update();
+                }
                 accumulatedTime -= MS_PER_UPDATE;
             }
 
@@ -133,6 +179,16 @@ class Game {
                 this.player.y + this.player.height > key.y) {
                 this.level.keys.splice(index, 1);
                 this.score += 100;
+                if (this.soundEnabled) {
+                    this.keySound.currentTime = 0;
+                    this.keySound.play();
+                }
+
+                // Check for extra life
+                if (this.score >= this.nextExtraLifeScore) {
+                    this.lives++;
+                    this.nextExtraLifeScore += 10000; // Next extra life at 20000, 30000, etc.
+                }
             }
         });
 
@@ -156,6 +212,11 @@ class Game {
             }
         });
 
+        // Falling too far
+        if (this.player.fallDistance > MAX_FALL_DISTANCE) {
+            this.playerDie();
+        }
+
 
         // Check for level completion
         if (this.level.keys.length === 0 && 
@@ -165,24 +226,39 @@ class Game {
             this.player.y + this.player.height > this.level.portal.y) {
             this.currentLevelIndex++;
             if (this.currentLevelIndex < levels.length) {
+                // Level completion bonus
+                this.score += Math.floor(this.oxygen / 10); // Example: 1 point per 10 oxygen
                 this.loadLevel(this.currentLevelIndex);
+                if (this.soundEnabled) {
+                    this.levelCompleteSound.play();
+                }
             } else {
-                // Game complete!
-                alert("You win!");
+                this.winGame();
             }
         }
     }
 
     playerDie() {
-        this.lives--;
-        if (this.lives <= 0) {
-            alert("Game Over");
-            this.currentLevelIndex = 0;
-            this.lives = 3;
-            this.score = 0;
+        this.player.playerState = 'DYING';
+        this.gameMusic.pause();
+        this.deathSound.currentTime = 0;
+        if (this.soundEnabled) {
+            this.deathSound.play();
         }
-        this.loadLevel(this.currentLevelIndex);
-        this.oxygen = 1000;
+        setTimeout(() => {
+            this.lives--;
+            if (this.lives <= 0) {
+                this.gameState = 'GAME_OVER';
+                this.gameMusic.pause();
+                this.gameMusic.currentTime = 0;
+            } else {
+                this.loadLevel(this.currentLevelIndex);
+                this.oxygen = START_OXYGEN;
+                if (this.soundEnabled) {
+                    this.gameMusic.play().catch(e => console.log("Game music autoplay blocked:", e));
+                }
+            }
+        }, 1000); // 1 second delay for death animation
     }
 
     draw() {
@@ -190,6 +266,20 @@ class Game {
         this.context.fillStyle = 'black';
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
+        switch (this.gameState) {
+            case 'START':
+                this.drawStartScreen();
+                break;
+            case 'PLAYING':
+                this.drawGameScreen();
+                break;
+            case 'GAME_OVER':
+                this.drawEndScreen();
+                break;
+        }
+    }
+
+    drawGameScreen() {
         // Calculate scale for the entire game (including UI)
         const totalGameWidth = LEVEL_WIDTH * TILE_SIZE;
         const totalGameHeight = LEVEL_HEIGHT * TILE_SIZE;
@@ -239,7 +329,49 @@ class Game {
 
         this.context.restore();
     }
+
+    drawStartScreen() {
+        this.context.fillStyle = 'white';
+        this.context.font = "48px 'Courier New', Courier, monospace";
+        this.context.textAlign = 'center';
+        this.context.fillText('MANIC MINER', this.canvas.width / 2, this.canvas.height / 2 - 50);
+        this.context.font = "24px 'Courier New', Courier, monospace";
+        this.context.fillText('Press SPACE or Tap to Start', this.canvas.width / 2, this.canvas.height / 2 + 20);
+        this.context.textAlign = 'left'; // Reset for game screen
+    }
+
+    drawEndScreen() {
+        this.context.fillStyle = 'white';
+        this.context.font = "48px 'Courier New', Courier, monospace";
+        this.context.textAlign = 'center';
+        this.context.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 50);
+        this.context.font = "24px 'Courier New', Courier, monospace";
+        this.context.fillText(`Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
+        this.context.fillText('Press SPACE or Tap to Restart', this.canvas.width / 2, this.canvas.height / 2 + 60);
+        this.context.textAlign = 'left'; // Reset for game screen
+    }
+
+    winGame() {
+        this.gameState = 'GAME_OVER';
+        // Optionally, you can set a flag or display a different message for winning
+        // For now, it reuses the GAME_OVER screen.
+    }
+
+    resetGame() {
+        this.gameState = 'PLAYING';
+        this.score = 0;
+        this.lives = START_LIVES;
+        this.currentLevelIndex = 0;
+        this.loadLevel(this.currentLevelIndex);
+        this.titleMusic.pause();
+        this.titleMusic.currentTime = 0;
+        if (this.soundEnabled) {
+            this.gameMusic.play().catch(e => console.log("Game music autoplay blocked:", e));
+        }
+    }
 }
 
 // Start the game
-window.onload = () => new Game('gameCanvas');
+window.onload = () => {
+    window.game = new Game('gameCanvas');
+};

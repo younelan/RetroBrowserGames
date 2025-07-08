@@ -11,9 +11,20 @@ class Player {
         this.frameCounter = 0;   // To control animation speed
         this.direction = 1;      // 1 for right, -1 for left
         this.onGround = false; // Track if player is on ground
+        this.onMovingFloor = null; // Track if player is on a moving floor ('L' or 'R')
+        this.playerState = 'ALIVE'; // 'ALIVE', 'DYING'
+        this.deathAnimationTimer = 0;
+        this.fallDistance = 0; // Track vertical distance fallen
     }
 
     update(input, level) {
+        if (this.playerState === 'DYING') {
+            this.deathAnimationTimer++;
+            this.y -= 2; // Float upwards
+            // Optionally, change color or size here for effect
+            return; // Stop normal updates during death animation
+        }
+
         // Horizontal movement
         if (input.left) {
             this.velocityX = -PLAYER_SPEED;
@@ -33,6 +44,13 @@ class Player {
             this.velocityY = -PLAYER_JUMP_FORCE;
             this.isJumping = true;
             this.onGround = false;
+            // Play jump sound - assuming 'game' object is accessible or passed
+            // For now, we'll assume 'game' is globally accessible or passed to player.update
+            // A better solution would be to use an event system.
+            if (window.game && window.game.jumpSound) {
+                window.game.jumpSound.currentTime = 0;
+                window.game.jumpSound.play();
+            }
         }
 
         // Store previous position for collision resolution
@@ -43,9 +61,23 @@ class Player {
         this.x += this.velocityX;
         this.handleHorizontalCollisions(level, prevX);
 
+        // Apply movement from moving floors
+        if (this.onMovingFloor === 'L') {
+            this.x -= 1;
+        } else if (this.onMovingFloor === 'R') {
+            this.x += 1;
+        }
+
         // Update Y position and handle vertical collisions
         this.y += this.velocityY;
         this.handleVerticalCollisions(level, prevY);
+
+        // Update fall distance
+        if (!this.onGround) {
+            this.fallDistance += this.velocityY; // Accumulate vertical speed
+        } else {
+            this.fallDistance = 0; // Reset when on ground
+        }
 
         // World boundaries
         if (this.x < 0) {
@@ -97,35 +129,78 @@ class Player {
     handleVerticalCollisions(level, prevY) {
         let onGroundThisFrame = false;
 
+        // Handle solid platforms (only solid from top)
         level.platforms.forEach(platform => {
-            if (this.checkCollision(platform)) {
-                if (this.velocityY > 0) { // Moving down, hit top of platform
-                    this.y = platform.y - this.height;
-                    onGroundThisFrame = true;
-                } else if (this.velocityY < 0) { // Moving up, hit bottom of platform
-                    this.y = platform.y + platform.height;
-                }
+            // Check for collision only if falling
+            if (this.velocityY > 0 && this.checkCollision(platform)) {
+                this.y = platform.y - this.height;
                 this.velocityY = 0;
                 this.isJumping = false;
+                onGroundThisFrame = true;
+            }
+            // If moving up and colliding, do nothing (pass through)
+        });
+
+        // Handle brick floors (behave like solid platforms)
+        level.brickFloors.forEach(platform => {
+            if (this.velocityY > 0 && this.checkCollision(platform)) {
+                this.y = platform.y - this.height;
+                this.velocityY = 0;
+                this.isJumping = false;
+                onGroundThisFrame = true;
             }
         });
 
-        // Handle crumbling platforms (only vertical collision for now)
-        level.crumblingPlatforms.forEach(platform => {
-            if (this.checkCollision(platform)) {
-                if (this.velocityY > 0) { // Landing on it
-                    this.y = platform.y - this.height;
-                    onGroundThisFrame = true;
-                    platform.decay++; // Start decay
-                } else if (this.velocityY < 0) { // Hitting from below
-                    this.y = platform.y + platform.height;
-                }
+        // Handle moving left floors
+        level.movingLeftFloors.forEach(platform => {
+            if (this.velocityY > 0 && this.checkCollision(platform)) {
+                this.y = platform.y - this.height;
                 this.velocityY = 0;
                 this.isJumping = false;
+                onGroundThisFrame = true;
+                this.x -= 1; // Move player left
             }
+        });
+
+        // Handle moving right floors
+        level.movingRightFloors.forEach(platform => {
+            if (this.velocityY > 0 && this.checkCollision(platform)) {
+                this.y = platform.y - this.height;
+                this.velocityY = 0;
+                this.isJumping = false;
+                onGroundThisFrame = true;
+                this.x += 1; // Move player right
+            }
+        });
+
+        // Handle crumbling platforms (only solid from top)
+        level.crumblingPlatforms.forEach(platform => {
+            // Check for collision only if falling
+            if (this.velocityY > 0 && this.checkCollision(platform)) {
+                this.y = platform.y - this.height;
+                this.velocityY = 0;
+                this.isJumping = false;
+                onGroundThisFrame = true;
+                platform.decay++; // Start decay
+            }
+            // If moving up and colliding, do nothing (pass through)
         });
 
         this.onGround = onGroundThisFrame;
+        this.onMovingFloor = null;
+
+        if (onGroundThisFrame) {
+            level.movingLeftFloors.forEach(platform => {
+                if (this.checkCollision(platform)) {
+                    this.onMovingFloor = 'L';
+                }
+            });
+            level.movingRightFloors.forEach(platform => {
+                if (this.checkCollision(platform)) {
+                    this.onMovingFloor = 'R';
+                }
+            });
+        }
 
         // Update crumbling platforms decay
         level.crumblingPlatforms = level.crumblingPlatforms.filter(p => {
@@ -147,6 +222,14 @@ class Player {
     }
 
     draw(context) {
+        if (this.playerState === 'DYING') {
+            // Simple fade out effect
+            context.globalAlpha = 1 - (this.deathAnimationTimer / 60); // Fade out over 60 frames
+            if (context.globalAlpha <= 0) {
+                context.globalAlpha = 0; // Ensure it fully disappears
+            }
+        }
+
         const s = TILE_SIZE / 16; // Scale factor for a 16x16 sprite, based on TILE_SIZE
 
         context.save();
@@ -199,5 +282,6 @@ class Player {
         }
 
         context.restore();
+        context.globalAlpha = 1; // Reset alpha for other drawings
     }
 }

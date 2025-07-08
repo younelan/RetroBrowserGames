@@ -7,7 +7,14 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+    </div>
+
+    <div id="controls">
+        <label for="soundToggle">Sound</label>
+        <input type="checkbox" id="soundToggle">
+    </div>
 
     <script src="constants.js"></script>
     <script src="levels.js"></script>
@@ -15,5 +22,13 @@
     <script src="enemy.js"></script>
     <script src="level.js"></script>
     <script src="game.js"></script>
+
+    <!-- Audio Elements -->
+    <audio id="titleMusic" src="sounds/blue_danube.mp3" loop preload="none"></audio>
+    <audio id="gameMusic" src="sounds/mountain_king.mp3" loop preload="none"></audio>
+    <audio id="jumpSound" src="sounds/jump.mp3" preload="none"></audio>
+    <audio id="keySound" src="sounds/key.mp3" preload="none"></audio>
+    <audio id="deathSound" src="sounds/death.mp3" preload="none"></audio>
+    <audio id="levelCompleteSound" src="sounds/level_complete.mp3" preload="none"></audio>
 </body>
 </html>

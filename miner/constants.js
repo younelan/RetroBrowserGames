@@ -6,3 +6,7 @@ const LEVEL_HEIGHT = 16 + UI_HEIGHT_TILES; // Total height including UI
 const PLAYER_SPEED = 4;
 const PLAYER_JUMP_FORCE = 12;
 const GRAVITY = 0.6;
+const MAX_FALL_DISTANCE = TILE_SIZE * 8; // Example: 8 tiles high
+
+const START_LIVES = 10;
+const START_OXYGEN = 5000;

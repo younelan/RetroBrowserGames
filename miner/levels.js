@@ -16,7 +16,7 @@ X     K                      E X
 X   XXXCC                  XXXCX
 X                              X
 X   P                          X
-X             H                X
+X             H         Z      X
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 `
     },
@@ -31,10 +31,10 @@ X                              X
 X                              X
 X                              X
 X   P                          X
-X  XXX                         X
+X  XXXRRR                      X
 X                              X
 X     K                      K X
-X   XXXCCCC                XXXCX
+X   XXXCCCCB B B        LLLXXXCX
 X   C                          X
 X   @                          X
 X                              X
