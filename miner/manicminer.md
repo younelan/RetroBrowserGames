@@ -129,9 +129,11 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `H`    | Hazard (Generic)        | A static object that is deadly to touch (e.g. spikes). |
 |    `S`    | Spikes                  | A static hazard with a spiky appearance.            |
 |    `F`    | Fire / Poisonous Pansy  | A static hazard with a fiery/pulsating appearance.  |
-|    `E`    | Enemy (Horizontal)      | A simple enemy patrolling horizontally.                |
-|    `V`    | Enemy (Vertical)        | A simple enemy patrolling vertically.                  |
-|    `B`    | Brick Floor             | like a regular platform but looks like a brick.        |
+|    `E`    | Enemy (Horizontal)      | A simple enemy patrolling horizontally.             |
+|    `V`    | Enemy (Vertical)        | A simple enemy patrolling vertically.               |
+|    `Z`    | Enemy (Complex)         | An enemy following a more complex, switching path.   |
+|    `T`    | Tree / Cactus           | A purely decorative element, no collision.          |
+|    `%`    | Shrub / Bush            | A purely decorative element, no collision.          |
 |    `L`    | Moving left floor.      | kinda like moving walkways. animated+moves player left |
 |    `R`    | Moving right floor      | kinda like moving walkways. animated+moves player right|
 

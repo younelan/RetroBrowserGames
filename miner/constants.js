@@ -21,10 +21,12 @@ const TILE_ATTRIBUTES = {
     'K': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false }, // Key
     'P': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false }, // Portal
     'H': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false },  // Generic Hazard
-    'S': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false },  // Spikes
+    'I': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false },  // Spikes
     'F': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false },  // Fire
     'E': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false },  // Enemy (Horizontal)
     'V': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false },  // Enemy (Vertical)
     'Z': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false },  // Enemy (Complex)
+    'T': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false },  // Tree/Cactus
+    '%': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false },  // Shrub/Bush
     '@': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false }   // Player Start
 };

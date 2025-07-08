@@ -10,6 +10,8 @@ class Level {
         this.brickFloors = [];
         this.movingLeftFloors = [];
         this.movingRightFloors = [];
+        this.decorativeElements = [];
+        console.log('Level constructor: decorativeElements initialized', this.decorativeElements);
         this.portal = null;
         this.playerStart = { x: 0, y: 0 };
 
@@ -49,15 +51,18 @@ class Level {
                     case 'C':
                         this.crumblingPlatforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, decay: 0, type: char });
                         break;
-                    case 'H':
-                        this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'GENERIC' });
-                        break;
-                    case 'S':
+                    
+                    case 'I':
                         this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'SPIKES' });
                         break;
                     case 'F':
                         this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'FIRE' });
                         break;
+                    case '%':
+                        console.log('Parsing Shrub at:', worldX, worldY);
+                        this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'SHRUB' });
+                        break;
+                    
                     case 'B':
                         this.brickFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
@@ -67,12 +72,16 @@ class Level {
                     case 'R':
                         this.movingRightFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
+                    case 'T':
+                        this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
+                        break;
                 }
             }
         }
     }
 
     draw(context, frameCounter, allKeysCollected) {
+        console.log('Level draw: decorativeElements content', this.decorativeElements);
         // Draw platforms
         this.platforms.forEach(p => {
             context.fillStyle = '#888';
@@ -262,5 +271,62 @@ class Level {
 
         // Draw enemies
         this.enemies.forEach(e => e.draw(context));
+
+        // Draw decorative elements (Cactus and Shrub)
+        this.decorativeElements.forEach(d => {
+            const s = d.width / 16; // Scale factor
+            switch (d.type) {
+                case 'T': // Cactus
+                    context.fillStyle = '#006400'; // DarkGreen
+                    // Main body of the cactus
+                    context.fillRect(d.x + 7 * s, d.y + 2 * s, 2 * s, 14 * s); // Central trunk
+
+                    // Left arm (lower)
+                    context.fillRect(d.x + 4 * s, d.y + 6 * s, 3 * s, 2 * s); // Horizontal part
+                    context.fillRect(d.x + 4 * s, d.y + 4 * s, 2 * s, 2 * s); // Vertical part
+                    context.beginPath();
+                    context.arc(d.x + 5 * s, d.y + 4 * s, 1 * s, Math.PI, 2 * Math.PI); // Rounded top
+                    context.fill();
+
+                    // Right arm (higher)
+                    context.fillRect(d.x + 9 * s, d.y + 4 * s, 3 * s, 2 * s); // Horizontal part
+                    context.fillRect(d.x + 10 * s, d.y + 2 * s, 2 * s, 2 * s); // Vertical part
+                    context.beginPath();
+                    context.arc(d.x + 11 * s, d.y + 2 * s, 1 * s, Math.PI, 2 * Math.PI); // Rounded top
+                    context.fill();
+                    break;
+                case 'SHRUB': // Shrub/Bush
+                    console.log('Drawing Shrub at:', d.x, d.y);
+                    const shrubColor = '#228B22'; // ForestGreen
+                    const darkerShrubColor = '#186F18'; // Darker green
+
+                    // Small trunk
+                    context.fillStyle = '#8B4513'; // SaddleBrown
+                    context.fillRect(d.x + 7 * s, d.y + 12 * s, 2 * s, 4 * s);
+
+                    // Main foliage (overlapping circles/ovals)
+                    context.fillStyle = shrubColor;
+                    context.beginPath();
+                    context.arc(d.x + 8 * s, d.y + 8 * s, 6 * s, 0, Math.PI * 2); // Central mass
+                    context.arc(d.x + 4 * s, d.y + 10 * s, 4 * s, 0, Math.PI * 2); // Lower left
+                    context.arc(d.x + 12 * s, d.y + 10 * s, 4 * s, 0, Math.PI * 2); // Lower right
+                    context.arc(d.x + 6 * s, d.y + 4 * s, 5 * s, 0, Math.PI * 2); // Upper left
+                    context.arc(d.x + 10 * s, d.y + 4 * s, 5 * s, 0, Math.PI * 2); // Upper right
+                    context.fill();
+
+                    // Add darker spots for texture
+                    context.fillStyle = darkerShrubColor;
+                    context.beginPath();
+                    context.arc(d.x + 5 * s, d.y + 7 * s, 2 * s, 0, Math.PI * 2);
+                    context.fill();
+                    context.beginPath();
+                    context.arc(d.x + 11 * s, d.y + 6 * s, 2.5 * s, 0, Math.PI * 2);
+                    context.fill();
+                    context.beginPath();
+                    context.arc(d.x + 7 * s, d.y + 10 * s, 1.5 * s, 0, Math.PI * 2);
+                    context.fill();
+                    break;
+            }
+        });
     }
 }
