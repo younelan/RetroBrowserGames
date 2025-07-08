@@ -252,50 +252,107 @@ class Player {
         context.save();
         // Adjust translation for 2-cell height and correct drawing origin for flipping
         if (this.direction === -1) { // Facing left
-            // Translate to the right edge of the player's bounding box, then scale by -1 horizontally
-            // This effectively flips the drawing context around the player's right edge.
-            context.translate(this.x + this.width, this.y);
+            // Translate to the center of the player, scale by -1, then translate back
+            context.translate(this.x + this.width / 2, this.y); 
             context.scale(-1, 1);
-            // Translate back so that subsequent drawing commands (relative to 0,0)
-            // are effectively drawing from the original this.x, this.y but flipped.
-            context.translate(-this.x, -this.y);
+            context.translate(-(this.x + this.width / 2), -this.y);
         }
 
-        // Miner Willy Sprite (simplified pixel art)
+        // Miner Willy Sprite (detailed side view)
         // All coordinates are relative to this.x, this.y
 
-        // Helmet (Yellow)
+        // Helmet (Yellow) - More pronounced side view
         context.fillStyle = '#FFFF00';
-        context.fillRect(this.x + 4 * s, this.y + 2 * s, 8 * s, 3 * s); // Main helmet
-        context.fillRect(this.x + 7 * s, this.y + 1 * s, 2 * s, 1 * s); // Lamp base
+        context.fillRect(this.x + 5 * s, this.y + 2 * s, 7 * s, 3 * s); // Main helmet body
+        context.fillRect(this.x + 4 * s, this.y + 3 * s, 1 * s, 2 * s); // Back of helmet
+        context.fillRect(this.x + 11 * s, this.y + 1 * s, 1 * s, 1 * s); // Lamp base (small)
         context.fillStyle = '#FFFFFF'; // Lamp light
-        context.fillRect(this.x + 7 * s, this.y + 0 * s, 2 * s, 1 * s);
+        context.fillRect(this.x + 12 * s, this.y + 0 * s, 1 * s, 1 * s); // Lamp light (single pixel)
 
-        // Head (Skin tone)
+        // Head (Skin tone) - Clear side profile with nose and eye
         context.fillStyle = '#FFDDDD';
-        context.fillRect(this.x + 5 * s, this.y + 5 * s, 6 * s, 6 * s); // Face
+        context.fillRect(this.x + 6 * s, this.y + 5 * s, 6 * s, 6 * s); // Main head block
+        context.fillRect(this.x + 11 * s, this.y + 7 * s, 2 * s, 2 * s); // Nose
+        context.fillStyle = 'black';
+        context.fillRect(this.x + 9 * s, this.y + 6 * s, 1 * s, 1 * s); // Eye
 
-        // Body (Cyan) - Top part
+        // Body (Cyan) - Distinct stomach and back
         context.fillStyle = '#00AAAA';
-        context.fillRect(this.x + 4 * s, this.y + 11 * s, 8 * s, 5 * s); // Upper body (top tile)
+        context.fillRect(this.x + 5 * s, this.y + 11 * s, 7 * s, 5 * s); // Upper body
+        context.fillRect(this.x + 4 * s, this.y + 12 * s, 1 * s, 3 * s); // Back curve
+        context.fillRect(this.x + 12 * s, this.y + 12 * s, 1 * s, 3 * s); // Stomach curve
 
-        // Body (Cyan) - Bottom part (connected to top part)
-        context.fillRect(this.x + 4 * s, this.y + TILE_SIZE + 0 * s, 8 * s, 10 * s); // Lower body (bottom tile)
+        // Pants (Blue) - Clearly defined with a belt
+        context.fillStyle = '#0000AA'; // Dark Blue for pants
+        context.fillRect(this.x + 5 * s, this.y + TILE_SIZE + 0 * s, 7 * s, 6 * s); // Main pants area
+        context.fillStyle = 'black'; // Belt
+        context.fillRect(this.x + 5 * s, this.y + TILE_SIZE + 0 * s, 7 * s, 1 * s); // Belt line
 
-        // Arms (Cyan)
-        context.fillRect(this.x + 2 * s, this.y + 12 * s, 2 * s, 6 * s); // Left arm
-        context.fillRect(this.x + 12 * s, this.y + 12 * s, 2 * s, 6 * s); // Right arm
+        // Arms (Cyan) - One forward, one back
+        context.fillStyle = '#00AAAA'; // Reset to Cyan for arms
+        context.fillRect(this.x + 3 * s, this.y + 12 * s, 2 * s, 6 * s); // Back arm
+        context.fillRect(this.x + 10 * s, this.y + 11 * s, 2 * s, 7 * s); // Front arm
 
-        // Legs (Yellow) - Animated
+        // Legs (Yellow) - Animated with swinging motion and depth
         context.fillStyle = '#FFFF00';
+        const thighHeight = 6 * s; // Height of the static thigh part
+        const shinHeight = 6 * s; // Height of the swinging shin part
+        const legWidth = 3 * s;
+
+        // Common Y for the top of the thighs (relative to player.y)
+        const commonThighTopY = this.y + TILE_SIZE + 4 * s;
+
         if (this.animationFrame === 0) {
-            // Frame 0: Legs slightly apart
-            context.fillRect(this.x + 4 * s, this.y + TILE_SIZE + 10 * s, 3 * s, 6 * s); // Left leg
-            context.fillRect(this.x + 9 * s, this.y + TILE_SIZE + 10 * s, 3 * s, 6 * s); // Right leg
+            // Frame 0: Left leg forward and slightly up, right leg back and grounded
+            // Right leg (back, grounded)
+            const rightThighX = this.x + 6 * s;
+            context.fillRect(rightThighX, commonThighTopY, legWidth, thighHeight); // Thigh
+
+            context.save(); // Save context for shin rotation
+            const rightKneeX = rightThighX + legWidth / 2;
+            const rightKneeY = commonThighTopY + thighHeight;
+            context.translate(rightKneeX, rightKneeY);
+            context.rotate(-0.1); // Small backward swing
+            context.fillRect(-legWidth / 2, 0, legWidth, shinHeight); // Shin/Foot
+            context.restore();
+
+            // Left leg (front, swinging up)
+            const leftThighX = this.x + 9 * s;
+            context.fillRect(leftThighX, commonThighTopY, legWidth, thighHeight); // Thigh
+
+            context.save(); // Save context for shin rotation
+            const leftKneeX = leftThighX + legWidth / 2;
+            const leftKneeY = commonThighTopY + thighHeight;
+            context.translate(leftKneeX, leftKneeY);
+            context.rotate(0.15); // Small forward and up swing
+            context.fillRect(-legWidth / 2, 0, legWidth, shinHeight); // Shin/Foot
+            context.restore();
+
         } else {
-            // Frame 1: Legs in a walking pose
-            context.fillRect(this.x + 2 * s, this.y + TILE_SIZE + 10 * s, 3 * s, 6 * s); // Left leg (forward)
-            context.fillRect(this.x + 11 * s, this.y + TILE_SIZE + 10 * s, 3 * s, 6 * s); // Right leg (backward)
+            // Frame 1: Alternate leg position
+            // Left leg (back, grounded)
+            const leftThighX = this.x + 9 * s;
+            context.fillRect(leftThighX, commonThighTopY, legWidth, thighHeight); // Thigh
+
+            context.save(); // Save context for shin rotation
+            const leftKneeX = leftThighX + legWidth / 2;
+            const leftKneeY = commonThighTopY + thighHeight;
+            context.translate(leftKneeX, leftKneeY);
+            context.rotate(-0.1); // Small backward swing
+            context.fillRect(-legWidth / 2, 0, legWidth, shinHeight); // Shin/Foot
+            context.restore();
+
+            // Right leg (front, swinging up)
+            const rightThighX = this.x + 6 * s;
+            context.fillRect(rightThighX, commonThighTopY, legWidth, thighHeight); // Thigh
+
+            context.save(); // Save context for shin rotation
+            const rightKneeX = rightThighX + legWidth / 2;
+            const rightKneeY = commonThighTopY + thighHeight;
+            context.translate(rightKneeX, rightKneeY);
+            context.rotate(0.15); // Small forward and up swing
+            context.fillRect(-legWidth / 2, 0, legWidth, shinHeight); // Shin/Foot
+            context.restore();
         }
 
         context.restore();

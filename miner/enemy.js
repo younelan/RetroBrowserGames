@@ -89,6 +89,15 @@ class Enemy {
     }
 
     draw(context) {
+        context.save(); // Save current context state
+
+        // Apply horizontal flip based on direction
+        if (this.direction === -1) { // Facing left
+            context.translate(this.x + this.width, this.y); // Translate to top-right of bounding box
+            context.scale(-1, 1);
+            context.translate(-(this.x + this.width), -this.y); // Translate back
+        }
+
         const s = this.width / 16; // Scale factor for drawing details
 
         switch (this.type) {
@@ -126,5 +135,7 @@ class Enemy {
                 context.fillRect(this.x, this.y, this.width, this.height);
                 break;
         }
+
+        context.restore(); // Restore context to original state
     }
 }
