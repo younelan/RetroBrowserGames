@@ -19,6 +19,7 @@
                     <button id="hard">Hard</button>
                 </div>
                 <p class="high-score">High Score: <span id="high-score-start">0</span></p>
+                <button id="help-btn-start" class="help-btn">? Help</button>
             </div>
             <div id="game-over-screen" style="display: none;">
                 <h1>Game Over</h1>
@@ -26,6 +27,32 @@
                 <p>📈 <span id="level">1</span></p>
                 <p class="high-score">High Score: <span id="high-score-end">0</span></p>
                 <button id="restart">Restart</button>
+                <button id="help-btn-over" class="help-btn">? Help</button>
+            </div>
+        </div>
+    </div>
+    <div id="help-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span id="close-help-btn" class="close-btn">&times;</span>
+            <h2>How to Play</h2>
+            <p>Click, tap, or press <strong>Space/Enter</strong> to make Jumpy flap his wings!</p>
+            <p>Click ❤️ to pause, and 📈 to restart.</p>
+            <h3>Power-ups</h3>
+            <ul class="powerup-list">
+                <li>💎: +10 points</li>
+                <li>🛡️: Temporary shield</li>
+                <li>🕒: Slows down time</li>
+                <li>🪶: Shrinks the bird</li>
+            </ul>
+        </div>
+    </div>
+    <div id="restart-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>Restart Game?</h2>
+            <p>Your current progress will be lost.</p>
+            <div class="modal-buttons">
+                <button id="confirm-restart-btn">Yes, Restart</button>
+                <button id="cancel-restart-btn">Cancel</button>
             </div>
         </div>
     </div>

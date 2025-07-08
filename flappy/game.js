@@ -12,16 +12,23 @@ const scoreEl = document.getElementById('score');
 const levelEl = document.getElementById('level');
 const highScoreStartEl = document.getElementById('high-score-start');
 const highScoreEndEl = document.getElementById('high-score-end');
+const helpModal = document.getElementById('help-modal');
+const restartModal = document.getElementById('restart-modal');
 
 // Buttons
 const easyBtn = document.getElementById('easy');
 const mediumBtn = document.getElementById('medium');
 const hardBtn = document.getElementById('hard');
 const restartBtn = document.getElementById('restart');
+const helpBtnStart = document.getElementById('help-btn-start');
+const helpBtnOver = document.getElementById('help-btn-over');
+const closeHelpBtn = document.getElementById('close-help-btn');
+const confirmRestartBtn = document.getElementById('confirm-restart-btn');
+const cancelRestartBtn = document.getElementById('cancel-restart-btn');
 
 // Game State
 let bird, obstacles, collectibles, score, level, lives, highScore, difficulty, gameLoop;
-let gameStarted = false, gameOver = false, lastDifficulty = 'easy';
+let gameStarted = false, gameOver = false, isPaused = false, lastDifficulty = 'easy';
 let particles = [], lastTime = 0, timeScale = 1;
 const obstacleTypes = ['pipe', 'spinner', 'crusher', 'moving_platform'];
 let lastObstacleType = '';
@@ -179,8 +186,16 @@ function Collectible(x, y, type) {
         else if (this.type === 'slowmo') { grad.addColorStop(0, '#f1c40f'); grad.addColorStop(1, '#f39c12'); emoji = '🕒'; } 
         else if (this.type === 'shrink') { grad.addColorStop(0, '#2ecc71'); grad.addColorStop(1, '#27ae60'); emoji = '🪶'; } 
         else { grad.addColorStop(0, '#a9fffd'); grad.addColorStop(1, '#00c2ff'); emoji = '💎'; }
-        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2); ctx.fill();
-        ctx.font = `${this.radius}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(emoji, 0, 0);
+        
+        // Draw background circle for emoji
+        ctx.fillStyle = grad; 
+        ctx.beginPath(); 
+        ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2); 
+        ctx.fill();
+
+        ctx.shadowBlur = 0; // Disable shadow for text
+        ctx.font = `${this.radius * 1.2}px sans-serif`; // Make emoji larger
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(emoji, 0, 0);
         ctx.restore();
     };
     this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; this.angle += 2 * dt * timeScale; this.pulse += this.pulseSpeed * dt * timeScale; }
@@ -225,7 +240,7 @@ function startGame(diff) {
     lastDifficulty = diff;
     difficulty = { ...difficulties[diff] };
     startScreen.style.display = 'none'; gameOverScreen.style.display = 'none';
-    gameStarted = true; gameOver = false; timeScale = 1;
+    gameStarted = true; gameOver = false; isPaused = false; timeScale = 1;
     score = 0; level = 1; lives = 3;
     bird = new Bird(); obstacles = []; collectibles = []; particles = [];
     addObstacle();
@@ -255,8 +270,20 @@ function endGame() {
     levelEl.textContent = level;
 }
 
+function togglePause() {
+    if (!gameStarted || gameOver) return;
+    isPaused = !isPaused;
+    if (!isPaused) {
+        lastTime = performance.now();
+        gameLoop = requestAnimationFrame(update);
+    } else {
+        cancelAnimationFrame(gameLoop);
+        drawPauseScreen();
+    }
+}
+
 function update(currentTime) {
-    if(gameOver) return;
+    if(gameOver || isPaused) return;
     let dt = (currentTime - lastTime) / 1000; // Delta time in seconds
     lastTime = currentTime;
     if (dt > 0.1) dt = 0.1; // Prevent huge jumps on tab switch
@@ -270,12 +297,12 @@ function update(currentTime) {
 
     drawBackground();
 
-    obstacles.forEach(obs => { obs.update(dt); obs.draw(); });
-    collectibles.forEach(c => { c.update(dt); c.draw(); });
+    obstacles.forEach(obs => { obs.update(scaledDt); obs.draw(); });
+    collectibles.forEach(c => { c.update(scaledDt); c.draw(); });
     particles.forEach(p => { p.update(dt); p.draw(); });
     drawGround();
-    drawUi();
     bird.update(scaledDt); bird.draw();
+    drawUi(); // Draw UI after bird to ensure it's on top
 
     for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i];
@@ -341,14 +368,32 @@ function drawUi() {
     ctx.shadowColor = 'rgba(0,0,0,0.5)';
     ctx.shadowBlur = 5; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3;
 
+    // Lives (left)
     ctx.textAlign = "left";
     ctx.fillText(`❤️ ${lives}`, 20, 20);
+
+    // Score (center)
     ctx.textAlign = "center";
     ctx.fillText(`💰 ${score}`, VIRTUAL_WIDTH / 2, 20);
+
+    // Level (right)
     ctx.textAlign = "right";
     ctx.fillText(`📈 ${level}`, VIRTUAL_WIDTH - 20, 20);
 
     ctx.shadowColor = 'transparent';
+}
+
+function drawPauseScreen() {
+    ctx.save();
+    ctx.scale(canvas.width / VIRTUAL_WIDTH, canvas.height / VIRTUAL_HEIGHT);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
+    ctx.font = "100px 'Bangers', cursive";
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Paused", VIRTUAL_WIDTH / 2, VIRTUAL_HEIGHT / 2);
+    ctx.restore();
 }
 
 function loadHighScore() {
@@ -370,9 +415,33 @@ function showStartScreen() {
 
 function masterController(e) {
     e.preventDefault();
-    const target = e.target;
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || e.touches[0].clientX) - rect.left;
+    const y = (e.clientY || e.touches[0].clientY) - rect.top;
 
-    if (target.tagName === 'BUTTON') return;
+    // Scale coordinates to virtual resolution
+    const virtualX = x * (VIRTUAL_WIDTH / rect.width);
+    const virtualY = y * (VIRTUAL_HEIGHT / rect.height);
+
+    if (gameStarted && !isPaused) {
+        // Pause Zone (Lives area)
+        if (virtualX >= 0 && virtualX <= 150 && virtualY >= 0 && virtualY <= 80) {
+            togglePause();
+            return;
+        }
+        // Restart Zone (Level area)
+        if (virtualX >= VIRTUAL_WIDTH - 150 && virtualX <= VIRTUAL_WIDTH && virtualY >= 0 && virtualY <= 80) {
+            isPaused = true;
+            cancelAnimationFrame(gameLoop);
+            restartModal.style.display = 'flex';
+            return;
+        }
+    }
+
+    if (isPaused) {
+        togglePause();
+        return;
+    }
 
     if (gameOver) {
         showStartScreen();
@@ -400,6 +469,21 @@ easyBtn.addEventListener('click', (e) => { e.stopPropagation(); startGame('easy'
 mediumBtn.addEventListener('click', (e) => { e.stopPropagation(); startGame('medium'); });
 hardBtn.addEventListener('click', (e) => { e.stopPropagation(); startGame('hard'); });
 restartBtn.addEventListener('click', (e) => { e.stopPropagation(); showStartScreen(); });
+
+helpBtnStart.addEventListener('click', () => { helpModal.style.display = 'flex'; });
+helpBtnOver.addEventListener('click', () => { helpModal.style.display = 'flex'; });
+closeHelpBtn.addEventListener('click', () => { helpModal.style.display = 'none'; });
+
+confirmRestartBtn.addEventListener('click', () => {
+    restartModal.style.display = 'none';
+    showStartScreen();
+});
+cancelRestartBtn.addEventListener('click', () => {
+    restartModal.style.display = 'none';
+    isPaused = false;
+    lastTime = performance.now();
+    gameLoop = requestAnimationFrame(update);
+});
 
 document.addEventListener('keydown', (e) => {
     if (e.code === 'Space' || e.code === 'Enter') {

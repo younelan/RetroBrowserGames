@@ -74,7 +74,7 @@ p {
     margin: 2vmin 0;
 }
 
-#difficulty-buttons button, #restart {
+#difficulty-buttons button, #restart, .help-btn {
     padding: 2vmin 4vmin;
     font-size: clamp(16px, 4.5vmin, 36px);
     font-family: 'Bangers', cursive;
@@ -89,8 +89,14 @@ p {
     box-shadow: 0 0.5vmin 1vmin rgba(0,0,0,0.2);
 }
 
-#difficulty-buttons button:hover, #restart:hover {
+#difficulty-buttons button:hover, #restart:hover, .help-btn:hover {
     transform: translateY(-3px) scale(1.05);
+}
+
+.help-btn {
+    background: #3498db;
+    color: white;
+    margin-top: 2vmin;
 }
 
 .high-score {
@@ -105,4 +111,69 @@ p {
     font-family: 'Bangers', cursive;
     letter-spacing: 2px;
     margin: 1vmin 0;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: #333;
+    padding: 4vmin;
+    border-radius: 3vmin;
+    width: 80%;
+    max-width: 600px;
+    position: relative;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.close-btn {
+    position: absolute;
+    top: 2vmin;
+    right: 2vmin;
+    font-size: 6vmin;
+    cursor: pointer;
+}
+
+.powerup-list {
+    list-style: none;
+    padding: 0;
+    text-align: left;
+    font-size: clamp(14px, 3.5vmin, 24px);
+}
+
+.powerup-list li {
+    margin-bottom: 1vmin;
+}
+
+.modal-buttons button {
+    padding: 2vmin 4vmin;
+    font-size: clamp(16px, 4.5vmin, 36px);
+    font-family: 'Bangers', cursive;
+    letter-spacing: 1px;
+    cursor: pointer;
+    border: none;
+    border-radius: 2vmin;
+    margin: 1vmin;
+    transition: transform 0.2s;
+}
+
+#confirm-restart-btn {
+    background: #e74c3c;
+    color: white;
+}
+
+#cancel-restart-btn {
+    background: #95a5a6;
+    color: white;
 }
