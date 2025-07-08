@@ -106,6 +106,21 @@ p {
     letter-spacing: 1px;
 }
 
+.sound-toggle {
+    margin-top: 2vmin;
+    font-size: clamp(12px, 3vmin, 24px);
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sound-toggle input[type="checkbox"] {
+    margin-right: 1vmin;
+    width: 3vmin;
+    height: 3vmin;
+}
+
 #game-over-screen p {
     font-size: clamp(18px, 6vmin, 48px);
     font-family: 'Bangers', cursive;

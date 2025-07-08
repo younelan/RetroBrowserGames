@@ -25,6 +25,7 @@ const helpBtnOver = document.getElementById('help-btn-over');
 const closeHelpBtn = document.getElementById('close-help-btn');
 const confirmRestartBtn = document.getElementById('confirm-restart-btn');
 const cancelRestartBtn = document.getElementById('cancel-restart-btn');
+const soundCheckbox = document.getElementById('sound-checkbox');
 
 // Game State
 let bird, obstacles, collectibles, score, level, lives, highScore, difficulty, gameLoop;
@@ -41,11 +42,19 @@ const difficulties = {
 
 // Sound Effects (place your audio files in the same directory as index.html)
 const sounds = {
+    _enabled: true,
     flap: new Audio('./sounds/flap.wav'),
     hit: new Audio('./sounds/hit.wav'),
     collect: new Audio('./sounds/collect.wav'),
     powerup: new Audio('./sounds/powerup.wav'),
-    gameOver: new Audio('./sounds/gameover.wav')
+    gameOver: new Audio('./sounds/gameover.wav'),
+
+    play: function(sound) {
+        if (this._enabled) {
+            sound.currentTime = 0;
+            sound.play().catch(e => console.warn("Audio playback failed:", e));
+        }
+    }
 };
 
 // --- ENTITIES ---
@@ -67,15 +76,15 @@ function Bird() {
             ctx.fillStyle = shieldGrad; ctx.beginPath(); ctx.arc(0, 0, this.radius * 1.5, 0, Math.PI * 2); ctx.fill();
         }
 
-        // Body
+        // Body - Warmer, more natural tones
         const bodyGrad = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.radius);
-        bodyGrad.addColorStop(0, '#ffffb3');
-        bodyGrad.addColorStop(1, '#ffc400');
+        bodyGrad.addColorStop(0, '#ffcc00'); // Brighter yellow-orange
+        bodyGrad.addColorStop(1, '#e68a00'); // Deeper orange
         ctx.fillStyle = bodyGrad;
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#c69f00';
+        ctx.strokeStyle = '#b36b00'; // Darker orange-brown
         ctx.lineWidth = 3;
         ctx.stroke();
 
@@ -89,23 +98,23 @@ function Bird() {
         ctx.fillStyle = 'black';
         ctx.fill();
 
-        // Beak
+        // Beak - More earthy tone
         ctx.beginPath();
         ctx.moveTo(this.radius, 0);
         ctx.lineTo(this.radius + 10, -5);
         ctx.lineTo(this.radius + 10, 5);
         ctx.closePath();
-        ctx.fillStyle = '#ffa500';
+        ctx.fillStyle = '#8b4513'; // SaddleBrown
         ctx.fill();
-        ctx.strokeStyle = '#cc8400';
+        ctx.strokeStyle = '#5a2d0c'; // Darker brown
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Wing
+        // Wing - Warmer tone
         ctx.beginPath();
         ctx.moveTo(-this.radius / 1.5, 0);
         ctx.arc(-this.radius / 1.5, 0, this.radius, 0.3 - Math.sin(performance.now() * 0.005) * 0.3, Math.PI - 0.3 + Math.sin(performance.now() * 0.005) * 0.3, false);
-        ctx.fillStyle = '#ffde00';
+        ctx.fillStyle = '#ff9900'; // Orange
         ctx.fill();
 
         ctx.restore();
@@ -125,7 +134,7 @@ function Bird() {
     this.flap = function() {
         this.velocity = -difficulty.flap;
         for (let i = 0; i < 5; i++) particles.push(new Particle(this.x, this.y, 'rgba(255, 255, 255, 0.7)', 2, 80));
-        if (sounds.flap) sounds.flap.play();
+        sounds.play(sounds.flap);
     }
 }
 
@@ -134,10 +143,10 @@ function Pipe() {
     this.topHeight = Math.random() * (VIRTUAL_HEIGHT - this.gap - (VIRTUAL_HEIGHT * 0.3)) + (VIRTUAL_HEIGHT * 0.15);
     this.bottomHeight = VIRTUAL_HEIGHT - this.topHeight - this.gap; this.passed = false;
     this.draw = function() { 
-        const pipeColorDark = '#1a6a2a';
-        const pipeColorMid = '#28a745';
-        const pipeColorLight = '#34c759';
-        const pipeColorHighlight = '#5cb85c';
+        const pipeColorDark = '#4a3a2a'; // Dark brown-grey
+        const pipeColorMid = '#6a5a4a'; // Mid brown-grey
+        const pipeColorLight = '#8a7a6a'; // Light brown-grey
+        const pipeColorHighlight = '#a09080'; // Very light brown-grey
 
         // Top Pipe Body
         ctx.fillStyle = pipeColorMid;
@@ -190,15 +199,21 @@ function Spinner() {
     this.angle = 0; this.speed = difficulty.spinnerSpeed; this.gap = Math.PI / 2.5; this.passed = false;
     this.draw = function() {
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
-        ctx.strokeStyle = '#a52a2a'; ctx.lineWidth = 8;
+        const spinnerColorDark = '#6a0000'; // Dark red-brown
+        const spinnerColorMid = '#9a0000'; // Mid red-brown
+        const spinnerColorLight = '#cc0000'; // Lighter red-brown
+        const spinnerColorHighlight = '#ff3333'; // Bright red
+
+        ctx.strokeStyle = spinnerColorDark; ctx.lineWidth = 8;
 
         for (let i = 0; i < 3; i++) {
             const startAngle = i * 2 * Math.PI / 3 + this.gap / 2;
             const endAngle = (i + 1) * 2 * Math.PI / 3 - this.gap / 2;
 
-            // Main body
+            // Main body with gradient
             const grad = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.radius);
-            grad.addColorStop(0, '#e74c3c'); grad.addColorStop(1, '#c0392b');
+            grad.addColorStop(0, spinnerColorLight);
+            grad.addColorStop(1, spinnerColorDark);
             ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.arc(0, 0, this.radius, startAngle, endAngle);
@@ -210,7 +225,7 @@ function Spinner() {
             // Inner highlight
             ctx.beginPath();
             ctx.arc(0, 0, this.radius * 0.75, startAngle, endAngle);
-            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.strokeStyle = spinnerColorHighlight;
             ctx.lineWidth = 2;
             ctx.stroke();
         }
@@ -244,53 +259,52 @@ function Crusher() {
     this.type = 'crusher'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 8; this.minGap = 180; this.maxGap = 350;
     this.gap = this.maxGap; this.speed = difficulty.crusherSpeed; this.direction = -1; this.passed = false;
     this.draw = function() {
-        const crusherColorDark = '#566573';
-        const crusherColorMid = '#7f8c8d';
-        const crusherColorLight = '#95a5a6';
-        const crusherColorHighlight = '#bdc3c7';
+        const crusherColorBase = '#4a2a4a'; // Dark purple-brown
+        const crusherColorLight = '#6a4a6a'; // Mid purple-brown
+        const crusherColorHighlight = '#8a6a8a'; // Light purple-brown
 
         const topY = (VIRTUAL_HEIGHT - this.gap) / 2;
         const bottomY = (VIRTUAL_HEIGHT + this.gap) / 2;
 
         // Top Crusher Body
-        ctx.fillStyle = crusherColorMid;
+        ctx.fillStyle = crusherColorLight;
         ctx.fillRect(this.x, 0, this.width, topY);
 
         // Top Crusher Shading/Highlights
-        ctx.fillStyle = crusherColorDark;
+        ctx.fillStyle = crusherColorBase;
         ctx.fillRect(this.x, 0, this.width * 0.1, topY); // Left shadow
         ctx.fillRect(this.x + this.width * 0.9, 0, this.width * 0.1, topY); // Right shadow
         ctx.fillStyle = crusherColorHighlight;
         ctx.fillRect(this.x + this.width * 0.1, 0, this.width * 0.05, topY); // Left highlight
 
         // Top Crusher Cap
-        ctx.fillStyle = crusherColorDark;
+        ctx.fillStyle = crusherColorBase;
         ctx.fillRect(this.x - 10, topY - 30, this.width + 20, 30); // Cap base
-        ctx.fillStyle = crusherColorMid;
+        ctx.fillStyle = crusherColorLight;
         ctx.fillRect(this.x - 5, topY - 25, this.width + 10, 25); // Cap top
         ctx.fillStyle = crusherColorHighlight;
         ctx.fillRect(this.x - 5, topY - 25, this.width + 10, 5); // Cap highlight
 
         // Bottom Crusher Body
-        ctx.fillStyle = crusherColorMid;
+        ctx.fillStyle = crusherColorLight;
         ctx.fillRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
 
         // Bottom Crusher Shading/Highlights
-        ctx.fillStyle = crusherColorDark;
+        ctx.fillStyle = crusherColorBase;
         ctx.fillRect(this.x, bottomY, this.width * 0.1, VIRTUAL_HEIGHT - bottomY);
         ctx.fillRect(this.x + this.width * 0.9, bottomY, this.width * 0.1, VIRTUAL_HEIGHT - bottomY);
         ctx.fillStyle = crusherColorHighlight;
         ctx.fillRect(this.x + this.width * 0.1, bottomY, this.width * 0.05, VIRTUAL_HEIGHT - bottomY);
 
         // Bottom Crusher Cap
-        ctx.fillStyle = crusherColorDark;
+        ctx.fillStyle = crusherColorBase;
         ctx.fillRect(this.x - 10, bottomY, this.width + 20, 30); // Cap base
-        ctx.fillStyle = crusherColorMid;
+        ctx.fillStyle = crusherColorLight;
         ctx.fillRect(this.x - 5, bottomY + 5, this.width + 10, 25); // Cap top
         ctx.fillStyle = crusherColorHighlight;
         ctx.fillRect(this.x - 5, bottomY + 25, this.width + 10, 5); // Cap highlight
 
-        ctx.strokeStyle = crusherColorDark; ctx.lineWidth = 4;
+        ctx.strokeStyle = crusherColorBase; ctx.lineWidth = 4;
         ctx.strokeRect(this.x, 0, this.width, topY);
         ctx.strokeRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
     };
@@ -302,34 +316,33 @@ function MovingPlatform() {
     this.type = 'moving_platform'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 4; this.height = 20;
     this.gap = 220; this.y = VIRTUAL_HEIGHT / 2; this.speed = difficulty.platformSpeed; this.direction = 1; this.passed = false;
     this.draw = function() {
-        const platformColorDark = '#a04000';
-        const platformColorMid = '#d35400';
-        const platformColorLight = '#e67e22';
-        const platformColorHighlight = '#f39c12';
+        const platformColorBase = '#6a4a2a'; // Dark brown
+        const platformColorLight = '#8a6a4a'; // Lighter brown
+        const platformColorHighlight = '#a08060'; // Even lighter brown
 
         // Top Platform Body
-        ctx.fillStyle = platformColorMid;
+        ctx.fillStyle = platformColorLight;
         ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
 
         // Top Platform Shading/Highlights
-        ctx.fillStyle = platformColorDark;
+        ctx.fillStyle = platformColorBase;
         ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width * 0.1, this.height);
         ctx.fillRect(this.x + this.width * 0.9, this.y - this.gap/2 - this.height, this.width * 0.1, this.height);
         ctx.fillStyle = platformColorHighlight;
         ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, 5);
 
         // Bottom Platform Body
-        ctx.fillStyle = platformColorMid;
+        ctx.fillStyle = platformColorLight;
         ctx.fillRect(this.x, this.y + this.gap/2, this.width, this.height);
 
         // Bottom Platform Shading/Highlights
-        ctx.fillStyle = platformColorDark;
+        ctx.fillStyle = platformColorBase;
         ctx.fillRect(this.x, this.y + this.gap/2, this.width * 0.1, this.height);
         ctx.fillRect(this.x + this.width * 0.9, this.y + this.gap/2, this.width * 0.1, this.height);
         ctx.fillStyle = platformColorHighlight;
         ctx.fillRect(this.x, this.y + this.gap/2 + this.height - 5, this.width, 5);
 
-        ctx.strokeStyle = platformColorDark; ctx.lineWidth = 4;
+        ctx.strokeStyle = platformColorBase; ctx.lineWidth = 4;
         ctx.strokeRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
         ctx.strokeRect(this.x, this.y + this.gap/2, this.width, this.height);
     };
@@ -384,13 +397,13 @@ function SwingingPendulum() {
         const ballX = this.length * Math.sin(this.angle);
         const ballY = this.length * Math.cos(this.angle);
         const grad = ctx.createRadialGradient(ballX, ballY, this.radius * 0.5, ballX, ballY, this.radius);
-        grad.addColorStop(0, '#3498db');
-        grad.addColorStop(1, '#2980b9');
+        grad.addColorStop(0, '#8b0000'); // Dark red
+        grad.addColorStop(1, '#cc0000'); // Brighter red
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.arc(ballX, ballY, this.radius, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#21618C';
+        ctx.strokeStyle = '#550000';
         ctx.lineWidth = 3;
         ctx.stroke();
 
@@ -520,7 +533,7 @@ function startGame(diff) {
 function handleCollision() {
     if (bird.invincible) return;
     lives--;
-    if (sounds.hit) sounds.hit.play();
+    sounds.play(sounds.hit);
     if (lives <= 0) {
         endGame();
     } else {
@@ -533,7 +546,7 @@ function endGame() {
     if(gameOver) return;
     cancelAnimationFrame(gameLoop);
     gameOver = true; gameStarted = false;
-    if (sounds.gameOver) sounds.gameOver.play();
+    sounds.play(sounds.gameOver);
     saveHighScore(); loadHighScore();
     gameOverScreen.style.display = 'flex';
     scoreEl.textContent = score;
@@ -597,11 +610,11 @@ function update(currentTime) {
     for (let i = collectibles.length - 1; i >= 0; i--) {
         const c = collectibles[i];
         if (Math.hypot(bird.x - c.x, bird.y - c.y) < bird.radius + c.radius) {
-            if (sounds.collect) sounds.collect.play();
-            if (c.type === 'shield') { bird.shielded = true; bird.shieldTime = 5; if (sounds.powerup) sounds.powerup.play(); }
-            else if (c.type === 'slowmo') { timeScale = 0.5; setTimeout(() => timeScale = 1, 3000); if (sounds.powerup) sounds.powerup.play(); }
-            else if (c.type === 'shrink') { bird.isShrunk = true; bird.radius = bird.baseRadius / 2; bird.shrinkTime = 5; if (sounds.powerup) sounds.powerup.play(); }
-            else if (c.type === 'multiplier') { scoreMultiplier = 2; multiplierTime = 5; if (sounds.powerup) sounds.powerup.play(); }
+            sounds.play(sounds.collect);
+            if (c.type === 'shield') { bird.shielded = true; bird.shieldTime = 5; sounds.play(sounds.powerup); }
+            else if (c.type === 'slowmo') { timeScale = 0.5; setTimeout(() => timeScale = 1, 3000); sounds.play(sounds.powerup); }
+            else if (c.type === 'shrink') { bird.isShrunk = true; bird.radius = bird.baseRadius / 2; bird.shrinkTime = 5; sounds.play(sounds.powerup); }
+            else if (c.type === 'multiplier') { scoreMultiplier = 2; multiplierTime = 5; sounds.play(sounds.powerup); }
             else { score += c.value; }
             for (let j = 0; j < 15; j++) particles.push(new Particle(c.x, c.y, '#fff', 3, 100));
             collectibles.splice(i, 1);
@@ -717,6 +730,17 @@ function drawPauseScreen() {
 function loadHighScore() {
     highScore = localStorage.getItem('jumpyMcFlapFaceHighScore') || 0;
     highScoreStartEl.textContent = highScore; highScoreEndEl.textContent = highScore;
+
+    // Load sound preference
+    const savedSoundPref = localStorage.getItem('jumpyMcFlapFaceSoundEnabled');
+    if (savedSoundPref !== null) {
+        sounds._enabled = JSON.parse(savedSoundPref);
+        soundCheckbox.checked = sounds._enabled;
+    } else {
+        // Default to enabled if no preference saved
+        soundCheckbox.checked = true;
+        sounds._enabled = true;
+    }
 }
 
 function saveHighScore() {
@@ -782,6 +806,11 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 loadHighScore();
+
+soundCheckbox.addEventListener('change', () => {
+    sounds._enabled = soundCheckbox.checked;
+    localStorage.setItem('jumpyMcFlapFaceSoundEnabled', JSON.stringify(sounds._enabled));
+});
 
 easyBtn.addEventListener('click', (e) => { e.stopPropagation(); startGame('easy'); });
 mediumBtn.addEventListener('click', (e) => { e.stopPropagation(); startGame('medium'); });
