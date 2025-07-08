@@ -35,7 +35,7 @@ class Level {
                         this.keys.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
                         break;
                     case 'P':
-                        this.portal = { x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE };
+                        this.portal = { x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2 };
                         break;
                     case 'E':
                         this.enemies.push(new Enemy(worldX, worldY, 'H'));
@@ -75,26 +75,61 @@ class Level {
 
         // Draw keys
         this.keys.forEach(k => {
+            context.save(); // Save current context state
+
+            // Translate to the center of the key's tile for rotation
+            const centerX = k.x + k.width / 2;
+            const centerY = k.y + k.height / 2;
+            context.translate(centerX, centerY);
+
+            // Rotate by -90 degrees (counter-clockwise) to make a vertical key appear horizontal
+            context.rotate(-Math.PI / 2);
+
+            // Translate back so that drawing coordinates are relative to the top-left of the key's *original* bounding box
+            // This means (0,0) is now the top-left of the key's tile, but the canvas is rotated.
+            context.translate(-k.width / 2, -k.height / 2);
+
             context.fillStyle = 'gold';
             const s = k.width / 16; // Scale factor for a 16x16 sprite
 
-            // Key head (circle)
+            // Key Bow (circular part) - drawn as if it's the top of a vertical key
             context.beginPath();
-            context.arc(k.x + 8 * s, k.y + 5 * s, 4 * s, 0, Math.PI * 2);
+            context.arc(8 * s, 4 * s, 4 * s, 0, Math.PI * 2); // Center at (8s, 4s), radius 4s
             context.fill();
 
-            // Key body (rectangle)
-            context.fillRect(k.x + 7 * s, k.y + 9 * s, 2 * s, 6 * s);
+            // Key Shaft (rectangle) - extends downwards from the bow
+            context.fillRect(7 * s, 8 * s, 2 * s, 6 * s); // From (7s, 8s), width 2s, height 6s
 
-            // Key teeth (small rectangles)
-            context.fillRect(k.x + 5 * s, k.y + 14 * s, 2 * s, 2 * s);
-            context.fillRect(k.x + 8 * s, k.y + 14 * s, 2 * s, 2 * s);
+            // Key Bit (teeth) - at the bottom of the shaft
+            context.fillRect(5 * s, 14 * s, 6 * s, 2 * s); // From (5s, 14s), width 6s, height 2s
+
+            context.restore(); // Restore context to original state
         });
 
         // Draw portal
         if (this.portal) {
-            context.fillStyle = 'purple';
-            context.fillRect(this.portal.x, this.portal.y, this.portal.width, this.portal.height);
+            if (allKeysCollected) {
+                // Open door (frame only, transparent inside)
+                context.fillStyle = 'lime';
+                // Draw top part of frame
+                context.fillRect(this.portal.x, this.portal.y, this.portal.width, 4); // Top border
+                // Draw bottom part of frame
+                context.fillRect(this.portal.x, this.portal.y + this.portal.height - 4, this.portal.width, 4); // Bottom border
+                // Draw left part of frame
+                context.fillRect(this.portal.x, this.portal.y, 4, this.portal.height); // Left border
+                // Draw right part of frame
+                context.fillRect(this.portal.x + this.portal.width - 4, this.portal.y, 4, this.portal.height); // Right border
+
+            } else {
+                // Closed door (purple, with a handle)
+                context.fillStyle = 'purple';
+                context.fillRect(this.portal.x, this.portal.y, this.portal.width, this.portal.height);
+                // Door handle
+                context.fillStyle = 'gold';
+                context.beginPath();
+                context.arc(this.portal.x + this.portal.width * 0.75, this.portal.y + this.portal.height * 0.5, 3, 0, Math.PI * 2);
+                context.fill();
+            }
         }
 
         // Draw hazards

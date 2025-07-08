@@ -325,7 +325,7 @@ class Game {
         this.context.fillStyle = '#555';
         this.context.fillRect(totalGameWidth - 320, uiPanelY + 15, 300, 20);
         this.context.fillStyle = 'cyan';
-        this.context.fillRect(totalGameWidth - 320, uiPanelY + 15, (this.oxygen / 1000) * 300, 20);
+        this.context.fillRect(totalGameWidth - 320, uiPanelY + 15, (this.oxygen / START_OXYGEN) * 300, 20);
 
         this.context.restore();
     }

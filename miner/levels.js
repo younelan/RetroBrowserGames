@@ -15,8 +15,8 @@ X                              X
 X     K                      E X
 X   XXXCC                  XXXCX
 X                              X
-X   P                          X
-X             H         Z      X
+X                              X
+X   P         H         Z      X
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 `
     },
