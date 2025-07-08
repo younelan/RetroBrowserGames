@@ -15,27 +15,28 @@ class Enemy {
 
     update(level) {
         if (this.type === 'H') { // Horizontal
-            const nextX = this.x + this.direction * 2;
-            const nextFeetRect = { x: nextX, y: this.y + this.height - 1, width: this.width, height: 1 }; // 1-pixel high strip at the bottom
+            const nextX = this.x + this.direction * 2; // Where enemy will be
+            const enemyLeadingEdgeX = (this.direction === 1) ? (nextX + this.width) : nextX; // Leading edge of enemy
+            const lookAheadTileX = Math.floor(enemyLeadingEdgeX / TILE_SIZE); // Tile X of the leading edge
+            const tileBelowFeetY = Math.floor((this.y + this.height) / TILE_SIZE); // Tile Y directly below enemy feet
 
             let nextStepHasPlatformBelow = false;
-            const checkPlatformBelow = (p) => {
-                // Check if the platform is directly below the enemy's next horizontal position
-                if (nextX < p.x + p.width &&
-                    nextX + this.width > p.x &&
-                    this.y + this.height < p.y + p.height && // Enemy's bottom is above platform's bottom
-                    this.y + this.height >= p.y) { // Enemy's bottom is at or below platform's top
+
+            // Check if lookAheadTileX is within map bounds
+            if (lookAheadTileX >= 0 && lookAheadTileX < LEVEL_WIDTH && tileBelowFeetY >= 0 && tileBelowFeetY < level.map.trim().split('\n').length) {
+                const mapRows = level.map.trim().split('\n');
+                const charBelow = mapRows[tileBelowFeetY][lookAheadTileX];
+                const tileAttribute = TILE_ATTRIBUTES[charBelow];
+                if (tileAttribute && tileAttribute.isPlatform) {
                     nextStepHasPlatformBelow = true;
                 }
-            };
+            }
 
-            level.platforms.forEach(checkPlatformBelow);
-            level.brickFloors.forEach(checkPlatformBelow);
-            level.movingLeftFloors.forEach(checkPlatformBelow);
-            level.movingRightFloors.forEach(checkPlatformBelow);
+            // Check for world bounds
+            const atWorldEdge = (nextX < 0 || nextX + this.width > LEVEL_WIDTH * TILE_SIZE);
 
-            // Check for edge of platform (no platform below) or world bounds
-            if (!nextStepHasPlatformBelow || nextX < 0 || nextX + this.width > LEVEL_WIDTH * TILE_SIZE) {
+            // Turn around if no platform below or at world edge
+            if (!nextStepHasPlatformBelow || atWorldEdge) {
                 this.direction *= -1;
             } else {
                 this.x = nextX;

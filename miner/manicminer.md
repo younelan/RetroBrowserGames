@@ -126,7 +126,9 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `C`    | Crumbling Platform      | Disappears after Willy walks off it.                   |
 |    `K`    | Key                     | An item to be collected.                               |
 |    `P`    | Portal                  | The exit, becomes active after all keys are taken.     |
-|    `H`    | Hazard                  | A static object that is deadly to touch (e.g. spikes). |
+|    `H`    | Hazard (Generic)        | A static object that is deadly to touch (e.g. spikes). |
+|    `S`    | Spikes                  | A static hazard with a spiky appearance.            |
+|    `F`    | Fire / Poisonous Pansy  | A static hazard with a fiery/pulsating appearance.  |
 |    `E`    | Enemy (Horizontal)      | A simple enemy patrolling horizontally.                |
 |    `V`    | Enemy (Vertical)        | A simple enemy patrolling vertically.                  |
 |    `B`    | Brick Floor             | like a regular platform but looks like a brick.        |

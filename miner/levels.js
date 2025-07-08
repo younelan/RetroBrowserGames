@@ -13,10 +13,10 @@ X   @                          X
 X  XXX                         X
 X                  X           X
 X     K            B  B   E    X
-X   XXXCC          XXXXXXXXXX CX
+X   XXXCC          XXXCBRLX XCCX
 X                              X
 X                              X
-X   P         H         Z      X
+X   P         S         Z      X
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 `
     },
@@ -37,7 +37,7 @@ X     K                      K X
 X   XXXCCCCB B B        LLLXXXCX
 X   C                          X
 X   @                          X
-X                              X
+X             F                X
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 `
     }

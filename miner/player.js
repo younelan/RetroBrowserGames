@@ -116,6 +116,39 @@ class Player {
                 this.velocityX = 0;
             }
         });
+
+        level.brickFloors.forEach(platform => {
+            if (this.checkCollision(platform)) {
+                if (this.velocityX > 0) { // Moving right, hit left side of platform
+                    this.x = platform.x - this.width;
+                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                    this.x = platform.x + platform.width;
+                }
+                this.velocityX = 0;
+            }
+        });
+
+        level.movingLeftFloors.forEach(platform => {
+            if (this.checkCollision(platform)) {
+                if (this.velocityX > 0) { // Moving right, hit left side of platform
+                    this.x = platform.x - this.width;
+                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                    this.x = platform.x + platform.width;
+                }
+                this.velocityX = 0;
+            }
+        });
+
+        level.movingRightFloors.forEach(platform => {
+            if (this.checkCollision(platform)) {
+                if (this.velocityX > 0) { // Moving right, hit left side of platform
+                    this.x = platform.x - this.width;
+                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                    this.x = platform.x + platform.width;
+                }
+                this.velocityX = 0;
+            }
+        });
     }
 
     handleVerticalCollisions(level, prevY) {

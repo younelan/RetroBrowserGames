@@ -26,16 +26,16 @@ class Level {
 
                 switch (char) {
                     case 'X':
-                        this.platforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        this.platforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
                     case '@':
                         this.playerStart = { x: worldX, y: worldY };
                         break;
                     case 'K':
-                        this.keys.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        this.keys.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
                     case 'P':
-                        this.portal = { x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2 };
+                        this.portal = { x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char };
                         break;
                     case 'E':
                         this.enemies.push(new Enemy(worldX, worldY - TILE_SIZE, 'H'));
@@ -47,19 +47,25 @@ class Level {
                         this.enemies.push(new Enemy(worldX, worldY - TILE_SIZE, 'C'));
                         break;
                     case 'C':
-                        this.crumblingPlatforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, decay: 0 });
+                        this.crumblingPlatforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, decay: 0, type: char });
                         break;
                     case 'H':
-                        this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'GENERIC' });
+                        break;
+                    case 'S':
+                        this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'SPIKES' });
+                        break;
+                    case 'F':
+                        this.hazards.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'FIRE' });
                         break;
                     case 'B':
-                        this.brickFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        this.brickFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
                     case 'L':
-                        this.movingLeftFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        this.movingLeftFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
                     case 'R':
-                        this.movingRightFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE });
+                        this.movingRightFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
                 }
             }
@@ -138,8 +144,39 @@ class Level {
 
         // Draw hazards
         this.hazards.forEach(h => {
-            context.fillStyle = 'orange';
-            context.fillRect(h.x, h.y, h.width, h.height);
+            const s = h.width / 16; // Scale factor
+            switch (h.type) {
+                case 'SPIKES':
+                    context.fillStyle = '#666'; // Grey spikes
+                    // Draw multiple triangles for spikes
+                    for (let i = 0; i < 4; i++) {
+                        context.beginPath();
+                        context.moveTo(h.x + i * (h.width / 4), h.y + h.height);
+                        context.lineTo(h.x + i * (h.width / 4) + (h.width / 8), h.y + h.height - h.height / 2);
+                        context.lineTo(h.x + (i + 1) * (h.width / 4), h.y + h.height);
+                        context.fill();
+                    }
+                    break;
+                case 'FIRE':
+                    // Animated fire (simple)
+                    const fireColor1 = 'orange';
+                    const fireColor2 = 'red';
+                    const fireColor3 = 'yellow';
+
+                    context.fillStyle = (Math.floor(frameCounter / 5) % 3 === 0) ? fireColor1 : (Math.floor(frameCounter / 5) % 3 === 1) ? fireColor2 : fireColor3;
+                    context.fillRect(h.x, h.y + h.height / 2, h.width, h.height / 2); // Base of fire
+                    context.beginPath();
+                    context.moveTo(h.x, h.y + h.height / 2);
+                    context.lineTo(h.x + h.width / 2, h.y);
+                    context.lineTo(h.x + h.width, h.y + h.height / 2);
+                    context.fill();
+                    break;
+                case 'GENERIC':
+                default:
+                    context.fillStyle = 'orange';
+                    context.fillRect(h.x, h.y, h.width, h.height);
+                    break;
+            }
         });
 
         // Draw crumbling platforms
