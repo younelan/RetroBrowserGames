@@ -29,14 +29,23 @@ const cancelRestartBtn = document.getElementById('cancel-restart-btn');
 // Game State
 let bird, obstacles, collectibles, score, level, lives, highScore, difficulty, gameLoop;
 let gameStarted = false, gameOver = false, isPaused = false, lastDifficulty = 'easy';
-let particles = [], lastTime = 0, timeScale = 1;
-const obstacleTypes = ['pipe', 'spinner', 'crusher', 'moving_platform'];
+let particles = [], lastTime = 0, timeScale = 1, scoreMultiplier = 1, multiplierTime = 0;
+const obstacleTypes = ['pipe', 'spinner', 'crusher', 'moving_platform', 'pendulum'];
 let lastObstacleType = '';
 
 const difficulties = {
-    easy: { speed: 150, gravity: 900, flap: 320, obstacleDist: 450, pipeGap: 280, spinnerSpeed: 1.5, crusherSpeed: 100, platformSpeed: 100, collectibleChance: 0.8 },
-    medium: { speed: 180, gravity: 950, flap: 350, obstacleDist: 400, pipeGap: 240, spinnerSpeed: 1.8, crusherSpeed: 130, platformSpeed: 130, collectibleChance: 0.6 },
-    hard: { speed: 210, gravity: 1000, flap: 380, obstacleDist: 350, pipeGap: 200, spinnerSpeed: 2.2, crusherSpeed: 160, platformSpeed: 160, collectibleChance: 0.4 }
+    easy: { speed: 150, gravity: 900, flap: 320, obstacleDist: 450, pipeGap: 280, spinnerSpeed: 1.5, crusherSpeed: 100, platformSpeed: 100, pendulumSpeed: 1.5, collectibleChance: 0.8 },
+    medium: { speed: 180, gravity: 950, flap: 350, obstacleDist: 400, pipeGap: 240, spinnerSpeed: 1.8, crusherSpeed: 130, platformSpeed: 130, pendulumSpeed: 1.8, collectibleChance: 0.6 },
+    hard: { speed: 210, gravity: 1000, flap: 380, obstacleDist: 350, pipeGap: 200, spinnerSpeed: 2.2, crusherSpeed: 160, platformSpeed: 160, pendulumSpeed: 2.2, collectibleChance: 0.4 }
+};
+
+// Sound Effects (place your audio files in the same directory as index.html)
+const sounds = {
+    flap: new Audio('./sounds/flap.wav'),
+    hit: new Audio('./sounds/hit.wav'),
+    collect: new Audio('./sounds/collect.wav'),
+    powerup: new Audio('./sounds/powerup.wav'),
+    gameOver: new Audio('./sounds/gameover.wav')
 };
 
 // --- ENTITIES ---
@@ -58,17 +67,46 @@ function Bird() {
             ctx.fillStyle = shieldGrad; ctx.beginPath(); ctx.arc(0, 0, this.radius * 1.5, 0, Math.PI * 2); ctx.fill();
         }
 
-        const grad = ctx.createRadialGradient(0, 0, this.radius / 2, 0, 0, this.radius);
-        grad.addColorStop(0, '#ffffb3'); grad.addColorStop(1, '#ffc400');
-        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#c69f00'; ctx.lineWidth = 3; ctx.stroke();
+        // Body
+        const bodyGrad = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.radius);
+        bodyGrad.addColorStop(0, '#ffffb3');
+        bodyGrad.addColorStop(1, '#ffc400');
+        ctx.fillStyle = bodyGrad;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#c69f00';
+        ctx.lineWidth = 3;
+        ctx.stroke();
 
-        ctx.beginPath(); ctx.arc(this.radius / 2, -this.radius / 2, this.radius / 3.5, 0, Math.PI * 2); ctx.fillStyle = 'white'; ctx.fill();
-        ctx.beginPath(); ctx.arc(this.radius / 2 + 2, -this.radius / 2, this.radius / 6, 0, Math.PI * 2); ctx.fillStyle = 'black'; ctx.fill();
+        // Eye
+        ctx.beginPath();
+        ctx.arc(this.radius / 2, -this.radius / 2, this.radius / 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'white';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.radius / 2 + 2, -this.radius / 2, this.radius / 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'black';
+        ctx.fill();
 
-        ctx.beginPath(); ctx.moveTo(-this.radius / 1.5, 0);
+        // Beak
+        ctx.beginPath();
+        ctx.moveTo(this.radius, 0);
+        ctx.lineTo(this.radius + 10, -5);
+        ctx.lineTo(this.radius + 10, 5);
+        ctx.closePath();
+        ctx.fillStyle = '#ffa500';
+        ctx.fill();
+        ctx.strokeStyle = '#cc8400';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Wing
+        ctx.beginPath();
+        ctx.moveTo(-this.radius / 1.5, 0);
         ctx.arc(-this.radius / 1.5, 0, this.radius, 0.3 - Math.sin(performance.now() * 0.005) * 0.3, Math.PI - 0.3 + Math.sin(performance.now() * 0.005) * 0.3, false);
-        ctx.fillStyle = '#ffde00'; ctx.fill();
+        ctx.fillStyle = '#ffde00';
+        ctx.fill();
 
         ctx.restore();
     }
@@ -87,6 +125,7 @@ function Bird() {
     this.flap = function() {
         this.velocity = -difficulty.flap;
         for (let i = 0; i < 5; i++) particles.push(new Particle(this.x, this.y, 'rgba(255, 255, 255, 0.7)', 2, 80));
+        if (sounds.flap) sounds.flap.play();
     }
 }
 
@@ -95,11 +134,31 @@ function Pipe() {
     this.topHeight = Math.random() * (VIRTUAL_HEIGHT - this.gap - (VIRTUAL_HEIGHT * 0.3)) + (VIRTUAL_HEIGHT * 0.15);
     this.bottomHeight = VIRTUAL_HEIGHT - this.topHeight - this.gap; this.passed = false;
     this.draw = function() { 
-        const grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-        grad.addColorStop(0, '#28a745'); grad.addColorStop(0.5, '#34c759'); grad.addColorStop(1, '#28a745');
-        ctx.fillStyle = grad; ctx.strokeStyle = '#1e7e34'; ctx.lineWidth = 4;
-        ctx.fillRect(this.x, 0, this.width, this.topHeight); ctx.strokeRect(this.x, 0, this.width, this.topHeight);
-        ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight); ctx.strokeRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight);
+        const pipeColor1 = '#28a745';
+        const pipeColor2 = '#34c759';
+        const pipeColor3 = '#1e7e34';
+
+        // Top Pipe
+        ctx.fillStyle = pipeColor2;
+        ctx.fillRect(this.x, 0, this.width, this.topHeight);
+        ctx.fillStyle = pipeColor1;
+        ctx.fillRect(this.x, 0, this.width * 0.1, this.topHeight);
+        ctx.fillRect(this.x + this.width * 0.9, 0, this.width * 0.1, this.topHeight);
+        ctx.fillStyle = pipeColor3;
+        ctx.fillRect(this.x, this.topHeight - 20, this.width, 20);
+
+        // Bottom Pipe
+        ctx.fillStyle = pipeColor2;
+        ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight);
+        ctx.fillStyle = pipeColor1;
+        ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width * 0.1, this.bottomHeight);
+        ctx.fillRect(this.x + this.width * 0.9, VIRTUAL_HEIGHT - this.bottomHeight, this.width * 0.1, this.bottomHeight);
+        ctx.fillStyle = pipeColor3;
+        ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, 20);
+
+        ctx.strokeStyle = '#1e7e34'; ctx.lineWidth = 4;
+        ctx.strokeRect(this.x, 0, this.width, this.topHeight);
+        ctx.strokeRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight);
     };
     this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; }
     this.collidesWith = (b) => !b.invincible && !b.shielded && b.x + b.radius > this.x && b.x - b.radius < this.x + this.width && (b.y - b.radius < this.topHeight || b.y + b.radius > VIRTUAL_HEIGHT - this.bottomHeight);
@@ -109,13 +168,22 @@ function Spinner() {
     this.type = 'spinner'; this.x = VIRTUAL_WIDTH; this.y = VIRTUAL_HEIGHT / 2; this.radius = VIRTUAL_WIDTH / 7;
     this.angle = 0; this.speed = difficulty.spinnerSpeed; this.gap = Math.PI / 2.5; this.passed = false;
     this.draw = function() {
-        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); ctx.strokeStyle = '#a52a2a'; ctx.lineWidth = 8;
+        ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle); 
+        ctx.strokeStyle = '#a52a2a'; ctx.lineWidth = 8;
+
         for (let i = 0; i < 3; i++) {
-            const grad = ctx.createLinearGradient(-this.radius, -this.radius, this.radius, this.radius);
+            const startAngle = i * 2 * Math.PI / 3 + this.gap / 2;
+            const endAngle = (i + 1) * 2 * Math.PI / 3 - this.gap / 2;
+
+            // Draw 3D effect
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, startAngle, endAngle);
+            ctx.arc(0, 0, this.radius * 0.8, endAngle, startAngle, true);
+            ctx.closePath();
+            const grad = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.radius);
             grad.addColorStop(0, '#e74c3c'); grad.addColorStop(1, '#c0392b');
-            ctx.fillStyle = grad; ctx.beginPath(); ctx.moveTo(0, 0);
-            ctx.arc(0, 0, this.radius, i * 2 * Math.PI / 3 + this.gap / 2, (i + 1) * 2 * Math.PI / 3 - this.gap / 2);
-            ctx.closePath(); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = grad; ctx.fill();
+            ctx.stroke();
         }
         ctx.restore();
     };
@@ -137,12 +205,34 @@ function Crusher() {
     this.type = 'crusher'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 8; this.minGap = 180; this.maxGap = 350;
     this.gap = this.maxGap; this.speed = difficulty.crusherSpeed; this.direction = -1; this.passed = false;
     this.draw = function() {
-        const grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-        grad.addColorStop(0, '#7f8c8d'); grad.addColorStop(0.5, '#95a5a6'); grad.addColorStop(1, '#7f8c8d');
-        ctx.fillStyle = grad; ctx.strokeStyle = '#566573'; ctx.lineWidth = 4;
-        const topY = (VIRTUAL_HEIGHT - this.gap) / 2; const bottomY = (VIRTUAL_HEIGHT + this.gap) / 2;
-        ctx.fillRect(this.x, 0, this.width, topY); ctx.strokeRect(this.x, 0, this.width, topY);
-        ctx.fillRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY); ctx.strokeRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
+        const crusherColor1 = '#7f8c8d';
+        const crusherColor2 = '#95a5a6';
+        const crusherColor3 = '#566573';
+
+        const topY = (VIRTUAL_HEIGHT - this.gap) / 2;
+        const bottomY = (VIRTUAL_HEIGHT + this.gap) / 2;
+
+        // Top Crusher
+        ctx.fillStyle = crusherColor2;
+        ctx.fillRect(this.x, 0, this.width, topY);
+        ctx.fillStyle = crusherColor1;
+        ctx.fillRect(this.x, 0, this.width * 0.1, topY);
+        ctx.fillRect(this.x + this.width * 0.9, 0, this.width * 0.1, topY);
+        ctx.fillStyle = crusherColor3;
+        ctx.fillRect(this.x, topY - 20, this.width, 20);
+
+        // Bottom Crusher
+        ctx.fillStyle = crusherColor2;
+        ctx.fillRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
+        ctx.fillStyle = crusherColor1;
+        ctx.fillRect(this.x, bottomY, this.width * 0.1, VIRTUAL_HEIGHT - bottomY);
+        ctx.fillRect(this.x + this.width * 0.9, bottomY, this.width * 0.1, VIRTUAL_HEIGHT - bottomY);
+        ctx.fillStyle = crusherColor3;
+        ctx.fillRect(this.x, bottomY, this.width, 20);
+
+        ctx.strokeStyle = '#566573'; ctx.lineWidth = 4;
+        ctx.strokeRect(this.x, 0, this.width, topY);
+        ctx.strokeRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
     };
     this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; this.gap += this.speed * this.direction * dt * timeScale; if (this.gap < this.minGap || this.gap > this.maxGap) this.direction *= -1; }
     this.collidesWith = (b) => !b.invincible && !b.shielded && b.x + b.radius > this.x && b.x - b.radius < this.x + this.width && (b.y - b.radius < (VIRTUAL_HEIGHT - this.gap) / 2 || b.y + b.radius > (VIRTUAL_HEIGHT + this.gap) / 2);
@@ -152,11 +242,31 @@ function MovingPlatform() {
     this.type = 'moving_platform'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 4; this.height = 20;
     this.gap = 220; this.y = VIRTUAL_HEIGHT / 2; this.speed = difficulty.platformSpeed; this.direction = 1; this.passed = false;
     this.draw = function() {
-        const grad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
-        grad.addColorStop(0, '#d35400'); grad.addColorStop(1, '#e67e22');
-        ctx.fillStyle = grad; ctx.strokeStyle = '#a04000'; ctx.lineWidth = 4;
-        ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height); ctx.strokeRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
-        ctx.fillRect(this.x, this.y + this.gap/2, this.width, this.height); ctx.strokeRect(this.x, this.y + this.gap/2, this.width, this.height);
+        const platformColor1 = '#d35400';
+        const platformColor2 = '#e67e22';
+        const platformColor3 = '#a04000';
+
+        // Top Platform
+        ctx.fillStyle = platformColor2;
+        ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
+        ctx.fillStyle = platformColor1;
+        ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width * 0.1, this.height);
+        ctx.fillRect(this.x + this.width * 0.9, this.y - this.gap/2 - this.height, this.width * 0.1, this.height);
+        ctx.fillStyle = platformColor3;
+        ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, 5);
+
+        // Bottom Platform
+        ctx.fillStyle = platformColor2;
+        ctx.fillRect(this.x, this.y + this.gap/2, this.width, this.height);
+        ctx.fillStyle = platformColor1;
+        ctx.fillRect(this.x, this.y + this.gap/2, this.width * 0.1, this.height);
+        ctx.fillRect(this.x + this.width * 0.9, this.y + this.gap/2, this.width * 0.1, this.height);
+        ctx.fillStyle = platformColor3;
+        ctx.fillRect(this.x, this.y + this.gap/2 + this.height - 5, this.width, 5);
+
+        ctx.strokeStyle = '#a04000'; ctx.lineWidth = 4;
+        ctx.strokeRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
+        ctx.strokeRect(this.x, this.y + this.gap/2, this.width, this.height);
     };
     this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; this.y += this.speed * this.direction * dt * timeScale; if (this.y < this.gap / 2 + this.height || this.y > VIRTUAL_HEIGHT - this.gap/2 - this.height) this.direction *= -1; }
     this.collidesWith = (b) => {
@@ -174,6 +284,93 @@ function MovingPlatform() {
     };
 }
 
+function SwingingPendulum() {
+    this.type = 'pendulum';
+    this.x = VIRTUAL_WIDTH + 100; // Start off-screen
+    this.y = VIRTUAL_HEIGHT * 0.2; // Pivot point
+    this.length = VIRTUAL_HEIGHT * 0.4; // Length of the pendulum arm
+    this.radius = VIRTUAL_WIDTH / 15; // Radius of the swinging ball
+    this.angle = Math.PI / 4; // Initial angle
+    this.angularVelocity = 0; // Initial angular velocity
+    this.angularAcceleration = 0;
+    this.maxAngle = Math.PI / 3; // Max swing angle
+    this.speed = difficulty.pendulumSpeed; // Controls swing speed
+    this.passed = false;
+
+    this.draw = function() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        // Draw pivot
+        ctx.fillStyle = '#555';
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw arm
+        ctx.strokeStyle = '#777';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(this.length * Math.sin(this.angle), this.length * Math.cos(this.angle));
+        ctx.stroke();
+
+        // Draw ball
+        const ballX = this.length * Math.sin(this.angle);
+        const ballY = this.length * Math.cos(this.angle);
+        const grad = ctx.createRadialGradient(ballX, ballY, this.radius * 0.5, ballX, ballY, this.radius);
+        grad.addColorStop(0, '#3498db');
+        grad.addColorStop(1, '#2980b9');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(ballX, ballY, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#21618C';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        // Add shadow for 3D effect
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 10;
+        ctx.shadowOffsetX = 5;
+        ctx.shadowOffsetY = 5;
+
+        ctx.restore();
+        ctx.shadowColor = 'transparent'; // Reset shadow
+    };
+
+    this.update = function(dt) {
+        this.x -= difficulty.speed * dt * timeScale;
+
+        // Pendulum physics (simplified)
+        this.angularAcceleration = (-this.speed / this.length) * Math.sin(this.angle);
+        this.angularVelocity += this.angularAcceleration * dt * timeScale;
+        this.angle += this.angularVelocity * dt * timeScale;
+
+        // Dampening (optional, to prevent infinite swing)
+        this.angularVelocity *= 0.99;
+
+        // Keep within max angle
+        if (this.angle > this.maxAngle) {
+            this.angle = this.maxAngle;
+            this.angularVelocity *= -1; // Reverse direction
+        } else if (this.angle < -this.maxAngle) {
+            this.angle = -this.maxAngle;
+            this.angularVelocity *= -1; // Reverse direction
+        }
+    };
+
+    this.collidesWith = function(b) {
+        if (b.invincible || b.shielded) return false;
+
+        const ballX = this.x + this.length * Math.sin(this.angle);
+        const ballY = this.y + this.length * Math.cos(this.angle);
+
+        const dist = Math.hypot(b.x - ballX, b.y - ballY);
+        return dist < b.radius + this.radius;
+    };
+}
+
 function Collectible(x, y, type) {
     this.x = x; this.y = y; this.type = type; this.radius = VIRTUAL_WIDTH / 38;
     this.angle = 0; this.value = type === 'gem' ? 10 : 0; this.pulse = 0; this.pulseSpeed = 3;
@@ -185,6 +382,7 @@ function Collectible(x, y, type) {
         if (this.type === 'shield') { grad.addColorStop(0, '#8e44ad'); grad.addColorStop(1, '#9b59b6'); emoji = '🛡️'; } 
         else if (this.type === 'slowmo') { grad.addColorStop(0, '#f1c40f'); grad.addColorStop(1, '#f39c12'); emoji = '🕒'; } 
         else if (this.type === 'shrink') { grad.addColorStop(0, '#2ecc71'); grad.addColorStop(1, '#27ae60'); emoji = '🪶'; } 
+        else if (this.type === 'multiplier') { grad.addColorStop(0, '#ff6b6b'); grad.addColorStop(1, '#ee5253'); emoji = '✖️'; } 
         else { grad.addColorStop(0, '#a9fffd'); grad.addColorStop(1, '#00c2ff'); emoji = '💎'; }
         
         // Draw background circle for emoji
@@ -218,6 +416,7 @@ function addObstacle() {
     else if (type === 'spinner') obs = new Spinner();
     else if (type === 'crusher') obs = new Crusher();
     else if (type === 'moving_platform') obs = new MovingPlatform();
+    else if (type === 'pendulum') obs = new SwingingPendulum();
     obstacles.push(obs);
     addCollectible(obs);
 }
@@ -231,6 +430,7 @@ function addCollectible(obs) {
         if (rand < 0.15) type = 'shield';
         else if (rand < 0.3) type = 'slowmo';
         else if (rand < 0.45) type = 'shrink';
+        else if (rand < 0.6) type = 'multiplier';
         else type = 'gem';
         collectibles.push(new Collectible(x, y, type));
     }
@@ -240,7 +440,7 @@ function startGame(diff) {
     lastDifficulty = diff;
     difficulty = { ...difficulties[diff] };
     startScreen.style.display = 'none'; gameOverScreen.style.display = 'none';
-    gameStarted = true; gameOver = false; isPaused = false; timeScale = 1;
+    gameStarted = true; gameOver = false; isPaused = false; timeScale = 1; scoreMultiplier = 1; multiplierTime = 0;
     score = 0; level = 1; lives = 3;
     bird = new Bird(); obstacles = []; collectibles = []; particles = [];
     addObstacle();
@@ -252,6 +452,7 @@ function startGame(diff) {
 function handleCollision() {
     if (bird.invincible) return;
     lives--;
+    if (sounds.hit) sounds.hit.play();
     if (lives <= 0) {
         endGame();
     } else {
@@ -264,6 +465,7 @@ function endGame() {
     if(gameOver) return;
     cancelAnimationFrame(gameLoop);
     gameOver = true; gameStarted = false;
+    if (sounds.gameOver) sounds.gameOver.play();
     saveHighScore(); loadHighScore();
     gameOverScreen.style.display = 'flex';
     scoreEl.textContent = score;
@@ -304,11 +506,17 @@ function update(currentTime) {
     bird.update(scaledDt); bird.draw();
     drawUi(); // Draw UI after bird to ensure it's on top
 
+    // Update multiplier time
+    if (multiplierTime > 0) {
+        multiplierTime -= dt;
+        if (multiplierTime <= 0) scoreMultiplier = 1;
+    }
+
     for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i];
         if (obs.collidesWith(bird)) handleCollision();
         if (obs.x + (obs.width || obs.radius || 0) < bird.x && !obs.passed) {
-            obs.passed = true; score++;
+            obs.passed = true; score += (1 * scoreMultiplier);
             if (score > 0 && score % 5 === 0) { level++; difficulty.speed += 10; }
         }
         if (obs.x + (obs.width || obs.radius || 0) < -50) obstacles.splice(i, 1);
@@ -321,9 +529,11 @@ function update(currentTime) {
     for (let i = collectibles.length - 1; i >= 0; i--) {
         const c = collectibles[i];
         if (Math.hypot(bird.x - c.x, bird.y - c.y) < bird.radius + c.radius) {
-            if (c.type === 'shield') { bird.shielded = true; bird.shieldTime = 5; }
-            else if (c.type === 'slowmo') { timeScale = 0.5; setTimeout(() => timeScale = 1, 3000); }
-            else if (c.type === 'shrink') { bird.isShrunk = true; bird.radius = bird.baseRadius / 2; bird.shrinkTime = 5; }
+            if (sounds.collect) sounds.collect.play();
+            if (c.type === 'shield') { bird.shielded = true; bird.shieldTime = 5; if (sounds.powerup) sounds.powerup.play(); }
+            else if (c.type === 'slowmo') { timeScale = 0.5; setTimeout(() => timeScale = 1, 3000); if (sounds.powerup) sounds.powerup.play(); }
+            else if (c.type === 'shrink') { bird.isShrunk = true; bird.radius = bird.baseRadius / 2; bird.shrinkTime = 5; if (sounds.powerup) sounds.powerup.play(); }
+            else if (c.type === 'multiplier') { scoreMultiplier = 2; multiplierTime = 5; if (sounds.powerup) sounds.powerup.play(); }
             else { score += c.value; }
             for (let j = 0; j < 15; j++) particles.push(new Particle(c.x, c.y, '#fff', 3, 100));
             collectibles.splice(i, 1);
@@ -340,16 +550,53 @@ function update(currentTime) {
 
 // --- HELPERS & UI ---
 function drawBackground() {
+    // Deep Space Background
     const bgGrad = ctx.createLinearGradient(0, 0, 0, VIRTUAL_HEIGHT);
-    bgGrad.addColorStop(0, '#1c2a3e'); bgGrad.addColorStop(1, '#3a506b');
+    bgGrad.addColorStop(0, '#0a0a1a'); // Darker top
+    bgGrad.addColorStop(0.5, '#1a1a3a'); // Mid-range blue-purple
+    bgGrad.addColorStop(1, '#2a2a4a'); // Lighter bottom
     ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT);
 
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-    for(let i=0; i<100; i++) {
-        const x = (Math.sin(i * 1234) * VIRTUAL_WIDTH * 1.5 + performance.now() * 0.01 * (i%5+1)) % VIRTUAL_WIDTH;
-        const y = (Math.cos(i * 5678) * VIRTUAL_HEIGHT * 1.5 + performance.now() * 0.01 * (i%5+1)) % VIRTUAL_HEIGHT;
-        const size = Math.random() * 2;
+    // Distant Stars (smaller, slower)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+    for(let i=0; i<150; i++) {
+        const x = (Math.sin(i * 1234) * VIRTUAL_WIDTH * 2 + performance.now() * 0.005 * (i%5+1)) % VIRTUAL_WIDTH;
+        const y = (Math.cos(i * 5678) * VIRTUAL_HEIGHT * 2 + performance.now() * 0.005 * (i%5+1)) % VIRTUAL_HEIGHT;
+        const size = Math.random() * 1.5;
         ctx.fillRect(x, y, size, size);
+    }
+
+    // Closer Stars (larger, faster)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    for(let i=0; i<50; i++) {
+        const x = (Math.sin(i * 9876) * VIRTUAL_WIDTH * 1.5 + performance.now() * 0.01 * (i%5+1)) % VIRTUAL_WIDTH;
+        const y = (Math.cos(i * 5432) * VIRTUAL_HEIGHT * 1.5 + performance.now() * 0.01 * (i%5+1)) % VIRTUAL_HEIGHT;
+        const size = Math.random() * 2.5;
+        ctx.fillRect(x, y, size, size);
+    }
+
+    // Nebulae/Gas Clouds (subtle, large, slow parallax)
+    drawNebula('rgba(100, 100, 200, 0.1)', 0.02, 1);
+    drawNebula('rgba(200, 100, 100, 0.08)', 0.03, 2);
+
+    // Distant Planets/Moons (static, but adds depth)
+    ctx.fillStyle = '#555';
+    ctx.beginPath();
+    ctx.arc(VIRTUAL_WIDTH * 0.8, VIRTUAL_HEIGHT * 0.2, VIRTUAL_WIDTH * 0.08, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#777';
+    ctx.beginPath();
+    ctx.arc(VIRTUAL_WIDTH * 0.15, VIRTUAL_HEIGHT * 0.1, VIRTUAL_WIDTH * 0.05, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawNebula(color, speed, seed) {
+    ctx.fillStyle = color;
+    const offset = (performance.now() * speed) % VIRTUAL_WIDTH;
+    for (let i = 0; i < 3; i++) {
+        ctx.beginPath();
+        ctx.arc((i * VIRTUAL_WIDTH / 2 + offset + seed * 100) % VIRTUAL_WIDTH, VIRTUAL_HEIGHT * 0.3 + Math.sin(i * 0.5 + seed) * 50, VIRTUAL_WIDTH * 0.3, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
@@ -359,6 +606,13 @@ function drawGround() {
     grad.addColorStop(0, '#2c3e50'); grad.addColorStop(1, '#1a2531');
     ctx.fillStyle = grad;
     ctx.fillRect(0, VIRTUAL_HEIGHT - groundHeight, VIRTUAL_WIDTH, groundHeight);
+
+    // Add some subtle ground details
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    const groundDetailOffset = (performance.now() * 0.05) % 40;
+    for (let i = -groundDetailOffset; i < VIRTUAL_WIDTH; i += 40) {
+        ctx.fillRect(i, VIRTUAL_HEIGHT - groundHeight + 5, 20, 5);
+    }
 }
 
 function drawUi() {
@@ -374,7 +628,9 @@ function drawUi() {
 
     // Score (center)
     ctx.textAlign = "center";
-    ctx.fillText(`💰 ${score}`, VIRTUAL_WIDTH / 2, 20);
+    let scoreText = `💰 ${score}`;
+    if (scoreMultiplier > 1) scoreText += ` x${scoreMultiplier}`;
+    ctx.fillText(scoreText, VIRTUAL_WIDTH / 2, 20);
 
     // Level (right)
     ctx.textAlign = "right";
