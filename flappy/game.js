@@ -134,29 +134,50 @@ function Pipe() {
     this.topHeight = Math.random() * (VIRTUAL_HEIGHT - this.gap - (VIRTUAL_HEIGHT * 0.3)) + (VIRTUAL_HEIGHT * 0.15);
     this.bottomHeight = VIRTUAL_HEIGHT - this.topHeight - this.gap; this.passed = false;
     this.draw = function() { 
-        const pipeColor1 = '#28a745';
-        const pipeColor2 = '#34c759';
-        const pipeColor3 = '#1e7e34';
+        const pipeColorDark = '#1a6a2a';
+        const pipeColorMid = '#28a745';
+        const pipeColorLight = '#34c759';
+        const pipeColorHighlight = '#5cb85c';
 
-        // Top Pipe
-        ctx.fillStyle = pipeColor2;
+        // Top Pipe Body
+        ctx.fillStyle = pipeColorMid;
         ctx.fillRect(this.x, 0, this.width, this.topHeight);
-        ctx.fillStyle = pipeColor1;
-        ctx.fillRect(this.x, 0, this.width * 0.1, this.topHeight);
-        ctx.fillRect(this.x + this.width * 0.9, 0, this.width * 0.1, this.topHeight);
-        ctx.fillStyle = pipeColor3;
-        ctx.fillRect(this.x, this.topHeight - 20, this.width, 20);
 
-        // Bottom Pipe
-        ctx.fillStyle = pipeColor2;
+        // Top Pipe Shading/Highlights
+        ctx.fillStyle = pipeColorDark;
+        ctx.fillRect(this.x, 0, this.width * 0.1, this.topHeight); // Left shadow
+        ctx.fillRect(this.x + this.width * 0.9, 0, this.width * 0.1, this.topHeight); // Right shadow
+        ctx.fillStyle = pipeColorHighlight;
+        ctx.fillRect(this.x + this.width * 0.1, 0, this.width * 0.05, this.topHeight); // Left highlight
+
+        // Top Pipe Cap
+        ctx.fillStyle = pipeColorDark;
+        ctx.fillRect(this.x - 10, this.topHeight - 30, this.width + 20, 30); // Cap base
+        ctx.fillStyle = pipeColorMid;
+        ctx.fillRect(this.x - 5, this.topHeight - 25, this.width + 10, 25); // Cap top
+        ctx.fillStyle = pipeColorHighlight;
+        ctx.fillRect(this.x - 5, this.topHeight - 25, this.width + 10, 5); // Cap highlight
+
+        // Bottom Pipe Body
+        ctx.fillStyle = pipeColorMid;
         ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight);
-        ctx.fillStyle = pipeColor1;
+
+        // Bottom Pipe Shading/Highlights
+        ctx.fillStyle = pipeColorDark;
         ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width * 0.1, this.bottomHeight);
         ctx.fillRect(this.x + this.width * 0.9, VIRTUAL_HEIGHT - this.bottomHeight, this.width * 0.1, this.bottomHeight);
-        ctx.fillStyle = pipeColor3;
-        ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, 20);
+        ctx.fillStyle = pipeColorHighlight;
+        ctx.fillRect(this.x + this.width * 0.1, VIRTUAL_HEIGHT - this.bottomHeight, this.width * 0.05, this.bottomHeight);
 
-        ctx.strokeStyle = '#1e7e34'; ctx.lineWidth = 4;
+        // Bottom Pipe Cap
+        ctx.fillStyle = pipeColorDark;
+        ctx.fillRect(this.x - 10, VIRTUAL_HEIGHT - this.bottomHeight, this.width + 20, 30); // Cap base
+        ctx.fillStyle = pipeColorMid;
+        ctx.fillRect(this.x - 5, VIRTUAL_HEIGHT - this.bottomHeight + 5, this.width + 10, 25); // Cap top
+        ctx.fillStyle = pipeColorHighlight;
+        ctx.fillRect(this.x - 5, VIRTUAL_HEIGHT - this.bottomHeight + 25, this.width + 10, 5); // Cap highlight
+
+        ctx.strokeStyle = pipeColorDark; ctx.lineWidth = 4;
         ctx.strokeRect(this.x, 0, this.width, this.topHeight);
         ctx.strokeRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight);
     };
@@ -175,16 +196,34 @@ function Spinner() {
             const startAngle = i * 2 * Math.PI / 3 + this.gap / 2;
             const endAngle = (i + 1) * 2 * Math.PI / 3 - this.gap / 2;
 
-            // Draw 3D effect
+            // Main body
+            const grad = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.radius);
+            grad.addColorStop(0, '#e74c3c'); grad.addColorStop(1, '#c0392b');
+            ctx.fillStyle = grad;
             ctx.beginPath();
             ctx.arc(0, 0, this.radius, startAngle, endAngle);
             ctx.arc(0, 0, this.radius * 0.8, endAngle, startAngle, true);
             ctx.closePath();
-            const grad = ctx.createRadialGradient(0, 0, this.radius * 0.5, 0, 0, this.radius);
-            grad.addColorStop(0, '#e74c3c'); grad.addColorStop(1, '#c0392b');
-            ctx.fillStyle = grad; ctx.fill();
+            ctx.fill();
+            ctx.stroke();
+
+            // Inner highlight
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius * 0.75, startAngle, endAngle);
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 2;
             ctx.stroke();
         }
+
+        // Center pivot
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius * 0.2, 0, Math.PI * 2);
+        ctx.fillStyle = '#7f8c8d';
+        ctx.fill();
+        ctx.strokeStyle = '#566573';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
         ctx.restore();
     };
     this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; this.angle += this.speed * dt * timeScale; }
@@ -205,32 +244,53 @@ function Crusher() {
     this.type = 'crusher'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 8; this.minGap = 180; this.maxGap = 350;
     this.gap = this.maxGap; this.speed = difficulty.crusherSpeed; this.direction = -1; this.passed = false;
     this.draw = function() {
-        const crusherColor1 = '#7f8c8d';
-        const crusherColor2 = '#95a5a6';
-        const crusherColor3 = '#566573';
+        const crusherColorDark = '#566573';
+        const crusherColorMid = '#7f8c8d';
+        const crusherColorLight = '#95a5a6';
+        const crusherColorHighlight = '#bdc3c7';
 
         const topY = (VIRTUAL_HEIGHT - this.gap) / 2;
         const bottomY = (VIRTUAL_HEIGHT + this.gap) / 2;
 
-        // Top Crusher
-        ctx.fillStyle = crusherColor2;
+        // Top Crusher Body
+        ctx.fillStyle = crusherColorMid;
         ctx.fillRect(this.x, 0, this.width, topY);
-        ctx.fillStyle = crusherColor1;
-        ctx.fillRect(this.x, 0, this.width * 0.1, topY);
-        ctx.fillRect(this.x + this.width * 0.9, 0, this.width * 0.1, topY);
-        ctx.fillStyle = crusherColor3;
-        ctx.fillRect(this.x, topY - 20, this.width, 20);
 
-        // Bottom Crusher
-        ctx.fillStyle = crusherColor2;
+        // Top Crusher Shading/Highlights
+        ctx.fillStyle = crusherColorDark;
+        ctx.fillRect(this.x, 0, this.width * 0.1, topY); // Left shadow
+        ctx.fillRect(this.x + this.width * 0.9, 0, this.width * 0.1, topY); // Right shadow
+        ctx.fillStyle = crusherColorHighlight;
+        ctx.fillRect(this.x + this.width * 0.1, 0, this.width * 0.05, topY); // Left highlight
+
+        // Top Crusher Cap
+        ctx.fillStyle = crusherColorDark;
+        ctx.fillRect(this.x - 10, topY - 30, this.width + 20, 30); // Cap base
+        ctx.fillStyle = crusherColorMid;
+        ctx.fillRect(this.x - 5, topY - 25, this.width + 10, 25); // Cap top
+        ctx.fillStyle = crusherColorHighlight;
+        ctx.fillRect(this.x - 5, topY - 25, this.width + 10, 5); // Cap highlight
+
+        // Bottom Crusher Body
+        ctx.fillStyle = crusherColorMid;
         ctx.fillRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
-        ctx.fillStyle = crusherColor1;
+
+        // Bottom Crusher Shading/Highlights
+        ctx.fillStyle = crusherColorDark;
         ctx.fillRect(this.x, bottomY, this.width * 0.1, VIRTUAL_HEIGHT - bottomY);
         ctx.fillRect(this.x + this.width * 0.9, bottomY, this.width * 0.1, VIRTUAL_HEIGHT - bottomY);
-        ctx.fillStyle = crusherColor3;
-        ctx.fillRect(this.x, bottomY, this.width, 20);
+        ctx.fillStyle = crusherColorHighlight;
+        ctx.fillRect(this.x + this.width * 0.1, bottomY, this.width * 0.05, VIRTUAL_HEIGHT - bottomY);
 
-        ctx.strokeStyle = '#566573'; ctx.lineWidth = 4;
+        // Bottom Crusher Cap
+        ctx.fillStyle = crusherColorDark;
+        ctx.fillRect(this.x - 10, bottomY, this.width + 20, 30); // Cap base
+        ctx.fillStyle = crusherColorMid;
+        ctx.fillRect(this.x - 5, bottomY + 5, this.width + 10, 25); // Cap top
+        ctx.fillStyle = crusherColorHighlight;
+        ctx.fillRect(this.x - 5, bottomY + 25, this.width + 10, 5); // Cap highlight
+
+        ctx.strokeStyle = crusherColorDark; ctx.lineWidth = 4;
         ctx.strokeRect(this.x, 0, this.width, topY);
         ctx.strokeRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
     };
@@ -242,29 +302,34 @@ function MovingPlatform() {
     this.type = 'moving_platform'; this.x = VIRTUAL_WIDTH; this.width = VIRTUAL_WIDTH / 4; this.height = 20;
     this.gap = 220; this.y = VIRTUAL_HEIGHT / 2; this.speed = difficulty.platformSpeed; this.direction = 1; this.passed = false;
     this.draw = function() {
-        const platformColor1 = '#d35400';
-        const platformColor2 = '#e67e22';
-        const platformColor3 = '#a04000';
+        const platformColorDark = '#a04000';
+        const platformColorMid = '#d35400';
+        const platformColorLight = '#e67e22';
+        const platformColorHighlight = '#f39c12';
 
-        // Top Platform
-        ctx.fillStyle = platformColor2;
+        // Top Platform Body
+        ctx.fillStyle = platformColorMid;
         ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
-        ctx.fillStyle = platformColor1;
+
+        // Top Platform Shading/Highlights
+        ctx.fillStyle = platformColorDark;
         ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width * 0.1, this.height);
         ctx.fillRect(this.x + this.width * 0.9, this.y - this.gap/2 - this.height, this.width * 0.1, this.height);
-        ctx.fillStyle = platformColor3;
+        ctx.fillStyle = platformColorHighlight;
         ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, 5);
 
-        // Bottom Platform
-        ctx.fillStyle = platformColor2;
+        // Bottom Platform Body
+        ctx.fillStyle = platformColorMid;
         ctx.fillRect(this.x, this.y + this.gap/2, this.width, this.height);
-        ctx.fillStyle = platformColor1;
+
+        // Bottom Platform Shading/Highlights
+        ctx.fillStyle = platformColorDark;
         ctx.fillRect(this.x, this.y + this.gap/2, this.width * 0.1, this.height);
         ctx.fillRect(this.x + this.width * 0.9, this.y + this.gap/2, this.width * 0.1, this.height);
-        ctx.fillStyle = platformColor3;
+        ctx.fillStyle = platformColorHighlight;
         ctx.fillRect(this.x, this.y + this.gap/2 + this.height - 5, this.width, 5);
 
-        ctx.strokeStyle = '#a04000'; ctx.lineWidth = 4;
+        ctx.strokeStyle = platformColorDark; ctx.lineWidth = 4;
         ctx.strokeRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
         ctx.strokeRect(this.x, this.y + this.gap/2, this.width, this.height);
     };
@@ -385,13 +450,16 @@ function Collectible(x, y, type) {
         else if (this.type === 'multiplier') { grad.addColorStop(0, '#ff6b6b'); grad.addColorStop(1, '#ee5253'); emoji = '✖️'; } 
         else { grad.addColorStop(0, '#a9fffd'); grad.addColorStop(1, '#00c2ff'); emoji = '💎'; }
         
-        // Draw background circle for emoji
+        // Draw background circle with inner glow
+        ctx.shadowColor = grad.addColorStop(0.5, '#ffffff'); // Inner glow
+        ctx.shadowBlur = 15;
         ctx.fillStyle = grad; 
         ctx.beginPath(); 
         ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2); 
         ctx.fill();
-
         ctx.shadowBlur = 0; // Disable shadow for text
+
+        // Draw emoji
         ctx.font = `${this.radius * 1.2}px sans-serif`; // Make emoji larger
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(emoji, 0, 0);
         ctx.restore();
