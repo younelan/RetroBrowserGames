@@ -11,7 +11,6 @@ class Player {
         this.frameCounter = 0;   // To control animation speed
         this.direction = 1;      // 1 for right, -1 for left
         this.onGround = false; // Track if player is on ground
-        this.onMovingFloor = null; // Track if player is on a moving floor ('L' or 'R')
         this.playerState = 'ALIVE'; // 'ALIVE', 'DYING'
         this.deathAnimationTimer = 0;
         this.fallDistance = 0; // Track vertical distance fallen
@@ -60,13 +59,6 @@ class Player {
         // Update X position and handle horizontal collisions
         this.x += this.velocityX;
         this.handleHorizontalCollisions(level, prevX);
-
-        // Apply movement from moving floors
-        if (this.onMovingFloor === 'L') {
-            this.x -= 1;
-        } else if (this.onMovingFloor === 'R') {
-            this.x += 1;
-        }
 
         // Update Y position and handle vertical collisions
         this.y += this.velocityY;
@@ -153,7 +145,10 @@ class Player {
 
         // Handle moving left floors
         level.movingLeftFloors.forEach(platform => {
-            if (this.velocityY > 0 && this.checkCollision(platform)) {
+            // Check if player's feet are on the platform and there's horizontal overlap
+            if (this.velocityY > 0 && 
+                this.y + this.height >= platform.y && this.y + this.height <= platform.y + platform.height &&
+                this.x < platform.x + platform.width && this.x + this.width > platform.x) {
                 this.y = platform.y - this.height;
                 this.velocityY = 0;
                 this.isJumping = false;
@@ -164,7 +159,10 @@ class Player {
 
         // Handle moving right floors
         level.movingRightFloors.forEach(platform => {
-            if (this.velocityY > 0 && this.checkCollision(platform)) {
+            // Check if player's feet are on the platform and there's horizontal overlap
+            if (this.velocityY > 0 && 
+                this.y + this.height >= platform.y && this.y + this.height <= platform.y + platform.height &&
+                this.x < platform.x + platform.width && this.x + this.width > platform.x) {
                 this.y = platform.y - this.height;
                 this.velocityY = 0;
                 this.isJumping = false;
@@ -187,20 +185,6 @@ class Player {
         });
 
         this.onGround = onGroundThisFrame;
-        this.onMovingFloor = null;
-
-        if (onGroundThisFrame) {
-            level.movingLeftFloors.forEach(platform => {
-                if (this.checkCollision(platform)) {
-                    this.onMovingFloor = 'L';
-                }
-            });
-            level.movingRightFloors.forEach(platform => {
-                if (this.checkCollision(platform)) {
-                    this.onMovingFloor = 'R';
-                }
-            });
-        }
 
         // Update crumbling platforms decay
         level.crumblingPlatforms = level.crumblingPlatforms.filter(p => {

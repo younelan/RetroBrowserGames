@@ -144,8 +144,17 @@ class Level {
 
         // Draw crumbling platforms
         this.crumblingPlatforms.forEach(p => {
-            context.fillStyle = 'brown'; // Or some other distinct color
-            context.fillRect(p.x, p.y, p.width, p.height);
+            const decayProgress = p.decay / 30; // Normalize decay to 0-1
+            const currentHeight = p.height * (1 - decayProgress);
+            const currentY = p.y + (p.height - currentHeight);
+
+            // Change color as it decays
+            const r = Math.floor(139 + (255 - 139) * decayProgress); // From brown to lighter
+            const g = Math.floor(69 + (255 - 69) * decayProgress);
+            const b = Math.floor(19 + (255 - 19) * decayProgress);
+            context.fillStyle = `rgb(${r},${g},${b})`;
+
+            context.fillRect(p.x, currentY, p.width, currentHeight);
         });
 
         // Draw brick floors
@@ -164,36 +173,54 @@ class Level {
 
         // Draw moving left floors
         this.movingLeftFloors.forEach(l => {
-            context.fillStyle = '#00FF00'; // Green
-            context.fillRect(l.x, l.y, l.width, l.height);
-            // Add left arrow animation
-            const arrowWidth = l.width / 3;
-            const arrowHeight = l.height / 3;
-            const arrowX = l.x + l.width / 2 - arrowWidth / 2;
-            const arrowY = l.y + l.height / 2 - arrowHeight / 2;
-            context.fillStyle = 'black';
+            context.save();
             context.beginPath();
-            context.moveTo(arrowX + arrowWidth, arrowY);
-            context.lineTo(arrowX, arrowY + arrowHeight / 2);
-            context.lineTo(arrowX + arrowWidth, arrowY + arrowHeight);
-            context.fill();
+            context.rect(l.x, l.y, l.width, l.height);
+            context.clip();
+
+            context.fillStyle = '#00FF00'; // Green base
+            context.fillRect(l.x, l.y, l.width, l.height);
+
+            // Draw scrolling pattern (e.g., arrows or lines)
+            context.fillStyle = '#00AA00'; // Darker green for pattern
+            const patternWidth = 16; // Width of each pattern segment
+            const scrollOffset = (frameCounter * -0.5) % patternWidth; // Slower speed and wrap-around
+
+            for (let x = -patternWidth + scrollOffset; x < l.width; x += patternWidth) {
+                // Draw a simple arrow pointing left
+                context.beginPath();
+                context.moveTo(l.x + x + patternWidth - 4, l.y + l.height / 2 - 4);
+                context.lineTo(l.x + x + 4, l.y + l.height / 2);
+                context.lineTo(l.x + x + patternWidth - 4, l.y + l.height / 2 + 4);
+                context.fill();
+            }
+            context.restore();
         });
 
         // Draw moving right floors
         this.movingRightFloors.forEach(r => {
-            context.fillStyle = '#0000FF'; // Blue
-            context.fillRect(r.x, r.y, r.width, r.height);
-            // Add right arrow animation
-            const arrowWidth = r.width / 3;
-            const arrowHeight = r.height / 3;
-            const arrowX = r.x + r.width / 2 - arrowWidth / 2;
-            const arrowY = r.y + r.height / 2 - arrowHeight / 2;
-            context.fillStyle = 'black';
+            context.save();
             context.beginPath();
-            context.moveTo(arrowX, arrowY);
-            context.lineTo(arrowX + arrowWidth, arrowY + arrowHeight / 2);
-            context.lineTo(arrowX, arrowY + arrowHeight);
-            context.fill();
+            context.rect(r.x, r.y, r.width, r.height);
+            context.clip();
+
+            context.fillStyle = '#0000FF'; // Blue base
+            context.fillRect(r.x, r.y, r.width, r.height);
+
+            // Draw scrolling pattern (e.g., arrows or lines)
+            context.fillStyle = '#0000AA'; // Darker blue for pattern
+            const patternWidth = 16; // Width of each pattern segment
+            const scrollOffset = (frameCounter * 0.5) % patternWidth; // Slower speed and wrap-around (opposite direction)
+
+            for (let x = -patternWidth + scrollOffset; x < r.width; x += patternWidth) {
+                // Draw a simple arrow pointing right
+                context.beginPath();
+                context.moveTo(r.x + x + 4, r.y + r.height / 2 - 4);
+                context.lineTo(r.x + x + patternWidth - 4, r.y + r.height / 2);
+                context.lineTo(r.x + x + 4, r.y + r.height / 2 + 4);
+                context.fill();
+            }
+            context.restore();
         });
 
         // Draw enemies
