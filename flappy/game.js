@@ -8,11 +8,8 @@ const VIRTUAL_HEIGHT = 800;
 // UI Elements
 const startScreen = document.getElementById('start-screen');
 const gameOverScreen = document.getElementById('game-over-screen');
-const gameUi = document.getElementById('game-ui');
 const scoreEl = document.getElementById('score');
 const levelEl = document.getElementById('level');
-const gameScoreEl = document.getElementById('game-score');
-const gameLevelEl = document.getElementById('game-level');
 const highScoreStartEl = document.getElementById('high-score-start');
 const highScoreEndEl = document.getElementById('high-score-end');
 
@@ -23,34 +20,26 @@ const hardBtn = document.getElementById('hard');
 const restartBtn = document.getElementById('restart');
 
 // Game State
-let bird, obstacles, collectibles, score, level, difficulty, gameLoop, highScore;
-let gameStarted = false, gameOver = false, frameCount = 0, lastDifficulty = 'easy';
-let particles = [], lastTime = 0;
+let bird, obstacles, collectibles, score, level, lives, highScore, difficulty, gameLoop;
+let gameStarted = false, gameOver = false, lastDifficulty = 'easy';
+let particles = [], lastTime = 0, timeScale = 1;
 const obstacleTypes = ['pipe', 'spinner', 'crusher', 'moving_platform'];
 let lastObstacleType = '';
 
 const difficulties = {
-    easy: { speed: 150, gravity: 900, flap: 320, obstacleDist: 450, pipeGap: 280, spinnerSpeed: 1.5, crusherSpeed: 100, platformSpeed: 100, collectibleChance: 0.7 },
-    medium: { speed: 180, gravity: 950, flap: 350, obstacleDist: 400, pipeGap: 240, spinnerSpeed: 1.8, crusherSpeed: 130, platformSpeed: 130, collectibleChance: 0.5 },
-    hard: { speed: 210, gravity: 1000, flap: 380, obstacleDist: 350, pipeGap: 200, spinnerSpeed: 2.2, crusherSpeed: 160, platformSpeed: 160, collectibleChance: 0.3 }
+    easy: { speed: 150, gravity: 900, flap: 320, obstacleDist: 450, pipeGap: 280, spinnerSpeed: 1.5, crusherSpeed: 100, platformSpeed: 100, collectibleChance: 0.8 },
+    medium: { speed: 180, gravity: 950, flap: 350, obstacleDist: 400, pipeGap: 240, spinnerSpeed: 1.8, crusherSpeed: 130, platformSpeed: 130, collectibleChance: 0.6 },
+    hard: { speed: 210, gravity: 1000, flap: 380, obstacleDist: 350, pipeGap: 200, spinnerSpeed: 2.2, crusherSpeed: 160, platformSpeed: 160, collectibleChance: 0.4 }
 };
-
-function resizeCanvas() {
-    const size = Math.min(window.innerWidth, window.innerHeight) * 0.95;
-    canvas.width = size;
-    canvas.height = size;
-}
-
-function scaleToVirtual(value) {
-    return value * (VIRTUAL_WIDTH / canvas.width);
-}
 
 // --- ENTITIES ---
 function Bird() {
-    this.x = VIRTUAL_WIDTH / 4; this.y = VIRTUAL_HEIGHT / 2; this.radius = VIRTUAL_WIDTH / 35;
-    this.velocity = 0; this.angle = 0; this.shielded = false; this.shieldTime = 0;
+    this.x = VIRTUAL_WIDTH / 4; this.y = VIRTUAL_HEIGHT / 2; this.baseRadius = VIRTUAL_WIDTH / 35; this.radius = this.baseRadius;
+    this.velocity = 0; this.angle = 0; this.shielded = false; this.shieldTime = 0; this.invincible = false; this.invincibleTime = 0;
+    this.isShrunk = false; this.shrinkTime = 0;
 
     this.draw = function() {
+        if (this.invincible && Math.floor(this.invincibleTime * 10) % 2 === 0) return;
         ctx.save();
         ctx.translate(this.x, this.y);
         this.angle = Math.max(-Math.PI / 4, Math.min(Math.PI / 4, this.velocity / 400));
@@ -59,8 +48,7 @@ function Bird() {
         if (this.shielded) {
             const shieldGrad = ctx.createRadialGradient(0, 0, this.radius, 0, 0, this.radius * 1.5);
             shieldGrad.addColorStop(0, 'rgba(52, 152, 219, 0.2)'); shieldGrad.addColorStop(1, 'rgba(52, 152, 219, 0.8)');
-            ctx.fillStyle = shieldGrad;
-            ctx.beginPath(); ctx.arc(0, 0, this.radius * 1.5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = shieldGrad; ctx.beginPath(); ctx.arc(0, 0, this.radius * 1.5, 0, Math.PI * 2); ctx.fill();
         }
 
         const grad = ctx.createRadialGradient(0, 0, this.radius / 2, 0, 0, this.radius);
@@ -72,7 +60,7 @@ function Bird() {
         ctx.beginPath(); ctx.arc(this.radius / 2 + 2, -this.radius / 2, this.radius / 6, 0, Math.PI * 2); ctx.fillStyle = 'black'; ctx.fill();
 
         ctx.beginPath(); ctx.moveTo(-this.radius / 1.5, 0);
-        ctx.arc(-this.radius / 1.5, 0, this.radius, 0.3 - Math.sin(frameCount * 0.5) * 0.3, Math.PI - 0.3 + Math.sin(frameCount * 0.5) * 0.3, false);
+        ctx.arc(-this.radius / 1.5, 0, this.radius, 0.3 - Math.sin(performance.now() * 0.005) * 0.3, Math.PI - 0.3 + Math.sin(performance.now() * 0.005) * 0.3, false);
         ctx.fillStyle = '#ffde00'; ctx.fill();
 
         ctx.restore();
@@ -82,14 +70,11 @@ function Bird() {
         this.velocity += difficulty.gravity * dt;
         this.y += this.velocity * dt;
 
-        if (this.shielded) {
-            this.shieldTime -= dt;
-            if (this.shieldTime <= 0) this.shielded = false;
-        }
+        if (this.shielded) { this.shieldTime -= dt; if (this.shieldTime <= 0) this.shielded = false; }
+        if (this.invincible) { this.invincibleTime -= dt; if (this.invincibleTime <= 0) this.invincible = false; }
+        if (this.isShrunk) { this.shrinkTime -= dt; if (this.shrinkTime <= 0) { this.isShrunk = false; this.radius = this.baseRadius; } }
 
-        if (this.y > VIRTUAL_HEIGHT - this.radius - (VIRTUAL_HEIGHT * 0.1) || this.y < -this.radius * 2) {
-            endGame();
-        }
+        if (this.y > VIRTUAL_HEIGHT - this.radius - (VIRTUAL_HEIGHT * 0.1) || this.y < -this.radius * 2) handleCollision();
     }
 
     this.flap = function() {
@@ -109,8 +94,8 @@ function Pipe() {
         ctx.fillRect(this.x, 0, this.width, this.topHeight); ctx.strokeRect(this.x, 0, this.width, this.topHeight);
         ctx.fillRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight); ctx.strokeRect(this.x, VIRTUAL_HEIGHT - this.bottomHeight, this.width, this.bottomHeight);
     };
-    this.update = function(dt) { this.x -= difficulty.speed * dt; }
-    this.collidesWith = (b) => !b.shielded && b.x + b.radius > this.x && b.x - b.radius < this.x + this.width && (b.y - b.radius < this.topHeight || b.y + b.radius > VIRTUAL_HEIGHT - this.bottomHeight);
+    this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; }
+    this.collidesWith = (b) => !b.invincible && !b.shielded && b.x + b.radius > this.x && b.x - b.radius < this.x + this.width && (b.y - b.radius < this.topHeight || b.y + b.radius > VIRTUAL_HEIGHT - this.bottomHeight);
 }
 
 function Spinner() {
@@ -127,9 +112,9 @@ function Spinner() {
         }
         ctx.restore();
     };
-    this.update = function(dt) { this.x -= difficulty.speed * dt; this.angle += this.speed * dt; }
+    this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; this.angle += this.speed * dt * timeScale; }
     this.collidesWith = function(b) {
-        if (b.shielded) return false;
+        if (b.invincible || b.shielded) return false;
         const dist = Math.hypot(b.x - this.x, b.y - this.y);
         if (dist > this.radius + b.radius || dist < this.radius / 4 - b.radius) return false;
         let birdAngle = (Math.atan2(b.y - this.y, b.x - this.x) - this.angle) % (2 * Math.PI);
@@ -152,8 +137,8 @@ function Crusher() {
         ctx.fillRect(this.x, 0, this.width, topY); ctx.strokeRect(this.x, 0, this.width, topY);
         ctx.fillRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY); ctx.strokeRect(this.x, bottomY, this.width, VIRTUAL_HEIGHT - bottomY);
     };
-    this.update = function(dt) { this.x -= difficulty.speed * dt; this.gap += this.speed * this.direction * dt; if (this.gap < this.minGap || this.gap > this.maxGap) this.direction *= -1; }
-    this.collidesWith = (b) => !b.shielded && b.x + b.radius > this.x && b.x - b.radius < this.x + this.width && (b.y - b.radius < (VIRTUAL_HEIGHT - this.gap) / 2 || b.y + b.radius > (VIRTUAL_HEIGHT + this.gap) / 2);
+    this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; this.gap += this.speed * this.direction * dt * timeScale; if (this.gap < this.minGap || this.gap > this.maxGap) this.direction *= -1; }
+    this.collidesWith = (b) => !b.invincible && !b.shielded && b.x + b.radius > this.x && b.x - b.radius < this.x + this.width && (b.y - b.radius < (VIRTUAL_HEIGHT - this.gap) / 2 || b.y + b.radius > (VIRTUAL_HEIGHT + this.gap) / 2);
 }
 
 function MovingPlatform() {
@@ -166,9 +151,9 @@ function MovingPlatform() {
         ctx.fillRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height); ctx.strokeRect(this.x, this.y - this.gap/2 - this.height, this.width, this.height);
         ctx.fillRect(this.x, this.y + this.gap/2, this.width, this.height); ctx.strokeRect(this.x, this.y + this.gap/2, this.width, this.height);
     };
-    this.update = function(dt) { this.x -= difficulty.speed * dt; this.y += this.speed * this.direction * dt; if (this.y < this.gap / 2 + this.height || this.y > VIRTUAL_HEIGHT - this.gap/2 - this.height) this.direction *= -1; }
+    this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; this.y += this.speed * this.direction * dt * timeScale; if (this.y < this.gap / 2 + this.height || this.y > VIRTUAL_HEIGHT - this.gap/2 - this.height) this.direction *= -1; }
     this.collidesWith = (b) => {
-        if (b.shielded) return false;
+        if (b.invincible || b.shielded) return false;
         const birdTouchesHorizontal = b.x + b.radius > this.x && b.x - b.radius < this.x + this.width;
         if (!birdTouchesHorizontal) return false;
 
@@ -183,24 +168,22 @@ function MovingPlatform() {
 }
 
 function Collectible(x, y, type) {
-    this.x = x; this.y = y; this.type = type; this.radius = VIRTUAL_WIDTH / (type === 'shield' ? 35 : 40);
-    this.angle = 0; this.value = type === 'shield' ? 0 : 10; this.pulse = 0; this.pulseSpeed = 3;
+    this.x = x; this.y = y; this.type = type; this.radius = VIRTUAL_WIDTH / 38;
+    this.angle = 0; this.value = type === 'gem' ? 10 : 0; this.pulse = 0; this.pulseSpeed = 3;
     this.draw = function() {
         const pulseRadius = this.radius + Math.sin(this.pulse) * 3;
         ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.angle);
         const grad = ctx.createRadialGradient(0, 0, 1, 0, 0, pulseRadius);
-        if (this.type === 'shield') {
-            grad.addColorStop(0, '#8e44ad'); grad.addColorStop(1, '#9b59b6');
-            ctx.shadowColor = '#8e44ad';
-        } else {
-            grad.addColorStop(0, '#a9fffd'); grad.addColorStop(1, '#00c2ff');
-            ctx.shadowColor = '#00c2ff';
-        }
-        ctx.fillStyle = grad; ctx.shadowBlur = 15;
-        ctx.beginPath(); ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0; ctx.restore();
+        let emoji = '';
+        if (this.type === 'shield') { grad.addColorStop(0, '#8e44ad'); grad.addColorStop(1, '#9b59b6'); emoji = '🛡️'; } 
+        else if (this.type === 'slowmo') { grad.addColorStop(0, '#f1c40f'); grad.addColorStop(1, '#f39c12'); emoji = '🕒'; } 
+        else if (this.type === 'shrink') { grad.addColorStop(0, '#2ecc71'); grad.addColorStop(1, '#27ae60'); emoji = '🪶'; } 
+        else { grad.addColorStop(0, '#a9fffd'); grad.addColorStop(1, '#00c2ff'); emoji = '💎'; }
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(0, 0, pulseRadius, 0, Math.PI * 2); ctx.fill();
+        ctx.font = `${this.radius}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(emoji, 0, 0);
+        ctx.restore();
     };
-    this.update = function(dt) { this.x -= difficulty.speed * dt; this.angle += 2 * dt; this.pulse += this.pulseSpeed * dt; }
+    this.update = function(dt) { this.x -= difficulty.speed * dt * timeScale; this.angle += 2 * dt * timeScale; this.pulse += this.pulseSpeed * dt * timeScale; }
 }
 
 function Particle(x, y, color, size, speed) {
@@ -228,7 +211,12 @@ function addCollectible(obs) {
     if (Math.random() < difficulty.collectibleChance) {
         const x = obs.x + (obs.width || obs.radius || 0) + difficulty.obstacleDist / 2;
         const y = VIRTUAL_HEIGHT / 2 + (Math.random() - 0.5) * (VIRTUAL_HEIGHT / 4);
-        const type = Math.random() < 0.2 ? 'shield' : 'gem';
+        const rand = Math.random();
+        let type;
+        if (rand < 0.15) type = 'shield';
+        else if (rand < 0.3) type = 'slowmo';
+        else if (rand < 0.45) type = 'shrink';
+        else type = 'gem';
         collectibles.push(new Collectible(x, y, type));
     }
 }
@@ -236,15 +224,25 @@ function addCollectible(obs) {
 function startGame(diff) {
     lastDifficulty = diff;
     difficulty = { ...difficulties[diff] };
-    startScreen.style.display = 'none'; gameOverScreen.style.display = 'none'; gameUi.style.display = 'flex';
-    gameStarted = true; gameOver = false;
-    score = 0; level = 1; frameCount = 0;
+    startScreen.style.display = 'none'; gameOverScreen.style.display = 'none';
+    gameStarted = true; gameOver = false; timeScale = 1;
+    score = 0; level = 1; lives = 3;
     bird = new Bird(); obstacles = []; collectibles = []; particles = [];
     addObstacle();
-    updateUi();
     lastTime = performance.now();
     if(gameLoop) cancelAnimationFrame(gameLoop);
     gameLoop = requestAnimationFrame(update);
+}
+
+function handleCollision() {
+    if (bird.invincible) return;
+    lives--;
+    if (lives <= 0) {
+        endGame();
+    } else {
+        bird.invincible = true;
+        bird.invincibleTime = 2;
+    }
 }
 
 function endGame() {
@@ -252,37 +250,39 @@ function endGame() {
     cancelAnimationFrame(gameLoop);
     gameOver = true; gameStarted = false;
     saveHighScore(); loadHighScore();
-    gameOverScreen.style.display = 'flex'; gameUi.style.display = 'none';
-    scoreEl.textContent = score; levelEl.textContent = level;
+    gameOverScreen.style.display = 'flex';
+    scoreEl.textContent = score;
+    levelEl.textContent = level;
 }
 
 function update(currentTime) {
     if(gameOver) return;
-    const dt = (currentTime - lastTime) / 1000; // Delta time in seconds
+    let dt = (currentTime - lastTime) / 1000; // Delta time in seconds
     lastTime = currentTime;
+    if (dt > 0.1) dt = 0.1; // Prevent huge jumps on tab switch
 
-    frameCount++;
-    
     // Clear and scale canvas
     ctx.save();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.scale(canvas.width / VIRTUAL_WIDTH, canvas.height / VIRTUAL_HEIGHT);
+
+    const scaledDt = dt * timeScale;
 
     drawBackground();
 
     obstacles.forEach(obs => { obs.update(dt); obs.draw(); });
     collectibles.forEach(c => { c.update(dt); c.draw(); });
     particles.forEach(p => { p.update(dt); p.draw(); });
-    bird.update(dt); bird.draw();
     drawGround();
+    drawUi();
+    bird.update(scaledDt); bird.draw();
 
     for (let i = obstacles.length - 1; i >= 0; i--) {
         const obs = obstacles[i];
-        if (obs.collidesWith(bird)) endGame();
+        if (obs.collidesWith(bird)) handleCollision();
         if (obs.x + (obs.width || obs.radius || 0) < bird.x && !obs.passed) {
             obs.passed = true; score++;
             if (score > 0 && score % 5 === 0) { level++; difficulty.speed += 10; }
-            updateUi();
         }
         if (obs.x + (obs.width || obs.radius || 0) < -50) obstacles.splice(i, 1);
     }
@@ -294,15 +294,12 @@ function update(currentTime) {
     for (let i = collectibles.length - 1; i >= 0; i--) {
         const c = collectibles[i];
         if (Math.hypot(bird.x - c.x, bird.y - c.y) < bird.radius + c.radius) {
-            if (c.type === 'shield') {
-                bird.shielded = true;
-                bird.shieldTime = 5; // 5 seconds
-            } else {
-                score += c.value;
-            }
-            for (let j = 0; j < 15; j++) particles.push(new Particle(c.x, c.y, c.type === 'shield' ? '#8e44ad' : '#00c2ff', 3, 100));
+            if (c.type === 'shield') { bird.shielded = true; bird.shieldTime = 5; }
+            else if (c.type === 'slowmo') { timeScale = 0.5; setTimeout(() => timeScale = 1, 3000); }
+            else if (c.type === 'shrink') { bird.isShrunk = true; bird.radius = bird.baseRadius / 2; bird.shrinkTime = 5; }
+            else { score += c.value; }
+            for (let j = 0; j < 15; j++) particles.push(new Particle(c.x, c.y, '#fff', 3, 100));
             collectibles.splice(i, 1);
-            updateUi();
         }
         if (c.x + c.radius < 0) collectibles.splice(i, 1);
     }
@@ -322,8 +319,8 @@ function drawBackground() {
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
     for(let i=0; i<100; i++) {
-        const x = (Math.sin(i * 1234) * VIRTUAL_WIDTH * 1.5 + frameCount * 0.01 * (i%5+1)) % VIRTUAL_WIDTH;
-        const y = (Math.cos(i * 5678) * VIRTUAL_HEIGHT * 1.5 + frameCount * 0.01 * (i%5+1)) % VIRTUAL_HEIGHT;
+        const x = (Math.sin(i * 1234) * VIRTUAL_WIDTH * 1.5 + performance.now() * 0.01 * (i%5+1)) % VIRTUAL_WIDTH;
+        const y = (Math.cos(i * 5678) * VIRTUAL_HEIGHT * 1.5 + performance.now() * 0.01 * (i%5+1)) % VIRTUAL_HEIGHT;
         const size = Math.random() * 2;
         ctx.fillRect(x, y, size, size);
     }
@@ -337,7 +334,22 @@ function drawGround() {
     ctx.fillRect(0, VIRTUAL_HEIGHT - groundHeight, VIRTUAL_WIDTH, groundHeight);
 }
 
-function updateUi() { gameScoreEl.textContent = score; gameLevelEl.textContent = level; }
+function drawUi() {
+    ctx.font = "50px 'Bangers', cursive";
+    ctx.fillStyle = "white";
+    ctx.textBaseline = "top";
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 5; ctx.shadowOffsetX = 3; ctx.shadowOffsetY = 3;
+
+    ctx.textAlign = "left";
+    ctx.fillText(`❤️ ${lives}`, 20, 20);
+    ctx.textAlign = "center";
+    ctx.fillText(`💰 ${score}`, VIRTUAL_WIDTH / 2, 20);
+    ctx.textAlign = "right";
+    ctx.fillText(`📈 ${level}`, VIRTUAL_WIDTH - 20, 20);
+
+    ctx.shadowColor = 'transparent';
+}
 
 function loadHighScore() {
     highScore = localStorage.getItem('jumpyMcFlapFaceHighScore') || 0;
@@ -375,6 +387,11 @@ function masterController(e) {
 }
 
 // --- INITIAL SETUP ---
+function resizeCanvas() {
+    const size = Math.min(window.innerWidth, window.innerHeight) * 0.95;
+    canvas.width = size;
+    canvas.height = size;
+}
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 loadHighScore();

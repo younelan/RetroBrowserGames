@@ -54,19 +54,10 @@ canvas {
     pointer-events: all;
     width: 80%;
     box-sizing: border-box;
-}
-
-#game-ui {
-    position: absolute;
-    top: 2vmin;
-    left: 0;
-    width: 100%;
     display: flex;
-    justify-content: space-around;
-    font-family: 'Bangers', cursive;
-    font-size: clamp(16px, 5vmin, 40px);
-    letter-spacing: 2px;
-    text-shadow: 0.5vmin 0.5vmin 1vmin rgba(0,0,0,0.7);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 h1 {
@@ -79,13 +70,13 @@ h1 {
 }
 
 p {
-    font-size: clamp(12px, 3vmin, 24px);
+    font-size: clamp(14px, 3.5vmin, 28px);
     margin: 2vmin 0;
 }
 
 #difficulty-buttons button, #restart {
     padding: 2vmin 4vmin;
-    font-size: clamp(14px, 4vmin, 32px);
+    font-size: clamp(16px, 4.5vmin, 36px);
     font-family: 'Bangers', cursive;
     letter-spacing: 1px;
     cursor: pointer;
@@ -107,4 +98,11 @@ p {
     font-size: clamp(14px, 3.5vmin, 28px);
     font-family: 'Bangers', cursive;
     letter-spacing: 1px;
+}
+
+#game-over-screen p {
+    font-size: clamp(18px, 6vmin, 48px);
+    font-family: 'Bangers', cursive;
+    letter-spacing: 2px;
+    margin: 1vmin 0;
 }
