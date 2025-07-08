@@ -154,6 +154,20 @@ p {
 
 .powerup-list li {
     margin-bottom: 1vmin;
+    display: flex;
+    align-items: center;
+}
+
+.collectible-icon {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 6vmin;
+    height: 6vmin;
+    border-radius: 50%;
+    margin-right: 2vmin;
+    font-size: 4vmin;
+    box-shadow: 0 0 1.5vmin rgba(0,0,0,0.5);
 }
 
 .modal-buttons button {
