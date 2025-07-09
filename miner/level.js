@@ -83,6 +83,12 @@ class Level {
                     case 'T':
                         this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
+                    case 'Y': // Tall tree (2 tiles high)
+                        this.decorativeElements.push({ x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char });
+                        break;
+                    case 'U': // Tall cactus (2 tiles high)
+                        this.decorativeElements.push({ x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char });
+                        break;
                 }
             }
         }
@@ -684,6 +690,71 @@ class Level {
                     context.fillRect(d.x + 10 * s, d.y + 2 * s, 2 * s, 2 * s); // Vertical part
                     context.beginPath();
                     context.arc(d.x + 11 * s, d.y + 2 * s, 1 * s, Math.PI, 2 * Math.PI); // Rounded top
+                    context.fill();
+                    break;
+                case 'Y': // Tall tree (2 tiles high)
+                    const trunkColor = '#8B4513'; // SaddleBrown
+                    const leafColor = '#228B22'; // ForestGreen
+                    const darkLeafColor = '#1F5F1F'; // Darker green
+                    
+                    // Tree trunk (bottom to middle)
+                    context.fillStyle = trunkColor;
+                    context.fillRect(d.x + 6 * s, d.y + 20 * s, 4 * s, 12 * s); // Main trunk
+                    
+                    // Tree crown (large, layered foliage)
+                    context.fillStyle = leafColor;
+                    // Bottom layer of leaves
+                    context.beginPath();
+                    context.arc(d.x + 8 * s, d.y + 20 * s, 8 * s, 0, Math.PI * 2);
+                    context.fill();
+                    
+                    // Middle layer
+                    context.beginPath();
+                    context.arc(d.x + 8 * s, d.y + 16 * s, 7 * s, 0, Math.PI * 2);
+                    context.fill();
+                    
+                    // Top layer
+                    context.beginPath();
+                    context.arc(d.x + 8 * s, d.y + 12 * s, 6 * s, 0, Math.PI * 2);
+                    context.fill();
+                    
+                    // Add darker leaf details for depth
+                    context.fillStyle = darkLeafColor;
+                    context.beginPath();
+                    context.arc(d.x + 5 * s, d.y + 18 * s, 3 * s, 0, Math.PI * 2);
+                    context.fill();
+                    context.beginPath();
+                    context.arc(d.x + 11 * s, d.y + 14 * s, 3 * s, 0, Math.PI * 2);
+                    context.fill();
+                    context.beginPath();
+                    context.arc(d.x + 8 * s, d.y + 10 * s, 2 * s, 0, Math.PI * 2);
+                    context.fill();
+                    break;
+                case 'U': // Tall cactus (2 tiles high)
+                    context.fillStyle = '#006400'; // DarkGreen
+                    
+                    // Main central trunk (full height)
+                    context.fillRect(d.x + 7 * s, d.y + 4 * s, 2 * s, 28 * s);
+                    
+                    // Left arm (middle height)
+                    context.fillRect(d.x + 3 * s, d.y + 12 * s, 4 * s, 2 * s); // Horizontal part
+                    context.fillRect(d.x + 3 * s, d.y + 8 * s, 2 * s, 4 * s); // Vertical part
+                    context.beginPath();
+                    context.arc(d.x + 4 * s, d.y + 8 * s, 1 * s, Math.PI, 2 * Math.PI); // Rounded top
+                    context.fill();
+                    
+                    // Right arm (higher, spans across tiles)
+                    context.fillRect(d.x + 9 * s, d.y + 8 * s, 4 * s, 2 * s); // Horizontal part
+                    context.fillRect(d.x + 11 * s, d.y + 4 * s, 2 * s, 4 * s); // Vertical part
+                    context.beginPath();
+                    context.arc(d.x + 12 * s, d.y + 4 * s, 1 * s, Math.PI, 2 * Math.PI); // Rounded top
+                    context.fill();
+                    
+                    // Additional small arm on left (lower)
+                    context.fillRect(d.x + 4 * s, d.y + 20 * s, 3 * s, 1.5 * s); // Small horizontal part
+                    context.fillRect(d.x + 4 * s, d.y + 18 * s, 1.5 * s, 2 * s); // Small vertical part
+                    context.beginPath();
+                    context.arc(d.x + 4.75 * s, d.y + 18 * s, 0.75 * s, Math.PI, 2 * Math.PI); // Small rounded top
                     context.fill();
                     break;
                 case 'SHRUB': // Shrub/Bush
