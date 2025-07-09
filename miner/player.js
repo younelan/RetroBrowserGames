@@ -238,7 +238,9 @@ class Player {
                this.y + this.height > rect.y;
     }
 
-    draw(context) {
+    draw(context, width, height) {
+        const s = Math.min(width, height) / 16; // Scale based on bounding dimensions
+
         if (this.playerState === 'DYING') {
             context.globalAlpha = 1 - (this.deathAnimationTimer / 60);
             if (context.globalAlpha <= 0) {
@@ -246,25 +248,18 @@ class Player {
             }
         }
 
-        const s = TILE_SIZE / 16;
-        
         context.save();
-        
-        // Smooth continuous walking animation
+
         const isMoving = Math.abs(this.velocityX) > 0.1;
-        // Use custom animation time if provided (for spare lives), otherwise use real time
         const walkTime = isMoving ? (this.customAnimationTime !== undefined ? this.customAnimationTime : Date.now() * 0.012) : 0;
         const walkCycle = Math.sin(walkTime);
-        const walkCycle2 = Math.sin(walkTime + Math.PI); // Opposite phase
-        
-        // Subtle body bob only when walking
+        const walkCycle2 = Math.sin(walkTime + Math.PI);
         const bodyBob = isMoving ? Math.sin(walkTime * 2) * 0.5 * s : 0;
-        
-        // Apply horizontal flip for direction
+
         if (this.direction === -1) {
-            context.translate(this.x + this.width / 2, this.y);
+            context.translate(this.x + width / 2, this.y);
             context.scale(-1, 1);
-            context.translate(-(this.x + this.width / 2), -this.y);
+            context.translate(-(this.x + width / 2), -this.y);
         }
 
         // Miner in Side View Profile (facing direction of movement) - 3D and cool looking

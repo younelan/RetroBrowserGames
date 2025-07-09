@@ -330,7 +330,7 @@ class Game {
 
         // Draw game world - now fills entire viewport area
         this.level.draw(this.context, this.frameCounter, this.level.keys.length === 0);
-        this.player.draw(this.context);
+        this.player.draw(this.context, this.player.width, this.player.height);
         
         // Restore viewport scrolling
         this.context.restore();
@@ -338,82 +338,68 @@ class Game {
         // Restore the main context
         this.context.restore();
 
-        // Draw UI Panel OUTSIDE of any transformations - fixed at bottom of canvas
-        const viewportGameWidth = this.level.viewportWidth * TILE_SIZE;
-        this.context.fillStyle = 'rgba(34, 34, 34, 0.8)'; // Translucent dark grey background for UI
-        this.context.fillRect(0, this.canvas.height - 100, this.canvas.width, 100); // Full canvas width
+        // Draw UI elements OUTSIDE of any transformations - fixed at bottom of canvas
+        // Scale UI elements based on canvas size for mobile compatibility
+        const uiScale = Math.min(this.canvas.width / 800, this.canvas.height / 600); // Base scale for UI
+        
+        // Draw Lives (spare miners) - FIXED SIZE, NOT BASED ON PLAYER HEIGHT
+        // Correct spare life scaling and position to ensure full visibility
+        const spareLifeHeight = uiScale * 24; // Use consistent scaling for height
+        const spareLifeWidth = spareLifeHeight / 2; // Maintain 2x height, 1x width proportion
+        const spareLifeY = this.canvas.height - spareLifeHeight - 10; // Position from bottom with padding
 
-        // Draw Score at bottom of canvas
-        this.context.fillStyle = 'white';
-        this.context.font = "24px 'Courier New', Courier, monospace";
-        this.context.fillText(`Score: ${this.score}`, 20, this.canvas.height - 60);
-
-        // Draw Lives (animated dancing Miner Willy icons) at bottom of canvas
         for (let i = 0; i < this.lives; i++) {
-            const baseX = 200 + i * 40;
-            const playerIcon = new Player(baseX, this.canvas.height - 80);
-            
-            // Dance: exactly 10 WALKING STEPS right, then 10 WALKING STEPS left
-            // Use the same walking animation as the player - count when legs change direction
-            
-            const walkAnimSpeed = 0.048; // Same speed as player limb animation
+            const spareLifeX = 10 + i * (spareLifeWidth + 5 * uiScale); // Spacing scaled with UI
+
+            // Create new player icon for spare life
+            const spareIcon = new Player(spareLifeX, spareLifeY);
+
+            // Add animation (same as original)
+            const walkAnimSpeed = 0.048;
             const walkTime = this.frameCounter * walkAnimSpeed;
-            
-            // One step = when sine wave completes half cycle (π radians)
-            // Count how many half-cycles (steps) have passed
             const totalSteps = Math.floor(walkTime / Math.PI);
             const stepsPerDirection = 10;
-            const totalCycle = stepsPerDirection * 2; // 10 right + 10 left
-            
+            const totalCycle = stepsPerDirection * 2;
             const cycleStep = totalSteps % totalCycle;
-            
-            // Calculate smooth interpolation between steps
-            const stepProgress = (walkTime / Math.PI) % 1; // 0 to 1 within current step
-            
+            const stepProgress = (walkTime / Math.PI) % 1;
+
             let currentStep, facingRight, baseStepX, nextStepX, danceX;
-            
+
             if (cycleStep < stepsPerDirection) {
-                // WALKING RIGHT: steps 0-9
                 currentStep = cycleStep;
                 facingRight = true;
-                baseStepX = currentStep * 3; // Current step position
-                nextStepX = Math.min((currentStep + 1) * 3, 27); // Next step position (max 27)
-                danceX = baseStepX + (nextStepX - baseStepX) * stepProgress; // Smooth interpolation
-                
-                // Debug for first icon only  
-                if (i === 0 && totalSteps !== this.lastDebugStep) {
-                    //console.log(`RIGHT: totalSteps=${totalSteps}, step=${currentStep}/10, x=${baseStepX}->${nextStepX}`);
-                    this.lastDebugStep = totalSteps;
-                }
+                baseStepX = currentStep * 2;
+                nextStepX = Math.min((currentStep + 1) * 2, 18);
+                danceX = baseStepX + (nextStepX - baseStepX) * stepProgress;
             } else {
-                // WALKING LEFT: steps 10-19 (display as 0-9)
                 currentStep = cycleStep - stepsPerDirection;
                 facingRight = false;
-                baseStepX = (9 - currentStep) * 3; // Current step position
-                nextStepX = Math.max((9 - (currentStep + 1)) * 3, 0); // Next step position (min 0)
-                danceX = baseStepX + (nextStepX - baseStepX) * stepProgress; // Smooth interpolation
-                
-                // Debug for first icon only
-                if (i === 0 && totalSteps !== this.lastDebugStep) {
-                    //console.log(`LEFT: totalSteps=${totalSteps}, step=${currentStep}/10, x=${baseStepX}->${nextStepX}`);
-                    this.lastDebugStep = totalSteps;
-                }
+                baseStepX = (9 - currentStep) * 2;
+                nextStepX = Math.max((9 - (currentStep + 1)) * 2, 0);
+                danceX = baseStepX + (nextStepX - baseStepX) * stepProgress;
             }
-            
-            // Apply position and direction
-            playerIcon.x = baseX + danceX;
-            playerIcon.direction = facingRight ? 1 : -1;
-            playerIcon.velocityX = facingRight ? 1 : -1;
-            
-            // Fast limb animation
-            playerIcon.customAnimationTime = this.frameCounter * 0.048;
-            
-            playerIcon.draw(this.context);
+
+            spareIcon.x = spareLifeX + danceX;
+            spareIcon.direction = facingRight ? 1 : -1;
+            spareIcon.velocityX = facingRight ? 1 : -1;
+            spareIcon.customAnimationTime = this.frameCounter * 0.048;
+
+            spareIcon.draw(this.context, spareLifeWidth, spareLifeHeight);
         }
 
-        // Draw Oxygen Bar at bottom of canvas (minimal design)
+        // Draw Oxygen Bar at bottom right
+        const oxygenBarWidth = 200 * uiScale;
+        const oxygenBarHeight = 15 * uiScale;
+        const oxygenBarX = this.canvas.width - oxygenBarWidth - 20 * uiScale;
+        const oxygenBarY = this.canvas.height - 30 * uiScale;
+        
         this.context.fillStyle = 'cyan';
-        this.context.fillRect(this.canvas.width - 320, this.canvas.height - 40, (this.oxygen / START_OXYGEN) * 300, 20);
+        this.context.fillRect(oxygenBarX, oxygenBarY, (this.oxygen / START_OXYGEN) * oxygenBarWidth, oxygenBarHeight);
+        
+        // Draw Score above oxygen bar with emoji
+        this.context.fillStyle = 'white';
+        this.context.font = `${20 * uiScale}px 'Courier New', Courier, monospace`;
+        this.context.fillText(`💎 ${this.score}`, oxygenBarX, oxygenBarY - 10 * uiScale);
     }
 
     drawStartScreen() {
