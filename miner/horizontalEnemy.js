@@ -80,83 +80,99 @@ class HorizontalEnemy {
         const backLegAngle = Math.sin(walkCycle + Math.PI) * 0.5; // Back leg opposite phase
         const midLegAngle = Math.sin(walkCycle + Math.PI/2) * 0.3; // Middle legs slightly different
 
-        // Spider-like creature - proper side view
-        // Main body
-        context.fillStyle = '#2d4a2b'; // Dark green
-        context.fillRect(this.x + 4 * s, this.y + 6 * s, 8 * s, 10 * s); // Main abdomen
-        context.fillRect(this.x + 6 * s, this.y + 4 * s, 6 * s, 6 * s); // Thorax
+        // Bigfoot/Sasquatch creature - humanoid side view
+        // Main body (upright torso)
+        context.fillStyle = '#2d1810'; // Dark brown fur
+        context.fillRect(this.x + 6 * s, this.y + 8 * s, 6 * s, 12 * s); // Torso
+        context.fillRect(this.x + 5 * s, this.y + 6 * s, 8 * s, 4 * s); // Chest/shoulders
         
-        // Monster Head (larger and more distinctive)
-        context.fillStyle = '#1a2e19'; // Darker green
-        context.fillRect(this.x + 11 * s, this.y + 3 * s, 6 * s, 8 * s); // Main head
-        context.fillRect(this.x + 13 * s, this.y + 1 * s, 4 * s, 4 * s); // Upper skull
+        // Arms (hanging down, swaying with walk)
+        context.fillStyle = '#1f0f08'; // Darker brown
+        const armSwing = Math.sin(walkCycle) * 0.3; // Arms swing opposite to legs
+        // Left arm
+        context.fillRect(this.x + 4 * s + armSwing * 2 * s, this.y + 8 * s, 3 * s, 10 * s);
+        context.fillRect(this.x + 3 * s + armSwing * 3 * s, this.y + 18 * s, 3 * s, 6 * s); // Forearm
+        // Right arm  
+        context.fillRect(this.x + 11 * s - armSwing * 2 * s, this.y + 8 * s, 3 * s, 10 * s);
+        context.fillRect(this.x + 12 * s - armSwing * 3 * s, this.y + 18 * s, 3 * s, 6 * s); // Forearm
         
-        // Horn/spikes on head
-        context.fillStyle = '#0f1a0e'; // Very dark green
-        context.fillRect(this.x + 14 * s, this.y, 2 * s, 3 * s); // Center horn
-        context.fillRect(this.x + 12 * s, this.y + 1 * s, 1 * s, 2 * s); // Left spike
-        context.fillRect(this.x + 16 * s, this.y + 1 * s, 1 * s, 2 * s); // Right spike
+        // Large hands
+        context.fillStyle = '#0f0805';
+        context.fillRect(this.x + 2 * s + armSwing * 3 * s, this.y + 23 * s, 4 * s, 3 * s); // Left hand
+        context.fillRect(this.x + 12 * s - armSwing * 3 * s, this.y + 23 * s, 4 * s, 3 * s); // Right hand
         
-        // Large glowing eyes (more prominent)
-        context.fillStyle = '#ff0000'; // Bright red glowing eyes
-        context.fillRect(this.x + 14 * s, this.y + 4 * s, 2 * s, 2 * s); // Left eye
-        context.fillRect(this.x + 14 * s, this.y + 7 * s, 2 * s, 2 * s); // Right eye
+        // Monster Head (large and primitive)
+        context.fillStyle = '#2d1810'; // Dark brown fur
+        context.fillRect(this.x + 5 * s, this.y + 2 * s, 8 * s, 6 * s); // Main head
+        context.fillRect(this.x + 6 * s, this.y, 6 * s, 4 * s); // Skull/forehead
         
-        // Eye pupils (animated)
-        const eyeFlicker = Math.sin(walkCycle * 3) > 0.7;
-        if (!eyeFlicker) {
-            context.fillStyle = '#660000'; // Dark red pupils
-            context.fillRect(this.x + 15 * s, this.y + 5 * s, 1 * s, 1 * s);
-            context.fillRect(this.x + 15 * s, this.y + 8 * s, 1 * s, 1 * s);
+        // Pronounced brow ridge
+        context.fillStyle = '#1f0f08';
+        context.fillRect(this.x + 6 * s, this.y + 3 * s, 6 * s, 2 * s);
+        
+        // Glowing red eyes (deep set under brow)
+        context.fillStyle = '#ff2222';
+        context.fillRect(this.x + 7 * s, this.y + 4 * s, 2 * s, 1 * s);
+        context.fillRect(this.x + 10 * s, this.y + 4 * s, 2 * s, 1 * s);
+        
+        // Eye glow effect
+        const eyeFlicker = Math.sin(walkCycle * 2) > 0.5;
+        if (eyeFlicker) {
+            context.fillStyle = '#ff6666';
+            context.fillRect(this.x + 6 * s, this.y + 4 * s, 4 * s, 1 * s);
+            context.fillRect(this.x + 9 * s, this.y + 4 * s, 4 * s, 1 * s);
         }
         
-        // Mouth/jaw
-        context.fillStyle = '#0f1a0e';
-        context.fillRect(this.x + 12 * s, this.y + 9 * s, 4 * s, 2 * s); // Jaw
+        // Large nostrils
+        context.fillStyle = '#0f0805';
+        context.fillRect(this.x + 8 * s, this.y + 5 * s, 1 * s, 1 * s);
+        context.fillRect(this.x + 10 * s, this.y + 5 * s, 1 * s, 1 * s);
         
-        // Sharp teeth/mandibles
-        context.fillStyle = '#fff';
-        context.fillRect(this.x + 17 * s, this.y + 8 * s, 2 * s, 1 * s); // Upper fang
-        context.fillRect(this.x + 17 * s, this.y + 10 * s, 2 * s, 1 * s); // Lower fang
-        context.fillRect(this.x + 16 * s, this.y + 9 * s, 1 * s, 2 * s); // Side tooth
+        // Mouth with fangs
+        context.fillStyle = '#0f0805';
+        context.fillRect(this.x + 7 * s, this.y + 6 * s, 4 * s, 2 * s);
+        context.fillStyle = '#ffffff';
+        context.fillRect(this.x + 8 * s, this.y + 6 * s, 1 * s, 2 * s); // Left fang
+        context.fillRect(this.x + 10 * s, this.y + 6 * s, 1 * s, 2 * s); // Right fang
         
-        // Draw walking legs with proper rotation
-        context.fillStyle = '#2d4a2b';
+        // Humanoid walking legs (bipedal)
+        context.fillStyle = '#2d1810';
         
-        // Hip points (fixed attachment points)
-        const frontHipX = this.x + 6 * s;
-        const frontHipY = this.y + 12 * s;
-        const midHipX = this.x + 8 * s;
-        const midHipY = this.y + 13 * s;
-        const backHipX = this.x + 10 * s;
-        const backHipY = this.y + 12 * s;
+        // Hip area
+        const hipX = this.x + 8 * s;
+        const hipY = this.y + 20 * s;
         
-        const legLength = 12 * s;
+        // Calculate leg positions for walking
+        const leftLegAngle = Math.sin(walkCycle) * 0.4; // Left leg forward/back
+        const rightLegAngle = Math.sin(walkCycle + Math.PI) * 0.4; // Right leg opposite
         
-        // Front leg (upper)
-        const frontUpperLegEndX = frontHipX + Math.sin(frontLegAngle) * (legLength * 0.6);
-        const frontUpperLegEndY = frontHipY + Math.cos(frontLegAngle) * (legLength * 0.6);
-        this.drawLeg(context, frontHipX, frontHipY, frontUpperLegEndX, frontUpperLegEndY, 2 * s);
+        const thighLength = 8 * s;
+        const shinLength = 8 * s;
         
-        // Front leg (lower) - extends to ground
-        const frontFootX = frontUpperLegEndX + Math.sin(frontLegAngle + 0.5) * (legLength * 0.6);
-        const frontFootY = this.y + this.height - 2 * s; // Touch ground
-        this.drawLeg(context, frontUpperLegEndX, frontUpperLegEndY, frontFootX, frontFootY, 1 * s);
+        // Left leg
+        const leftKneeX = hipX - 2 * s + Math.sin(leftLegAngle) * thighLength;
+        const leftKneeY = hipY + Math.cos(leftLegAngle) * thighLength;
+        const leftFootX = leftKneeX + Math.sin(leftLegAngle + 0.3) * shinLength;
+        const leftFootY = this.y + this.height - 2 * s; // Ground level
         
-        // Back leg (upper)
-        const backUpperLegEndX = backHipX + Math.sin(backLegAngle) * (legLength * 0.6);
-        const backUpperLegEndY = backHipY + Math.cos(backLegAngle) * (legLength * 0.6);
-        this.drawLeg(context, backHipX, backHipY, backUpperLegEndX, backUpperLegEndY, 2 * s);
+        // Draw left leg
+        this.drawLeg(context, hipX - 2 * s, hipY, leftKneeX, leftKneeY, 3 * s); // Thigh
+        this.drawLeg(context, leftKneeX, leftKneeY, leftFootX, leftFootY, 2 * s); // Shin
         
-        // Back leg (lower) - extends to ground
-        const backFootX = backUpperLegEndX + Math.sin(backLegAngle + 0.5) * (legLength * 0.6);
-        const backFootY = this.y + this.height - 2 * s; // Touch ground
-        this.drawLeg(context, backUpperLegEndX, backUpperLegEndY, backFootX, backFootY, 1 * s);
+        // Right leg  
+        const rightKneeX = hipX + 2 * s + Math.sin(rightLegAngle) * thighLength;
+        const rightKneeY = hipY + Math.cos(rightLegAngle) * thighLength;
+        const rightFootX = rightKneeX + Math.sin(rightLegAngle + 0.3) * shinLength;
+        const rightFootY = this.y + this.height - 2 * s; // Ground level
         
-        // Middle legs (simpler, for stability)
-        const midFootX = midHipX + Math.sin(midLegAngle) * (legLength * 0.8);
-        const midFootY = this.y + this.height - 2 * s;
-        this.drawLeg(context, midHipX, midHipY, midFootX, midFootY, 1.5 * s);
+        // Draw right leg
+        this.drawLeg(context, hipX + 2 * s, hipY, rightKneeX, rightKneeY, 3 * s); // Thigh
+        this.drawLeg(context, rightKneeX, rightKneeY, rightFootX, rightFootY, 2 * s); // Shin
+        
+        // Large feet
+        context.fillStyle = '#0f0805';
+        context.fillRect(leftFootX - 2 * s, leftFootY, 5 * s, 2 * s); // Left foot
+        context.fillRect(rightFootX - 2 * s, rightFootY, 5 * s, 2 * s); // Right foot
 
         context.restore();
     }
