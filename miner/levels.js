@@ -1,8 +1,8 @@
 const levels = [
     {
         name: "The Central Cavern",
-        viewportWidth: 20,  // Smaller viewport (scrolling)
-        viewportHeight: 12, // Smaller viewport (scrolling)
+        viewportWidth: 15,  // Smaller viewport (scrolling)
+        viewportHeight: 14, // Smaller viewport (scrolling)
         map: `
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 X                              X
