@@ -10,6 +10,7 @@ class Game {
         this.oxygen = START_OXYGEN;
         this.oxygen = START_OXYGEN;
         this.gameState = 'START'; // 'START', 'PLAYING', 'GAME_OVER', 'WIN'
+        this.lastDebugStep = -1; // For debugging step changes
 
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -332,10 +333,66 @@ class Game {
         this.context.font = "24px 'Courier New', Courier, monospace";
         this.context.fillText(`Score: ${this.score}`, 20, uiPanelY + 30);
 
-        // Draw Lives (animated Miner Willy icons)
+        // Draw Lives (animated dancing Miner Willy icons)
         for (let i = 0; i < this.lives; i++) {
-            const playerIcon = new Player(200 + i * 40, uiPanelY + 15);
-            playerIcon.animationFrame = this.player.animationFrame; // Match player animation
+            const baseX = 200 + i * 40;
+            const playerIcon = new Player(baseX, uiPanelY + 15);
+            
+            // Dance: exactly 10 WALKING STEPS right, then 10 WALKING STEPS left
+            // Use the same walking animation as the player - count when legs change direction
+            
+            const walkAnimSpeed = 0.048; // Same speed as player limb animation
+            const walkTime = this.frameCounter * walkAnimSpeed;
+            
+            // One step = when sine wave completes half cycle (π radians)
+            // Count how many half-cycles (steps) have passed
+            const totalSteps = Math.floor(walkTime / Math.PI);
+            const stepsPerDirection = 10;
+            const totalCycle = stepsPerDirection * 2; // 10 right + 10 left
+            
+            const cycleStep = totalSteps % totalCycle;
+            
+            // Calculate smooth interpolation between steps
+            const stepProgress = (walkTime / Math.PI) % 1; // 0 to 1 within current step
+            
+            let currentStep, facingRight, baseStepX, nextStepX, danceX;
+            
+            if (cycleStep < stepsPerDirection) {
+                // WALKING RIGHT: steps 0-9
+                currentStep = cycleStep;
+                facingRight = true;
+                baseStepX = currentStep * 3; // Current step position
+                nextStepX = Math.min((currentStep + 1) * 3, 27); // Next step position (max 27)
+                danceX = baseStepX + (nextStepX - baseStepX) * stepProgress; // Smooth interpolation
+                
+                // Debug for first icon only  
+                if (i === 0 && totalSteps !== this.lastDebugStep) {
+                    //console.log(`RIGHT: totalSteps=${totalSteps}, step=${currentStep}/10, x=${baseStepX}->${nextStepX}`);
+                    this.lastDebugStep = totalSteps;
+                }
+            } else {
+                // WALKING LEFT: steps 10-19 (display as 0-9)
+                currentStep = cycleStep - stepsPerDirection;
+                facingRight = false;
+                baseStepX = (9 - currentStep) * 3; // Current step position
+                nextStepX = Math.max((9 - (currentStep + 1)) * 3, 0); // Next step position (min 0)
+                danceX = baseStepX + (nextStepX - baseStepX) * stepProgress; // Smooth interpolation
+                
+                // Debug for first icon only
+                if (i === 0 && totalSteps !== this.lastDebugStep) {
+                    //console.log(`LEFT: totalSteps=${totalSteps}, step=${currentStep}/10, x=${baseStepX}->${nextStepX}`);
+                    this.lastDebugStep = totalSteps;
+                }
+            }
+            
+            // Apply position and direction
+            playerIcon.x = baseX + danceX;
+            playerIcon.direction = facingRight ? 1 : -1;
+            playerIcon.velocityX = facingRight ? 1 : -1;
+            
+            // Fast limb animation
+            playerIcon.customAnimationTime = this.frameCounter * 0.048;
+            
             playerIcon.draw(this.context);
         }
 

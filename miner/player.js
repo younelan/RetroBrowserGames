@@ -14,6 +14,13 @@ class Player {
         this.playerState = 'ALIVE'; // 'ALIVE', 'DYING'
         this.deathAnimationTimer = 0;
         this.fallDistance = 0; // Track vertical distance fallen
+        
+        // Classic Manic Miner dancing animation
+        this.danceTimer = 0;
+        this.danceSteps = 0;
+        this.danceDirection = 1; // 1 for right, -1 for left
+        this.dancePhase = 0; // 0 = moving right, 1 = moving left
+        this.idleTimer = 0;
     }
 
     update(input, level) {
@@ -93,15 +100,23 @@ class Player {
             this.onGround = true;
         }
 
-        // Update animation frame
+        // Update animation frame and classic Manic Miner dancing
         this.frameCounter++;
+        
         if (this.velocityX !== 0 && this.onGround) {
+            // Player is actively moving
+            this.idleTimer = 0;
             if (this.frameCounter > 5) { // Change frame every 5 game ticks
                 this.animationFrame = (this.animationFrame + 1) % 2;
                 this.frameCounter = 0;
             }
+        } else if (this.onGround) {
+            // Player is idle - just stay still
+            this.animationFrame = 0; // Static frame when idle
         } else {
-            this.animationFrame = 0; // Static frame when not moving or jumping
+            // Player is jumping/falling
+            this.animationFrame = 0; 
+            this.idleTimer = 0;
         }
     }
 
@@ -252,7 +267,8 @@ class Player {
         
         // Smooth continuous walking animation
         const isMoving = Math.abs(this.velocityX) > 0.1;
-        const walkTime = isMoving ? Date.now() * 0.012 : 0;
+        // Use custom animation time if provided (for spare lives), otherwise use real time
+        const walkTime = isMoving ? (this.customAnimationTime !== undefined ? this.customAnimationTime : Date.now() * 0.012) : 0;
         const walkCycle = Math.sin(walkTime);
         const walkCycle2 = Math.sin(walkTime + Math.PI); // Opposite phase
         

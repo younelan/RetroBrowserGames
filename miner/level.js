@@ -258,18 +258,50 @@ class Level {
             context.fillRect(p.x, currentY, p.width, currentHeight);
         });
 
-        // Draw brick floors
+        // Draw brick floors with small brick pattern
         this.brickFloors.forEach(b => {
-            context.fillStyle = '#8B4513'; // SaddleBrown
+            // Base brick color (mortar background)
+            context.fillStyle = '#5A2C0B'; // Dark brown mortar
             context.fillRect(b.x, b.y, b.width, b.height);
-            // Add some brick-like details
-            context.strokeStyle = '#5A2C0B';
-            context.lineWidth = 2;
-            context.strokeRect(b.x, b.y, b.width, b.height);
-            context.beginPath();
-            context.moveTo(b.x + b.width / 2, b.y);
-            context.lineTo(b.x + b.width / 2, b.y + b.height);
-            context.stroke();
+            
+            // Draw individual small bricks to fill entire tile
+            const brickWidth = 7;
+            const brickHeight = 3;
+            const mortarGap = 1;
+            
+            context.fillStyle = '#CD853F'; // Lighter brick color
+            
+            // Calculate how many rows we need to fill the height
+            const rowHeight = brickHeight + mortarGap;
+            const numRows = Math.ceil(b.height / rowHeight);
+            
+            for (let row = 0; row < numRows; row++) {
+                const rowY = b.y + row * rowHeight;
+                
+                // Alternate offset for staggered pattern
+                const isEvenRow = row % 2 === 0;
+                const startX = isEvenRow ? 0 : -(brickWidth + mortarGap) / 2;
+                
+                // Draw bricks across the width
+                for (let x = startX; x < b.width; x += brickWidth + mortarGap) {
+                    const brickX = b.x + x;
+                    
+                    // Only draw if brick is within the tile bounds
+                    if (brickX >= b.x && brickX + brickWidth <= b.x + b.width && 
+                        rowY >= b.y && rowY + brickHeight <= b.y + b.height) {
+                        context.fillRect(brickX, rowY, brickWidth, brickHeight);
+                    }
+                    // Handle partial bricks at edges
+                    else if (brickX < b.x + b.width && brickX + brickWidth > b.x && 
+                            rowY >= b.y && rowY + brickHeight <= b.y + b.height) {
+                        const clippedX = Math.max(brickX, b.x);
+                        const clippedWidth = Math.min(brickX + brickWidth, b.x + b.width) - clippedX;
+                        if (clippedWidth > 0) {
+                            context.fillRect(clippedX, rowY, clippedWidth, brickHeight);
+                        }
+                    }
+                }
+            }
         });
 
         // Draw moving left floors
