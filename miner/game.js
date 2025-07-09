@@ -83,13 +83,16 @@ class Game {
             if (e.key === ' ' || e.key === 'ArrowUp') this.input.jump = false;
         });
 
-        // Touch
+        // Simplified, reliable touch controls
         let touchStartX = 0;
         let touchStartY = 0;
+        let touchActive = false;
+        
         this.canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
+            touchActive = true;
 
             if (this.gameState === 'START' || this.gameState === 'GAME_OVER' || this.gameState === 'WIN') {
                 this.resetGame();
@@ -98,39 +101,48 @@ class Game {
 
         this.canvas.addEventListener('touchmove', (e) => {
             e.preventDefault();
+            if (!touchActive) return;
+            
             const touchX = e.touches[0].clientX;
             const touchY = e.touches[0].clientY;
+            
+            // Calculate delta from touch start point
             const deltaX = touchX - touchStartX;
             const deltaY = touchY - touchStartY;
-
-            // Determine if horizontal or vertical drag
-            if (Math.abs(deltaX) > Math.abs(deltaY)) { // Horizontal movement
-                const deadZone = 20; // Pixels
-                if (deltaX < -deadZone) {
-                    this.input.left = true;
-                    this.input.right = false;
-                } else if (deltaX > deadZone) {
-                    this.input.right = true;
-                    this.input.left = false;
-                } else {
-                    this.input.left = false;
-                    this.input.right = false;
-                }
-                this.input.jump = false;
-            } else { // Vertical movement (for jump)
-                const deadZone = 20; // Pixels
-                if (deltaY < -deadZone) {
-                    this.input.jump = true;
-                } else {
-                    this.input.jump = false;
-                }
-                this.input.left = false;
-                this.input.right = false;
+            
+            // Simple, reliable thresholds
+            const moveThreshold = 20;
+            const jumpThreshold = 30;
+            
+            // Reset all inputs first
+            this.input.left = false;
+            this.input.right = false;
+            this.input.jump = false;
+            
+            // Horizontal movement
+            if (deltaX < -moveThreshold) {
+                this.input.left = true;
+            } else if (deltaX > moveThreshold) {
+                this.input.right = true;
+            }
+            
+            // Jump (can be combined with horizontal)
+            if (deltaY < -jumpThreshold) {
+                this.input.jump = true;
             }
         });
 
         this.canvas.addEventListener('touchend', (e) => {
             e.preventDefault();
+            touchActive = false;
+            this.input.left = false;
+            this.input.right = false;
+            this.input.jump = false;
+        });
+        
+        this.canvas.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            touchActive = false;
             this.input.left = false;
             this.input.right = false;
             this.input.jump = false;
@@ -337,27 +349,62 @@ class Game {
     }
 
     drawStartScreen() {
+        // Responsive font sizes based on canvas size
+        const baseFontSize = Math.min(this.canvas.width, this.canvas.height) / 15;
+        const titleFontSize = Math.max(24, baseFontSize);
+        const subtitleFontSize = Math.max(16, baseFontSize * 0.5);
+        
         this.context.fillStyle = 'white';
-        this.context.font = "48px 'Courier New', Courier, monospace";
+        this.context.font = `bold ${titleFontSize}px 'Courier New', Courier, monospace`;
         this.context.textAlign = 'center';
-        this.context.fillText('MANIC MINER', this.canvas.width / 2, this.canvas.height / 2 - 50);
-        this.context.font = "24px 'Courier New', Courier, monospace";
-        this.context.fillText('Press SPACE or Tap to Start', this.canvas.width / 2, this.canvas.height / 2 + 20);
+        this.context.fillText('MANIC MINER', this.canvas.width / 2, this.canvas.height / 2 - titleFontSize);
+        this.context.font = `${subtitleFontSize}px 'Courier New', Courier, monospace`;
+        this.context.fillText('Press SPACE or Tap to Start', this.canvas.width / 2, this.canvas.height / 2 + subtitleFontSize);
         this.context.textAlign = 'left'; // Reset for game screen
     }
 
     drawEndScreen() {
-        this.context.fillStyle = 'white';
-        this.context.font = "48px 'Courier New', Courier, monospace";
+        // Responsive font sizes
+        const baseFontSize = Math.min(this.canvas.width, this.canvas.height) / 15;
+        const titleFontSize = Math.max(24, baseFontSize);
+        const textFontSize = Math.max(16, baseFontSize * 0.5);
+        
+        // Dark overlay background
+        this.context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Red glow effect for dramatic impact
+        this.context.shadowColor = '#FF4444';
+        this.context.shadowBlur = 20;
+        this.context.fillStyle = '#FF6666';
+        this.context.font = `bold ${titleFontSize}px 'Courier New', Courier, monospace`;
         this.context.textAlign = 'center';
-        this.context.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - 50);
-        this.context.font = "24px 'Courier New', Courier, monospace";
-        this.context.fillText(`Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 20);
-        this.context.fillText('Press SPACE or Tap to Restart', this.canvas.width / 2, this.canvas.height / 2 + 60);
+        this.context.fillText('GAME OVER', this.canvas.width / 2, this.canvas.height / 2 - titleFontSize);
+        
+        // Reset shadow
+        this.context.shadowBlur = 0;
+        
+        // Score with emphasis
+        this.context.fillStyle = '#FFFF88';
+        this.context.font = `bold ${textFontSize}px 'Courier New', Courier, monospace`;
+        this.context.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + textFontSize/2);
+        
+        // Restart instruction
+        this.context.fillStyle = '#CCCCCC';
+        this.context.font = `${textFontSize}px 'Courier New', Courier, monospace`;
+        this.context.fillText('Press SPACE or Tap to Restart', this.canvas.width / 2, this.canvas.height / 2 + textFontSize * 2);
+        
         this.context.textAlign = 'left'; // Reset for game screen
     }
 
     drawWinScreen() {
+        // Responsive font sizes
+        const baseFontSize = Math.min(this.canvas.width, this.canvas.height) / 18;
+        const titleFontSize = Math.max(20, baseFontSize * 1.2);
+        const subtitleFontSize = Math.max(18, baseFontSize);
+        const textFontSize = Math.max(14, baseFontSize * 0.7);
+        const instructionFontSize = Math.max(12, baseFontSize * 0.6);
+        
         // Animated celebration background
         const time = Date.now() * 0.003;
         
@@ -370,8 +417,9 @@ class Game {
         this.context.fillStyle = gradient;
         this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
         
-        // Animated stars/sparkles
-        for (let i = 0; i < 50; i++) {
+        // Animated stars/sparkles - fewer on mobile
+        const numStars = Math.min(50, Math.floor(this.canvas.width * this.canvas.height / 10000));
+        for (let i = 0; i < numStars; i++) {
             const starX = (Math.sin(time + i * 0.5) * 0.3 + 0.5) * this.canvas.width;
             const starY = (Math.cos(time * 0.7 + i * 0.8) * 0.3 + 0.5) * this.canvas.height;
             const starSize = Math.sin(time * 2 + i) * 2 + 3;
@@ -385,8 +433,9 @@ class Game {
             this.context.fillRect(starX - 1, starY - starSize*1.5, 2, starSize*3);
         }
         
-        // Floating confetti
-        for (let i = 0; i < 30; i++) {
+        // Floating confetti - fewer on mobile
+        const numConfetti = Math.min(30, Math.floor(this.canvas.width * this.canvas.height / 15000));
+        for (let i = 0; i < numConfetti; i++) {
             const confettiX = ((time * 20 + i * 50) % (this.canvas.width + 100)) - 50;
             const confettiY = (Math.sin(time + i) * 50) + (i * 15) % this.canvas.height;
             const confettiSize = 4 + Math.sin(time * 2 + i) * 2;
@@ -407,8 +456,8 @@ class Game {
         this.context.shadowColor = '#FFD700';
         this.context.shadowBlur = 20;
         this.context.fillStyle = '#FFD700';
-        this.context.font = "bold 64px 'Courier New', Courier, monospace";
-        this.context.fillText('🎉 VICTORY! 🎉', this.canvas.width / 2, this.canvas.height / 2 - 80);
+        this.context.font = `bold ${titleFontSize}px 'Courier New', Courier, monospace`;
+        this.context.fillText('🎉 VICTORY! 🎉', this.canvas.width / 2, this.canvas.height / 2 - titleFontSize * 2);
         
         // Reset shadow
         this.context.shadowBlur = 0;
@@ -416,23 +465,23 @@ class Game {
         // Success message with bounce effect
         const bounceOffset = Math.sin(time * 4) * 5;
         this.context.fillStyle = '#00FF88';
-        this.context.font = "bold 36px 'Courier New', Courier, monospace";
-        this.context.fillText('CONGRATULATIONS!', this.canvas.width / 2, this.canvas.height / 2 - 20 + bounceOffset);
+        this.context.font = `bold ${subtitleFontSize}px 'Courier New', Courier, monospace`;
+        this.context.fillText('CONGRATULATIONS!', this.canvas.width / 2, this.canvas.height / 2 - subtitleFontSize/2 + bounceOffset);
         
         // Achievement text
         this.context.fillStyle = '#FFFFFF';
-        this.context.font = "28px 'Courier New', Courier, monospace";
-        this.context.fillText('You completed all levels!', this.canvas.width / 2, this.canvas.height / 2 + 20);
+        this.context.font = `${textFontSize}px 'Courier New', Courier, monospace`;
+        this.context.fillText('You completed all levels!', this.canvas.width / 2, this.canvas.height / 2 + textFontSize/2);
         
         // Final score with emphasis
         this.context.fillStyle = '#FFFF00';
-        this.context.font = "bold 32px 'Courier New', Courier, monospace";
-        this.context.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 70);
+        this.context.font = `bold ${textFontSize}px 'Courier New', Courier, monospace`;
+        this.context.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + textFontSize * 2);
         
-        // Player sprite celebration
-        const playerScale = 3 + Math.sin(time * 3) * 0.5;
+        // Player sprite celebration - scaled for mobile
+        const playerScale = (2 + Math.sin(time * 3) * 0.5) * Math.min(this.canvas.width, this.canvas.height) / 800;
         this.context.save();
-        this.context.translate(this.canvas.width / 2, this.canvas.height / 2 + 140);
+        this.context.translate(this.canvas.width / 2, this.canvas.height / 2 + textFontSize * 4);
         this.context.scale(playerScale, playerScale);
         
         // Draw a simple celebrating miner
@@ -458,8 +507,8 @@ class Game {
         
         // Restart instruction
         this.context.fillStyle = '#CCCCCC';
-        this.context.font = "24px 'Courier New', Courier, monospace";
-        this.context.fillText('Press SPACE or Tap to Play Again', this.canvas.width / 2, this.canvas.height - 60);
+        this.context.font = `${instructionFontSize}px 'Courier New', Courier, monospace`;
+        this.context.fillText('Press SPACE or Tap to Play Again', this.canvas.width / 2, this.canvas.height - instructionFontSize * 2);
         
         this.context.textAlign = 'left'; // Reset for game screen
     }
