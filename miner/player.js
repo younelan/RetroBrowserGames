@@ -121,7 +121,8 @@ class Player {
     }
 
     handleHorizontalCollisions(level, prevX) {
-        level.platforms.forEach(platform => {
+        // Handle all solid platforms (non-moving platforms)
+        level.solidPlatforms.forEach(platform => {
             if (this.checkCollision(platform)) {
                 if (this.velocityX > 0) { // Moving right, hit left side of platform
                     this.x = platform.x - this.width;
@@ -132,7 +133,8 @@ class Player {
             }
         });
 
-        level.brickFloors.forEach(platform => {
+        // Handle crumbling platforms
+        level.crumblePlatforms.forEach(platform => {
             if (this.checkCollision(platform)) {
                 if (this.velocityX > 0) { // Moving right, hit left side of platform
                     this.x = platform.x - this.width;
@@ -143,29 +145,8 @@ class Player {
             }
         });
 
-        level.dirtFloors.forEach(platform => {
-            if (this.checkCollision(platform)) {
-                if (this.velocityX > 0) { // Moving right, hit left side of platform
-                    this.x = platform.x - this.width;
-                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
-                    this.x = platform.x + platform.width;
-                }
-                this.velocityX = 0;
-            }
-        });
-
-        level.movingLeftFloors.forEach(platform => {
-            if (this.checkCollision(platform)) {
-                if (this.velocityX > 0) { // Moving right, hit left side of platform
-                    this.x = platform.x - this.width;
-                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
-                    this.x = platform.x + platform.width;
-                }
-                this.velocityX = 0;
-            }
-        });
-
-        level.movingRightFloors.forEach(platform => {
+        // Handle moving platforms
+        level.movingPlatforms.forEach(platform => {
             if (this.checkCollision(platform)) {
                 if (this.velocityX > 0) { // Moving right, hit left side of platform
                     this.x = platform.x - this.width;
@@ -180,8 +161,8 @@ class Player {
     handleVerticalCollisions(level, prevY) {
         let onGroundThisFrame = false;
 
-        // Handle solid platforms (only solid from top)
-        level.platforms.forEach(platform => {
+        // Handle all solid platforms (only solid from top)
+        level.solidPlatforms.forEach(platform => {
             // Check for collision only if falling
             if (this.velocityY > 0 && this.checkCollision(platform)) {
                 this.y = platform.y - this.height;
@@ -192,56 +173,31 @@ class Player {
             // If moving up and colliding, do nothing (pass through)
         });
 
-        // Handle brick floors (behave like solid platforms)
-        level.brickFloors.forEach(platform => {
-            if (this.velocityY > 0 && this.checkCollision(platform)) {
-                this.y = platform.y - this.height;
-                this.velocityY = 0;
-                this.isJumping = false;
-                onGroundThisFrame = true;
+        // Handle moving platforms - special logic for conveyor movement
+        level.movingPlatforms.forEach(platform => {
+            const tileAttr = TILE_ATTRIBUTES[platform.type];
+            if (tileAttr && tileAttr.isMoving) {
+                // Check if player's feet are on the platform and there's horizontal overlap
+                if (this.velocityY > 0 && 
+                    this.y + this.height >= platform.y && this.y + this.height <= platform.y + platform.height &&
+                    this.x < platform.x + platform.width && this.x + this.width > platform.x) {
+                    this.y = platform.y - this.height;
+                    this.velocityY = 0;
+                    this.isJumping = false;
+                    onGroundThisFrame = true;
+                    
+                    // Apply conveyor movement
+                    if (tileAttr.moveDirection === -1) {
+                        this.x -= 1; // Move player left
+                    } else if (tileAttr.moveDirection === 1) {
+                        this.x += 1; // Move player right
+                    }
+                }
             }
         });
 
-        // Handle dirt floors (behave like solid platforms)
-        level.dirtFloors.forEach(platform => {
-            if (this.velocityY > 0 && this.checkCollision(platform)) {
-                this.y = platform.y - this.height;
-                this.velocityY = 0;
-                this.isJumping = false;
-                onGroundThisFrame = true;
-            }
-        });
-
-        // Handle moving left floors
-        level.movingLeftFloors.forEach(platform => {
-            // Check if player's feet are on the platform and there's horizontal overlap
-            if (this.velocityY > 0 && 
-                this.y + this.height >= platform.y && this.y + this.height <= platform.y + platform.height &&
-                this.x < platform.x + platform.width && this.x + this.width > platform.x) {
-                this.y = platform.y - this.height;
-                this.velocityY = 0;
-                this.isJumping = false;
-                onGroundThisFrame = true;
-                this.x -= 1; // Move player left
-            }
-        });
-
-        // Handle moving right floors
-        level.movingRightFloors.forEach(platform => {
-            // Check if player's feet are on the platform and there's horizontal overlap
-            if (this.velocityY > 0 && 
-                this.y + this.height >= platform.y && this.y + this.height <= platform.y + platform.height &&
-                this.x < platform.x + platform.width && this.x + this.width > platform.x) {
-                this.y = platform.y - this.height;
-                this.velocityY = 0;
-                this.isJumping = false;
-                onGroundThisFrame = true;
-                this.x += 1; // Move player right
-            }
-        });
-
-        // Handle crumbling platforms (only solid from top)
-        level.crumblingPlatforms.forEach(platform => {
+        // Handle crumbling platforms (only solid from top, start decay on contact)
+        level.crumblePlatforms.forEach(platform => {
             // Check for collision only if falling
             if (this.velocityY > 0 && this.checkCollision(platform)) {
                 this.y = platform.y - this.height;
@@ -256,14 +212,22 @@ class Player {
         this.onGround = onGroundThisFrame;
 
         // Update crumbling platforms decay
-        level.crumblingPlatforms = level.crumblingPlatforms.filter(p => {
+        level.crumblePlatforms = level.crumblePlatforms.filter(p => {
             if (p.decay > 0) {
                 p.decay++;
                 if (p.decay > 30) { // Disappear after 30 frames of decay
+                    // Also remove from legacy array
+                    const index = level.crumblingPlatforms.indexOf(p);
+                    if (index > -1) level.crumblingPlatforms.splice(index, 1);
                     return false; // Remove platform
                 }
             }
             return true;
+        });
+        
+        // Update legacy array as well
+        level.crumblingPlatforms = level.crumblingPlatforms.filter(p => {
+            return p.decay === undefined || p.decay <= 30;
         });
     }
 

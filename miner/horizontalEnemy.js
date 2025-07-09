@@ -36,12 +36,7 @@ class HorizontalEnemy {
             }
         };
 
-        level.platforms.forEach(checkWallCollision);
-        level.brickFloors.forEach(checkWallCollision);
-        level.dirtFloors.forEach(checkWallCollision);
-        level.movingLeftFloors.forEach(checkWallCollision);
-        level.movingRightFloors.forEach(checkWallCollision);
-        level.crumblingPlatforms.forEach(checkWallCollision);
+        level.allPlatforms.forEach(checkWallCollision);
 
         // Check for world bounds
         const atWorldEdge = (nextX < 0 || nextX + this.width > LEVEL_WIDTH * TILE_SIZE);

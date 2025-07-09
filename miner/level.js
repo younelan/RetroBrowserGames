@@ -9,11 +9,19 @@ class Level {
         this.crumblingPlatforms = [];
         this.brickFloors = [];
         this.dirtFloors = [];
+        this.grassFloors = [];
+        this.grassCrumbleFloors = [];
         this.movingLeftFloors = [];
         this.movingRightFloors = [];
         this.decorativeElements = [];
         this.portal = null;
         this.playerStart = { x: 0, y: 0 };
+
+        // Unified platform arrays based on TILE_ATTRIBUTES
+        this.allPlatforms = []; // All platforms regardless of type
+        this.solidPlatforms = []; // All solid platforms (isPlatform && !isMoving)
+        this.movingPlatforms = []; // All moving platforms (isPlatform && isMoving)
+        this.crumblePlatforms = []; // All crumbling platforms (isCrumble)
 
         // Store map rows for checking adjacent tiles
         this.mapRows = this.map.trim().split('\n');
@@ -35,11 +43,69 @@ class Level {
                 const char = mapRows[y][x];
                 const worldX = x * TILE_SIZE;
                 const worldY = y * TILE_SIZE;
+                const tileAttr = TILE_ATTRIBUTES[char];
 
+                if (!tileAttr) continue; // Skip unknown tiles
+
+                // Create platform object if it's a platform
+                if (tileAttr.isPlatform) {
+                    const platform = { 
+                        x: worldX, 
+                        y: worldY, 
+                        width: TILE_SIZE, 
+                        height: TILE_SIZE, 
+                        type: char,
+                        decay: tileAttr.isCrumble ? 0 : undefined
+                    };
+
+                    // Add to appropriate arrays
+                    this.allPlatforms.push(platform);
+                    
+                    if (tileAttr.isCrumble) {
+                        this.crumblePlatforms.push(platform);
+                        this.crumblingPlatforms.push(platform); // Keep for backward compatibility
+                    } else if (tileAttr.isMoving) {
+                        this.movingPlatforms.push(platform);
+                        if (tileAttr.moveDirection === -1) {
+                            this.movingLeftFloors.push(platform); // Keep for backward compatibility
+                        } else if (tileAttr.moveDirection === 1) {
+                            this.movingRightFloors.push(platform); // Keep for backward compatibility
+                        }
+                    } else {
+                        this.solidPlatforms.push(platform);
+                    }
+
+                    // Keep legacy arrays for rendering
+                    switch (char) {
+                        case 'X':
+                            this.platforms.push(platform);
+                            break;
+                        case 'B':
+                            this.brickFloors.push(platform);
+                            break;
+                        case 'D':
+                            this.dirtFloors.push(platform);
+                            break;
+                        case 'G':
+                            this.grassFloors.push(platform);
+                            break;
+                        case 'M':
+                            this.grassCrumbleFloors.push(platform);
+                            break;
+                        case 'C':
+                            // Already handled above
+                            break;
+                        case 'L':
+                            // Already handled above
+                            break;
+                        case 'R':
+                            // Already handled above
+                            break;
+                    }
+                }
+
+                // Handle ALL tiles (both platform and non-platform)
                 switch (char) {
-                    case 'X':
-                        this.platforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
-                        break;
                     case '@':
                         this.playerStart = { x: worldX, y: worldY };
                         break;
@@ -58,10 +124,6 @@ class Level {
                     case 'Z':
                         this.enemies.push(new ComplexEnemy(worldX, worldY - TILE_SIZE));
                         break;
-                    case 'C':
-                        this.crumblingPlatforms.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, decay: 0, type: char });
-                        break;
-                    
                     case 'I':
                         this.hazards.push(new Hazard(worldX, worldY, 'SPIKES'));
                         break;
@@ -70,19 +132,6 @@ class Level {
                         break;
                     case '%':
                         this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'SHRUB' });
-                        break;
-                    
-                    case 'B':
-                        this.brickFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
-                        break;
-                    case 'D':
-                        this.dirtFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
-                        break;
-                    case 'L':
-                        this.movingLeftFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
-                        break;
-                    case 'R':
-                        this.movingRightFloors.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
                     case 'T':
                         this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
@@ -531,6 +580,375 @@ class Level {
                     context.fillRect(rockX + 1, rockY - 1, rockSize - 2, 1);
                     context.fillRect(rockX - 1, rockY + 1, 1, rockSize - 2);
                     context.fillRect(rockX + rockSize, rockY + 2, 1, rockSize - 3);
+                }
+            }
+            
+            context.restore();
+        });
+
+        // Draw grass floors (dirt base with green grass on top)
+        this.grassFloors.forEach(g => {
+            // Create clipping path for dirt shape with jagged bottom edge (same as dirt)
+            context.save();
+            context.beginPath();
+            
+            // Start from top-left corner
+            context.moveTo(g.x, g.y);
+            // Top edge (straight)
+            context.lineTo(g.x + g.width, g.y);
+            // Right edge down to jagged bottom area
+            context.lineTo(g.x + g.width, g.y + g.height - 8);
+            
+            // Create natural jagged bottom edge - same as dirt
+            const pointSpacing = 1;
+            const numPoints = Math.floor(g.width / pointSpacing);
+            
+            // Generate jagged points from right to left using GLOBAL position for seamless tiles
+            for (let i = numPoints; i >= 0; i--) {
+                const globalX = g.x + (i * pointSpacing);
+                const globalY = g.y; 
+                const variation1 = Math.sin(globalX * 0.08 + globalY * 0.05) * 6;
+                const variation2 = Math.sin(globalX * 0.15 + globalY * 0.08) * 4;
+                const variation3 = Math.sin(globalX * 0.3 + globalY * 0.12) * 3;
+                const variation4 = Math.sin(globalX * 0.6 + globalY * 0.2) * 2;
+                const totalVariation = variation1 + variation2 + variation3 + variation4;
+                const y = g.y + g.height - 8 + totalVariation;
+                context.lineTo(globalX, y);
+            }
+            
+            // Left edge back to start
+            context.lineTo(g.x, g.y);
+            context.closePath();
+            context.clip();
+            
+            // Draw dirt base (same as dirt tiles)
+            context.fillStyle = '#4A3B28'; // Dark earth brown
+            context.fillRect(g.x, g.y, g.width, g.height);
+            
+            // Create patchy, uneven dirt surface (same as dirt)
+            const globalTileX = g.x / TILE_SIZE;
+            const globalTileY = g.y / TILE_SIZE;
+            
+            // Add dirt patches (same as dirt tiles)
+            for (let patch = 0; patch < 15; patch++) {
+                const globalPatchX = (globalTileX * 47 + globalTileY * 31 + patch * 13) % 7;
+                const globalPatchY = (globalTileX * 23 + globalTileY * 41 + patch * 17) % 5;
+                
+                const patchRandX = Math.sin(globalPatchX + patch * 2.3) * 0.8 + 0.5;
+                const patchRandY = Math.sin(globalPatchY + patch * 4.7) * 0.5 + 0.5;
+                const patchRandSize = Math.sin(globalTileX * 19 + globalTileY * 23 + patch * 6.1) * 0.5 + 0.5;
+                const patchRandColor = Math.sin(globalTileX * 29 + globalTileY * 31 + patch * 8.9) * 0.5 + 0.5;
+                
+                const patchX = g.x - 8 + Math.floor(patchRandX * (g.width + 16));
+                const patchY = g.y + 8 + Math.floor(patchRandY * 6); // Keep dirt patches lower
+                const patchWidth = Math.floor(patchRandSize * 12) + 4;
+                const patchHeight = Math.floor(patchRandSize * 6) + 2;
+                
+                // Vary the dirt color for patches
+                if (patchRandColor < 0.3) {
+                    context.fillStyle = '#524135'; // Medium dirt
+                } else if (patchRandColor < 0.6) {
+                    context.fillStyle = '#5A4A3D'; // Lighter dirt
+                } else {
+                    context.fillStyle = '#3F342A'; // Darker dirt
+                }
+                
+                context.fillRect(patchX, patchY, patchWidth, patchHeight);
+            }
+            
+            // Add rocks (same as dirt tiles)
+            for (let i = 0; i < 8; i++) {
+                const globalRockX = (globalTileX * 37 + globalTileY * 43 + i * 19) % 11;
+                const globalRockY = (globalTileX * 17 + globalTileY * 29 + i * 23) % 7;
+                
+                const pseudoRandX = Math.sin(globalRockX + i * 3.7) * 0.8 + 0.5;
+                const pseudoRandY = Math.sin(globalRockY + i * 5.1) * 0.7 + 0.5;
+                const pseudoRandSize = Math.sin(globalTileX * 37 + globalTileY * 41 + i * 7.3) * 0.5 + 0.5;
+                const pseudoRandColor = Math.sin(globalTileX * 43 + globalTileY * 47 + i * 9.7) * 0.5 + 0.5;
+                
+                const rockX = g.x - 6 + Math.floor(pseudoRandX * (g.width + 12));
+                const rockY = g.y + 8 + Math.floor(pseudoRandY * (g.height - 20)); // Keep rocks lower
+                const rockSize = Math.floor(pseudoRandSize * 5) + 3;
+                
+                // Vary rock colors
+                if (pseudoRandColor < 0.4) {
+                    context.fillStyle = '#2A241D'; // Very dark brown
+                } else if (pseudoRandColor < 0.7) {
+                    context.fillStyle = '#444444'; // Dark gray
+                } else {
+                    context.fillStyle = '#1A1A1A'; // Almost black
+                }
+                
+                context.fillRect(rockX, rockY, rockSize, rockSize);
+                if (rockSize >= 4) {
+                    context.fillRect(rockX + 1, rockY - 1, rockSize - 2, 1);
+                    context.fillRect(rockX - 1, rockY + 1, 1, rockSize - 2);
+                    context.fillRect(rockX + rockSize, rockY + 2, 1, rockSize - 3);
+                }
+            }
+            
+            // Now add the grass layer on top (top quarter of the tile)
+            const grassHeight = Math.floor(g.height / 4); // Top quarter
+            
+            // Create jagged grass top edge
+            context.beginPath();
+            context.moveTo(g.x, g.y);
+            
+            // Create jagged grass edge on top
+            for (let i = 0; i <= numPoints; i++) {
+                const globalX = g.x + (i * pointSpacing);
+                const globalY = g.y;
+                // Different variation pattern for grass edge
+                const grassVar1 = Math.sin(globalX * 0.12 + globalY * 0.07) * 3;
+                const grassVar2 = Math.sin(globalX * 0.25 + globalY * 0.15) * 2;
+                const grassVar3 = Math.sin(globalX * 0.45 + globalY * 0.25) * 1.5;
+                const totalGrassVar = grassVar1 + grassVar2 + grassVar3;
+                const y = g.y + grassHeight + totalGrassVar;
+                context.lineTo(globalX, y);
+            }
+            
+            // Complete the grass area
+            context.lineTo(g.x + g.width, g.y);
+            context.lineTo(g.x, g.y);
+            context.closePath();
+            
+            // Fill with green grass color
+            context.fillStyle = '#4A7C59'; // Medium green
+            context.fill();
+            
+            // Add grass texture patches
+            for (let patch = 0; patch < 20; patch++) {
+                const globalPatchX = (globalTileX * 53 + globalTileY * 37 + patch * 11) % 9;
+                const globalPatchY = (globalTileX * 29 + globalTileY * 43 + patch * 19) % 3;
+                
+                const patchRandX = Math.sin(globalPatchX + patch * 2.7) * 0.8 + 0.5;
+                const patchRandY = Math.sin(globalPatchY + patch * 4.3) * 0.5 + 0.5;
+                const patchRandSize = Math.sin(globalTileX * 23 + globalTileY * 31 + patch * 5.7) * 0.5 + 0.5;
+                const patchRandColor = Math.sin(globalTileX * 41 + globalTileY * 47 + patch * 7.1) * 0.5 + 0.5;
+                
+                const patchX = g.x - 6 + Math.floor(patchRandX * (g.width + 12));
+                const patchY = g.y + Math.floor(patchRandY * grassHeight);
+                const patchWidth = Math.floor(patchRandSize * 8) + 2;
+                const patchHeight = Math.floor(patchRandSize * 4) + 1;
+                
+                // Vary the grass color for patches
+                if (patchRandColor < 0.3) {
+                    context.fillStyle = '#3E6B4A'; // Darker green
+                } else if (patchRandColor < 0.6) {
+                    context.fillStyle = '#5A8C69'; // Lighter green
+                } else {
+                    context.fillStyle = '#567A61'; // Medium-dark green
+                }
+                
+                context.fillRect(patchX, patchY, patchWidth, patchHeight);
+            }
+            
+            // Add small individual grass blades for detail
+            for (let blade = 0; blade < 25; blade++) {
+                const globalBladeX = (globalTileX * 61 + globalTileY * 67 + blade * 13) % 13;
+                const globalBladeY = (globalTileX * 71 + globalTileY * 73 + blade * 17) % 5;
+                
+                const bladeRandX = Math.sin(globalBladeX + blade * 3.1) * 0.9 + 0.5;
+                const bladeRandY = Math.sin(globalBladeY + blade * 4.9) * 0.8 + 0.5;
+                const bladeRandHeight = Math.sin(globalTileX * 79 + globalTileY * 83 + blade * 6.3) * 0.5 + 0.5;
+                
+                const bladeX = g.x - 4 + Math.floor(bladeRandX * (g.width + 8));
+                const bladeY = g.y + Math.floor(bladeRandY * (grassHeight - 2));
+                const bladeHeight = Math.floor(bladeRandHeight * 3) + 1;
+                
+                // Bright green for individual blades
+                context.fillStyle = '#6B9A7A';
+                context.fillRect(bladeX, bladeY, 1, bladeHeight);
+            }
+            
+            context.restore();
+        });
+
+        // Draw grass crumble floors (darker dirt base with green grass on top, crumbles like C)
+        this.grassCrumbleFloors.forEach(m => {
+            // Create clipping path for dirt shape with jagged bottom edge (same as dirt/grass)
+            context.save();
+            context.beginPath();
+            
+            // Start from top-left corner
+            context.moveTo(m.x, m.y);
+            // Top edge (straight)
+            context.lineTo(m.x + m.width, m.y);
+            // Right edge down to jagged bottom area
+            context.lineTo(m.x + m.width, m.y + m.height - 8);
+            
+            // Create natural jagged bottom edge - same as dirt/grass
+            const pointSpacing = 1;
+            const numPoints = Math.floor(m.width / pointSpacing);
+            
+            // Generate jagged points from right to left using GLOBAL position for seamless tiles
+            for (let i = numPoints; i >= 0; i--) {
+                const globalX = m.x + (i * pointSpacing);
+                const globalY = m.y; 
+                const variation1 = Math.sin(globalX * 0.08 + globalY * 0.05) * 6;
+                const variation2 = Math.sin(globalX * 0.15 + globalY * 0.08) * 4;
+                const variation3 = Math.sin(globalX * 0.3 + globalY * 0.12) * 3;
+                const variation4 = Math.sin(globalX * 0.6 + globalY * 0.2) * 2;
+                const totalVariation = variation1 + variation2 + variation3 + variation4;
+                const y = m.y + m.height - 8 + totalVariation;
+                context.lineTo(globalX, y);
+            }
+            
+            // Left edge back to start
+            context.lineTo(m.x, m.y);
+            context.closePath();
+            context.clip();
+            
+            // Handle crumbling effect (similar to C tile but preserve grass appearance)
+            const crumbleProgress = m.decay > 0 ? m.decay / 30 : 0;
+            const crumbleHeight = Math.floor(crumbleProgress * m.height);
+            
+            // Draw darker dirt base (darker than regular dirt for crumble effect)
+            context.fillStyle = '#3A2E1F'; // Much darker earth brown
+            context.fillRect(m.x, m.y + crumbleHeight, m.width, m.height - crumbleHeight);
+            
+            // Create patchy, uneven dirt surface (same as dirt/grass but darker)
+            const globalTileX = m.x / TILE_SIZE;
+            const globalTileY = m.y / TILE_SIZE;
+            
+            // Add darker dirt patches 
+            for (let patch = 0; patch < 15; patch++) {
+                const globalPatchX = (globalTileX * 47 + globalTileY * 31 + patch * 13) % 7;
+                const globalPatchY = (globalTileX * 23 + globalTileY * 41 + patch * 17) % 5;
+                
+                const patchRandX = Math.sin(globalPatchX + patch * 2.3) * 0.8 + 0.5;
+                const patchRandY = Math.sin(globalPatchY + patch * 4.7) * 0.5 + 0.5;
+                const patchRandSize = Math.sin(globalTileX * 19 + globalTileY * 23 + patch * 6.1) * 0.5 + 0.5;
+                const patchRandColor = Math.sin(globalTileX * 29 + globalTileY * 31 + patch * 8.9) * 0.5 + 0.5;
+                
+                const patchX = m.x - 8 + Math.floor(patchRandX * (m.width + 16));
+                const patchY = m.y + crumbleHeight + 8 + Math.floor(patchRandY * 6);
+                const patchWidth = Math.floor(patchRandSize * 12) + 4;
+                const patchHeight = Math.floor(patchRandSize * 6) + 2;
+                
+                // Only draw if below crumble line
+                if (patchY >= m.y + crumbleHeight) {
+                    // Vary the darker dirt color for patches
+                    if (patchRandColor < 0.3) {
+                        context.fillStyle = '#423026'; // Medium dark dirt
+                    } else if (patchRandColor < 0.6) {
+                        context.fillStyle = '#4A3A2D'; // Lighter dark dirt
+                    } else {
+                        context.fillStyle = '#2F241A'; // Darker dirt
+                    }
+                    
+                    context.fillRect(patchX, patchY, patchWidth, patchHeight);
+                }
+            }
+            
+            // Add darker rocks
+            for (let i = 0; i < 8; i++) {
+                const globalRockX = (globalTileX * 37 + globalTileY * 43 + i * 19) % 11;
+                const globalRockY = (globalTileX * 17 + globalTileY * 29 + i * 23) % 7;
+                
+                const pseudoRandX = Math.sin(globalRockX + i * 3.7) * 0.8 + 0.5;
+                const pseudoRandY = Math.sin(globalRockY + i * 5.1) * 0.7 + 0.5;
+                const pseudoRandSize = Math.sin(globalTileX * 37 + globalTileY * 41 + i * 7.3) * 0.5 + 0.5;
+                const pseudoRandColor = Math.sin(globalTileX * 43 + globalTileY * 47 + i * 9.7) * 0.5 + 0.5;
+                
+                const rockX = m.x - 6 + Math.floor(pseudoRandX * (m.width + 12));
+                const rockY = m.y + crumbleHeight + 8 + Math.floor(pseudoRandY * (m.height - 20));
+                const rockSize = Math.floor(pseudoRandSize * 5) + 3;
+                
+                // Only draw if below crumble line
+                if (rockY >= m.y + crumbleHeight) {
+                    // Vary rock colors - even darker
+                    if (pseudoRandColor < 0.4) {
+                        context.fillStyle = '#1A140D'; // Very dark brown
+                    } else if (pseudoRandColor < 0.7) {
+                        context.fillStyle = '#2A2A2A'; // Dark gray
+                    } else {
+                        context.fillStyle = '#0A0A0A'; // Almost black
+                    }
+                    
+                    context.fillRect(rockX, rockY, rockSize, rockSize);
+                    if (rockSize >= 4) {
+                        context.fillRect(rockX + 1, rockY - 1, rockSize - 2, 1);
+                        context.fillRect(rockX - 1, rockY + 1, 1, rockSize - 2);
+                        context.fillRect(rockX + rockSize, rockY + 2, 1, rockSize - 3);
+                    }
+                }
+            }
+            
+            // Add the grass layer on top (top quarter of remaining tile)
+            const remainingHeight = m.height - crumbleHeight;
+            const grassHeight = Math.floor(remainingHeight / 4);
+            
+            if (grassHeight > 0 && remainingHeight > 0) {
+                // Create jagged grass top edge
+                context.beginPath();
+                context.moveTo(m.x, m.y + crumbleHeight);
+                
+                // Create jagged grass edge on top
+                for (let i = 0; i <= numPoints; i++) {
+                    const globalX = m.x + (i * pointSpacing);
+                    const globalY = m.y;
+                    // Different variation pattern for grass edge
+                    const grassVar1 = Math.sin(globalX * 0.12 + globalY * 0.07) * 3;
+                    const grassVar2 = Math.sin(globalX * 0.25 + globalY * 0.15) * 2;
+                    const grassVar3 = Math.sin(globalX * 0.45 + globalY * 0.25) * 1.5;
+                    const totalGrassVar = grassVar1 + grassVar2 + grassVar3;
+                    const y = m.y + crumbleHeight + grassHeight + totalGrassVar;
+                    context.lineTo(globalX, y);
+                }
+                
+                // Complete the grass area
+                context.lineTo(m.x + m.width, m.y + crumbleHeight);
+                context.lineTo(m.x, m.y + crumbleHeight);
+                context.closePath();
+                
+                // Fill with darker green grass color (more muted for crumble effect)
+                context.fillStyle = '#3A5A45'; // Darker, more muted green
+                context.fill();
+                
+                // Add darker grass texture patches
+                for (let patch = 0; patch < 20; patch++) {
+                    const globalPatchX = (globalTileX * 53 + globalTileY * 37 + patch * 11) % 9;
+                    const globalPatchY = (globalTileX * 29 + globalTileY * 43 + patch * 19) % 3;
+                    
+                    const patchRandX = Math.sin(globalPatchX + patch * 2.7) * 0.8 + 0.5;
+                    const patchRandY = Math.sin(globalPatchY + patch * 4.3) * 0.5 + 0.5;
+                    const patchRandSize = Math.sin(globalTileX * 23 + globalTileY * 31 + patch * 5.7) * 0.5 + 0.5;
+                    const patchRandColor = Math.sin(globalTileX * 41 + globalTileY * 47 + patch * 7.1) * 0.5 + 0.5;
+                    
+                    const patchX = m.x - 6 + Math.floor(patchRandX * (m.width + 12));
+                    const patchY = m.y + crumbleHeight + Math.floor(patchRandY * grassHeight);
+                    const patchWidth = Math.floor(patchRandSize * 8) + 2;
+                    const patchHeight = Math.floor(patchRandSize * 4) + 1;
+                    
+                    // Vary the darker grass color for patches
+                    if (patchRandColor < 0.3) {
+                        context.fillStyle = '#2D4A35'; // Darker green
+                    } else if (patchRandColor < 0.6) {
+                        context.fillStyle = '#456A52'; // Lighter green
+                    } else {
+                        context.fillStyle = '#3F5A48'; // Medium-dark green
+                    }
+                    
+                    context.fillRect(patchX, patchY, patchWidth, patchHeight);
+                }
+                
+                // Add small individual grass blades for detail
+                for (let blade = 0; blade < 25; blade++) {
+                    const globalBladeX = (globalTileX * 61 + globalTileY * 67 + blade * 13) % 13;
+                    const globalBladeY = (globalTileX * 71 + globalTileY * 73 + blade * 17) % 5;
+                    
+                    const bladeRandX = Math.sin(globalBladeX + blade * 3.1) * 0.9 + 0.5;
+                    const bladeRandY = Math.sin(globalBladeY + blade * 4.9) * 0.8 + 0.5;
+                    const bladeRandHeight = Math.sin(globalTileX * 79 + globalTileY * 83 + blade * 6.3) * 0.5 + 0.5;
+                    
+                    const bladeX = m.x - 4 + Math.floor(bladeRandX * (m.width + 8));
+                    const bladeY = m.y + crumbleHeight + Math.floor(bladeRandY * (grassHeight - 2));
+                    const bladeHeight = Math.floor(bladeRandHeight * 3) + 1;
+                    
+                    // Darker green for individual blades
+                    context.fillStyle = '#4A6A55';
+                    context.fillRect(bladeX, bladeY, 1, bladeHeight);
                 }
             }
             
