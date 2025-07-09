@@ -269,18 +269,18 @@ class Level {
             const currentHeight = p.height * (1 - decayProgress);
             const currentY = p.y + (p.height - currentHeight);
 
-            // Always draw like dirt but with much darker brown shades
+            // Always draw like dirt but with darker brown colors, even while decaying
             context.save();
             context.beginPath();
             
-            // Start from top-left corner
+            // Start from top-left corner (adjusted for decay)
             context.moveTo(p.x, currentY);
             // Top edge (straight)
             context.lineTo(p.x + p.width, currentY);
             // Right edge down to jagged bottom area
             context.lineTo(p.x + p.width, p.y + p.height - 8);
             
-            // Create natural jagged bottom edge - same as dirt tile
+            // Create natural jagged bottom edge - exactly like dirt tile
             const pointSpacing = 1;
             const numPoints = Math.floor(p.width / pointSpacing);
             
@@ -297,20 +297,20 @@ class Level {
                 context.lineTo(globalX, y);
             }
             
-            // Left edge back to start
+            // Left edge back to start (adjusted for decay)
             context.lineTo(p.x, currentY);
             context.closePath();
             context.clip();
             
-            // Base crumble color (much darker than dirt for clear distinction)
-            context.fillStyle = '#2D2318'; // Much darker earth brown than dirt (#4A3B28)
+            // Base crumble color (much darker than dirt for easy distinction)
+            context.fillStyle = '#2A1F15'; // Much darker earth brown than dirt (#4A3B28)
             context.fillRect(p.x, currentY, p.width, currentHeight);
             
-            // Create patchy surface with much darker browns
+            // Create patchy surface with much darker browns (same logic as dirt)
             const globalTileX = p.x / TILE_SIZE;
             const globalTileY = p.y / TILE_SIZE;
             
-            // Add patches with much darker brown variations
+            // Add patches with much darker brown variations (same pattern as dirt)
             for (let patch = 0; patch < 15; patch++) {
                 const globalPatchX = (globalTileX * 47 + globalTileY * 31 + patch * 13) % 7;
                 const globalPatchY = (globalTileX * 23 + globalTileY * 41 + patch * 17) % 5;
@@ -325,19 +325,22 @@ class Level {
                 const patchWidth = Math.floor(patchRandSize * 12) + 4;
                 const patchHeight = Math.floor(patchRandSize * 6) + 2;
                 
-                // Much darker brown variations for crumble patches
-                if (patchRandColor < 0.3) {
-                    context.fillStyle = '#362B1F'; // Much darker medium dirt
-                } else if (patchRandColor < 0.6) {
-                    context.fillStyle = '#3E2F24'; // Much darker lighter dirt
-                } else {
-                    context.fillStyle = '#241C15'; // Much darker dark dirt
+                // Only draw patch if it's within the current visible area
+                if (patchY >= currentY && patchY + patchHeight <= currentY + currentHeight) {
+                    // Much darker versions of dirt patch colors
+                    if (patchRandColor < 0.3) {
+                        context.fillStyle = '#32251A'; // Much darker version of #524135
+                    } else if (patchRandColor < 0.6) {
+                        context.fillStyle = '#3A2C20'; // Much darker version of #5A4A3D
+                    } else {
+                        context.fillStyle = '#1F1815'; // Much darker version of #3F342A
+                    }
+                    
+                    context.fillRect(patchX, patchY, patchWidth, patchHeight);
                 }
-                
-                context.fillRect(patchX, patchY, patchWidth, patchHeight);
             }
             
-            // Add rocks with much darker colors
+            // Add rocks with much darker colors (same logic as dirt)
             for (let i = 0; i < 8; i++) {
                 const globalRockX = (globalTileX * 37 + globalTileY * 43 + i * 19) % 11;
                 const globalRockY = (globalTileX * 17 + globalTileY * 29 + i * 23) % 7;
@@ -353,13 +356,13 @@ class Level {
                 
                 // Only draw rock if it's within the current visible area
                 if (rockY >= currentY && rockY + rockSize <= currentY + currentHeight) {
-                    // Much darker rock colors for crumble
+                    // Much darker versions of dirt rock colors
                     if (pseudoRandColor < 0.4) {
-                        context.fillStyle = '#0F0C09'; // Much darker very dark brown
+                        context.fillStyle = '#0F0A08'; // Much darker version of #2A241D
                     } else if (pseudoRandColor < 0.7) {
-                        context.fillStyle = '#1A1A1A'; // Much darker gray
+                        context.fillStyle = '#1A1A1A'; // Much darker version of #444444
                     } else {
-                        context.fillStyle = '#050505'; // Much darker almost black
+                        context.fillStyle = '#050505'; // Much darker version of #1A1A1A
                     }
                     
                     context.fillRect(rockX, rockY, rockSize, rockSize);

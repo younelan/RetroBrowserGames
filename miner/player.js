@@ -143,6 +143,17 @@ class Player {
             }
         });
 
+        level.dirtFloors.forEach(platform => {
+            if (this.checkCollision(platform)) {
+                if (this.velocityX > 0) { // Moving right, hit left side of platform
+                    this.x = platform.x - this.width;
+                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                    this.x = platform.x + platform.width;
+                }
+                this.velocityX = 0;
+            }
+        });
+
         level.movingLeftFloors.forEach(platform => {
             if (this.checkCollision(platform)) {
                 if (this.velocityX > 0) { // Moving right, hit left side of platform
@@ -183,6 +194,16 @@ class Player {
 
         // Handle brick floors (behave like solid platforms)
         level.brickFloors.forEach(platform => {
+            if (this.velocityY > 0 && this.checkCollision(platform)) {
+                this.y = platform.y - this.height;
+                this.velocityY = 0;
+                this.isJumping = false;
+                onGroundThisFrame = true;
+            }
+        });
+
+        // Handle dirt floors (behave like solid platforms)
+        level.dirtFloors.forEach(platform => {
             if (this.velocityY > 0 && this.checkCollision(platform)) {
                 this.y = platform.y - this.height;
                 this.velocityY = 0;

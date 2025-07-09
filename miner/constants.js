@@ -16,6 +16,7 @@ const TILE_ATTRIBUTES = {
     'X': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false },
     'C': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false }, // Crumbling
     'B': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false }, // Brick
+    'D': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false }, // Dirt
     'L': { isSolid: true, isPlatform: true, isHazard: false, isMoving: true, moveDirection: -1 }, // Moving Left
     'R': { isSolid: true, isPlatform: true, isHazard: false, isMoving: true, moveDirection: 1 },  // Moving Right
     'K': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false }, // Key

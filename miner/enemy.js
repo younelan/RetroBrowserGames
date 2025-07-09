@@ -44,6 +44,7 @@ class Enemy {
 
             level.platforms.forEach(checkWallCollision);
             level.brickFloors.forEach(checkWallCollision);
+            level.dirtFloors.forEach(checkWallCollision);
             level.movingLeftFloors.forEach(checkWallCollision);
             level.movingRightFloors.forEach(checkWallCollision);
             level.crumblingPlatforms.forEach(checkWallCollision); // Crumbling platforms are also solid walls

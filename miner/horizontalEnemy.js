@@ -38,6 +38,7 @@ class HorizontalEnemy {
 
         level.platforms.forEach(checkWallCollision);
         level.brickFloors.forEach(checkWallCollision);
+        level.dirtFloors.forEach(checkWallCollision);
         level.movingLeftFloors.forEach(checkWallCollision);
         level.movingRightFloors.forEach(checkWallCollision);
         level.crumblingPlatforms.forEach(checkWallCollision);
