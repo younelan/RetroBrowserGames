@@ -125,26 +125,118 @@ class Level {
         // Draw portal
         if (this.portal) {
             if (allKeysCollected) {
-                // Open door (frame only, transparent inside)
-                context.fillStyle = 'lime';
-                // Draw top part of frame
-                context.fillRect(this.portal.x, this.portal.y, this.portal.width, 4); // Top border
-                // Draw bottom part of frame
-                context.fillRect(this.portal.x, this.portal.y + this.portal.height - 4, this.portal.width, 4); // Bottom border
-                // Draw left part of frame
-                context.fillRect(this.portal.x, this.portal.y, 4, this.portal.height); // Left border
-                // Draw right part of frame
-                context.fillRect(this.portal.x + this.portal.width - 4, this.portal.y, 4, this.portal.height); // Right border
+                // Beautiful open door - ornate stone archway
+                const portalX = this.portal.x;
+                const portalY = this.portal.y;
+                const portalW = this.portal.width;
+                const portalH = this.portal.height;
+                
+                // Stone archway frame with 3D effect
+                context.fillStyle = '#8B7355'; // Light stone
+                context.fillRect(portalX, portalY, portalW, 6); // Top thick border
+                context.fillRect(portalX, portalY + portalH - 6, portalW, 6); // Bottom thick border
+                context.fillRect(portalX, portalY, 6, portalH); // Left thick border
+                context.fillRect(portalX + portalW - 6, portalY, 6, portalH); // Right thick border
+                
+                // Inner stone detail
+                context.fillStyle = '#A0896B'; // Lighter stone
+                context.fillRect(portalX + 6, portalY + 6, portalW - 12, 3); // Top inner
+                context.fillRect(portalX + 6, portalY + portalH - 9, portalW - 12, 3); // Bottom inner
+                context.fillRect(portalX + 6, portalY + 6, 3, portalH - 12); // Left inner
+                context.fillRect(portalX + portalW - 9, portalY + 6, 3, portalH - 12); // Right inner
+                
+                // Stone shadows for depth
+                context.fillStyle = '#6B5D42'; // Dark stone shadow
+                context.fillRect(portalX + 3, portalY + 3, portalW - 6, 3); // Top shadow
+                context.fillRect(portalX + 3, portalY + 3, 3, portalH - 6); // Left shadow
+                
+                // Mystical glow effect inside the portal
+                const time = Date.now() * 0.003;
+                const glowIntensity = Math.sin(time) * 0.3 + 0.7;
+                context.fillStyle = `rgba(0, 255, 150, ${glowIntensity * 0.3})`;
+                context.fillRect(portalX + 9, portalY + 9, portalW - 18, portalH - 18);
+                
+                // Sparkling particles
+                for (let i = 0; i < 5; i++) {
+                    const sparkleX = portalX + 12 + (Math.sin(time + i) * 0.5 + 0.5) * (portalW - 24);
+                    const sparkleY = portalY + 12 + (Math.cos(time * 1.3 + i * 1.7) * 0.5 + 0.5) * (portalH - 24);
+                    const sparkleSize = Math.sin(time * 2 + i * 2) * 1 + 2;
+                    
+                    context.fillStyle = '#FFFFFF';
+                    context.fillRect(sparkleX, sparkleY, sparkleSize, sparkleSize);
+                }
 
             } else {
-                // Closed door (purple, with a handle)
-                context.fillStyle = 'purple';
-                context.fillRect(this.portal.x, this.portal.y, this.portal.width, this.portal.height);
-                // Door handle
-                context.fillStyle = 'gold';
+                // Beautiful closed door - ornate medieval style
+                const portalX = this.portal.x;
+                const portalY = this.portal.y;
+                const portalW = this.portal.width;
+                const portalH = this.portal.height;
+                
+                // Main door body with wood grain effect
+                context.fillStyle = '#8B4513'; // Dark wood
+                context.fillRect(portalX, portalY, portalW, portalH);
+                
+                // Wood grain lines
+                context.fillStyle = '#654321'; // Darker wood
+                for (let i = 0; i < 4; i++) {
+                    const grainY = portalY + (i + 1) * (portalH / 5);
+                    context.fillRect(portalX + 2, grainY, portalW - 4, 2);
+                }
+                
+                // Vertical wood planks
+                context.fillStyle = '#A0522D'; // Medium wood
+                context.fillRect(portalX + portalW / 3, portalY, 3, portalH);
+                context.fillRect(portalX + (portalW * 2 / 3), portalY, 3, portalH);
+                
+                // Metal reinforcements
+                context.fillStyle = '#404040'; // Dark metal
+                context.fillRect(portalX + 4, portalY + 8, portalW - 8, 4); // Top reinforcement
+                context.fillRect(portalX + 4, portalY + portalH - 12, portalW - 8, 4); // Bottom reinforcement
+                context.fillRect(portalX + 4, portalY + portalH/2 - 2, portalW - 8, 4); // Middle reinforcement
+                
+                // Metal studs/bolts
+                context.fillStyle = '#606060'; // Light metal
+                const studPositions = [
+                    [portalX + 8, portalY + 10],
+                    [portalX + portalW - 12, portalY + 10],
+                    [portalX + 8, portalY + portalH/2],
+                    [portalX + portalW - 12, portalY + portalH/2],
+                    [portalX + 8, portalY + portalH - 14],
+                    [portalX + portalW - 12, portalY + portalH - 14]
+                ];
+                
+                studPositions.forEach(([x, y]) => {
+                    context.beginPath();
+                    context.arc(x, y, 2, 0, Math.PI * 2);
+                    context.fill();
+                });
+                
+                // Ornate door handle
+                context.fillStyle = '#FFD700'; // Gold
+                const handleX = portalX + portalW * 0.75;
+                const handleY = portalY + portalH * 0.5;
                 context.beginPath();
-                context.arc(this.portal.x + this.portal.width * 0.75, this.portal.y + this.portal.height * 0.5, 3, 0, Math.PI * 2);
+                context.arc(handleX, handleY, 5, 0, Math.PI * 2);
                 context.fill();
+                
+                // Handle highlight
+                context.fillStyle = '#FFFF99'; // Bright gold
+                context.beginPath();
+                context.arc(handleX - 1, handleY - 1, 2, 0, Math.PI * 2);
+                context.fill();
+                
+                // Keyhole
+                context.fillStyle = '#000000';
+                context.beginPath();
+                context.arc(handleX, handleY, 2, 0, Math.PI * 2);
+                context.fill();
+                context.fillRect(handleX - 1, handleY, 2, 4); // Keyhole slot
+                
+                // Door frame shadow
+                context.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                context.fillRect(portalX - 2, portalY - 2, 2, portalH + 4); // Left shadow
+                context.fillRect(portalX, portalY - 2, portalW, 2); // Top shadow
             }
         }
 
