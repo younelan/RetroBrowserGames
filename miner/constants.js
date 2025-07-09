@@ -19,6 +19,8 @@ const TILE_ATTRIBUTES = {
     'D': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Dirt
     'G': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Grass
     'M': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling Grass
+    'Q': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Red Sand
+    'W': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling Red Sand
     'L': { isSolid: true, isPlatform: true, isHazard: false, isMoving: true, moveDirection: -1, isCrumble: false }, // Moving Left
     'R': { isSolid: true, isPlatform: true, isHazard: false, isMoving: true, moveDirection: 1, isCrumble: false },  // Moving Right
     'K': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false }, // Key

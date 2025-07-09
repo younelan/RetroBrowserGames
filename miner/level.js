@@ -11,6 +11,8 @@ class Level {
         this.dirtFloors = [];
         this.grassFloors = [];
         this.grassCrumbleFloors = [];
+        this.redSandFloors = [];
+        this.redSandCrumbleFloors = [];
         this.movingLeftFloors = [];
         this.movingRightFloors = [];
         this.decorativeElements = [];
@@ -91,6 +93,12 @@ class Level {
                             break;
                         case 'M':
                             this.grassCrumbleFloors.push(platform);
+                            break;
+                        case 'Q':
+                            this.redSandFloors.push(platform);
+                            break;
+                        case 'W':
+                            this.redSandCrumbleFloors.push(platform);
                             break;
                         case 'C':
                             // Already handled above
@@ -949,6 +957,222 @@ class Level {
                     // Darker green for individual blades
                     context.fillStyle = '#4A6A55';
                     context.fillRect(bladeX, bladeY, 1, bladeHeight);
+                }
+            }
+            
+            context.restore();
+        });
+
+        // Draw red sand floors (red/orange sandy platforms)
+        this.redSandFloors.forEach(q => {
+            // Create clipping path for sand shape with jagged bottom edge
+            context.save();
+            context.beginPath();
+            
+            // Start from top-left corner
+            context.moveTo(q.x, q.y);
+            // Top edge (straight)
+            context.lineTo(q.x + q.width, q.y);
+            // Right edge down to jagged bottom area
+            context.lineTo(q.x + q.width, q.y + q.height - 8);
+            
+            // Create natural jagged bottom edge
+            const pointSpacing = 1;
+            const numPoints = Math.floor(q.width / pointSpacing);
+            
+            // Generate jagged points from right to left using GLOBAL position for seamless tiles
+            for (let i = numPoints; i >= 0; i--) {
+                const globalX = q.x + (i * pointSpacing);
+                const globalY = q.y; 
+                const variation1 = Math.sin(globalX * 0.08 + globalY * 0.05) * 6;
+                const variation2 = Math.sin(globalX * 0.15 + globalY * 0.08) * 4;
+                const variation3 = Math.sin(globalX * 0.3 + globalY * 0.12) * 3;
+                const variation4 = Math.sin(globalX * 0.6 + globalY * 0.2) * 2;
+                const totalVariation = variation1 + variation2 + variation3 + variation4;
+                const y = q.y + q.height - 8 + totalVariation;
+                context.lineTo(globalX, y);
+            }
+            
+            // Left edge back to start
+            context.lineTo(q.x, q.y);
+            context.closePath();
+            context.clip();
+            
+            // Draw red sand base
+            context.fillStyle = '#A0522D'; // Red/orange sand color
+            context.fillRect(q.x, q.y, q.width, q.height);
+            
+            // Create sandy, granular texture
+            const globalTileX = q.x / TILE_SIZE;
+            const globalTileY = q.y / TILE_SIZE;
+            
+            // Add multiple patches of different red sand colors
+            for (let patch = 0; patch < 20; patch++) {
+                const globalPatchX = (globalTileX * 47 + globalTileY * 31 + patch * 13) % 7;
+                const globalPatchY = (globalTileX * 23 + globalTileY * 41 + patch * 17) % 5;
+                
+                const patchRandX = Math.sin(globalPatchX + patch * 2.3) * 0.8 + 0.5;
+                const patchRandY = Math.sin(globalPatchY + patch * 4.7) * 0.8 + 0.5;
+                const patchRandSize = Math.sin(globalTileX * 19 + globalTileY * 23 + patch * 6.1) * 0.5 + 0.5;
+                const patchRandColor = Math.sin(globalTileX * 29 + globalTileY * 31 + patch * 8.9) * 0.5 + 0.5;
+                
+                const patchX = q.x - 8 + Math.floor(patchRandX * (q.width + 16));
+                const patchY = q.y + Math.floor(patchRandY * q.height);
+                const patchWidth = Math.floor(patchRandSize * 8) + 3;
+                const patchHeight = Math.floor(patchRandSize * 8) + 3;
+                
+                // Vary the red sand color for patches
+                if (patchRandColor < 0.3) {
+                    context.fillStyle = '#B8713A'; // Lighter red sand
+                } else if (patchRandColor < 0.6) {
+                    context.fillStyle = '#CD853F'; // Orange sand
+                } else {
+                    context.fillStyle = '#8B4513'; // Darker red sand
+                }
+                
+                context.fillRect(patchX, patchY, patchWidth, patchHeight);
+            }
+            
+            // Add sand granules and small rocks
+            for (let i = 0; i < 15; i++) {
+                const globalRockX = (globalTileX * 37 + globalTileY * 43 + i * 19) % 11;
+                const globalRockY = (globalTileX * 17 + globalTileY * 29 + i * 23) % 7;
+                
+                const pseudoRandX = Math.sin(globalRockX + i * 3.7) * 0.8 + 0.5;
+                const pseudoRandY = Math.sin(globalRockY + i * 5.1) * 0.8 + 0.5;
+                const pseudoRandSize = Math.sin(globalTileX * 37 + globalTileY * 41 + i * 7.3) * 0.5 + 0.5;
+                const pseudoRandColor = Math.sin(globalTileX * 43 + globalTileY * 47 + i * 9.7) * 0.5 + 0.5;
+                
+                const rockX = q.x - 6 + Math.floor(pseudoRandX * (q.width + 12));
+                const rockY = q.y + 4 + Math.floor(pseudoRandY * (q.height - 8));
+                const rockSize = Math.floor(pseudoRandSize * 4) + 2;
+                
+                // Vary rock colors - reddish tones
+                if (pseudoRandColor < 0.4) {
+                    context.fillStyle = '#654321'; // Dark brown
+                } else if (pseudoRandColor < 0.7) {
+                    context.fillStyle = '#8B4513'; // Saddle brown
+                } else {
+                    context.fillStyle = '#A0522D'; // Sienna
+                }
+                
+                context.fillRect(rockX, rockY, rockSize, rockSize);
+                if (rockSize >= 3) {
+                    context.fillRect(rockX + 1, rockY - 1, rockSize - 2, 1);
+                    context.fillRect(rockX - 1, rockY + 1, 1, rockSize - 2);
+                }
+            }
+            
+            context.restore();
+        });
+
+        // Draw red sand crumble floors (darker red sand that crumbles)
+        this.redSandCrumbleFloors.forEach(w => {
+            // Create clipping path for sand shape with jagged bottom edge
+            context.save();
+            context.beginPath();
+            
+            // Start from top-left corner
+            context.moveTo(w.x, w.y);
+            // Top edge (straight)
+            context.lineTo(w.x + w.width, w.y);
+            // Right edge down to jagged bottom area
+            context.lineTo(w.x + w.width, w.y + w.height - 8);
+            
+            // Create natural jagged bottom edge
+            const pointSpacing = 1;
+            const numPoints = Math.floor(w.width / pointSpacing);
+            
+            // Generate jagged points from right to left using GLOBAL position for seamless tiles
+            for (let i = numPoints; i >= 0; i--) {
+                const globalX = w.x + (i * pointSpacing);
+                const globalY = w.y; 
+                const variation1 = Math.sin(globalX * 0.08 + globalY * 0.05) * 6;
+                const variation2 = Math.sin(globalX * 0.15 + globalY * 0.08) * 4;
+                const variation3 = Math.sin(globalX * 0.3 + globalY * 0.12) * 3;
+                const variation4 = Math.sin(globalX * 0.6 + globalY * 0.2) * 2;
+                const totalVariation = variation1 + variation2 + variation3 + variation4;
+                const y = w.y + w.height - 8 + totalVariation;
+                context.lineTo(globalX, y);
+            }
+            
+            // Left edge back to start
+            context.lineTo(w.x, w.y);
+            context.closePath();
+            context.clip();
+            
+            // Handle crumbling effect
+            const crumbleProgress = w.decay > 0 ? w.decay / 30 : 0;
+            const crumbleHeight = Math.floor(crumbleProgress * w.height);
+            
+            // Draw darker red sand base (more red and slightly lighter than before)
+            context.fillStyle = '#8B4A2C'; // Darker red sand - more red, less brown
+            context.fillRect(w.x, w.y + crumbleHeight, w.width, w.height - crumbleHeight);
+            
+            // Create sandy, granular texture with darker colors
+            const globalTileX = w.x / TILE_SIZE;
+            const globalTileY = w.y / TILE_SIZE;
+            
+            // Add multiple patches of different darker red sand colors
+            for (let patch = 0; patch < 20; patch++) {
+                const globalPatchX = (globalTileX * 47 + globalTileY * 31 + patch * 13) % 7;
+                const globalPatchY = (globalTileX * 23 + globalTileY * 41 + patch * 17) % 5;
+                
+                const patchRandX = Math.sin(globalPatchX + patch * 2.3) * 0.8 + 0.5;
+                const patchRandY = Math.sin(globalPatchY + patch * 4.7) * 0.8 + 0.5;
+                const patchRandSize = Math.sin(globalTileX * 19 + globalTileY * 23 + patch * 6.1) * 0.5 + 0.5;
+                const patchRandColor = Math.sin(globalTileX * 29 + globalTileY * 31 + patch * 8.9) * 0.5 + 0.5;
+                
+                const patchX = w.x - 8 + Math.floor(patchRandX * (w.width + 16));
+                const patchY = w.y + crumbleHeight + Math.floor(patchRandY * (w.height - crumbleHeight));
+                const patchWidth = Math.floor(patchRandSize * 8) + 3;
+                const patchHeight = Math.floor(patchRandSize * 8) + 3;
+                
+                // Only draw if below crumble line
+                if (patchY >= w.y + crumbleHeight) {
+                    // Vary the much darker red sand color for patches
+                    if (patchRandColor < 0.3) {
+                        context.fillStyle = '#6B3C1A'; // Medium dark red sand
+                    } else if (patchRandColor < 0.6) {
+                        context.fillStyle = '#7A4B2B'; // Lighter dark red sand
+                    } else {
+                        context.fillStyle = '#4A2A0A'; // Very dark brown sand
+                    }
+                    
+                    context.fillRect(patchX, patchY, patchWidth, patchHeight);
+                }
+            }
+            
+            // Add darker sand granules and small rocks
+            for (let i = 0; i < 15; i++) {
+                const globalRockX = (globalTileX * 37 + globalTileY * 43 + i * 19) % 11;
+                const globalRockY = (globalTileX * 17 + globalTileY * 29 + i * 23) % 7;
+                
+                const pseudoRandX = Math.sin(globalRockX + i * 3.7) * 0.8 + 0.5;
+                const pseudoRandY = Math.sin(globalRockY + i * 5.1) * 0.8 + 0.5;
+                const pseudoRandSize = Math.sin(globalTileX * 37 + globalTileY * 41 + i * 7.3) * 0.5 + 0.5;
+                const pseudoRandColor = Math.sin(globalTileX * 43 + globalTileY * 47 + i * 9.7) * 0.5 + 0.5;
+                
+                const rockX = w.x - 6 + Math.floor(pseudoRandX * (w.width + 12));
+                const rockY = w.y + crumbleHeight + 4 + Math.floor(pseudoRandY * (w.height - crumbleHeight - 8));
+                const rockSize = Math.floor(pseudoRandSize * 4) + 2;
+                
+                // Only draw if below crumble line
+                if (rockY >= w.y + crumbleHeight) {
+                    // Vary rock colors - much darker reddish tones
+                    if (pseudoRandColor < 0.4) {
+                        context.fillStyle = '#2A1A0A'; // Very dark brown
+                    } else if (pseudoRandColor < 0.7) {
+                        context.fillStyle = '#3A2214'; // Dark brown
+                    } else {
+                        context.fillStyle = '#4A2A0A'; // Medium dark brown
+                    }
+                    
+                    context.fillRect(rockX, rockY, rockSize, rockSize);
+                    if (rockSize >= 3) {
+                        context.fillRect(rockX + 1, rockY - 1, rockSize - 2, 1);
+                        context.fillRect(rockX - 1, rockY + 1, 1, rockSize - 2);
+                    }
                 }
             }
             

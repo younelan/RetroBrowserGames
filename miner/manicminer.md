@@ -127,6 +127,8 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `D`    | Dirt Platform           | Brown earth with textured bottom surface.              |
 |    `G`    | Grass Platform          | Dirt platform with green grass on top quarter.        |
 |    `M`    | Crumbling Grass         | Darker dirt with green grass that crumbles like C.     |
+|    `Q`    | Red Sand Platform       | Red/orange sandy platform with granular texture.      |
+|    `W`    | Crumbling Red Sand      | Darker red sand platform that crumbles like C.        |
 |    `K`    | Key                     | An item to be collected.                               |
 |    `P`    | Portal                  | The exit, becomes active after all keys are taken.     |
 |    `H`    | Hazard (Generic)        | A static object that is deadly to touch (e.g. spikes). |
