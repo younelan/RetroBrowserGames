@@ -14,7 +14,17 @@ class Level {
         this.portal = null;
         this.playerStart = { x: 0, y: 0 };
 
+        // Store map rows for checking adjacent tiles
+        this.mapRows = this.map.trim().split('\n');
+
         this.parseMap();
+    }
+
+    // Helper method to check if a tile position is empty (space or out of bounds)
+    isEmptyTile(x, y) {
+        if (y < 0 || y >= this.mapRows.length) return true;
+        if (x < 0 || x >= this.mapRows[y].length) return true;
+        return this.mapRows[y][x] === ' ';
     }
 
     parseMap() {
@@ -304,54 +314,348 @@ class Level {
             }
         });
 
-        // Draw moving left floors
+        // Draw moving left floors (conveyor belts)
         this.movingLeftFloors.forEach(l => {
+            const tileX = Math.floor(l.x / TILE_SIZE);
+            const tileY = Math.floor(l.y / TILE_SIZE);
+            const leftEmpty = this.isEmptyTile(tileX - 1, tileY);
+            const rightEmpty = this.isEmptyTile(tileX + 1, tileY);
+
             context.save();
-            context.beginPath();
-            context.rect(l.x, l.y, l.width, l.height);
+            
+            // Helper function to create the belt shape path
+            const createBeltPath = () => {
+                if (leftEmpty || rightEmpty) {
+                    const radius = 6;
+                    context.beginPath();
+                    
+                    // Manually create rounded rectangle path
+                    context.moveTo(l.x + (leftEmpty ? radius : 0), l.y);
+                    context.lineTo(l.x + l.width - (rightEmpty ? radius : 0), l.y);
+                    if (rightEmpty) {
+                        context.arcTo(l.x + l.width, l.y, l.x + l.width, l.y + radius, radius);
+                    }
+                    context.lineTo(l.x + l.width, l.y + l.height - (rightEmpty ? radius : 0));
+                    if (rightEmpty) {
+                        context.arcTo(l.x + l.width, l.y + l.height, l.x + l.width - radius, l.y + l.height, radius);
+                    }
+                    context.lineTo(l.x + (leftEmpty ? radius : 0), l.y + l.height);
+                    if (leftEmpty) {
+                        context.arcTo(l.x, l.y + l.height, l.x, l.y + l.height - radius, radius);
+                    }
+                    context.lineTo(l.x, l.y + (leftEmpty ? radius : 0));
+                    if (leftEmpty) {
+                        context.arcTo(l.x, l.y, l.x + radius, l.y, radius);
+                    }
+                    context.closePath();
+                } else {
+                    context.beginPath();
+                    context.rect(l.x, l.y, l.width, l.height);
+                }
+            };
+
+            // Conveyor belt base (metal platform)
+            createBeltPath();
+            const gradient = context.createLinearGradient(l.x, l.y, l.x, l.y + l.height);
+            gradient.addColorStop(0, '#666');
+            gradient.addColorStop(0.3, '#444');
+            gradient.addColorStop(0.7, '#333');
+            gradient.addColorStop(1, '#222');
+            context.fillStyle = gradient;
+            context.fill();
+
+            // Clip for the internal elements only
+            createBeltPath();
             context.clip();
 
-            context.fillStyle = '#00FF00'; // Green base
-            context.fillRect(l.x, l.y, l.width, l.height);
+            // Metal side rails - adjust for rounded edges
+            context.fillStyle = '#888';
+            const railThickness = 3;
+            context.fillRect(l.x, l.y, l.width, railThickness); // Top rail
+            context.fillRect(l.x, l.y + l.height - railThickness, l.width, railThickness); // Bottom rail
+            
+            // Moving belt surface
+            context.fillStyle = '#2C2C2C'; // Very dark belt color, barely different from background
+            context.fillRect(l.x, l.y + railThickness, l.width, l.height - railThickness * 2);
 
-            // Draw scrolling pattern (e.g., arrows or lines)
-            context.fillStyle = '#00AA00'; // Darker green for pattern
-            const patternWidth = 16; // Width of each pattern segment
-            const scrollOffset = (frameCounter * -0.5) % patternWidth; // Slower speed and wrap-around
-
-            for (let x = -patternWidth + scrollOffset; x < l.width; x += patternWidth) {
-                // Draw a simple arrow pointing left
+            // Moving belt pattern (diagonal lines) - slowed down
+            context.strokeStyle = '#444';
+            context.lineWidth = 1;
+            const beltSpeed = frameCounter * -0.8; // Slower moving pattern
+            const lineSpacing = 8;
+            
+            for (let i = Math.floor(beltSpeed / lineSpacing) - 1; i < Math.ceil((l.width + beltSpeed) / lineSpacing) + 1; i++) {
+                const x = l.x + (i * lineSpacing) - (beltSpeed % lineSpacing);
                 context.beginPath();
-                context.moveTo(l.x + x + patternWidth - 4, l.y + l.height / 2 - 4);
-                context.lineTo(l.x + x + 4, l.y + l.height / 2);
-                context.lineTo(l.x + x + patternWidth - 4, l.y + l.height / 2 + 4);
+                context.moveTo(x, l.y + railThickness);
+                context.lineTo(x + lineSpacing/2, l.y + l.height - railThickness);
+                context.stroke();
+            }
+
+            // Rotating gears for direction indication - discrete dark gray
+            context.fillStyle = '#2E2E2E'; // Very dark gray, barely visible
+            const gearRotation = (frameCounter * -0.02) % (Math.PI * 2); // Slow rotation, left direction
+            const gearRadius = 36; // Much larger radius - 3x the previous size
+            
+            // Center one gear per tile
+            const numTiles = Math.floor(l.width / TILE_SIZE);
+            for (let tileIndex = 0; tileIndex < numTiles; tileIndex++) {
+                const centerX = l.x + (tileIndex * TILE_SIZE) + (TILE_SIZE / 2);
+                const centerY = l.y + l.height/2; // Center of belt
+                
+                context.save();
+                context.translate(centerX, centerY);
+                context.rotate(gearRotation);
+                
+                // Draw gear with thick propeller-like blades
+                context.beginPath();
+                const numTeeth = 8;
+                const outerRadius = gearRadius * 0.9; // Main circle
+                const dentRadius = gearRadius * 0.5; // Deeper dent for thicker blades
+                
+                // Create circle with thick triangular blades
+                for (let i = 0; i <= numTeeth * 12; i++) {
+                    const angle = (i / (numTeeth * 12)) * Math.PI * 2;
+                    const dentProgress = (i % 12) / 12; // 0 to 1 within each tooth
+                    
+                    let radius;
+                    if (dentProgress < 0.2 || dentProgress > 0.8) {
+                        // Outside blade - normal radius
+                        radius = outerRadius;
+                    } else {
+                        // Inside blade - much thicker triangular blade
+                        const bladeDepth = Math.min(dentProgress - 0.2, 0.8 - dentProgress) / 0.3; // 0 to 1
+                        radius = outerRadius - (outerRadius - dentRadius) * bladeDepth;
+                    }
+                    
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        context.moveTo(x, y);
+                    } else {
+                        context.lineTo(x, y);
+                    }
+                }
+                context.closePath();
                 context.fill();
+                
+                // Center hole - larger and more visible
+                context.fillStyle = '#1A1A1A'; // Even darker for center
+                context.beginPath();
+                context.arc(0, 0, gearRadius * 0.25, 0, Math.PI * 2);
+                context.fill();
+                
+                // Add visible spokes for better rotation visibility
+                context.strokeStyle = '#1A1A1A';
+                context.lineWidth = 2;
+                for (let spoke = 0; spoke < 4; spoke++) {
+                    const spokeAngle = (spoke / 4) * Math.PI * 2;
+                    context.beginPath();
+                    context.moveTo(0, 0);
+                    context.lineTo(Math.cos(spokeAngle) * dentRadius, Math.sin(spokeAngle) * dentRadius);
+                    context.stroke();
+                }
+                
+                context.restore();
+                context.fillStyle = '#2E2E2E'; // Reset color for next gear
+            }
+
+            // Moving rail segments (visible pieces on the light gray rails) - drawn AFTER gears
+            context.fillStyle = '#555'; // Darker color for more discrete segments, closer to belt color
+            const segmentWidth = 6;
+            const segmentSpacing = 12;
+            const globalSegmentSpeed = (frameCounter * -0.3) % segmentSpacing; // Global animation for seamless belts
+            
+            // Calculate seamless starting position based on world position
+            const startOffset = -(l.x % segmentSpacing);
+            for (let i = -1; i <= Math.ceil(l.width / segmentSpacing) + 1; i++) {
+                const segmentX = l.x + startOffset + (i * segmentSpacing) + globalSegmentSpeed;
+                if (segmentX + segmentWidth > l.x && segmentX < l.x + l.width) {
+                    context.fillRect(segmentX, l.y, segmentWidth, railThickness);
+                }
+            }
+            
+            // Bottom rail segments moving in opposite direction (right)
+            const globalBottomSegmentSpeed = (frameCounter * 0.3) % segmentSpacing; // Opposite direction
+            for (let i = -1; i <= Math.ceil(l.width / segmentSpacing) + 1; i++) {
+                const segmentX = l.x + startOffset + (i * segmentSpacing) + globalBottomSegmentSpeed;
+                if (segmentX + segmentWidth > l.x && segmentX < l.x + l.width) {
+                    context.fillRect(segmentX, l.y + l.height - railThickness, segmentWidth, railThickness);
+                }
             }
             context.restore();
         });
 
-        // Draw moving right floors
+        // Draw moving right floors (conveyor belts)
         this.movingRightFloors.forEach(r => {
+            const tileX = Math.floor(r.x / TILE_SIZE);
+            const tileY = Math.floor(r.y / TILE_SIZE);
+            const leftEmpty = this.isEmptyTile(tileX - 1, tileY);
+            const rightEmpty = this.isEmptyTile(tileX + 1, tileY);
+
             context.save();
-            context.beginPath();
-            context.rect(r.x, r.y, r.width, r.height);
+            
+            // Helper function to create the belt shape path
+            const createBeltPath = () => {
+                if (leftEmpty || rightEmpty) {
+                    const radius = 6;
+                    context.beginPath();
+                    
+                    // Manually create rounded rectangle path
+                    context.moveTo(r.x + (leftEmpty ? radius : 0), r.y);
+                    context.lineTo(r.x + r.width - (rightEmpty ? radius : 0), r.y);
+                    if (rightEmpty) {
+                        context.arcTo(r.x + r.width, r.y, r.x + r.width, r.y + radius, radius);
+                    }
+                    context.lineTo(r.x + r.width, r.y + r.height - (rightEmpty ? radius : 0));
+                    if (rightEmpty) {
+                        context.arcTo(r.x + r.width, r.y + r.height, r.x + r.width - radius, r.y + r.height, radius);
+                    }
+                    context.lineTo(r.x + (leftEmpty ? radius : 0), r.y + r.height);
+                    if (leftEmpty) {
+                        context.arcTo(r.x, r.y + r.height, r.x, r.y + r.height - radius, radius);
+                    }
+                    context.lineTo(r.x, r.y + (leftEmpty ? radius : 0));
+                    if (leftEmpty) {
+                        context.arcTo(r.x, r.y, r.x + radius, r.y, radius);
+                    }
+                    context.closePath();
+                } else {
+                    context.beginPath();
+                    context.rect(r.x, r.y, r.width, r.height);
+                }
+            };
+
+            // Conveyor belt base (metal platform)
+            createBeltPath();
+            const gradient = context.createLinearGradient(r.x, r.y, r.x, r.y + r.height);
+            gradient.addColorStop(0, '#666');
+            gradient.addColorStop(0.3, '#444');
+            gradient.addColorStop(0.7, '#333');
+            gradient.addColorStop(1, '#222');
+            context.fillStyle = gradient;
+            context.fill();
+
+            // Clip for the internal elements only
+            createBeltPath();
             context.clip();
 
-            context.fillStyle = '#0000FF'; // Blue base
-            context.fillRect(r.x, r.y, r.width, r.height);
+            // Metal side rails - adjust for rounded edges
+            context.fillStyle = '#888';
+            const railThickness = 3;
+            context.fillRect(r.x, r.y, r.width, railThickness); // Top rail
+            context.fillRect(r.x, r.y + r.height - railThickness, r.width, railThickness); // Bottom rail
+            
+            // Moving belt surface
+            context.fillStyle = '#2C2C2C'; // Very dark belt color, barely different from background
+            context.fillRect(r.x, r.y + railThickness, r.width, r.height - railThickness * 2);
 
-            // Draw scrolling pattern (e.g., arrows or lines)
-            context.fillStyle = '#0000AA'; // Darker blue for pattern
-            const patternWidth = 16; // Width of each pattern segment
-            const scrollOffset = (frameCounter * 0.5) % patternWidth; // Slower speed and wrap-around (opposite direction)
-
-            for (let x = -patternWidth + scrollOffset; x < r.width; x += patternWidth) {
-                // Draw a simple arrow pointing right
+            // Moving belt pattern (diagonal lines) - slowed down
+            context.strokeStyle = '#444';
+            context.lineWidth = 1;
+            const beltSpeed = frameCounter * 0.8; // Slower moving pattern
+            const lineSpacing = 8;
+            
+            for (let i = Math.floor(beltSpeed / lineSpacing) - 1; i < Math.ceil((r.width + beltSpeed) / lineSpacing) + 1; i++) {
+                const x = r.x + (i * lineSpacing) - (beltSpeed % lineSpacing);
                 context.beginPath();
-                context.moveTo(r.x + x + 4, r.y + r.height / 2 - 4);
-                context.lineTo(r.x + x + patternWidth - 4, r.y + r.height / 2);
-                context.lineTo(r.x + x + 4, r.y + r.height / 2 + 4);
+                context.moveTo(x, r.y + railThickness);
+                context.lineTo(x - lineSpacing/2, r.y + r.height - railThickness);
+                context.stroke();
+            }
+
+            // Rotating gears for direction indication - discrete dark gray
+            context.fillStyle = '#2E2E2E'; // Very dark gray, barely visible
+            const gearRotation = (frameCounter * 0.02) % (Math.PI * 2); // Slow rotation, right direction
+            const gearRadius = 36; // Much larger radius - 3x the previous size
+            
+            // Center one gear per tile
+            const numTiles = Math.floor(r.width / TILE_SIZE);
+            for (let tileIndex = 0; tileIndex < numTiles; tileIndex++) {
+                const centerX = r.x + (tileIndex * TILE_SIZE) + (TILE_SIZE / 2);
+                const centerY = r.y + r.height/2; // Center of belt
+                
+                context.save();
+                context.translate(centerX, centerY);
+                context.rotate(gearRotation);
+                
+                // Draw gear with thick triangular blades (same as left floors)
+                context.beginPath();
+                const numTeeth = 8;
+                const outerRadius = gearRadius * 0.9; // Main circle
+                const dentRadius = gearRadius * 0.6; // Blade depth
+                
+                // Create circle with thick triangular blades
+                for (let i = 0; i <= numTeeth * 8; i++) {
+                    const angle = (i / (numTeeth * 8)) * Math.PI * 2;
+                    const dentProgress = (i % 8) / 8; // 0 to 1 within each tooth
+                    
+                    let radius;
+                    if (dentProgress < 0.2 || dentProgress > 0.8) {
+                        // Outside blade - normal radius
+                        radius = outerRadius;
+                    } else {
+                        // Inside blade - much thicker triangular blade
+                        const bladeDepth = Math.min(dentProgress - 0.2, 0.8 - dentProgress) / 0.3; // 0 to 1
+                        radius = outerRadius - (outerRadius - dentRadius) * bladeDepth;
+                    }
+                    
+                    const x = Math.cos(angle) * radius;
+                    const y = Math.sin(angle) * radius;
+                    
+                    if (i === 0) {
+                        context.moveTo(x, y);
+                    } else {
+                        context.lineTo(x, y);
+                    }
+                }
+                context.closePath();
                 context.fill();
+                
+                // Center hole - larger and more visible
+                context.fillStyle = '#1A1A1A'; // Even darker for center
+                context.beginPath();
+                context.arc(0, 0, gearRadius * 0.25, 0, Math.PI * 2);
+                context.fill();
+                
+                // Add visible spokes for better rotation visibility
+                context.strokeStyle = '#1A1A1A';
+                context.lineWidth = 2;
+                for (let spoke = 0; spoke < 4; spoke++) {
+                    const spokeAngle = (spoke / 4) * Math.PI * 2;
+                    context.beginPath();
+                    context.moveTo(0, 0);
+                    context.lineTo(Math.cos(spokeAngle) * dentRadius, Math.sin(spokeAngle) * dentRadius);
+                    context.stroke();
+                }
+                
+                context.restore();
+                context.fillStyle = '#2E2E2E'; // Reset color for next gear
+            }
+
+            // Moving rail segments (visible pieces on the light gray rails) - drawn AFTER gears
+            context.fillStyle = '#555'; // Darker color for more discrete segments, closer to belt color
+            const segmentWidth = 6;
+            const segmentSpacing = 12;
+            const globalSegmentSpeed = (frameCounter * 0.3) % segmentSpacing; // Global animation for seamless belts
+            
+            // Calculate seamless starting position based on world position
+            const startOffset = -(r.x % segmentSpacing);
+            for (let i = -1; i <= Math.ceil(r.width / segmentSpacing) + 1; i++) {
+                const segmentX = r.x + startOffset + (i * segmentSpacing) + globalSegmentSpeed;
+                if (segmentX + segmentWidth > r.x && segmentX < r.x + r.width) {
+                    context.fillRect(segmentX, r.y, segmentWidth, railThickness);
+                }
+            }
+            
+            // Bottom rail segments moving in opposite direction (left)
+            const globalBottomSegmentSpeed = (frameCounter * -0.3) % segmentSpacing; // Opposite direction
+            for (let i = -1; i <= Math.ceil(r.width / segmentSpacing) + 1; i++) {
+                const segmentX = r.x + startOffset + (i * segmentSpacing) + globalBottomSegmentSpeed;
+                if (segmentX + segmentWidth > r.x && segmentX < r.x + r.width) {
+                    context.fillRect(segmentX, r.y + r.height - railThickness, segmentWidth, railThickness);
+                }
             }
             context.restore();
         });
