@@ -18,9 +18,9 @@ class Hazard {
                this.y + this.height > rect.y;
     }
 
-    draw(context, frameCounter = 0) {
+    draw(context) {
         const s = this.width / 16; // Scale factor
-        
+
         switch (this.type) {
             case 'SPIKES':
                 context.fillStyle = '#666'; // Grey spikes
@@ -34,17 +34,28 @@ class Hazard {
                 }
                 break;
             case 'FIRE':
-                // Animated fire (simple)
-                const fireColor1 = 'orange';
-                const fireColor2 = 'red';
-                const fireColor3 = 'yellow';
+                // Fire animation with an array of segments, each moving independently like an equalizer
+                const gradient = context.createLinearGradient(this.x, this.y, this.x, this.y + this.height);
+                gradient.addColorStop(1, 'red');
+                gradient.addColorStop(0.9, 'orange');
+                gradient.addColorStop(0.5, 'orange');
+                gradient.addColorStop(0, 'yellow');
+                context.fillStyle = gradient;
 
-                context.fillStyle = (Math.floor(frameCounter / 5) % 3 === 0) ? fireColor1 : (Math.floor(frameCounter / 5) % 3 === 1) ? fireColor2 : fireColor3;
-                context.fillRect(this.x, this.y + this.height / 2, this.width, this.height / 2); // Base of fire
+                const segmentCount = 8; // Number of segments
+                const segmentWidth = this.width / segmentCount;
+                const segments = Array.from({ length: segmentCount }, (_, i) => {
+                    const timeFactor = Date.now() / 500 + i;
+                    return Math.abs(Math.sin(timeFactor)) * (this.height / 4); // Independent motion for each segment
+                });
+
                 context.beginPath();
-                context.moveTo(this.x, this.y + this.height / 2);
-                context.lineTo(this.x + this.width / 2, this.y);
-                context.lineTo(this.x + this.width, this.y + this.height / 2);
+                context.moveTo(this.x, this.y + this.height);
+                segments.forEach((variation, i) => {
+                    context.lineTo(this.x + i * segmentWidth, this.y + this.height - variation);
+                });
+                context.lineTo(this.x + this.width, this.y + this.height);
+                context.closePath();
                 context.fill();
                 break;
             case 'GENERIC':

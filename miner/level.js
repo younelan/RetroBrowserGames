@@ -39,6 +39,9 @@ class Level {
         // Store map rows for checking adjacent tiles
         this.mapRows = this.map.trim().split('\n');
 
+        // Ensure spiders are initialized properly in the constructor
+        this.spiders = this.spiders || [];
+
         this.parseMap();
     }
 
@@ -1139,11 +1142,7 @@ class Level {
                 const globalY = w.y; 
                 const variation1 = Math.sin(globalX * 0.08 + globalY * 0.05) * 6;
                 const variation2 = Math.sin(globalX * 0.15 + globalY * 0.08) * 4;
-                const variation3 = Math.sin(globalX * 0.3 + globalY * 0.12) * 3;
-                const variation4 = Math.sin(globalX * 0.6 + globalY * 0.2) * 2;
-                const totalVariation = variation1 + variation2 + variation3 + variation4;
-                const y = w.y + w.height - 8 + totalVariation;
-                context.lineTo(globalX, y);
+                context.lineTo(globalX, globalY + 8 + variation1 + variation2);
             }
             
             // Left edge back to start
@@ -1315,7 +1314,7 @@ class Level {
             // Center one gear per tile
             const numTiles = Math.floor(l.width / TILE_SIZE);
             for (let tileIndex = 0; tileIndex < numTiles; tileIndex++) {
-                const centerX = l.x + (tileIndex * TILE_SIZE) + (TILE_SIZE / 2);
+                const centerX = l.x + ( tileIndex * TILE_SIZE) + (TILE_SIZE / 2);
                 const centerY = l.y + l.height/2; // Center of belt
                 
                 context.save();
@@ -1575,6 +1574,11 @@ class Level {
             context.restore();
         });
 
+        // Update spiders
+        this.spiders.forEach(spider => {
+            spider.update(this);
+        });
+
         // Draw enemies
         this.enemies.forEach(e => e.draw(context));
 
@@ -1697,6 +1701,11 @@ class Level {
                     context.fill();
                     break;
             }
+        });
+
+        // Draw spiders
+        this.spiders.forEach(spider => {
+            spider.draw(context);
         });
     }
 }
