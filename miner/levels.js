@@ -10,7 +10,7 @@ X                              X
 X                              X
 X                              X
 X  X@                          X
-X  XXXX                        X
+X  DDDX                        X
 X                  X           X
 X     K            B   E    I  X
 X   XXXCC          XXXCBRLXXXCCX
@@ -34,7 +34,7 @@ X   P                          X
 X  XXXRRR                      X
 X                              X
 X     K                      K X
-X   XXXCCCCB B B        LLLXXXCX
+X   XXXCCCCBDDB        LLLXXXCX
 X   C                          X
 X   @         T                X
 X             F                X

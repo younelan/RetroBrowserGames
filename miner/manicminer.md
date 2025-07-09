@@ -124,6 +124,7 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `@`    | Player Start            | Willy's initial position for the level.                |
 |    `X`    | Wall / Platform         | Solid ground. Blocks movement.                         |
 |    `C`    | Crumbling Platform      | Disappears after Willy walks off it.                   |
+|    `D`    | Dirt Platform           | Brown earth with textured bottom surface.              |
 |    `K`    | Key                     | An item to be collected.                               |
 |    `P`    | Portal                  | The exit, becomes active after all keys are taken.     |
 |    `H`    | Hazard (Generic)        | A static object that is deadly to touch (e.g. spikes). |
@@ -134,6 +135,8 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `Z`    | Enemy (Complex)         | An enemy following a more complex, switching path.   |
 |    `T`    | Tree / Cactus           | A purely decorative element, no collision.          |
 |    `%`    | Shrub / Bush            | A purely decorative element, no collision.          |
+|    `Y`    | Tall Tree               | A 2-tile high decorative tree element.              |
+|    `U`    | Tall Cactus             | A 2-tile high decorative cactus element.            |
 |    `L`    | Moving left floor.      | kinda like moving walkways. animated+moves player left |
 |    `R`    | Moving right floor      | kinda like moving walkways. animated+moves player right|
 
