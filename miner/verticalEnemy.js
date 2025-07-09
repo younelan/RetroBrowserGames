@@ -29,51 +29,55 @@ class VerticalEnemy {
 
         const s = this.width / 16;
         
-        // Animation based on movement and time
-        const animTime = Date.now() * 0.01; // Fast wing flapping
-        const wingFlap = Math.sin(animTime + this.y * 0.05) > 0;
-        const bodyBob = Math.sin(animTime * 0.5) * s; // Gentle floating motion
+        // Smooth time-based animation
+        const time = Date.now() * 0.005; // Slower, smoother animation
+        const wingCycle = Math.sin(time * 4); // Fast wing flapping
+        const bodyFloat = Math.sin(time) * 2; // Gentle floating
+        const wingFlap = wingCycle > 0;
+        const wingAngle = wingCycle * 0.3; // Subtle wing angle variation
 
-        // Bat-like flying creature - side view
-        // Main body (with gentle floating motion)
-        context.fillStyle = '#4a2c5a'; // Purple
-        context.fillRect(this.x + 6 * s, this.y + 4 * s + bodyBob, 4 * s, 20 * s);
+        // True side-view bat - facing right, properly aligned within 2-cell height
+        // Main body (elongated horizontally for side view) 
+        context.fillStyle = '#4a2c5a';
+        context.fillRect(this.x + 4 * s, this.y + 14 * s + bodyFloat, 8 * s, 10 * s);
         
-        // Head
-        context.fillStyle = '#3d2447'; // Darker purple
-        context.fillRect(this.x + 5 * s, this.y + 2 * s + bodyBob, 6 * s, 8 * s);
-        
-        // Ears (bat-like)
+        // Head (pointed snout facing right)
         context.fillStyle = '#3d2447';
-        context.fillRect(this.x + 4 * s, this.y + bodyBob, 2 * s, 4 * s);
-        context.fillRect(this.x + 10 * s, this.y + bodyBob, 2 * s, 4 * s);
+        context.fillRect(this.x + 11 * s, this.y + 12 * s + bodyFloat, 4 * s, 14 * s);
         
-        // Wings (animated flapping)
-        context.fillStyle = '#5a3b6b'; // Lighter purple
+        // Snout/nose (pointing right)
+        context.fillStyle = '#2d1a37';
+        context.fillRect(this.x + 14 * s, this.y + 16 * s + bodyFloat, 2 * s, 6 * s);
+        
+        // Ear (single ear visible from side)
+        context.fillStyle = '#3d2447';
+        context.fillRect(this.x + 12 * s, this.y + 8 * s + bodyFloat, 2 * s, 6 * s);
+        
+        // Wings - true side view with proper flapping
+        context.fillStyle = '#5a3b6b';
         if (wingFlap) {
-            // Wings up (spread wide)
-            context.fillRect(this.x - 1 * s, this.y + 4 * s + bodyBob, 5 * s, 10 * s); // Left wing
-            context.fillRect(this.x + 12 * s, this.y + 4 * s + bodyBob, 5 * s, 10 * s); // Right wing
-            // Wing tips
-            context.fillRect(this.x - 2 * s, this.y + 6 * s + bodyBob, 3 * s, 6 * s);
-            context.fillRect(this.x + 15 * s, this.y + 6 * s + bodyBob, 3 * s, 6 * s);
+            // Wing up position - visible wing
+            context.fillRect(this.x + 2 * s, this.y + 8 * s + bodyFloat + wingAngle, 8 * s, 12 * s);
+            // Wing membrane detail
+            context.fillStyle = '#3d2447';
+            context.fillRect(this.x + 3 * s, this.y + 10 * s + bodyFloat + wingAngle, 6 * s, 2 * s);
         } else {
-            // Wings down (folded closer)
-            context.fillRect(this.x + 1 * s, this.y + 8 * s + bodyBob, 4 * s, 8 * s); // Left wing
-            context.fillRect(this.x + 11 * s, this.y + 8 * s + bodyBob, 4 * s, 8 * s); // Right wing
+            // Wing down position
+            context.fillRect(this.x + 3 * s, this.y + 18 * s + bodyFloat - wingAngle, 7 * s, 8 * s);
+            // Wing membrane detail
+            context.fillStyle = '#3d2447';
+            context.fillRect(this.x + 4 * s, this.y + 20 * s + bodyFloat - wingAngle, 5 * s, 2 * s);
         }
         
-        // Eyes (glowing yellow with slight flicker)
-        const eyeGlow = Math.sin(animTime * 2) > -0.5;
-        context.fillStyle = eyeGlow ? '#ffff00' : '#cccc00';
-        context.fillRect(this.x + 6 * s, this.y + 4 * s + bodyBob, 1 * s, 1 * s);
-        context.fillRect(this.x + 9 * s, this.y + 4 * s + bodyBob, 1 * s, 1 * s);
+        // Single eye visible from side
+        context.fillStyle = Math.sin(time * 6) > 0 ? '#ffff00' : '#cccc00';
+        context.fillRect(this.x + 12 * s, this.y + 16 * s + bodyFloat, 2 * s, 2 * s);
         
-        // Small claws at bottom (with slight sway)
-        context.fillStyle = '#3d2447';
-        const clawSway = Math.sin(animTime * 0.3) * s;
-        context.fillRect(this.x + 6 * s + clawSway, this.y + 24 * s + bodyBob, 1 * s, 4 * s);
-        context.fillRect(this.x + 9 * s - clawSway, this.y + 24 * s + bodyBob, 1 * s, 4 * s);
+        // Feet/claws (hanging down with slight sway) - kept within bounds
+        context.fillStyle = '#2d1a37';
+        const clawSway = Math.sin(time * 0.8) * 0.5;
+        context.fillRect(this.x + 6 * s + clawSway, this.y + 26 * s + bodyFloat, 2 * s, 6 * s);
+        context.fillRect(this.x + 9 * s - clawSway, this.y + 26 * s + bodyFloat, 2 * s, 6 * s);
 
         context.restore();
     }

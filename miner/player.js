@@ -240,122 +240,211 @@ class Player {
 
     draw(context) {
         if (this.playerState === 'DYING') {
-            // Simple fade out effect
-            context.globalAlpha = 1 - (this.deathAnimationTimer / 60); // Fade out over 60 frames
+            context.globalAlpha = 1 - (this.deathAnimationTimer / 60);
             if (context.globalAlpha <= 0) {
-                context.globalAlpha = 0; // Ensure it fully disappears
+                context.globalAlpha = 0;
             }
         }
 
-        const s = TILE_SIZE / 16; // Scale factor for a 16x16 sprite, based on TILE_SIZE
-
+        const s = TILE_SIZE / 16;
+        
         context.save();
-        // Adjust translation for 2-cell height and correct drawing origin for flipping
-        if (this.direction === -1) { // Facing left
-            // Translate to the center of the player, scale by -1, then translate back
-            context.translate(this.x + this.width / 2, this.y); 
+        
+        // Smooth continuous walking animation
+        const isMoving = Math.abs(this.velocityX) > 0.1;
+        const walkTime = isMoving ? Date.now() * 0.012 : 0;
+        const walkCycle = Math.sin(walkTime);
+        const walkCycle2 = Math.sin(walkTime + Math.PI); // Opposite phase
+        
+        // Subtle body bob only when walking
+        const bodyBob = isMoving ? Math.sin(walkTime * 2) * 0.5 * s : 0;
+        
+        // Apply horizontal flip for direction
+        if (this.direction === -1) {
+            context.translate(this.x + this.width / 2, this.y);
             context.scale(-1, 1);
             context.translate(-(this.x + this.width / 2), -this.y);
         }
 
-        // Miner Willy Sprite (detailed side view)
-        // All coordinates are relative to this.x, this.y
-
-        // Helmet (Yellow) - More pronounced side view
-        context.fillStyle = '#FFFF00';
-        context.fillRect(this.x + 5 * s, this.y + 2 * s, 7 * s, 3 * s); // Main helmet body
-        context.fillRect(this.x + 4 * s, this.y + 3 * s, 1 * s, 2 * s); // Back of helmet
-        context.fillRect(this.x + 11 * s, this.y + 1 * s, 1 * s, 1 * s); // Lamp base (small)
-        context.fillStyle = '#FFFFFF'; // Lamp light
-        context.fillRect(this.x + 12 * s, this.y + 0 * s, 1 * s, 1 * s); // Lamp light (single pixel)
-
-        // Head (Skin tone) - Clear side profile with nose and eye
-        context.fillStyle = '#FFDDDD';
-        context.fillRect(this.x + 6 * s, this.y + 5 * s, 6 * s, 6 * s); // Main head block
-        context.fillRect(this.x + 11 * s, this.y + 7 * s, 2 * s, 2 * s); // Nose
-        context.fillStyle = 'black';
-        context.fillRect(this.x + 9 * s, this.y + 6 * s, 1 * s, 1 * s); // Eye
-
-        // Body (Cyan) - Distinct stomach and back
-        context.fillStyle = '#00AAAA';
-        context.fillRect(this.x + 5 * s, this.y + 11 * s, 7 * s, 5 * s); // Upper body
-        context.fillRect(this.x + 4 * s, this.y + 12 * s, 1 * s, 3 * s); // Back curve
-        context.fillRect(this.x + 12 * s, this.y + 12 * s, 1 * s, 3 * s); // Stomach curve
-
-        // Pants (Blue) - Clearly defined with a belt
-        context.fillStyle = '#0000AA'; // Dark Blue for pants
-        context.fillRect(this.x + 5 * s, this.y + TILE_SIZE + 0 * s, 7 * s, 6 * s); // Main pants area
-        context.fillStyle = 'black'; // Belt
-        context.fillRect(this.x + 5 * s, this.y + TILE_SIZE + 0 * s, 7 * s, 1 * s); // Belt line
-
-        // Arms (Cyan) - One forward, one back
-        context.fillStyle = '#00AAAA'; // Reset to Cyan for arms
-        context.fillRect(this.x + 3 * s, this.y + 12 * s, 2 * s, 6 * s); // Back arm
-        context.fillRect(this.x + 10 * s, this.y + 11 * s, 2 * s, 7 * s); // Front arm
-
-        // Legs (Yellow) - Animated with swinging motion and depth
-        context.fillStyle = '#FFFF00';
-        const thighHeight = 6 * s; // Height of the static thigh part
-        const shinHeight = 6 * s; // Height of the swinging shin part
-        const legWidth = 3 * s;
-
-        // Common Y for the top of the thighs (relative to player.y)
-        const commonThighTopY = this.y + TILE_SIZE + 4 * s;
-
-        if (this.animationFrame === 0) {
-            // Frame 0: Left leg forward and slightly up, right leg back and grounded
-            // Right leg (back, grounded)
-            const rightThighX = this.x + 6 * s;
-            context.fillRect(rightThighX, commonThighTopY, legWidth, thighHeight); // Thigh
-
-            context.save(); // Save context for shin rotation
-            const rightKneeX = rightThighX + legWidth / 2;
-            const rightKneeY = commonThighTopY + thighHeight;
-            context.translate(rightKneeX, rightKneeY);
-            context.rotate(-0.1); // Small backward swing
-            context.fillRect(-legWidth / 2, 0, legWidth, shinHeight); // Shin/Foot
-            context.restore();
-
-            // Left leg (front, swinging up)
-            const leftThighX = this.x + 9 * s;
-            context.fillRect(leftThighX, commonThighTopY, legWidth, thighHeight); // Thigh
-
-            context.save(); // Save context for shin rotation
-            const leftKneeX = leftThighX + legWidth / 2;
-            const leftKneeY = commonThighTopY + thighHeight;
-            context.translate(leftKneeX, leftKneeY);
-            context.rotate(0.15); // Small forward and up swing
-            context.fillRect(-legWidth / 2, 0, legWidth, shinHeight); // Shin/Foot
-            context.restore();
-
-        } else {
-            // Frame 1: Alternate leg position
-            // Left leg (back, grounded)
-            const leftThighX = this.x + 9 * s;
-            context.fillRect(leftThighX, commonThighTopY, legWidth, thighHeight); // Thigh
-
-            context.save(); // Save context for shin rotation
-            const leftKneeX = leftThighX + legWidth / 2;
-            const leftKneeY = commonThighTopY + thighHeight;
-            context.translate(leftKneeX, leftKneeY);
-            context.rotate(-0.1); // Small backward swing
-            context.fillRect(-legWidth / 2, 0, legWidth, shinHeight); // Shin/Foot
-            context.restore();
-
-            // Right leg (front, swinging up)
-            const rightThighX = this.x + 6 * s;
-            context.fillRect(rightThighX, commonThighTopY, legWidth, thighHeight); // Thigh
-
-            context.save(); // Save context for shin rotation
-            const rightKneeX = rightThighX + legWidth / 2;
-            const rightKneeY = commonThighTopY + thighHeight;
-            context.translate(rightKneeX, rightKneeY);
-            context.rotate(0.15); // Small forward and up swing
-            context.fillRect(-legWidth / 2, 0, legWidth, shinHeight); // Shin/Foot
-            context.restore();
-        }
-
+        // Miner in Side View Profile (facing direction of movement) - 3D and cool looking
+        
+        // Mining Helmet with 3D shading
+        context.fillStyle = '#FFD700';
+        context.fillRect(this.x + 4 * s, this.y + 1 * s + bodyBob, 7 * s, 4 * s);
+        context.fillRect(this.x + 3 * s, this.y + 2 * s + bodyBob, 2 * s, 2 * s); // Back of helmet
+        // Helmet shadow/depth
+        context.fillStyle = '#CC9900';
+        context.fillRect(this.x + 4 * s, this.y + 4 * s + bodyBob, 7 * s, 1 * s);
+        context.fillRect(this.x + 3 * s, this.y + 3 * s + bodyBob, 2 * s, 1 * s);
+        
+        // Helmet lamp with glow effect
+        context.fillStyle = '#FFFFFF';
+        context.fillRect(this.x + 11 * s, this.y + 2 * s + bodyBob, 2 * s, 2 * s);
+        // Light beam with glow
+        context.fillStyle = '#FFFFAA';
+        context.fillRect(this.x + 13 * s, this.y + 3 * s + bodyBob, 3 * s, 1 * s);
+        context.fillStyle = '#FFFFFF';
+        context.fillRect(this.x + 13 * s, this.y + 3 * s + bodyBob, 2 * s, 1 * s);
+        
+        // Head with 3D shading
+        context.fillStyle = '#FFCC99';
+        context.fillRect(this.x + 4 * s, this.y + 5 * s + bodyBob, 6 * s, 4 * s);
+        context.fillRect(this.x + 10 * s, this.y + 6 * s + bodyBob, 2 * s, 2 * s); // Nose
+        // Face shadow for depth
+        context.fillStyle = '#E6B380';
+        context.fillRect(this.x + 4 * s, this.y + 8 * s + bodyBob, 6 * s, 1 * s);
+        context.fillRect(this.x + 9 * s, this.y + 6 * s + bodyBob, 1 * s, 2 * s);
+        
+        // Eye with more detail
+        context.fillStyle = '#FFFFFF';
+        context.fillRect(this.x + 6 * s, this.y + 6 * s + bodyBob, 2 * s, 1 * s);
+        context.fillStyle = '#000000';
+        context.fillRect(this.x + 7 * s, this.y + 6 * s + bodyBob, 1 * s, 1 * s);
+        
+        // Body/Torso with 3D shading and muscle definition
+        context.fillStyle = '#0066FF';
+        context.fillRect(this.x + 4 * s, this.y + 9 * s + bodyBob, 6 * s, 6 * s);
+        // Torso shading
+        context.fillStyle = '#004499';
+        context.fillRect(this.x + 4 * s, this.y + 13 * s + bodyBob, 6 * s, 2 * s);
+        context.fillRect(this.x + 8 * s, this.y + 9 * s + bodyBob, 2 * s, 6 * s);
+        // Chest muscles
+        context.fillStyle = '#0077DD';
+        context.fillRect(this.x + 5 * s, this.y + 10 * s + bodyBob, 2 * s, 2 * s);
+        context.fillRect(this.x + 7 * s, this.y + 10 * s + bodyBob, 2 * s, 2 * s);
+        
+        // Animated Arms with proper joints and muscles
+        const armSwing = isMoving ? walkCycle * 0.4 : 0;
+        
+        // Back arm (further from viewer) - full arm with shoulder, upper arm, forearm
+        context.save();
+        // Shoulder
+        context.fillStyle = '#0066FF';
+        context.translate(this.x + 3 * s, this.y + 10 * s + bodyBob);
+        context.rotate(armSwing);
+        context.fillRect(0, 0, 3 * s, 3 * s); // Shoulder
+        context.fillRect(1 * s, 3 * s, 2 * s, 4 * s); // Upper arm
+        // Elbow joint
+        context.translate(2 * s, 7 * s);
+        context.rotate(armSwing * 0.5);
+        context.fillRect(-1 * s, 0, 2 * s, 4 * s); // Forearm
+        // Hand
+        context.fillStyle = '#FFCC99';
+        context.fillRect(-1 * s, 4 * s, 2 * s, 2 * s);
         context.restore();
-        context.globalAlpha = 1; // Reset alpha for other drawings
+        
+        // Front arm (closer to viewer) - brighter and more prominent
+        context.save();
+        // Shoulder
+        context.fillStyle = '#0077DD';
+        context.translate(this.x + 9 * s, this.y + 10 * s + bodyBob);
+        context.rotate(-armSwing);
+        context.fillRect(0, 0, 3 * s, 3 * s); // Shoulder
+        context.fillRect(1 * s, 3 * s, 2 * s, 4 * s); // Upper arm
+        // Elbow joint
+        context.translate(2 * s, 7 * s);
+        context.rotate(-armSwing * 0.5);
+        context.fillRect(-1 * s, 0, 2 * s, 4 * s); // Forearm
+        // Hand
+        context.fillStyle = '#FFD6B3';
+        context.fillRect(-1 * s, 4 * s, 2 * s, 2 * s);
+        context.restore();
+        
+        // Pants with 3D shading
+        context.fillStyle = '#654321';
+        context.fillRect(this.x + 4 * s, this.y + 15 * s + bodyBob, 6 * s, 5 * s);
+        // Pants shading
+        context.fillStyle = '#4A2F1A';
+        context.fillRect(this.x + 4 * s, this.y + 18 * s + bodyBob, 6 * s, 2 * s);
+        context.fillRect(this.x + 8 * s, this.y + 15 * s + bodyBob, 2 * s, 5 * s);
+        
+        // Belt with buckle
+        context.fillStyle = '#8B4513';
+        context.fillRect(this.x + 4 * s, this.y + 15 * s + bodyBob, 6 * s, 1 * s);
+        // Belt buckle
+        context.fillStyle = '#C0C0C0';
+        context.fillRect(this.x + 6 * s, this.y + 15 * s + bodyBob, 2 * s, 1 * s);
+        
+        // Muscular legs with 3D shading and proper joints
+        context.fillStyle = '#654321';
+        
+        if (isMoving) {
+            // Left leg (back leg in side view) with muscle definition
+            const leftLegSwing = walkCycle * 0.4;
+            context.save();
+            context.translate(this.x + 5 * s, this.y + 20 * s + bodyBob);
+            context.rotate(leftLegSwing);
+            // Thigh with muscle shading
+            context.fillStyle = '#654321';
+            context.fillRect(0, 0, 2 * s, 6 * s);
+            context.fillStyle = '#4A2F1A';
+            context.fillRect(1 * s, 0, 1 * s, 6 * s); // Muscle definition
+            
+            context.translate(1 * s, 6 * s);
+            context.rotate(leftLegSwing * 0.5);
+            // Shin with calf muscle
+            context.fillStyle = '#654321';
+            context.fillRect(-1 * s, 0, 2 * s, 6 * s);
+            context.fillStyle = '#4A2F1A';
+            context.fillRect(0, 0, 1 * s, 6 * s); // Calf muscle
+            
+            // Left boot with 3D shading
+            context.fillStyle = '#8B4513';
+            context.fillRect(-1 * s, 6 * s, 3 * s, 2 * s);
+            context.fillStyle = '#654321';
+            context.fillRect(-1 * s, 7 * s, 3 * s, 1 * s); // Boot shadow
+            context.restore();
+            
+            // Right leg (front leg in side view) - brighter for 3D effect
+            const rightLegSwing = walkCycle2 * 0.4;
+            context.save();
+            context.translate(this.x + 7 * s, this.y + 20 * s + bodyBob);
+            context.rotate(rightLegSwing);
+            // Thigh with highlighted muscles
+            context.fillStyle = '#765432';
+            context.fillRect(0, 0, 2 * s, 6 * s);
+            context.fillStyle = '#654321';
+            context.fillRect(1 * s, 0, 1 * s, 6 * s); // Muscle highlight
+            
+            context.translate(1 * s, 6 * s);
+            context.rotate(rightLegSwing * 0.5);
+            // Shin with prominent calf
+            context.fillStyle = '#765432';
+            context.fillRect(-1 * s, 0, 2 * s, 6 * s);
+            context.fillStyle = '#654321';
+            context.fillRect(0, 0, 1 * s, 6 * s); // Calf highlight
+            
+            // Right boot with depth
+            context.fillStyle = '#A0522D';
+            context.fillRect(-1 * s, 6 * s, 3 * s, 2 * s);
+            context.fillStyle = '#8B4513';
+            context.fillRect(-1 * s, 7 * s, 3 * s, 1 * s); // Boot shadow
+            context.restore();
+        } else {
+            // Standing legs with muscle definition
+            // Left leg
+            context.fillStyle = '#654321';
+            context.fillRect(this.x + 5 * s, this.y + 20 * s, 2 * s, 10 * s);
+            context.fillStyle = '#4A2F1A';
+            context.fillRect(this.x + 6 * s, this.y + 20 * s, 1 * s, 10 * s); // Muscle line
+            
+            // Right leg (brighter)
+            context.fillStyle = '#765432';
+            context.fillRect(this.x + 7 * s, this.y + 20 * s, 2 * s, 10 * s);
+            context.fillStyle = '#654321';
+            context.fillRect(this.x + 8 * s, this.y + 20 * s, 1 * s, 10 * s); // Muscle highlight
+            
+            // Standing boots with 3D effect
+            context.fillStyle = '#8B4513';
+            context.fillRect(this.x + 5 * s, this.y + 30 * s, 3 * s, 2 * s);
+            context.fillRect(this.x + 7 * s, this.y + 30 * s, 3 * s, 2 * s);
+            // Boot shadows
+            context.fillStyle = '#654321';
+            context.fillRect(this.x + 5 * s, this.y + 31 * s, 3 * s, 1 * s);
+            context.fillRect(this.x + 7 * s, this.y + 31 * s, 3 * s, 1 * s);
+        }
+        
+        context.restore();
+        context.globalAlpha = 1;
     }
 }
