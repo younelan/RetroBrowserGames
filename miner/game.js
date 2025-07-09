@@ -307,14 +307,10 @@ class Game {
         this.context.save();
         this.context.scale(scale, scale);
 
-        // Draw the blue border around the entire game area
-        this.context.fillStyle = '#0000AA'; // Dark blue border
-        this.context.fillRect(0, 0, totalGameWidth, totalGameHeight);
-
-        // Draw the inner black background for the game world
+        // Draw the black background for the game world
         const borderThickness = 8; // Example border thickness in game units
         this.context.fillStyle = 'black';
-        this.context.fillRect(borderThickness, borderThickness, totalGameWidth - borderThickness * 2, totalGameHeight - borderThickness * 2);
+        this.context.fillRect(0, 0, totalGameWidth, totalGameHeight);
 
         // Translate context to draw game elements within the border
         this.context.translate(borderThickness, borderThickness);
@@ -323,20 +319,19 @@ class Game {
         this.level.draw(this.context, this.frameCounter, this.level.keys.length === 0);
         this.player.draw(this.context);
 
-        // Draw UI Panel (bottom portion)
-        const uiPanelY = (LEVEL_HEIGHT - UI_HEIGHT_TILES) * TILE_SIZE - borderThickness; // Adjust for border
+        // Draw UI Panel (bottom portion) - moved to bottom of canvas, matching game area width
         this.context.fillStyle = '#222'; // Dark grey background for UI
-        this.context.fillRect(-borderThickness, uiPanelY, totalGameWidth, UI_HEIGHT_TILES * TILE_SIZE + borderThickness); // Extend to cover border
+        this.context.fillRect(0, this.canvas.height - 100, totalGameWidth, 100); // Gray bar matching game area width
 
-        // Draw Score
+        // Draw Score at bottom of canvas
         this.context.fillStyle = 'white';
         this.context.font = "24px 'Courier New', Courier, monospace";
-        this.context.fillText(`Score: ${this.score}`, 20, uiPanelY + 30);
+        this.context.fillText(`Score: ${this.score}`, 20, this.canvas.height - 60);
 
-        // Draw Lives (animated dancing Miner Willy icons)
+        // Draw Lives (animated dancing Miner Willy icons) at bottom of canvas
         for (let i = 0; i < this.lives; i++) {
             const baseX = 200 + i * 40;
-            const playerIcon = new Player(baseX, uiPanelY + 15);
+            const playerIcon = new Player(baseX, this.canvas.height - 80);
             
             // Dance: exactly 10 WALKING STEPS right, then 10 WALKING STEPS left
             // Use the same walking animation as the player - count when legs change direction
@@ -396,11 +391,9 @@ class Game {
             playerIcon.draw(this.context);
         }
 
-        // Draw Oxygen Bar
-        this.context.fillStyle = '#555';
-        this.context.fillRect(totalGameWidth - 320, uiPanelY + 15, 300, 20);
+        // Draw Oxygen Bar at bottom of canvas (minimal design)
         this.context.fillStyle = 'cyan';
-        this.context.fillRect(totalGameWidth - 320, uiPanelY + 15, (this.oxygen / START_OXYGEN) * 300, 20);
+        this.context.fillRect(totalGameWidth - 320, this.canvas.height - 40, (this.oxygen / START_OXYGEN) * 300, 20);
 
         this.context.restore();
     }
