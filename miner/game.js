@@ -63,7 +63,10 @@ class Game {
     loadLevel(levelIndex) {
         this.level = new Level(levels[levelIndex]);
         this.player = new Player(this.level.playerStart.x, this.level.playerStart.y);
-        this.oxygen = START_OXYGEN; // Reset oxygen on level load
+
+        // Set background color and oxygen based on level configuration
+        this.backgroundColor = this.level.backgroundColor || 'black'; // Default to black
+        this.oxygen = this.level.oxygen || START_OXYGEN; // Default to global START_OXYGEN
     }
 
     setupInput() {
@@ -331,7 +334,7 @@ class Game {
         // Draw game world - now fills entire viewport area
         this.level.draw(this.context, this.frameCounter, this.level.keys.length === 0);
         this.player.draw(this.context, this.player.width, this.player.height);
-        
+
         // Restore viewport scrolling
         this.context.restore();
 
@@ -339,22 +342,29 @@ class Game {
         this.context.restore();
 
         // Draw UI elements OUTSIDE of any transformations - fixed at bottom of canvas
-        // Scale UI elements based on canvas size for mobile compatibility
-        const uiScale = Math.min(this.canvas.width / 800, this.canvas.height / 600); // Base scale for UI
-        
-        // Draw Lives (spare miners) - FIXED SIZE, NOT BASED ON PLAYER HEIGHT
-        // Correct spare life scaling and position to ensure full visibility
-        const spareLifeHeight = uiScale * 24; // Use consistent scaling for height
-        const spareLifeWidth = spareLifeHeight / 2; // Maintain 2x height, 1x width proportion
-        const spareLifeY = this.canvas.height - spareLifeHeight - 10; // Position from bottom with padding
+        // Adjust UI scaling based on spare life dimensions
+        const uiScale = Math.min(this.canvas.width / 800, this.canvas.height / 600);
+        const uiBottomPadding = 20 * uiScale; // Padding for UI elements at the bottom
 
+        // Draw Level Name at the top if specified
+        if (this.level.name) {
+            const levelNameFontSize = Math.max(20, this.canvas.width / 40);
+            this.context.fillStyle = 'white';
+            this.context.font = `bold ${levelNameFontSize}px 'Courier New', Courier, monospace`;
+            this.context.textAlign = 'center';
+            this.context.fillText(this.level.name, this.canvas.width / 2, levelNameFontSize + 10);
+            this.context.textAlign = 'left'; // Reset text alignment
+        }
+
+        // Draw Lives (spare miners)
+        const spareLifeWidth = 20 * uiScale; // Width of spare life icons
+        const spareLifeHeight = 20 * uiScale; // Height of spare life icons
+        const spareLifeY = this.canvas.height - uiBottomPadding - 40 * uiScale; // Y position for spare life icons
         for (let i = 0; i < this.lives; i++) {
-            const spareLifeX = 10 + i * (spareLifeWidth + 5 * uiScale); // Spacing scaled with UI
-
-            // Create new player icon for spare life
+            const spareLifeX = 10 + i * (spareLifeWidth + 5 * uiScale);
             const spareIcon = new Player(spareLifeX, spareLifeY);
 
-            // Add animation (same as original)
+            // Animation logic
             const walkAnimSpeed = 0.048;
             const walkTime = this.frameCounter * walkAnimSpeed;
             const totalSteps = Math.floor(walkTime / Math.PI);
@@ -387,19 +397,25 @@ class Game {
             spareIcon.draw(this.context, spareLifeWidth, spareLifeHeight);
         }
 
-        // Draw Oxygen Bar at bottom right
+        // Draw Oxygen Bar
         const oxygenBarWidth = 200 * uiScale;
-        const oxygenBarHeight = 15 * uiScale;
+        const oxygenBarHeight = 25 * uiScale; // Match text height
         const oxygenBarX = this.canvas.width - oxygenBarWidth - 20 * uiScale;
-        const oxygenBarY = this.canvas.height - 30 * uiScale;
-        
+        const commonTopY = this.canvas.height - uiBottomPadding - 25 * uiScale; // Common top for all elements
+        const oxygenBarY = commonTopY; // Align oxygen bar with common top
+
         this.context.fillStyle = 'cyan';
-        this.context.fillRect(oxygenBarX, oxygenBarY, (this.oxygen / START_OXYGEN) * oxygenBarWidth, oxygenBarHeight);
-        
-        // Draw Score above oxygen bar with emoji
-        this.context.fillStyle = 'white';
-        this.context.font = `${20 * uiScale}px 'Courier New', Courier, monospace`;
-        this.context.fillText(`💎 ${this.score}`, oxygenBarX, oxygenBarY - 10 * uiScale);
+        this.context.fillRect(oxygenBarX, oxygenBarY - oxygenBarHeight+2, (this.oxygen / START_OXYGEN) * oxygenBarWidth, oxygenBarHeight);
+
+        // Draw Score
+        const scoreX = this.canvas.width - 300 * uiScale; // Position score appropriately
+        const scoreY = commonTopY; // Align score with common top
+        this.context.fillText(`💎 ${this.score}`, scoreX, scoreY);
+
+        // Draw Level Indicator with emoji
+        const levelX = oxygenBarX - 150 * uiScale; // Position level where score was
+        const levelY = commonTopY; // Align level with common top
+        this.context.fillText(`🌍 ${this.currentLevelIndex + 1}`, levelX, levelY);
     }
 
     drawStartScreen() {
