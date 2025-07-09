@@ -9,7 +9,7 @@ class Game {
         this.lives = START_LIVES;
         this.oxygen = START_OXYGEN;
         this.oxygen = START_OXYGEN;
-        this.gameState = 'START'; // 'START', 'PLAYING', 'GAME_OVER'
+        this.gameState = 'START'; // 'START', 'PLAYING', 'GAME_OVER', 'WIN'
 
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
@@ -72,7 +72,7 @@ class Game {
             if (e.key === 'ArrowRight') this.input.right = true;
             if (e.key === ' ' || e.key === 'ArrowUp') {
                 this.input.jump = true;
-                if (this.gameState === 'START' || this.gameState === 'GAME_OVER') {
+                if (this.gameState === 'START' || this.gameState === 'GAME_OVER' || this.gameState === 'WIN') {
                     this.resetGame();
                 }
             }
@@ -91,7 +91,7 @@ class Game {
             touchStartX = e.touches[0].clientX;
             touchStartY = e.touches[0].clientY;
 
-            if (this.gameState === 'START' || this.gameState === 'GAME_OVER') {
+            if (this.gameState === 'START' || this.gameState === 'GAME_OVER' || this.gameState === 'WIN') {
                 this.resetGame();
             }
         });
@@ -279,6 +279,9 @@ class Game {
             case 'GAME_OVER':
                 this.drawEndScreen();
                 break;
+            case 'WIN':
+                this.drawWinScreen();
+                break;
         }
     }
 
@@ -354,10 +357,120 @@ class Game {
         this.context.textAlign = 'left'; // Reset for game screen
     }
 
+    drawWinScreen() {
+        // Animated celebration background
+        const time = Date.now() * 0.003;
+        
+        // Gradient background with animated colors
+        const gradient = this.context.createLinearGradient(0, 0, this.canvas.width, this.canvas.height);
+        const color1 = `hsl(${(time * 30) % 360}, 70%, 20%)`;
+        const color2 = `hsl(${(time * 30 + 180) % 360}, 70%, 40%)`;
+        gradient.addColorStop(0, color1);
+        gradient.addColorStop(1, color2);
+        this.context.fillStyle = gradient;
+        this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Animated stars/sparkles
+        for (let i = 0; i < 50; i++) {
+            const starX = (Math.sin(time + i * 0.5) * 0.3 + 0.5) * this.canvas.width;
+            const starY = (Math.cos(time * 0.7 + i * 0.8) * 0.3 + 0.5) * this.canvas.height;
+            const starSize = Math.sin(time * 2 + i) * 2 + 3;
+            const starAlpha = Math.sin(time * 3 + i * 1.2) * 0.5 + 0.5;
+            
+            this.context.fillStyle = `rgba(255, 255, 255, ${starAlpha})`;
+            this.context.fillRect(starX - starSize/2, starY - starSize/2, starSize, starSize);
+            
+            // Cross sparkle effect
+            this.context.fillRect(starX - starSize*1.5, starY - 1, starSize*3, 2);
+            this.context.fillRect(starX - 1, starY - starSize*1.5, 2, starSize*3);
+        }
+        
+        // Floating confetti
+        for (let i = 0; i < 30; i++) {
+            const confettiX = ((time * 20 + i * 50) % (this.canvas.width + 100)) - 50;
+            const confettiY = (Math.sin(time + i) * 50) + (i * 15) % this.canvas.height;
+            const confettiSize = 4 + Math.sin(time * 2 + i) * 2;
+            const confettiHue = (i * 30) % 360;
+            
+            this.context.fillStyle = `hsl(${confettiHue}, 80%, 60%)`;
+            this.context.save();
+            this.context.translate(confettiX, confettiY);
+            this.context.rotate(time * 2 + i);
+            this.context.fillRect(-confettiSize/2, -confettiSize/2, confettiSize, confettiSize);
+            this.context.restore();
+        }
+        
+        // Main victory text with glow effect
+        this.context.textAlign = 'center';
+        
+        // Text glow
+        this.context.shadowColor = '#FFD700';
+        this.context.shadowBlur = 20;
+        this.context.fillStyle = '#FFD700';
+        this.context.font = "bold 64px 'Courier New', Courier, monospace";
+        this.context.fillText('🎉 VICTORY! 🎉', this.canvas.width / 2, this.canvas.height / 2 - 80);
+        
+        // Reset shadow
+        this.context.shadowBlur = 0;
+        
+        // Success message with bounce effect
+        const bounceOffset = Math.sin(time * 4) * 5;
+        this.context.fillStyle = '#00FF88';
+        this.context.font = "bold 36px 'Courier New', Courier, monospace";
+        this.context.fillText('CONGRATULATIONS!', this.canvas.width / 2, this.canvas.height / 2 - 20 + bounceOffset);
+        
+        // Achievement text
+        this.context.fillStyle = '#FFFFFF';
+        this.context.font = "28px 'Courier New', Courier, monospace";
+        this.context.fillText('You completed all levels!', this.canvas.width / 2, this.canvas.height / 2 + 20);
+        
+        // Final score with emphasis
+        this.context.fillStyle = '#FFFF00';
+        this.context.font = "bold 32px 'Courier New', Courier, monospace";
+        this.context.fillText(`Final Score: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 70);
+        
+        // Player sprite celebration
+        const playerScale = 3 + Math.sin(time * 3) * 0.5;
+        this.context.save();
+        this.context.translate(this.canvas.width / 2, this.canvas.height / 2 + 140);
+        this.context.scale(playerScale, playerScale);
+        
+        // Draw a simple celebrating miner
+        this.context.fillStyle = '#FFD700'; // Helmet
+        this.context.fillRect(-8, -16, 16, 8);
+        this.context.fillStyle = '#FFCC99'; // Face
+        this.context.fillRect(-6, -8, 12, 8);
+        this.context.fillStyle = '#0066FF'; // Body
+        this.context.fillRect(-6, 0, 12, 16);
+        this.context.fillStyle = '#654321'; // Legs
+        this.context.fillRect(-6, 16, 5, 12);
+        this.context.fillRect(1, 16, 5, 12);
+        
+        // Celebrating arms
+        const armAngle = Math.sin(time * 6) * 0.5 + 0.5;
+        this.context.fillStyle = '#0066FF';
+        // Left arm up
+        this.context.fillRect(-12, -4 - armAngle * 8, 6, 8);
+        // Right arm up  
+        this.context.fillRect(6, -4 - armAngle * 8, 6, 8);
+        
+        this.context.restore();
+        
+        // Restart instruction
+        this.context.fillStyle = '#CCCCCC';
+        this.context.font = "24px 'Courier New', Courier, monospace";
+        this.context.fillText('Press SPACE or Tap to Play Again', this.canvas.width / 2, this.canvas.height - 60);
+        
+        this.context.textAlign = 'left'; // Reset for game screen
+    }
+
     winGame() {
-        this.gameState = 'GAME_OVER';
-        // Optionally, you can set a flag or display a different message for winning
-        // For now, it reuses the GAME_OVER screen.
+        this.gameState = 'WIN';
+        this.gameMusic.pause();
+        // Play victory sound if available
+        if (this.soundEnabled && this.levelCompleteSound) {
+            this.levelCompleteSound.play();
+        }
     }
 
     resetGame() {
