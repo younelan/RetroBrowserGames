@@ -2,6 +2,8 @@ class Level {
     constructor(levelData) {
         this.map = levelData.map;
         this.name = levelData.name;
+        this.viewportWidth = levelData.viewportWidth || 32;
+        this.viewportHeight = levelData.viewportHeight || 16;
         this.platforms = [];
         this.keys = [];
         this.enemies = [];
@@ -18,6 +20,15 @@ class Level {
         this.decorativeElements = [];
         this.portal = null;
         this.playerStart = { x: 0, y: 0 };
+
+        // Viewport scrolling properties
+        this.scrollX = 0;
+        this.scrollY = 0;
+
+        // Calculate actual level dimensions
+        this.mapRows = this.map.trim().split('\n');
+        this.levelWidth = this.mapRows[0].length;
+        this.levelHeight = this.mapRows.length;
 
         // Unified platform arrays based on TILE_ATTRIBUTES
         this.allPlatforms = []; // All platforms regardless of type
@@ -161,8 +172,41 @@ class Level {
         }
     }
 
+    // Update viewport scrolling to follow the player
+    updateViewport(playerX, playerY) {
+        // Calculate viewport size in world coordinates
+        const viewportWorldWidth = this.viewportWidth * TILE_SIZE;
+        const viewportWorldHeight = this.viewportHeight * TILE_SIZE;
+        
+        // Calculate level size in world coordinates
+        const levelWorldWidth = this.levelWidth * TILE_SIZE;
+        const levelWorldHeight = this.levelHeight * TILE_SIZE;
+        
+        // Only scroll if viewport is smaller than level
+        if (viewportWorldWidth < levelWorldWidth) {
+            // Center the viewport on the player horizontally
+            this.scrollX = playerX - viewportWorldWidth / 2;
+            
+            // Clamp scroll to level boundaries
+            this.scrollX = Math.max(0, Math.min(this.scrollX, levelWorldWidth - viewportWorldWidth));
+        } else {
+            this.scrollX = 0;
+        }
+        
+        if (viewportWorldHeight < levelWorldHeight) {
+            // Center the viewport on the player vertically
+            this.scrollY = playerY - viewportWorldHeight / 2;
+            
+            // Clamp scroll to level boundaries
+            this.scrollY = Math.max(0, Math.min(this.scrollY, levelWorldHeight - viewportWorldHeight));
+        } else {
+            this.scrollY = 0;
+        }
+    }
+
     draw(context, frameCounter, allKeysCollected) {
         const s = TILE_SIZE / 16; // Scale factor for drawing details (moved to top)
+        
         this.platforms.forEach(p => {
             context.fillStyle = '#888';
             context.fillRect(p.x, p.y, p.width, p.height);
@@ -676,7 +720,7 @@ class Level {
                 const globalRockY = (globalTileX * 17 + globalTileY * 29 + i * 23) % 7;
                 
                 const pseudoRandX = Math.sin(globalRockX + i * 3.7) * 0.8 + 0.5;
-                const pseudoRandY = Math.sin(globalRockY + i * 5.1) * 0.7 + 0.5;
+                const pseudoRandY = Math.sin(globalRockY + i * 5.1) * 0.7 + 0.3;
                 const pseudoRandSize = Math.sin(globalTileX * 37 + globalTileY * 41 + i * 7.3) * 0.5 + 0.5;
                 const pseudoRandColor = Math.sin(globalTileX * 43 + globalTileY * 47 + i * 9.7) * 0.5 + 0.5;
                 
@@ -861,7 +905,7 @@ class Level {
                 const globalRockY = (globalTileX * 17 + globalTileY * 29 + i * 23) % 7;
                 
                 const pseudoRandX = Math.sin(globalRockX + i * 3.7) * 0.8 + 0.5;
-                const pseudoRandY = Math.sin(globalRockY + i * 5.1) * 0.7 + 0.5;
+                const pseudoRandY = Math.sin(globalRockY + i * 5.1) * 0.7 + 0.3;
                 const pseudoRandSize = Math.sin(globalTileX * 37 + globalTileY * 41 + i * 7.3) * 0.5 + 0.5;
                 const pseudoRandColor = Math.sin(globalTileX * 43 + globalTileY * 47 + i * 9.7) * 0.5 + 0.5;
                 

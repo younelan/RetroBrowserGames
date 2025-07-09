@@ -299,9 +299,12 @@ class Game {
     }
 
     drawGameScreen() {
-        // Calculate scale for the entire game (including UI)
-        const totalGameWidth = LEVEL_WIDTH * TILE_SIZE;
-        const totalGameHeight = LEVEL_HEIGHT * TILE_SIZE;
+        // Update viewport to follow player
+        this.level.updateViewport(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2);
+        
+        // Calculate scale for the entire game (including UI) based on viewport size
+        const totalGameWidth = this.level.viewportWidth * TILE_SIZE;
+        const totalGameHeight = this.level.viewportHeight * TILE_SIZE + UI_HEIGHT_TILES * TILE_SIZE;
         const scale = Math.min(this.canvas.width / totalGameWidth, this.canvas.height / totalGameHeight);
 
         this.context.save();
@@ -315,13 +318,27 @@ class Game {
         // Translate context to draw game elements within the border
         this.context.translate(borderThickness, borderThickness);
 
-        // Draw game world (top portion)
+        // Apply viewport scrolling for rendering only (after all game logic)
+        this.context.save();
+        
+        // Clip to viewport area
+        this.context.beginPath();
+        this.context.rect(0, 0, this.level.viewportWidth * TILE_SIZE, this.level.viewportHeight * TILE_SIZE);
+        this.context.clip();
+        
+        this.context.translate(-this.level.scrollX, -this.level.scrollY);
+
+        // Draw game world (top portion) - now with viewport scrolling applied
         this.level.draw(this.context, this.frameCounter, this.level.keys.length === 0);
         this.player.draw(this.context);
+        
+        // Restore viewport scrolling
+        this.context.restore();
 
         // Draw UI Panel (bottom portion) - moved to bottom of canvas, matching game area width
+        const viewportGameWidth = this.level.viewportWidth * TILE_SIZE;
         this.context.fillStyle = '#222'; // Dark grey background for UI
-        this.context.fillRect(0, this.canvas.height - 100, totalGameWidth, 100); // Gray bar matching game area width
+        this.context.fillRect(0, this.canvas.height - 100, viewportGameWidth, 100); // Gray bar matching viewport width
 
         // Draw Score at bottom of canvas
         this.context.fillStyle = 'white';
@@ -393,7 +410,7 @@ class Game {
 
         // Draw Oxygen Bar at bottom of canvas (minimal design)
         this.context.fillStyle = 'cyan';
-        this.context.fillRect(totalGameWidth - 320, this.canvas.height - 40, (this.oxygen / START_OXYGEN) * 300, 20);
+        this.context.fillRect(viewportGameWidth - 320, this.canvas.height - 40, (this.oxygen / START_OXYGEN) * 300, 20);
 
         this.context.restore();
     }

@@ -78,13 +78,13 @@ class Player {
             this.fallDistance = 0; // Reset when on ground
         }
 
-        // World boundaries
+        // World boundaries using actual level dimensions
         if (this.x < 0) {
             this.x = 0;
             this.velocityX = 0;
         }
-        if (this.x + this.width > LEVEL_WIDTH * TILE_SIZE) {
-            this.x = LEVEL_WIDTH * TILE_SIZE - this.width;
+        if (this.x + this.width > level.levelWidth * TILE_SIZE) {
+            this.x = level.levelWidth * TILE_SIZE - this.width;
             this.velocityX = 0;
         }
         if (this.y < 0) {
@@ -92,7 +92,7 @@ class Player {
             this.velocityY = 0;
         }
         // Prevent falling off bottom of game world (above UI)
-        const gameWorldBottom = (LEVEL_HEIGHT - UI_HEIGHT_TILES) * TILE_SIZE;
+        const gameWorldBottom = level.levelHeight * TILE_SIZE;
         if (this.y + this.height > gameWorldBottom) {
             this.y = gameWorldBottom - this.height;
             this.velocityY = 0;
