@@ -137,6 +137,7 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `E`    | Enemy (Horizontal)      | A simple enemy patrolling horizontally.             |
 |    `V`    | Enemy (Vertical)        | A simple enemy patrolling vertically.               |
 |    `Z`    | Enemy (Complex)         | An enemy following a more complex, switching path.   |
+|    `J`    | Enemy (Goose)           | A goose/duck enemy that walks on platforms like E.   |
 |    `T`    | Tree / Cactus           | A purely decorative element, no collision.          |
 |    `%`    | Shrub / Bush            | A purely decorative element, no collision.          |
 |    `Y`    | Tall Tree               | A 2-tile high decorative tree element.              |
@@ -159,7 +160,11 @@ To ensure the project is modular and easy to maintain, we will adopt the followi
 *   `game.js`: The main game engine. Contains the `Game` class responsible for the game loop, state management, and coordinating all other objects.
 *   `level.js`: Contains the `Level` class, responsible for parsing the map data and managing all elements within a single level (platforms, keys, etc.).
 *   `player.js`: Contains the `Player` class (representing Miner Willy), responsible for player movement, input handling, and state.
-*   `enemy.js`: Contains the base `Enemy` class and its subclasses for different behaviors (e.g., horizontal/vertical patrol).
+*   `horizontalEnemy.js`: Contains the `HorizontalEnemy` class for enemies that patrol horizontally.
+*   `verticalEnemy.js`: Contains the `VerticalEnemy` class for enemies that patrol vertically.
+*   `complexEnemy.js`: Contains the `ComplexEnemy` class for enemies with complex switching paths.
+*   `gooseEnemy.js`: Contains the `GooseEnemy` class for goose/duck enemies that walk on platforms.
+*   `hazard.js`: Contains the `Hazard` class for static dangerous objects.
 
 ### Class Structure
 

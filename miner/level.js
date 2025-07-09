@@ -132,6 +132,9 @@ class Level {
                     case 'Z':
                         this.enemies.push(new ComplexEnemy(worldX, worldY - TILE_SIZE));
                         break;
+                    case 'J':
+                        this.enemies.push(new GooseEnemy(worldX, worldY - TILE_SIZE));
+                        break;
                     case 'I':
                         this.hazards.push(new Hazard(worldX, worldY, 'SPIKES'));
                         break;
@@ -1105,11 +1108,11 @@ class Level {
             const crumbleProgress = w.decay > 0 ? w.decay / 30 : 0;
             const crumbleHeight = Math.floor(crumbleProgress * w.height);
             
-            // Draw darker red sand base (more red and slightly lighter than before)
-            context.fillStyle = '#8B4A2C'; // Darker red sand - more red, less brown
+            // Draw red sand base (more red and lighter for better distinction)
+            context.fillStyle = '#B85D3A'; // Red sand with orange tint - lighter and more red
             context.fillRect(w.x, w.y + crumbleHeight, w.width, w.height - crumbleHeight);
             
-            // Create sandy, granular texture with darker colors
+            // Create sandy, granular texture with reddish colors
             const globalTileX = w.x / TILE_SIZE;
             const globalTileY = w.y / TILE_SIZE;
             
@@ -1130,13 +1133,13 @@ class Level {
                 
                 // Only draw if below crumble line
                 if (patchY >= w.y + crumbleHeight) {
-                    // Vary the much darker red sand color for patches
+                    // Vary the red sand color for patches (more red and lighter)
                     if (patchRandColor < 0.3) {
-                        context.fillStyle = '#6B3C1A'; // Medium dark red sand
+                        context.fillStyle = '#9B4F2F'; // Medium red sand
                     } else if (patchRandColor < 0.6) {
-                        context.fillStyle = '#7A4B2B'; // Lighter dark red sand
+                        context.fillStyle = '#D1663C'; // Lighter red sand
                     } else {
-                        context.fillStyle = '#4A2A0A'; // Very dark brown sand
+                        context.fillStyle = '#A0522D'; // Reddish brown sand
                     }
                     
                     context.fillRect(patchX, patchY, patchWidth, patchHeight);
@@ -1159,13 +1162,13 @@ class Level {
                 
                 // Only draw if below crumble line
                 if (rockY >= w.y + crumbleHeight) {
-                    // Vary rock colors - much darker reddish tones
+                    // Vary rock colors - darker reddish tones for contrast
                     if (pseudoRandColor < 0.4) {
-                        context.fillStyle = '#2A1A0A'; // Very dark brown
+                        context.fillStyle = '#5A2D1A'; // Dark reddish brown
                     } else if (pseudoRandColor < 0.7) {
-                        context.fillStyle = '#3A2214'; // Dark brown
+                        context.fillStyle = '#6B3C24'; // Medium dark reddish brown
                     } else {
-                        context.fillStyle = '#4A2A0A'; // Medium dark brown
+                        context.fillStyle = '#7A4B2C'; // Lighter dark reddish brown
                     }
                     
                     context.fillRect(rockX, rockY, rockSize, rockSize);
