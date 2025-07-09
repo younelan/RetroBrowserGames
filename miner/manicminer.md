@@ -138,6 +138,7 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `V`    | Enemy (Vertical)        | A simple enemy patrolling vertically.               |
 |    `Z`    | Enemy (Complex)         | An enemy following a more complex, switching path.   |
 |    `J`    | Enemy (Goose)           | A goose/duck enemy that walks on platforms like E.   |
+|    `A`    | Enemy (Seal)            | A seal enemy juggling a ball on its nose.            |
 |    `T`    | Tree / Cactus           | A purely decorative element, no collision.          |
 |    `%`    | Shrub / Bush            | A purely decorative element, no collision.          |
 |    `Y`    | Tall Tree               | A 2-tile high decorative tree element.              |
@@ -164,6 +165,7 @@ To ensure the project is modular and easy to maintain, we will adopt the followi
 *   `verticalEnemy.js`: Contains the `VerticalEnemy` class for enemies that patrol vertically.
 *   `complexEnemy.js`: Contains the `ComplexEnemy` class for enemies with complex switching paths.
 *   `gooseEnemy.js`: Contains the `GooseEnemy` class for goose/duck enemies that walk on platforms.
+*   `sealEnemy.js`: Contains the `SealEnemy` class for seal enemies that juggle a ball on their nose.
 *   `hazard.js`: Contains the `Hazard` class for static dangerous objects.
 
 ### Class Structure

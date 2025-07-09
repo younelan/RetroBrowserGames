@@ -135,6 +135,9 @@ class Level {
                     case 'J':
                         this.enemies.push(new GooseEnemy(worldX, worldY - TILE_SIZE));
                         break;
+                    case 'A':
+                        this.enemies.push(new SealEnemy(worldX, worldY - TILE_SIZE));
+                        break;
                     case 'I':
                         this.hazards.push(new Hazard(worldX, worldY, 'SPIKES'));
                         break;
