@@ -140,7 +140,7 @@ const SURFACE_COLOR_SCHEMES = {
         crack: '#FFFFFF'       // White
     }
 };
-START_LEVEL_INDEX = 6; 
+START_LEVEL_INDEX = 0; 
 // Default surface color scheme
 const DEFAULT_SURFACE_SCHEME = 'grass';
 
@@ -160,8 +160,8 @@ const TILE_ATTRIBUTES = {
     'I': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false, isCrumble: false },  // Spikes
     'F': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false, isCrumble: false },  // Fire
     'E': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Horizontal)
-    'V': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Vertical)
-    'Z': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Complex)
+    'V': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Bat)
+    'Z': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Robot)
     'J': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Goose)
     'A': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Seal)
     'N': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Dinosaur)

@@ -144,10 +144,10 @@ class Level {
                         this.enemies.push(new BigFoot(worldX, worldY - TILE_SIZE));
                         break;
                     case 'V':
-                        this.enemies.push(new VerticalEnemy(worldX, worldY - TILE_SIZE));
+                        this.enemies.push(new Bat(worldX, worldY - TILE_SIZE));
                         break;
                     case 'Z':
-                        this.enemies.push(new ComplexEnemy(worldX, worldY - TILE_SIZE));
+                        this.enemies.push(new Robot(worldX, worldY - TILE_SIZE));
                         break;
                     case 'J':
                         this.enemies.push(new GooseEnemy(worldX, worldY - TILE_SIZE));

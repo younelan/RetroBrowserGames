@@ -1,4 +1,4 @@
-class VerticalEnemy {
+class Bat {
     constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -6,25 +6,17 @@ class VerticalEnemy {
         this.height = 2 * TILE_SIZE;
         this.direction = 1;
         this.speed = 2;
-        console.log(`VerticalEnemy created at x=${x}, y=${y}, direction=${this.direction}`);
     }
 
     update(level) {
-        const oldY = this.y;
         this.y += this.direction * this.speed;
 
         // Use actual level height instead of hardcoded constant
         const actualLevelHeight = level.levelHeight * TILE_SIZE;
         
-        // Debug logging for stuck bat
-        if (Math.abs(this.y - oldY) < 0.1) {
-            console.log(`VerticalEnemy potentially stuck at y=${this.y}, direction=${this.direction}, levelHeight=${actualLevelHeight}, bottom=${this.y + this.height}`);
-        }
-        
         // Simple boundary collision for vertical movement
         if (this.y < 0 || this.y + this.height > actualLevelHeight) {
             this.direction *= -1;
-            console.log(`VerticalEnemy hit boundary: y=${this.y}, direction=${this.direction}, levelHeight=${actualLevelHeight}`);
         }
     }
 

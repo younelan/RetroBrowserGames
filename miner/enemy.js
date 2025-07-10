@@ -60,7 +60,7 @@ class Enemy {
             }
         } else if (this.type === 'V') { // Vertical
             this.y += this.direction * 2;
-        } else if (this.type === 'C') { // Complex
+        } else if (this.type === 'C') { // Robot
             if (this.pathState === 'horizontal') {
                 this.x += this.direction * 2;
             } else { // vertical
@@ -76,7 +76,9 @@ class Enemy {
 
         // Simple boundary collision for vertical movement (for V and C types)
         if (this.type === 'V' || this.type === 'C') {
-            if (this.y < 0 || this.y + this.height > (LEVEL_HEIGHT - UI_HEIGHT_TILES) * TILE_SIZE) {
+            // Use actual level height instead of hardcoded constant
+            const actualLevelHeight = level.levelHeight * TILE_SIZE;
+            if (this.y < 0 || this.y + this.height > actualLevelHeight) {
                 this.direction *= -1;
             }
         }
@@ -113,7 +115,7 @@ class Enemy {
                 context.fillRect(this.x + 5 * s, this.y + 5 * s, 1 * s, 1 * s);
                 context.fillRect(this.x + 10 * s, this.y + 5 * s, 1 * s, 1 * s);
                 break;
-            case 'V': // Vertical Enemy (e.g., Slime) - 2 cells high, remains circular
+            case 'V': // Bat Enemy - 2 cells high, remains circular
                 context.fillStyle = '#00FF00'; // Green slime
                 context.beginPath();
                 context.arc(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, 0, Math.PI * 2);
@@ -121,7 +123,7 @@ class Enemy {
                 // Drip effect (adjusted for 2 cells high)
                 context.fillRect(this.x + this.width / 2 - 2 * s, this.y + this.height - 4 * s, 4 * s, 4 * s);
                 break;
-            case 'C': // Complex Enemy (Robot) - Side view with treads
+            case 'C': // Robot Enemy - Side view with treads
                 context.fillStyle = '#888'; // Light grey robot body
                 context.fillRect(this.x + 2 * s, this.y + 2 * s, 12 * s, 10 * s); // Main body (2 cells high)
 

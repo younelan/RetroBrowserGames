@@ -236,7 +236,7 @@ _    +      43           V   + _
 _  ===___======    =====     ==_
 _                              _
 _                              _
-_                            * _
+_                   Z        * _
 _XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX_
 `,
         backgroundColor: '#776432', // Golden yellow background

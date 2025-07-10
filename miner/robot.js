@@ -1,4 +1,4 @@
-class ComplexEnemy {
+class Robot {
     constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -25,8 +25,11 @@ class ComplexEnemy {
             this.pathState = (this.pathState === 'horizontal') ? 'vertical' : 'horizontal'; // Switch path state
         }
 
+        // Use actual level height instead of hardcoded constant
+        const actualLevelHeight = level.levelHeight * TILE_SIZE;
+        
         // Simple boundary collision for vertical movement
-        if (this.y < 0 || this.y + this.height > (LEVEL_HEIGHT - UI_HEIGHT_TILES) * TILE_SIZE) {
+        if (this.y < 0 || this.y + this.height > actualLevelHeight) {
             this.direction *= -1;
         }
     }
