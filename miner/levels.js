@@ -20,7 +20,9 @@ X                              X
 X                              X
 X   P    T    %  T  V Y Z UFFF X
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-`
+`,
+        backgroundColor: '#0000AA', // Dark blue for the first level
+        oxygenLevel: 200, // Correct key for oxygen level
     },
     {
         name: "The Cold Room",
@@ -38,11 +40,13 @@ X   P                          X
 X  XXXRRR                      X
 X                              X
 X     K                      K X
-X   XXXCCCCBDDB         LLLXXXCX
+X   XXXCCCCBDDBBB       LLLXXXCX
 X   C                          X
 X   @         T                X
 X             F                X
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
-`
+`,
+        background: 'cold_room_bg.png', // Background image for the second level
+        oxygenLevel: 150, // Correct key for oxygen level
     }
 ];

@@ -182,7 +182,7 @@ class Game {
         this.level.enemies.forEach(e => e.update(this.level));
 
         // Oxygen depletion
-        this.oxygen--;
+        this.oxygen = Math.max(this.oxygen - 1, 0); // Prevent oxygen from going negative
         if (this.oxygen <= 0) {
             this.playerDie();
         }

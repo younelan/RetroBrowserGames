@@ -11,6 +11,8 @@ const MAX_FALL_DISTANCE = TILE_SIZE * 8; // Example: 8 tiles high
 const START_LIVES = 3;
 const START_OXYGEN = 1000;
 
+const DEFAULT_BACKGROUND_COLOR = '#000000'; // Default background color for levels
+
 const TILE_ATTRIBUTES = {
     ' ': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },
     'X': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false },
