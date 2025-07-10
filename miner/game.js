@@ -418,6 +418,18 @@ class Game {
 
         this.context.fillRect(oxygenBarX, oxygenBarY - oxygenBarHeight + 2, oxygenPercentage * oxygenBarWidth, oxygenBarHeight);
 
+        // Reset fillStyle for text rendering
+        this.context.fillStyle = 'white';
+
+        // Flash screen when all keys are collected
+        if (this.level.keys.length === 0 && !this.level.flashOccurred) {
+            this.level.flashOccurred = true; // Ensure flash happens only once
+            const flashAlpha = 0.5; // Subtle transparency
+            this.context.fillStyle = `rgba(255, 255, 200, ${flashAlpha})`; // Soft yellow flash
+            this.context.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            this.context.fillStyle = 'white'; // Reset fillStyle for subsequent rendering
+        }
+
         // Draw Score
         const scoreX = this.canvas.width - 300 * uiScale; // Position score appropriately
         const scoreY = commonTopY; // Align score with common top

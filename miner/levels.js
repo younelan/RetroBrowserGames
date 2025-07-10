@@ -47,6 +47,6 @@ X             F                X
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 `,
         background: 'cold_room_bg.png', // Background image for the second level
-        oxygenLevel: 150, // Correct key for oxygen level
+        oxygenLevel: 2050, // Correct key for oxygen level
     }
 ];
