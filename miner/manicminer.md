@@ -123,17 +123,15 @@ The `map` string is a direct visual representation of the level. Each character 
 |   ` `     | Empty Space             | Willy can fall through this.                           |
 |    `@`    | Player Start            | Willy's initial position for the level.                |
 |    `X`    | Wall / Platform         | Solid ground. Blocks movement.                         |
-|    `C`    | Crumbling Platform      | Disappears after Willy walks off it.                   |
-|    `D`    | Dirt Platform           | Brown earth with textured bottom surface.              |
-|    `G`    | Grass Platform          | Dirt platform with green grass on top quarter.        |
-|    `M`    | Crumbling Grass         | Darker dirt with green grass that crumbles like C.     |
-|    `Q`    | Red Sand Platform       | Red/orange sandy platform with granular texture.      |
-|    `W`    | Crumbling Red Sand      | Darker red sand platform that crumbles like C.        |
-|    `B`    | Brick Platform          | Brick platform with mortar lines and texture.         |
+|    `-`    | Crumbling Platform      | Disappears after Willy walks off it.                   |
+|    `=`    | Dirt Platform           | Brown earth with textured bottom surface.              |
+|    `:`    | Grass Platform          | Dirt platform with green grass on top quarter.        |
+|    `;`    | Crumbling Grass         | Darker dirt with green grass that crumbles like -.     |
+|    `_`    | Brick Platform          | Brick platform with mortar lines and texture.         |
 |    `<`    | Moving Left Floor       | Conveyor belt that moves player left.                 |
 |    `>`    | Moving Right Floor      | Conveyor belt that moves player right.                |
 |    `+`    | Key                     | An item to be collected.                               |
-|    `=`    | Portal                  | The exit, becomes active after all keys are taken.     |
+|    `*`    | Portal                  | The exit, becomes active after all keys are taken.     |
 |    `H`    | Hazard (Generic)        | A static object that is deadly to touch (e.g. spikes). |
 |    `I`    | Spikes                  | A static hazard with a spiky appearance.               |
 |    `F`    | Fire / Poisonous Pansy  | A static hazard with a fiery/pulsating appearance.     |
@@ -149,6 +147,61 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `4`    | Tall Cactus             | A 2-tile high decorative cactus element.               |
 
 This format allows us to design levels visually right in the code.
+
+### Brick Color Schemes
+
+The game supports per-level brick color schemes to add visual variety and theming to different levels. Each level can specify a `brickScheme` property to customize the appearance of brick platforms (character `B`).
+
+Available brick color schemes:
+
+| Scheme  | Mortar Color | Brick Color | Theme/Usage                          |
+| :-----: | ------------ | ----------- | ------------------------------------ |
+| `red`   | Dark Brown   | Sandy Brown | Default scheme, earthy/underground   |
+| `blue`  | Dark Blue    | Light Blue  | Ice/water levels, cold environments  |
+| `green` | Dark Green   | Light Green | Forest/nature levels, organic feel   |
+| `gray`  | Dark Gray    | Light Gray  | Industrial/metallic, cold machinery  |
+
+**Level Configuration Example:**
+```javascript
+{
+    name: "The Ice Palace",
+    brickScheme: 'blue', // Uses blue brick colors
+    map: `...`,
+    // ... other properties
+}
+```
+
+If no `brickScheme` is specified, the level will use the default 'red' scheme. This allows for easy theming of levels while maintaining backward compatibility.
+
+### Dirt Color Schemes
+
+The game also supports per-level dirt color schemes to customize the appearance of dirt platforms (character `=`), crumbling dirt platforms (character `-`), and red sand platforms (characters `Q` and `W`). Each level can specify a `dirtScheme` property to customize dirt colors.
+
+Available dirt color schemes:
+
+| Scheme   | Base Color    | Patch Colors        | Rock Colors         | Theme/Usage                      |
+| :------: | ------------- | ------------------- | ------------------- | -------------------------------- |
+| `brown`  | Dark Brown    | Earth Brown Tones   | Brown Rocks        | Default scheme, natural earth    |
+| `red`    | Red Sand      | Orange/Red Tones    | Reddish Rocks      | Desert/canyon levels            |
+| `blue`   | Dark Blue     | Blue/Cyan Tones     | Blue Rocks         | Ice/water levels, frozen earth  |
+| `green`  | Dark Green    | Forest Green Tones  | Green Rocks        | Forest/jungle levels            |
+| `pink`   | Pink-Purple   | Magenta/Pink Tones  | Pink Rocks         | Magical/crystal environments    |
+| `desert` | Light Tan     | Sandy Beige Tones   | Desert Sand Rocks  | Desert/beach levels             |
+| `ice`    | Icy Blue-Gray | Cool Ice Tones      | Ice Rocks          | Frozen/arctic environments      |
+| `yellow` | Golden Yellow | Gold/Amber Tones    | Golden Rocks       | Treasure/mining levels          |
+
+**Level Configuration Example:**
+```javascript
+{
+    name: "The Ice Palace",
+    brickScheme: 'blue',  // Blue bricks
+    dirtScheme: 'blue',   // Blue dirt to match theme
+    map: `...`,
+    // ... other properties
+}
+```
+
+If no `dirtScheme` is specified, the level will use the default 'brown' scheme
 
 ## 7. File & Class Structure
 

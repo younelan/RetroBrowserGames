@@ -36,16 +36,101 @@ const BRICK_COLOR_SCHEMES = {
 // Default brick color scheme
 const DEFAULT_BRICK_SCHEME = 'red';
 
+// Dirt color schemes for different levels
+const DIRT_COLOR_SCHEMES = {
+    brown: {
+        base: '#4A3B28',      // Dark earth brown (current default)
+        patch1: '#524135',    // Medium dirt
+        patch2: '#5A4A3D',    // Lighter dirt
+        patch3: '#3F342A',    // Darker dirt
+        rock1: '#3A2F2A',     // Dark brown rock
+        rock2: '#4A3B35',     // Medium brown rock
+        rock3: '#5A4A45',     // Lighter brown rock
+        crumbleBase: '#3F342A' // Darker base for crumbling dirt
+    },
+    red: {
+        base: '#A0522D',      // Red/orange sand (current red sand)
+        patch1: '#B8713A',    // Lighter red sand
+        patch2: '#CD853F',    // Orange sand
+        patch3: '#8B4513',    // Darker red sand
+        rock1: '#654321',     // Dark brown rock
+        rock2: '#8B4513',     // Saddle brown rock
+        rock3: '#A0522D',     // Red sand rock
+        crumbleBase: '#8B4513' // Darker red base for crumbling
+    },
+    blue: {
+        base: '#2E4A6B',      // Dark blue dirt
+        patch1: '#3D5A7C',    // Medium blue dirt
+        patch2: '#4C6B8D',    // Lighter blue dirt
+        patch3: '#1F3A5B',    // Darker blue dirt
+        rock1: '#1A2F4A',     // Dark blue rock
+        rock2: '#2A3F5A',     // Medium blue rock
+        rock3: '#3A4F6A',     // Lighter blue rock
+        crumbleBase: '#1F3A5B' // Darker blue base for crumbling
+    },
+    green: {
+        base: '#2D4A2E',      // Dark green dirt
+        patch1: '#3C5A3D',    // Medium green dirt
+        patch2: '#4B6B4C',    // Lighter green dirt
+        patch3: '#1E3A1F',    // Darker green dirt
+        rock1: '#193A1A',     // Dark green rock
+        rock2: '#294A2A',     // Medium green rock
+        rock3: '#395A3A',     // Lighter green rock
+        crumbleBase: '#1E3A1F' // Darker green base for crumbling
+    },
+    pink: {
+        base: '#8B4A6B',      // Pink-purple dirt
+        patch1: '#9B5A7B',    // Medium pink dirt
+        patch2: '#AB6A8B',    // Lighter pink dirt
+        patch3: '#7B3A5B',    // Darker pink dirt
+        rock1: '#6B2A4B',     // Dark pink rock
+        rock2: '#7B3A5B',     // Medium pink rock
+        rock3: '#8B4A6B',     // Lighter pink rock
+        crumbleBase: '#7B3A5B' // Darker pink base for crumbling
+    },
+    desert: {
+        base: '#D2B48C',      // Light tan desert sand
+        patch1: '#DDD5AC',    // Light desert sand
+        patch2: '#E6D8BC',    // Lighter desert sand
+        patch3: '#C2A47C',    // Darker desert sand
+        rock1: '#A0906C',     // Dark desert rock
+        rock2: '#B0A07C',     // Medium desert rock
+        rock3: '#C0B08C',     // Lighter desert rock
+        crumbleBase: '#C2A47C' // Darker desert base for crumbling
+    },
+    ice: {
+        base: '#4A6B8D',      // Icy blue-gray dirt
+        patch1: '#5A7B9D',    // Medium ice dirt
+        patch2: '#6A8BAD',    // Lighter ice dirt
+        patch3: '#3A5B7D',    // Darker ice dirt
+        rock1: '#2A4B6D',     // Dark ice rock
+        rock2: '#3A5B7D',     // Medium ice rock
+        rock3: '#4A6B8D',     // Lighter ice rock
+        crumbleBase: '#3A5B7D' // Darker ice base for crumbling
+    },
+    yellow: {
+        base: '#B8A532',      // Golden yellow dirt
+        patch1: '#C8B542',    // Medium yellow dirt
+        patch2: '#D8C552',    // Lighter yellow dirt
+        patch3: '#A89522',    // Darker yellow dirt
+        rock1: '#987512',     // Dark yellow rock
+        rock2: '#A89522',     // Medium yellow rock
+        rock3: '#B8A532',     // Lighter yellow rock
+        crumbleBase: '#A89522' // Darker yellow base for crumbling
+    }
+};
+
+// Default dirt color scheme
+const DEFAULT_DIRT_SCHEME = 'brown';
+
 const TILE_ATTRIBUTES = {
     ' ': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },
     'X': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false },
     '-': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling
-    'B': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Brick
+    '_': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Brick
     '=': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Dirt
-    'G': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Grass
-    'M': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling Grass
-    'Q': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Red Sand
-    'W': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling Red Sand
+    ':': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Grass
+    ';': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling Grass
     '<': { isSolid: true, isPlatform: true, isHazard: false, isMoving: true, moveDirection: -1, isCrumble: false }, // Moving Left
     '>': { isSolid: true, isPlatform: true, isHazard: false, isMoving: true, moveDirection: 1, isCrumble: false },  // Moving Right
     '+': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false }, // Key
