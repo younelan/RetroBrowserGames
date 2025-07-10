@@ -22,7 +22,7 @@ X   P    T    %  T  V Y Z UFFF X
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 `,
         backgroundColor: '#0000AA', // Dark blue for the first level
-        oxygenLevel: 200, // Correct key for oxygen level
+        oxygenLevel: 2000, // Correct key for oxygen level
     },
     {
         name: "The Cold Room",

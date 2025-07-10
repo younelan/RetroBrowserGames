@@ -7,8 +7,8 @@ class Game {
         this.frameCounter = 0;
         this.score = 0;
         this.lives = START_LIVES;
-        this.oxygen = START_OXYGEN;
-        this.oxygen = START_OXYGEN;
+        // Only set to START_OXYGEN if not defined in the level
+        this.oxygen = (levels[0] && typeof levels[0].oxygenLevel === 'number') ? levels[0].oxygenLevel : START_OXYGEN;
         this.gameState = 'START'; // 'START', 'PLAYING', 'GAME_OVER', 'WIN'
         this.lastDebugStep = -1; // For debugging step changes
 
@@ -66,7 +66,7 @@ class Game {
 
         // Set background color and oxygen based on level configuration
         this.backgroundColor = this.level.backgroundColor || 'black'; // Default to black
-        this.oxygen = this.level.oxygen || START_OXYGEN; // Default to global START_OXYGEN
+        this.oxygen = (typeof this.level.oxygenLevel === 'number') ? this.level.oxygenLevel : START_OXYGEN;
     }
 
     setupInput() {
@@ -272,7 +272,7 @@ class Game {
                 this.gameMusic.currentTime = 0;
             } else {
                 this.loadLevel(this.currentLevelIndex);
-                this.oxygen = START_OXYGEN;
+                this.oxygen = (typeof this.level.oxygenLevel === 'number') ? this.level.oxygenLevel : START_OXYGEN;
                 if (this.soundEnabled) {
                     this.gameMusic.play().catch(e => console.log("Game music autoplay blocked:", e));
                 }
@@ -404,8 +404,19 @@ class Game {
         const commonTopY = this.canvas.height - uiBottomPadding - 25 * uiScale; // Common top for all elements
         const oxygenBarY = commonTopY; // Align oxygen bar with common top
 
-        this.context.fillStyle = 'cyan';
-        this.context.fillRect(oxygenBarX, oxygenBarY - oxygenBarHeight+2, (this.oxygen / START_OXYGEN) * oxygenBarWidth, oxygenBarHeight);
+        const levelStartOxygen = (typeof this.level.oxygenLevel === 'number') ? this.level.oxygenLevel : START_OXYGEN;
+        const oxygenPercentage = this.oxygen / levelStartOxygen;
+
+        // Change color based on oxygen level
+        if (oxygenPercentage <= 0.25) {
+            this.context.fillStyle = 'red';
+        } else if (oxygenPercentage <= 0.5) {
+            this.context.fillStyle = 'orange';
+        } else {
+            this.context.fillStyle = 'cyan';
+        }
+
+        this.context.fillRect(oxygenBarX, oxygenBarY - oxygenBarHeight + 2, oxygenPercentage * oxygenBarWidth, oxygenBarHeight);
 
         // Draw Score
         const scoreX = this.canvas.width - 300 * uiScale; // Position score appropriately
