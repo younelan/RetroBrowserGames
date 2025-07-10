@@ -130,10 +130,10 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `Q`    | Red Sand Platform       | Red/orange sandy platform with granular texture.      |
 |    `W`    | Crumbling Red Sand      | Darker red sand platform that crumbles like C.        |
 |    `B`    | Brick Platform          | Brick platform with mortar lines and texture.         |
-|    `L`    | Moving Left Floor       | Conveyor belt that moves player left.                 |
-|    `R`    | Moving Right Floor      | Conveyor belt that moves player right.                |
-|    `K`    | Key                     | An item to be collected.                               |
-|    `P`    | Portal                  | The exit, becomes active after all keys are taken.     |
+|    `<`    | Moving Left Floor       | Conveyor belt that moves player left.                 |
+|    `>`    | Moving Right Floor      | Conveyor belt that moves player right.                |
+|    `+`    | Key                     | An item to be collected.                               |
+|    `=`    | Portal                  | The exit, becomes active after all keys are taken.     |
 |    `H`    | Hazard (Generic)        | A static object that is deadly to touch (e.g. spikes). |
 |    `I`    | Spikes                  | A static hazard with a spiky appearance.               |
 |    `F`    | Fire / Poisonous Pansy  | A static hazard with a fiery/pulsating appearance.     |
@@ -143,10 +143,10 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `J`    | Enemy (Goose)           | A goose/duck enemy that walks on platforms like E.     |
 |    `A`    | Enemy (Seal)            | A seal enemy juggling a ball on its nose.              |
 |    `N`    | Enemy (Dinosaur)        | A dinosaur enemy that walks on platforms.              |
-|    `T`    | Tree / Cactus           | A purely decorative element, no collision.             |
-|    `%`    | Shrub / Bush            | A purely decorative element, no collision.             |
-|    `Y`    | Tall Tree               | A 2-tile high decorative tree element.                 |
-|    `U`    | Tall Cactus             | A 2-tile high decorative cactus element.               |
+|    `1`    | Tall Tree               | A 2-tile high decorative tree element.                 |
+|    `2`    | Tree / Cactus           | A purely decorative element, no collision.             |
+|    `3`    | Shrub / Bush            | A purely decorative element, no collision.             |
+|    `4`    | Tall Cactus             | A 2-tile high decorative cactus element.               |
 
 This format allows us to design levels visually right in the code.
 

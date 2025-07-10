@@ -122,10 +122,10 @@ class Level {
                         case 'C':
                             // Already handled above
                             break;
-                        case 'L':
+                        case '<':
                             // Already handled above
                             break;
-                        case 'R':
+                        case '>':
                             // Already handled above
                             break;
                     }
@@ -136,10 +136,10 @@ class Level {
                     case '@':
                         this.playerStart = { x: worldX, y: worldY };
                         break;
-                    case 'K':
+                    case '+':
                         this.keys.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
-                    case 'P':
+                    case '=':
                         this.portal = { x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char };
                         break;
                     case 'E':
@@ -166,16 +166,16 @@ class Level {
                     case 'F':
                         this.hazards.push(new Hazard(worldX, worldY, 'FIRE'));
                         break;
-                    case '%':
+                    case '3':
                         this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'SHRUB' });
                         break;
-                    case 'T':
+                    case '2':
                         this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
-                    case 'Y': // Tall tree (2 tiles high)
+                    case '1': // Tall tree (2 tiles high)
                         this.decorativeElements.push({ x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char });
                         break;
-                    case 'U': // Tall cactus (2 tiles high)
+                    case '4': // Tall cactus (2 tiles high)
                         this.decorativeElements.push({ x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char });
                         break;
                 }
@@ -1651,7 +1651,7 @@ class Level {
         this.decorativeElements.forEach(d => {
             const s = d.width / 16; // Scale factor
             switch (d.type) {
-                case 'T': // Cactus
+                case '2': // Cactus
                     context.fillStyle = '#006400'; // DarkGreen
                     // Main body of the cactus
                     context.fillRect(d.x + 7 * s, d.y + 2 * s, 2 * s, 14 * s); // Central trunk
@@ -1670,7 +1670,7 @@ class Level {
                     context.arc(d.x + 11 * s, d.y + 2 * s, 1 * s, Math.PI, 2 * Math.PI); // Rounded top
                     context.fill();
                     break;
-                case 'Y': // Tall tree (2 tiles high)
+                case '1': // Tall tree (2 tiles high)
                     const trunkColor = '#8B4513'; // SaddleBrown
                     const leafColor = '#228B22'; // ForestGreen
                     const darkLeafColor = '#1F5F1F'; // Darker green
@@ -1708,7 +1708,7 @@ class Level {
                     context.arc(d.x + 8 * s, d.y + 10 * s, 2 * s, 0, Math.PI * 2);
                     context.fill();
                     break;
-                case 'U': // Tall cactus (2 tiles high)
+                case '4': // Tall cactus (2 tiles high)
                     context.fillStyle = '#006400'; // DarkGreen
                     
                     // Main central trunk (full height)
