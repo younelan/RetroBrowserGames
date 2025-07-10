@@ -13,12 +13,35 @@ const START_OXYGEN = 1000;
 
 const DEFAULT_BACKGROUND_COLOR = '#000000'; // Default background color for levels
 
+// Brick color schemes for different levels
+const BRICK_COLOR_SCHEMES = {
+    red: {
+        brick: '#AA2C0B',    // Dark brown brick
+        mortar: '#FFBBCC'      // Sandy brown mortar (original)
+    },
+    blue: {
+        brick: '#1E3ADF',    // Dark blue brick
+        mortar: '#AAAAFF'      // Light blue mortar
+    },
+    green: {
+        brick: '#168833',    // Dark green brick
+        mortar: '#86EF77'      // Light green mortar
+    },
+    gray: {
+        brick: '#777777',    // Dark gray brick
+        mortar: '#FFFFFF'      // Light gray mortar
+    }
+};
+
+// Default brick color scheme
+const DEFAULT_BRICK_SCHEME = 'red';
+
 const TILE_ATTRIBUTES = {
     ' ': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },
     'X': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false },
-    'C': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling
+    '-': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling
     'B': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Brick
-    'D': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Dirt
+    '=': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Dirt
     'G': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Grass
     'M': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: true }, // Crumbling Grass
     'Q': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false }, // Red Sand
@@ -26,7 +49,7 @@ const TILE_ATTRIBUTES = {
     '<': { isSolid: true, isPlatform: true, isHazard: false, isMoving: true, moveDirection: -1, isCrumble: false }, // Moving Left
     '>': { isSolid: true, isPlatform: true, isHazard: false, isMoving: true, moveDirection: 1, isCrumble: false },  // Moving Right
     '+': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false }, // Key
-    '=': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false }, // Portal
+    '*': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false }, // Portal
     'H': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false, isCrumble: false },  // Generic Hazard
     'I': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false, isCrumble: false },  // Spikes
     'F': { isSolid: false, isPlatform: false, isHazard: true, isMoving: false, isCrumble: false },  // Fire

@@ -4,6 +4,7 @@ class Level {
         this.name = levelData.name;
         this.viewportWidth = levelData.viewportWidth || 32;
         this.viewportHeight = levelData.viewportHeight || 16;
+        this.brickScheme = levelData.brickScheme || DEFAULT_BRICK_SCHEME; // Store brick color scheme
         this.platforms = [];
         this.keys = [];
         this.enemies = [];
@@ -104,7 +105,7 @@ class Level {
                         case 'B':
                             this.brickFloors.push(platform);
                             break;
-                        case 'D':
+                        case '=':
                             this.dirtFloors.push(platform);
                             break;
                         case 'G':
@@ -119,7 +120,7 @@ class Level {
                         case 'W':
                             this.redSandCrumbleFloors.push(platform);
                             break;
-                        case 'C':
+                        case '-':
                             // Already handled above
                             break;
                         case '<':
@@ -139,7 +140,7 @@ class Level {
                     case '+':
                         this.keys.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
-                    case '=':
+                    case '*':
                         this.portal = { x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char };
                         break;
                     case 'E':
@@ -483,8 +484,11 @@ class Level {
 
         // Draw brick floors with small brick pattern
         this.brickFloors.forEach(b => {
+            // Get the brick color scheme for this level
+            const colorScheme = BRICK_COLOR_SCHEMES[this.brickScheme] || BRICK_COLOR_SCHEMES[DEFAULT_BRICK_SCHEME];
+            
             // Base brick color (mortar background)
-            context.fillStyle = '#5A2C0B'; // Dark brown mortar
+            context.fillStyle = colorScheme.mortar;
             context.fillRect(b.x, b.y, b.width, b.height);
             
             // Draw individual small bricks to fill entire tile
@@ -492,7 +496,7 @@ class Level {
             const brickHeight = 3;
             const mortarGap = 1;
             
-            context.fillStyle = '#CD853F'; // Lighter brick color
+            context.fillStyle = colorScheme.brick;
             
             // Calculate how many rows we need to fill the height
             const rowHeight = brickHeight + mortarGap;
