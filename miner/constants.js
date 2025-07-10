@@ -8,7 +8,7 @@ const PLAYER_JUMP_FORCE = 12;
 const GRAVITY = 0.6;
 const MAX_FALL_DISTANCE = TILE_SIZE * 8; // Example: 8 tiles high
 
-const START_LIVES = 3;
+const START_LIVES = 5;
 const START_OXYGEN = 1000;
 
 const DEFAULT_BACKGROUND_COLOR = '#000000'; // Default background color for levels

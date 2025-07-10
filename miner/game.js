@@ -346,16 +346,6 @@ class Game {
         const uiScale = Math.min(this.canvas.width / 800, this.canvas.height / 600);
         const uiBottomPadding = 20 * uiScale; // Padding for UI elements at the bottom
 
-        // Draw Level Name at the top if specified
-        if (this.level.name) {
-            const levelNameFontSize = Math.max(20, this.canvas.width / 40);
-            this.context.fillStyle = 'white';
-            this.context.font = `bold ${levelNameFontSize}px 'Courier New', Courier, monospace`;
-            this.context.textAlign = 'center';
-            this.context.fillText(this.level.name, this.canvas.width / 2, levelNameFontSize + 10);
-            this.context.textAlign = 'left'; // Reset text alignment
-        }
-
         // Draw Lives (spare miners)
         const spareLifeWidth = 20 * uiScale; // Width of spare life icons
         const spareLifeHeight = 20 * uiScale; // Height of spare life icons
@@ -397,8 +387,9 @@ class Game {
             spareIcon.draw(this.context, spareLifeWidth, spareLifeHeight);
         }
 
-        // Draw Oxygen Bar
-        const oxygenBarWidth = 200 * uiScale;
+        // Draw Oxygen Bar - make it smaller to leave room for other UI elements
+        const isMobile = this.canvas.width < 600; // Detect mobile-sized screens
+        const oxygenBarWidth = isMobile ? 120 * uiScale : 150 * uiScale; // Smaller oxygen bar
         const oxygenBarHeight = 25 * uiScale; // Match text height
         const oxygenBarX = this.canvas.width - oxygenBarWidth - 20 * uiScale;
         const commonTopY = this.canvas.height - uiBottomPadding - 25 * uiScale; // Common top for all elements
@@ -430,15 +421,49 @@ class Game {
             this.context.fillStyle = 'white'; // Reset fillStyle for subsequent rendering
         }
 
-        // Draw Score
-        const scoreX = this.canvas.width - 300 * uiScale; // Position score appropriately
-        const scoreY = commonTopY; // Align score with common top
-        this.context.fillText(`💎 ${this.score}`, scoreX, scoreY);
+        // Set UI font size that scales more aggressively for mobile
+        const uiFontSize = isMobile ? 
+            Math.max(12, this.canvas.width / 60) :  // Smaller on mobile
+            Math.max(16, this.canvas.width / 50);   // Larger on desktop
+        this.context.font = `bold ${uiFontSize}px 'Courier New', Courier, monospace`;
 
-        // Draw Level Indicator with emoji
-        const levelX = oxygenBarX - 150 * uiScale; // Position level where score was
-        const levelY = commonTopY; // Align level with common top
-        this.context.fillText(`🌍 ${this.currentLevelIndex + 1}`, levelX, levelY);
+        // Calculate available space starting from 40% of screen width
+        const startX = this.canvas.width * 0.4; // Start at 40% from left
+        const availableWidth = oxygenBarX - startX - 20 * uiScale; // Space between start and oxygen bar
+        
+        // Calculate text widths to distribute space properly
+        const levelText = `🌍 ${this.currentLevelIndex + 1}`;
+        const scoreText = `💎 ${this.score}`;
+        
+        // Estimate text widths (rough approximation)
+        const levelWidth = levelText.length * uiFontSize * 0.6; // Level: max 6 chars
+        const scoreWidth = scoreText.length * uiFontSize * 0.6; // Score: variable length
+        
+        // Position elements with proper spacing
+        const levelX = startX;
+        const scoreX = levelX + levelWidth + 20 * uiScale; // Add spacing after level
+        
+        // Make sure score doesn't overlap oxygen bar
+        const maxScoreX = oxygenBarX - scoreWidth - 20 * uiScale;
+        const finalScoreX = Math.min(scoreX, maxScoreX);
+        
+        // Draw elements
+        const levelY = commonTopY;
+        this.context.fillText(levelText, levelX, levelY);
+        this.context.fillText(scoreText, finalScoreX, levelY);
+
+        // Oxygen bar stays on the right but ensure no overlap
+        // (oxygenBarX is already calculated to be on the right side)
+
+        // Draw Level Name below and aligned with the level number
+        if (this.level.name) {
+            const levelNameFontSize = isMobile ?
+                Math.max(10, this.canvas.width / 80) :  // Smaller on mobile
+                Math.max(14, this.canvas.width / 60);   // Larger on desktop
+            this.context.font = `bold ${levelNameFontSize}px 'Courier New', Courier, monospace`;
+            const levelNameY = commonTopY + (isMobile ? 20 : 30) * uiScale; // Less spacing on mobile
+            this.context.fillText(this.level.name, levelX, levelNameY); // Align with level number
+        }
     }
 
     drawStartScreen() {
