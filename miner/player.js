@@ -121,6 +121,11 @@ class Player {
     }
 
     handleHorizontalCollisions(level, prevX) {
+        // Skip horizontal collisions entirely if player is in the air
+        if (!this.onGround) {
+            return;
+        }
+
         // Handle all solid platforms (non-moving platforms)
         level.solidPlatforms.forEach(platform => {
             if (this.checkCollision(platform)) {
@@ -163,24 +168,29 @@ class Player {
 
         // Handle all solid platforms (only solid from top)
         level.solidPlatforms.forEach(platform => {
-            // Check for collision only if falling
-            if (this.velocityY > 0 && this.checkCollision(platform)) {
+            // Skip collision entirely if player is moving up
+            if (this.velocityY < 0) {
+                return;
+            }
+            // Only check collision if player is falling or stationary
+            if (this.checkCollision(platform)) {
                 this.y = platform.y - this.height;
                 this.velocityY = 0;
                 this.isJumping = false;
                 onGroundThisFrame = true;
             }
-            // If moving up and colliding, do nothing (pass through)
         });
 
         // Handle moving platforms - special logic for conveyor movement
         level.movingPlatforms.forEach(platform => {
             const tileAttr = TILE_ATTRIBUTES[platform.type];
             if (tileAttr && tileAttr.isMoving) {
-                // Check if player's feet are on the platform and there's horizontal overlap
-                if (this.velocityY > 0 && 
-                    this.y + this.height >= platform.y && this.y + this.height <= platform.y + platform.height &&
-                    this.x < platform.x + platform.width && this.x + this.width > platform.x) {
+                // Skip collision entirely if player is moving up
+                if (this.velocityY < 0) {
+                    return;
+                }
+                // Only check collision if player is falling or stationary
+                if (this.checkCollision(platform)) {
                     this.y = platform.y - this.height;
                     this.velocityY = 0;
                     this.isJumping = false;
@@ -198,15 +208,18 @@ class Player {
 
         // Handle crumbling platforms (only solid from top, start decay on contact)
         level.crumblePlatforms.forEach(platform => {
-            // Check for collision only if falling
-            if (this.velocityY > 0 && this.checkCollision(platform)) {
+            // Skip collision entirely if player is moving up
+            if (this.velocityY < 0) {
+                return;
+            }
+            // Only check collision if player is falling or stationary
+            if (this.checkCollision(platform)) {
                 this.y = platform.y - this.height;
                 this.velocityY = 0;
                 this.isJumping = false;
                 onGroundThisFrame = true;
                 platform.decay++; // Start decay
             }
-            // If moving up and colliding, do nothing (pass through)
         });
 
         this.onGround = onGroundThisFrame;
