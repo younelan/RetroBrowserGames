@@ -13,26 +13,26 @@ class GooseEnemy {
     }
 
     update(level) {
-        // Update animation timers
-        this.bobOffset += 0.15;
-        this.neckExtension += 0.12;
-        this.wingFlap += 0.2;
-        this.honkTimer += 0.1;
-
         const nextX = this.x + this.direction * this.speed;
         const enemyLeadingEdgeX = (this.direction === 1) ? (nextX + this.width) : nextX;
         const lookAheadTileX = Math.floor(enemyLeadingEdgeX / TILE_SIZE);
         const tileBelowFeetY = Math.floor((this.y + this.height) / TILE_SIZE);
 
         let nextStepHasPlatformBelow = false;
+        const probeX = this.direction === 1 ? nextX + this.width - 1 : nextX; // Probe at the leading edge
+        const probeY = this.y + this.height + 1; // 1 pixel below feet
 
-        // Check if lookAheadTileX is within map bounds
-        if (lookAheadTileX >= 0 && lookAheadTileX < LEVEL_WIDTH && tileBelowFeetY >= 0 && tileBelowFeetY < level.map.trim().split('\n').length) {
-            const mapRows = level.map.trim().split('\n');
-            const charBelow = mapRows[tileBelowFeetY][lookAheadTileX];
-            const tileAttribute = TILE_ATTRIBUTES[charBelow];
-            if (tileAttribute && tileAttribute.isPlatform) {
+        const probeRect = {
+            x: probeX,
+            y: probeY,
+            width: 1, // A single pixel probe
+            height: 1
+        };
+
+        for (const platform of level.allPlatforms) {
+            if (this.checkCollision(probeRect, platform)) {
                 nextStepHasPlatformBelow = true;
+                break;
             }
         }
 
@@ -57,6 +57,12 @@ class GooseEnemy {
         } else {
             this.x = nextX;
         }
+
+        // Update animation timers
+        this.bobOffset += 0.15;
+        this.neckExtension += 0.12;
+        this.wingFlap += 0.18;
+        this.honkTimer += 0.08;
     }
 
     checkCollision(rect1, rect2) {

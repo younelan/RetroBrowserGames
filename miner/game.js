@@ -2,7 +2,7 @@ class Game {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         this.context = this.canvas.getContext('2d');
-        this.currentLevelIndex = 0;
+        this.currentLevelIndex = START_LEVEL_INDEX;
         this.input = { left: false, right: false, jump: false };
         this.frameCounter = 0;
         this.score = 0;
@@ -228,8 +228,8 @@ class Game {
             }
         });
 
-        // Falling too far
-        if (this.player.fallDistance > MAX_FALL_DISTANCE) {
+        // Falling too far (only if maxFall > 0, otherwise fall damage is disabled)
+        if (this.level.maxFall > 0 && this.player.fallDistance > this.level.maxFall * TILE_SIZE) {
             this.playerDie();
         }
 
@@ -644,7 +644,7 @@ class Game {
         this.gameState = 'PLAYING';
         this.score = 0;
         this.lives = START_LIVES;
-        this.currentLevelIndex = 0;
+        this.currentLevelIndex = START_LEVEL_INDEX;
         this.loadLevel(this.currentLevelIndex);
         this.titleMusic.pause();
         this.titleMusic.currentTime = 0;

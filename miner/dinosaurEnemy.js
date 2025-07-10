@@ -14,26 +14,26 @@ class DinosaurEnemy {
     }
 
     update(level) {
-        // Update animation timers
-        this.walkCycle += 0.15;
-        this.headBob += 0.1;
-        this.tailSwing += 0.08;
-        this.eyeBlink += 0.05;
-
         const nextX = this.x + this.direction * this.speed;
         const enemyLeadingEdgeX = (this.direction === 1) ? (nextX + this.width) : nextX;
         const lookAheadTileX = Math.floor(enemyLeadingEdgeX / TILE_SIZE);
         const tileBelowFeetY = Math.floor((this.y + this.height) / TILE_SIZE);
 
         let nextStepHasPlatformBelow = false;
+        const probeX = this.direction === 1 ? nextX + this.width - 1 : nextX; // Probe at the leading edge
+        const probeY = this.y + this.height + 1; // 1 pixel below feet
 
-        // Check if lookAheadTileX is within map bounds
-        if (lookAheadTileX >= 0 && lookAheadTileX < LEVEL_WIDTH && tileBelowFeetY >= 0 && tileBelowFeetY < level.map.trim().split('\n').length) {
-            const mapRows = level.map.trim().split('\n');
-            const charBelow = mapRows[tileBelowFeetY][lookAheadTileX];
-            const tileAttribute = TILE_ATTRIBUTES[charBelow];
-            if (tileAttribute && tileAttribute.isPlatform) {
+        const probeRect = {
+            x: probeX,
+            y: probeY,
+            width: 1, // A single pixel probe
+            height: 1
+        };
+
+        for (const platform of level.allPlatforms) {
+            if (this.checkCollision(probeRect, platform)) {
                 nextStepHasPlatformBelow = true;
+                break;
             }
         }
 
@@ -58,6 +58,12 @@ class DinosaurEnemy {
         } else {
             this.x = nextX;
         }
+
+        // Update animation timers
+        this.walkCycle += 0.15;
+        this.headBob += 0.10;
+        this.tailSwing += 0.08;
+        this.eyeBlink += 0.05;
     }
 
     checkCollision(rect1, rect2) {
@@ -170,21 +176,14 @@ class DinosaurEnemy {
         context.fillRect(this.x + 7 * s, headY - 1 * s, 3 * s, 2 * s);
         
         // Eyes (predator eyes - alert and menacing)
-        if (!eyeBlinking) {
-            context.fillStyle = '#FFD700'; // Golden yellow eyes
-            context.fillRect(this.x + 8 * s, headY + 1 * s, 2 * s, 1 * s); // Left eye
-            context.fillRect(this.x + 10 * s, headY + 1 * s, 2 * s, 1 * s); // Right eye
-            
-            // Eye pupils (slit pupils like a reptile)
-            context.fillStyle = '#000000';
-            context.fillRect(this.x + 9 * s, headY + 1 * s, 0.5 * s, 1 * s);
-            context.fillRect(this.x + 11 * s, headY + 1 * s, 0.5 * s, 1 * s);
-        } else {
-            // Closed eyes when blinking
-            context.fillStyle = '#1F5F1F';
-            context.fillRect(this.x + 8 * s, headY + 1 * s, 2 * s, 0.5 * s);
-            context.fillRect(this.x + 10 * s, headY + 1 * s, 2 * s, 0.5 * s);
-        }
+        context.fillStyle = '#FFD700'; // Golden yellow eyes
+        context.fillRect(this.x + 8 * s, headY + 1 * s, 2 * s, 1 * s); // Left eye
+        context.fillRect(this.x + 10 * s, headY + 1 * s, 2 * s, 1 * s); // Right eye
+        
+        // Eye pupils (slit pupils like a reptile)
+        context.fillStyle = '#000000';
+        context.fillRect(this.x + 9 * s, headY + 1 * s, 0.5 * s, 1 * s);
+        context.fillRect(this.x + 11 * s, headY + 1 * s, 0.5 * s, 1 * s);
         
         // Nostrils
         context.fillStyle = '#000000';

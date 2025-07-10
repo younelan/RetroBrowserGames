@@ -125,8 +125,8 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `X`    | Wall / Platform         | Solid ground. Blocks movement.                         |
 |    `-`    | Crumbling Platform      | Disappears after Willy walks off it.                   |
 |    `=`    | Dirt Platform           | Brown earth with textured bottom surface.              |
-|    `:`    | Grass Platform          | Dirt platform with green grass on top quarter.        |
-|    `;`    | Crumbling Grass         | Darker dirt with green grass that crumbles like -.     |
+|    `:`    | Two-Layer Platform      | A platform with a dirt base and a customizable top surface. |
+|    `;`    | Crumbling Two-Layer     | A two-layer platform that crumbles after being stepped on. |
 |    `_`    | Brick Platform          | Brick platform with mortar lines and texture.         |
 |    `<`    | Moving Left Floor       | Conveyor belt that moves player left.                 |
 |    `>`    | Moving Right Floor      | Conveyor belt that moves player right.                |
@@ -172,6 +172,30 @@ Available brick color schemes:
 ```
 
 If no `brickScheme` is specified, the level will use the default 'red' scheme. This allows for easy theming of levels while maintaining backward compatibility.
+
+### Surface Color Schemes
+
+The game supports per-level surface color schemes to customize the appearance of the top layer of two-layer platforms (characters `:` and `;`). Each level can specify a `surfaceScheme` property to customize the surface colors.
+
+Available surface color schemes:
+
+| Scheme  | Base Color    | Patch Colors        | Detail Colors       | Theme/Usage                          |
+| :-----: | ------------- | ------------------- | ------------------- | ------------------------------------ |
+| `grass` | Medium Green  | Green Tones         | Brighter Green      | Default scheme, lush grass surface   |
+| `ice`   | Light Blue    | Blue/White Tones    | White (cracks)      | Ice/snow levels, frozen surfaces     |
+
+**Level Configuration Example:**
+```javascript
+{
+    name: "The Ice Palace",
+    dirtScheme: 'blue',
+    surfaceScheme: 'ice', // Uses ice surface colors
+    map: `...`,
+    // ... other properties
+}
+```
+
+If no `surfaceScheme` is specified, the level will use the default 'grass' scheme.
 
 ### Dirt Color Schemes
 
