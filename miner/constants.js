@@ -165,6 +165,7 @@ const TILE_ATTRIBUTES = {
     'J': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Goose)
     'A': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Seal)
     'N': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Dinosaur)
+    'P': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Enemy (Penguin)
     '1': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Tall Tree
     '2': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Tree/Cactus
     '3': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Shrub/Bush

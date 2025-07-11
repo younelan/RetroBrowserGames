@@ -7,6 +7,7 @@ const jsFiles = [
     "gooseEnemy.js",
     "sealEnemy.js",
     "dinosaurEnemy.js",
+    "penguinEnemy.js",
     "hazard.js",
     "level.js",
     "levels.js",

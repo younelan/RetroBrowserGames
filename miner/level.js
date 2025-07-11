@@ -158,6 +158,9 @@ class Level {
                     case 'N':
                         this.enemies.push(new DinosaurEnemy(worldX, worldY - TILE_SIZE));
                         break;
+                    case 'P':
+                        this.enemies.push(new PenguinEnemy(worldX, worldY - TILE_SIZE));
+                        break;
                     case 'I':
                         this.hazards.push(new Hazard(worldX, worldY, 'SPIKES'));
                         break;
