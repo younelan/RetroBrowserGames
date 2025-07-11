@@ -32,10 +32,10 @@ class Player {
             return; // Stop normal updates during death animation
         }
 
-        // Check if player is on a ladder
+        // Check if player is on a ladder (this determines the state for dispatching)
         this.onLadder = this.isOnLadder(level);
         
-        // Horizontal movement (works both on and off ladder)
+        // Process horizontal input (common to all states)
         if (input.left) {
             this.velocityX = -PLAYER_SPEED;
             this.direction = -1;
@@ -46,59 +46,16 @@ class Player {
             this.velocityX = 0;
         }
 
-        // Vertical movement logic
+        // Dispatch to appropriate movement handler
         if (this.onLadder) {
-            // On ladder: smooth climbing movement
-            if (input.up) {
-                this.velocityY = -PLAYER_SPEED; // Climb up smoothly
-            } else if (input.down) {
-                this.velocityY = PLAYER_SPEED; // Climb down smoothly
-            } else {
-                this.velocityY = 0; // Stay in place on ladder
-            }
-            
-            // Reset jumping state when on ladder
-            this.isJumping = false;
+            this.handleLadderMovement(input, level);
+        } else if (this.onGround) {
+            this.handleGroundMovement(input, level);
         } else {
-            // Not on ladder: normal physics
-            // Apply gravity
-            this.velocityY += GRAVITY;
-
-            // Handle jumping
-            if (input.jump && this.onGround) {
-                this.velocityY = -PLAYER_JUMP_FORCE;
-                this.isJumping = true;
-                this.onGround = false;
-                // Play jump sound - assuming 'game' object is accessible or passed
-                // For now, we'll assume 'game' is globally accessible or passed to player.update
-                // A better solution would be to use an event system.
-                if (window.game && window.game.jumpSound && window.game.soundEnabled) {
-                    window.game.jumpSound.currentTime = 0;
-                    window.game.jumpSound.play();
-                }
-            }
+            this.handleAirMovement(input, level);
         }
 
-        // Store previous position for collision resolution
-        const prevX = this.x;
-        const prevY = this.y;
-
-        // Update X position and handle horizontal collisions
-        this.x += this.velocityX;
-        this.handleHorizontalCollisions(level, prevX);
-
-        // Update Y position and handle vertical collisions
-        this.y += this.velocityY;
-        this.handleVerticalCollisions(level, prevY);
-
-        // Update fall distance
-        if (!this.onGround) {
-            this.fallDistance += this.velocityY; // Accumulate vertical speed
-        } else {
-            this.fallDistance = 0; // Reset when on ground
-        }
-
-        // World boundaries using actual level dimensions
+        // World boundaries using actual level dimensions (common to all states)
         if (this.x < 0) {
             this.x = 0;
             this.velocityX = 0;
@@ -120,134 +77,327 @@ class Player {
             this.onGround = true;
         }
 
-        // Update animation frame and classic Manic Miner dancing
+        // Update animation frame (common to all states)
         this.frameCounter++;
         
         if (this.onLadder && (this.velocityY !== 0)) {
-            // Player is climbing - animate while moving up/down
             this.idleTimer = 0;
-            if (this.frameCounter > 6) { // Slightly slower climbing animation
+            if (this.frameCounter > 6) {
                 this.animationFrame = (this.animationFrame + 1) % 2;
                 this.frameCounter = 0;
             }
         } else if (this.velocityX !== 0 && this.onGround) {
-            // Player is actively moving horizontally
             this.idleTimer = 0;
-            if (this.frameCounter > 5) { // Change frame every 5 game ticks
+            if (this.frameCounter > 5) {
                 this.animationFrame = (this.animationFrame + 1) % 2;
                 this.frameCounter = 0;
             }
         } else if (this.onGround || this.onLadder) {
-            // Player is idle on ground or ladder - just stay still
-            this.animationFrame = 0; // Static frame when idle
+            this.animationFrame = 0; 
         } else {
-            // Player is jumping/falling
             this.animationFrame = 0; 
             this.idleTimer = 0;
         }
     }
 
-    handleHorizontalCollisions(level, prevX) {
-        // Skip horizontal collisions entirely if player is in the air
-        if (!this.onGround) {
-            return;
+    handleGroundMovement(input, level) {
+        // Apply gravity (always, unless on ladder)
+        this.velocityY += GRAVITY;
+
+        // Handle jumping
+        if (input.jump && this.onGround) {
+            this.velocityY = -PLAYER_JUMP_FORCE;
+            this.isJumping = true;
+            this.onGround = false;
+            if (window.game && window.game.jumpSound && window.game.soundEnabled) {
+                window.game.jumpSound.currentTime = 0;
+                window.game.jumpSound.play();
+            }
         }
 
-        // Handle all solid platforms (non-moving platforms)
-        level.solidPlatforms.forEach(platform => {
-            if (this.checkCollision(platform)) {
-                if (this.velocityX > 0) { // Moving right, hit left side of platform
-                    this.x = platform.x - this.width;
-                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
-                    this.x = platform.x + platform.width;
-                }
-                this.velocityX = 0;
-            }
-        });
+        // Update X position and handle horizontal collisions
+        this.x += this.velocityX;
+        this.handleGroundHorizontalCollisions(level);
 
-        // Handle crumbling platforms
-        level.crumblePlatforms.forEach(platform => {
-            if (this.checkCollision(platform)) {
-                if (this.velocityX > 0) { // Moving right, hit left side of platform
-                    this.x = platform.x - this.width;
-                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
-                    this.x = platform.x + platform.width;
-                }
-                this.velocityX = 0;
-            }
-        });
+        // Update Y position and handle vertical collisions
+        this.y += this.velocityY;
+        this.handleVerticalCollisions(level);
 
-        // Handle moving platforms
-        level.movingPlatforms.forEach(platform => {
-            if (this.checkCollision(platform)) {
-                if (this.velocityX > 0) { // Moving right, hit left side of platform
-                    this.x = platform.x - this.width;
-                } else if (this.velocityX < 0) { // Moving left, hit right side of platform
-                    this.x = platform.x + platform.width;
-                }
-                this.velocityX = 0;
-            }
-        });
+        // Update fall distance
+        if (!this.onGround) {
+            this.fallDistance += this.velocityY; 
+        } else {
+            this.fallDistance = 0; 
+        }
     }
 
-    handleVerticalCollisions(level, prevY) {
-        let onGroundThisFrame = false;
+    handleLadderMovement(input, level) {
+        // On ladder: smooth climbing movement
+        if (input.up) {
+            this.velocityY = -PLAYER_SPEED; // Climb up smoothly
+        } else if (input.down) {
+            this.velocityY = PLAYER_SPEED; // Climb down smoothly
+        } else {
+            this.velocityY = 0; // Stay in place on ladder
+        }
+        
+        // Reset jumping state when on ladder
+        this.isJumping = false;
 
-        // Handle all solid platforms (only solid from top)
-        level.solidPlatforms.forEach(platform => {
-            // Skip collision entirely if player is moving up
-            if (this.velocityY < 0) {
+        // Update X position and handle horizontal collisions
+        this.x += this.velocityX;
+        this.handleLadderHorizontalCollisions(level);
+
+        // Update Y position and handle vertical collisions
+        this.y += this.velocityY;
+        this.handleVerticalCollisions(level);
+
+        // Player is on ladder, not on ground
+        this.onGround = false;
+        this.fallDistance = 0; // Reset fall distance on ladder
+    }
+
+    handleAirMovement(input, level) {
+        // Apply gravity
+        this.velocityY += GRAVITY;
+
+        // Update X position and handle horizontal collisions
+        this.x += this.velocityX;
+        this.handleAirHorizontalCollisions(level);
+
+        // Update Y position and handle vertical collisions
+        this.y += this.velocityY;
+        this.handleVerticalCollisions(level);
+
+        // Update fall distance
+        this.fallDistance += this.velocityY; 
+    }
+
+    handleGroundHorizontalCollisions(level) {
+        // Simpler horizontal collision for ground/ladder
+        // Prevents moving into solid walls
+        const playerRect = { x: this.x, y: this.y, width: this.width, height: this.height };
+
+        for (const platform of level.solidPlatforms) {
+            if (this.checkCollision(platform)) {
+                // If moving right and hit left side of platform
+                if (this.velocityX > 0) {
+                    this.x = platform.x - this.width;
+                }
+                // If moving left and hit right side of platform
+                else if (this.velocityX < 0) {
+                    this.x = platform.x + platform.width;
+                }
+                this.velocityX = 0;
+                return; // Stop checking after first collision
+            }
+        }
+
+        for (const platform of level.crumblePlatforms) {
+            if (this.checkCollision(platform)) {
+                if (this.velocityX > 0) {
+                    this.x = platform.x - this.width;
+                } else if (this.velocityX < 0) {
+                    this.x = platform.x + platform.width;
+                }
+                this.velocityX = 0;
                 return;
             }
-            // Only check collision if player is falling or stationary
+        }
+        for (const platform of level.movingPlatforms) {
             if (this.checkCollision(platform)) {
-                this.y = platform.y - this.height;
-                this.velocityY = 0;
-                this.isJumping = false;
-                onGroundThisFrame = true;
-            }
-        });
-
-        // Handle moving platforms - special logic for conveyor movement
-        level.movingPlatforms.forEach(platform => {
-            const tileAttr = TILE_ATTRIBUTES[platform.type];
-            if (tileAttr && tileAttr.isMoving) {
-                // Skip collision entirely if player is moving up
-                if (this.velocityY < 0) {
-                    return;
+                if (this.velocityX > 0) {
+                    this.x = platform.x - this.width;
+                } else if (this.velocityX < 0) {
+                    this.x = platform.x + platform.width;
                 }
-                // Only check collision if player is falling or stationary
-                if (this.checkCollision(platform)) {
+                this.velocityX = 0;
+                return;
+            }
+        }
+    }
+
+    handleLadderHorizontalCollisions(level) {
+        // Same as ground horizontal collisions for now
+        this.handleGroundHorizontalCollisions(level);
+    }
+
+    handleAirHorizontalCollisions(level) {
+        // This is the complex one with diagonal pass-through
+        // Handle all solid platforms (non-moving platforms)
+        for (const platform of level.solidPlatforms) {
+            if (this.checkCollision(platform)) {
+                // Check if this is primarily a side collision (hitting a vertical wall)
+                const playerCenterY = this.y + this.height / 2;
+                const platformCenterY = platform.y + platform.height / 2;
+                const verticalOverlap = Math.abs(playerCenterY - platformCenterY);
+                
+                // Only treat as wall collision if player center is roughly aligned with platform center
+                // This prevents treating platform tops/bottoms as walls
+                if (verticalOverlap < (this.height / 2 + platform.height / 2) * 0.7) {
+                    // Special case: Allow diagonal jumps through single layer obstacles
+                    if (this.velocityY < 0) { // Player is jumping up
+                        const checkX = this.velocityX > 0 ? platform.x + platform.width : platform.x - TILE_SIZE;
+                        const checkY = platform.y - this.height; // Check for player's full height
+                        
+                        // Check if the space diagonally above is clear
+                        if (this.isSpaceClear(checkX, checkY, level)) {
+                            // Diagonal space is clear, allow horizontal movement to continue
+                            continue; // Skip the rest of this platform's collision logic
+                        } else {
+                            // Diagonal space is NOT clear (solid block above), so stop horizontal movement
+                            if (this.velocityX > 0) { // Moving right, hit left side of platform
+                                this.x = platform.x - this.width;
+                            } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                                this.x = platform.x + platform.width;
+                            }
+                            this.velocityX = 0; // Stop horizontal movement
+                        }
+                    } else { // Player is falling or moving horizontally without jumping up
+                        // This is a regular side collision, stop horizontal movement
+                        if (this.velocityX > 0) { // Moving right, hit left side of platform
+                            this.x = platform.x - this.width;
+                        } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                            this.x = platform.x + platform.width;
+                        }
+                        this.velocityX = 0; // Stop horizontal movement
+                    }
+                }
+            }
+        }
+
+        // Handle crumbling platforms
+        for (const platform of level.crumblePlatforms) {
+            if (this.checkCollision(platform)) {
+                // Check if this is primarily a side collision (hitting a vertical wall)
+                const playerCenterY = this.y + this.height / 2;
+                const platformCenterY = platform.y + platform.height / 2;
+                const verticalOverlap = Math.abs(playerCenterY - platformCenterY);
+                
+                // Only treat as wall collision if player center is roughly aligned with platform center
+                if (verticalOverlap < (this.height / 2 + platform.height / 2) * 0.7) {
+                    // Special case: Allow diagonal jumps through single layer obstacles
+                    if (this.velocityY < 0) { // Player is jumping up
+                        const checkX = this.velocityX > 0 ? platform.x + platform.width : platform.x - TILE_SIZE;
+                        const checkY = platform.y - this.height; // Check for player's full height
+                        
+                        // Check if the space diagonally above is clear
+                        if (this.isSpaceClear(checkX, checkY, level)) {
+                            continue; // Allow diagonal jump through single layer, continue checking other platforms
+                        } else {
+                            // Diagonal space is NOT clear (solid block above), so stop horizontal movement
+                            if (this.velocityX > 0) { // Moving right, hit left side of platform
+                                this.x = platform.x - this.width;
+                            } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                                this.x = platform.x + platform.width;
+                            }
+                            this.velocityX = 0; // Stop horizontal movement
+                        }
+                    } else { // Player is falling or moving horizontally without jumping up
+                        // This is a regular side collision, stop horizontal movement
+                        if (this.velocityX > 0) { // Moving right, hit left side of platform
+                            this.x = platform.x - this.width;
+                        } else if (this.velocityX < 0) {
+                            this.x = platform.x + platform.width;
+                        }
+                        this.velocityX = 0; // Stop horizontal movement
+                    }
+                }
+            }
+        }
+
+        // Handle moving platforms
+        for (const platform of level.movingPlatforms) {
+            if (this.checkCollision(platform)) {
+                // Check if this is primarily a side collision (hitting a vertical wall)
+                const playerCenterY = this.y + this.height / 2;
+                const platformCenterY = platform.y + platform.height / 2;
+                const verticalOverlap = Math.abs(playerCenterY - platformCenterY);
+                
+                // Only treat as wall collision if player center is roughly aligned with platform center
+                if (verticalOverlap < (this.height / 2 + platform.height / 2) * 0.7) {
+                    // Special case: Allow diagonal jumps through single layer obstacles
+                    if (this.velocityY < 0) { // Player is jumping up
+                        const checkX = this.velocityX > 0 ? platform.x + platform.width : platform.x - TILE_SIZE;
+                        const checkY = platform.y - this.height; // Check for player's full height
+                        
+                        // Check if the space diagonally above is clear
+                        if (this.isSpaceClear(checkX, checkY, level)) {
+                            continue; // Allow diagonal jump through single layer, continue checking other platforms
+                        } else {
+                            // Diagonal space is NOT clear (solid block above), so stop horizontal movement
+                            if (this.velocityX > 0) { // Moving right, hit left side of platform
+                                this.x = platform.x - this.width;
+                            } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                                this.x = platform.x + platform.width;
+                            }
+                            this.velocityX = 0; // Stop horizontal movement
+                        }
+                    }
+                    
+                    else { // Player is falling or moving horizontally without jumping up
+                        // This is a regular side collision, stop horizontal movement
+                        if (this.velocityX > 0) { // Moving right, hit left side of platform
+                            this.x = platform.x - this.width;
+                        } else if (this.velocityX < 0) { // Moving left, hit right side of platform
+                            this.x = platform.x + platform.width;
+                        }
+                        this.velocityX = 0; // Stop horizontal movement
+                    }
+                }
+            }
+        }
+    }
+
+    handleVerticalCollisions(level) {
+        let onGroundThisFrame = false;
+
+        // Handle all solid platforms
+        for (const platform of level.solidPlatforms) {
+            if (this.checkCollision(platform)) {
+                if (this.velocityY > 0) { // Falling or stationary
                     this.y = platform.y - this.height;
                     this.velocityY = 0;
                     this.isJumping = false;
                     onGroundThisFrame = true;
-                    
-                    // Apply conveyor movement
-                    if (tileAttr.moveDirection === -1) {
-                        this.x -= 1; // Move player left
-                    } else if (tileAttr.moveDirection === 1) {
-                        this.x += 1; // Move player right
-                    }
+                } 
+            }
+        }
+
+        // Handle moving platforms - special logic for conveyor movement
+        for (const platform of level.movingPlatforms) {
+            const tileAttr = TILE_ATTRIBUTES[platform.type];
+            if (tileAttr && tileAttr.isMoving) {
+                if (this.checkCollision(platform)) {
+                    if (this.velocityY > 0) { // Falling or stationary
+                        this.y = platform.y - this.height;
+                        this.velocityY = 0;
+                        this.isJumping = false;
+                        onGroundThisFrame = true;
+                        
+                        // Apply conveyor movement
+                        if (tileAttr.moveDirection === -1) {
+                            this.x -= 1; // Move player left
+                        } else if (tileAttr.moveDirection === 1) {
+                            this.x += 1; // Move player right
+                        }
+                    } 
                 }
             }
-        });
+        }
 
-        // Handle crumbling platforms (only solid from top, start decay on contact)
-        level.crumblePlatforms.forEach(platform => {
-            // Skip collision entirely if player is moving up
-            if (this.velocityY < 0) {
-                return;
-            }
-            // Only check collision if player is falling or stationary
+        // Handle crumbling platforms
+        for (const platform of level.crumblePlatforms) {
             if (this.checkCollision(platform)) {
-                this.y = platform.y - this.height;
-                this.velocityY = 0;
-                this.isJumping = false;
-                onGroundThisFrame = true;
-                platform.decay++; // Start decay
+                if (this.velocityY > 0) { // Falling or stationary
+                    this.y = platform.y - this.height;
+                    this.velocityY = 0;
+                    this.isJumping = false;
+                    onGroundThisFrame = true;
+                    platform.decay++; // Start decay
+                } 
             }
-        });
+        };
 
         this.onGround = onGroundThisFrame;
 
@@ -350,15 +500,17 @@ class Player {
         context.fillRect(this.x + 7 * s, this.y + 10 * s + bodyBob, 2 * s, 2 * s);
         
         // Animated Arms with proper joints and muscles
-        const isClimbing = this.onLadder && Math.abs(this.velocityY) > 0.1;
+        const isClimbing = Math.abs(this.velocityY) > 0.1;
+        let leftArmLength = 0; // Declare here
+        let rightArmLength = 0; // Declare here
         
         if (isClimbing) {
             // Climbing animation - back view for better arm visibility
             const climbTime = Date.now() * 0.008; // Double speed for hands - half second each transition
             // Arms in perfect opposition: one at minimum, other at maximum, meeting halfway
             const armCycle = (Math.sin(climbTime) + 1) / 2; // 0 to 1 smooth cycle
-            const leftArmLength = 0.5 + armCycle * 6; // 0.5 to 6.5 pixels (much bigger range!)
-            const rightArmLength = 6.5 - armCycle * 6; // 6.5 to 0.5 pixels (opposite, much bigger range!)
+            leftArmLength = 0.5 + armCycle * 6; // Assign here
+            rightArmLength = 6.5 - armCycle * 6; // Assign here
             
             // Left arm - back view positioning, both arms clearly visible
             context.save();
@@ -392,13 +544,12 @@ class Player {
             context.fillRect(-1 * s, rightArmLength * s, 2 * s, 2 * s);
             context.restore();
             
-        } else if (isMoving) {
+        } else if (Math.abs(this.velocityX) > 0.1) {
             // Walking animation - side to side arm swing
             const armSwing = walkCycle * 0.4;
             
             // Back arm (further from viewer) - full arm with shoulder, upper arm, forearm
             context.save();
-            // Shoulder
             context.fillStyle = '#0066FF';
             context.translate(this.x + 3 * s, this.y + 10 * s + bodyBob);
             context.rotate(armSwing);
@@ -415,7 +566,6 @@ class Player {
             
             // Front arm (closer to viewer) - brighter and more prominent
             context.save();
-            // Shoulder
             context.fillStyle = '#0077DD';
             context.translate(this.x + 9 * s, this.y + 10 * s + bodyBob);
             context.rotate(-armSwing);
@@ -537,7 +687,7 @@ class Player {
             }
             context.restore();
             
-        } else if (isMoving) {
+        } else if (Math.abs(this.velocityX) > 0.1) {
             // Walking leg animation - side to side swing
             const leftLegSwing = walkCycle * 0.4;
             const rightLegSwing = walkCycle2 * 0.4;
@@ -627,5 +777,39 @@ class Player {
             }
         }
         return false;
+    }
+
+    isSpaceClear(x, y, level) {
+        // Check if coordinates are outside the level boundaries (consider them as solid)
+        if (x < 0 || y < 0 || x >= level.levelWidth * TILE_SIZE || y >= level.levelHeight * TILE_SIZE) {
+            return false; // Outside grid is considered full/solid
+        }
+        
+        // Create a test rectangle for the space we want to check
+        const testRect = {
+            x: x,
+            y: y,
+            width: TILE_SIZE,
+            height: this.height // Check for player's full height
+        };
+        
+        // Check against all platform types
+        const allPlatforms = [
+            ...level.solidPlatforms,
+            ...level.crumblePlatforms,
+            ...level.movingPlatforms
+        ];
+        
+        // If any platform overlaps with this space, it's not clear
+        for (const platform of allPlatforms) {
+            if (testRect.x < platform.x + platform.width &&
+                testRect.x + testRect.width > platform.x &&
+                testRect.y < platform.y + platform.height &&
+                testRect.y + testRect.height > platform.y) {
+                return false; // Space is occupied
+            }
+        }
+        
+        return true; // Space is clear
     }
 }
