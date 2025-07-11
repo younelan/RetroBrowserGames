@@ -86,15 +86,19 @@ class ToiletEnemy {
         }
 
         // Define colors
-        const porcelain = '#FFFFFF';
-        const outline = '#000000';
+        const porcelainLight = '#F8F8FF'; // Lighter shade for highlights
+        const porcelain = '#FFFFFF';     // Base porcelain color
+        const porcelainDark = '#E0E0EB';  // Darker shade for shadows
+        const outline = '#333333';
+        const water = '#AEEEEE';
+        const waterDark = '#87CEEB';
 
         // Set drawing styles
         context.strokeStyle = outline;
-        context.lineWidth = 2;
-        context.fillStyle = porcelain;
+        context.lineWidth = 1.5;
 
         // --- Main Toilet Shape (as a single path, excluding lid) ---
+        context.fillStyle = porcelain;
         context.beginPath();
 
         // Start at the top-back of the tank body
@@ -120,11 +124,41 @@ class ToiletEnemy {
         context.fill();
         context.stroke();
 
+        // Add shading to the main body
+        context.fillStyle = porcelainDark;
+        context.beginPath();
+        context.moveTo(14, 34);
+        context.lineTo(width, 34);
+        context.bezierCurveTo(width, 50, 24, 50, 24, 54);
+        context.lineTo(24, height - 2);
+        context.lineTo(8, height - 2);
+        context.lineTo(8, 54);
+        context.bezierCurveTo(16, 50, 0, 50, 0, 34);
+        context.closePath();
+        context.fill();
+
+        // Add highlights to the main body
+        context.fillStyle = porcelainLight;
+        context.beginPath();
+        context.moveTo(2, 4);
+        context.lineTo(12, 4);
+        context.lineTo(12, 32);
+        context.lineTo(2, 32);
+        context.closePath();
+        context.fill();
+
         // --- Tank Lid (drawn separately) ---
+        context.fillStyle = porcelain;
         context.beginPath();
         context.rect(-2, -2, 20, 6); // Lid dimensions
         context.fill();
         context.stroke();
+
+        // Add shading to the tank lid
+        context.fillStyle = porcelainDark;
+        context.beginPath();
+        context.rect(-1, -1, 18, 4); // Inner shadow
+        context.fill();
 
         // --- Flush Button (smooth and metallic) ---
         context.fillStyle = '#C0C0C0'; // Metallic silver
@@ -160,6 +194,20 @@ class ToiletEnemy {
         context.fill();
         context.stroke();
         context.restore();
+
+        // --- Water Surface (side view) ---
+        context.fillStyle = water;
+        context.beginPath();
+        context.moveTo(16, 34);
+        context.bezierCurveTo(20, 38, 28, 38, 30, 34);
+        context.fill();
+
+        // Add a darker shade for water depth
+        context.fillStyle = waterDark;
+        context.beginPath();
+        context.moveTo(18, 35);
+        context.bezierCurveTo(22, 37, 26, 37, 28, 35);
+        context.fill();
 
         context.restore();
     }
