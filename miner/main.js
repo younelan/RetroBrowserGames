@@ -12,6 +12,7 @@ const jsFiles = [
     "toiletEnemy.js",
     "spiderEnemy.js",
     "hazard.js",
+    "movingWalkway.js",
     "level.js",
     "levels.js",
     "game.js"
