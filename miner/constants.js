@@ -190,6 +190,15 @@ const MOVING_PLATFORM_COLOR_SCHEMES = {
         gear: '#1E1E3A',      // Darkest blue for gears
         gearCenter: '#0A0A1A',// Even darker for gear center
         segment: '#4A4A77'    // Medium dark blue for segments
+    },
+    gold: {
+        base: '#B8A532',      // Golden yellow metal
+        rail: '#D8C552',      // Light gold for rails
+        surface: '#685512',   // Very dark gold for belt surface
+        pattern: '#987512',   // Dark gold for pattern lines
+        gear: '#685512',      // Darkest gold for gears
+        gearCenter: '#483512',// Even darker for gear center
+        segment: '#A89522'    // Medium dark gold for segments
     }
 };
 

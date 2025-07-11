@@ -6,6 +6,7 @@ const levels = [
         surfaceScheme: 'ice',
         dirtScheme: 'red',
         brickScheme: 'red', // Default red/brown brick scheme
+        movingPlatformScheme: 'gray', // Gray moving platforms (default)
         map: `
 _         +                 +  _
 _                              _
@@ -40,6 +41,7 @@ _                              _
         brickScheme: 'blue', // Blue brick scheme for ice theme
         dirtScheme: 'ice', // Blue dirt scheme for ice theme
         surfaceScheme: 'ice',
+        movingPlatformScheme: 'blue', // Blue moving platforms to match ice theme
         map: `
 _                        T     _
 _                              _
@@ -70,6 +72,7 @@ _                              _
         brickScheme: 'gray', // Gray brick scheme for cold/metallic theme
         dirtScheme: 'desert', // Desert dirt scheme for contrast
         surfaceScheme: 'grass',
+        movingPlatformScheme: 'brown', // Brown moving platforms for industrial theme
         map: `
 _                              _
 _                              _
@@ -100,6 +103,7 @@ _                              _
         brickScheme: 'green', // Green brick scheme for forest theme
         dirtScheme: 'green', // Green dirt scheme for forest theme
         surfaceScheme: 'grass',
+        movingPlatformScheme: 'green', // Green moving platforms to match forest theme
         map: `
 _                              _
 _                              _
@@ -132,6 +136,7 @@ _                              _
         brickScheme: 'red', // Red brick scheme
         dirtScheme: 'pink', // Pink dirt scheme for magical theme
         surfaceScheme: 'grass',
+        movingPlatformScheme: 'red', // Red moving platforms to match crystal theme
         map: `
 _                              _
 _                              _
@@ -174,6 +179,7 @@ _                              _
         brickScheme: 'blue', // Blue brick scheme for ice theme
         dirtScheme: 'ice', // Ice dirt scheme for arctic theme
         surfaceScheme: 'ice',
+        movingPlatformScheme: 'blue', // Blue moving platforms for arctic theme
         map: `
 _                              _
 _                              _
@@ -207,6 +213,7 @@ _                              _
         brickScheme: 'gray', // Gray brick scheme for mining equipment
         dirtScheme: 'yellow', // Yellow dirt scheme for gold mine theme
         surfaceScheme: 'grass',
+        movingPlatformScheme: 'gold', // Gold moving platforms to match treasure theme
         map: `
 _                              _
 _                              _

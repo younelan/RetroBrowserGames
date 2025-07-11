@@ -7,6 +7,7 @@ class Level {
         this.brickScheme = levelData.brickScheme || DEFAULT_BRICK_SCHEME; // Store brick color scheme
         this.dirtScheme = levelData.dirtScheme || DEFAULT_DIRT_SCHEME; // Store dirt color scheme
         this.surfaceScheme = levelData.surfaceScheme || DEFAULT_SURFACE_SCHEME; // Store surface color scheme
+        this.movingPlatformScheme = levelData.movingPlatformScheme || DEFAULT_MOVING_PLATFORM_SCHEME; // Store moving platform color scheme
         this.platforms = [];
         this.keys = [];
         this.enemies = [];
@@ -685,6 +686,9 @@ class Level {
             const leftEmpty = this.isEmptyTile(tileX - 1, tileY);
             const rightEmpty = this.isEmptyTile(tileX + 1, tileY);
 
+            // Get color scheme for this level
+            const colorScheme = MOVING_PLATFORM_COLOR_SCHEMES[this.movingPlatformScheme];
+
             context.save();
             
             // Helper function to create the belt shape path
@@ -718,13 +722,13 @@ class Level {
                 }
             };
 
-            // Conveyor belt base (metal platform)
+            // Conveyor belt base (metal platform) - using color scheme
             createBeltPath();
             const gradient = context.createLinearGradient(l.x, l.y, l.x, l.y + l.height);
-            gradient.addColorStop(0, '#666');
-            gradient.addColorStop(0.3, '#444');
-            gradient.addColorStop(0.7, '#333');
-            gradient.addColorStop(1, '#222');
+            gradient.addColorStop(0, colorScheme.base);
+            gradient.addColorStop(0.3, this.darkenColor(colorScheme.base, 0.3));
+            gradient.addColorStop(0.7, this.darkenColor(colorScheme.base, 0.5));
+            gradient.addColorStop(1, this.darkenColor(colorScheme.base, 0.7));
             context.fillStyle = gradient;
             context.fill();
 
@@ -732,18 +736,18 @@ class Level {
             createBeltPath();
             context.clip();
 
-            // Metal side rails - adjust for rounded edges
-            context.fillStyle = '#888';
+            // Metal side rails - using color scheme
+            context.fillStyle = colorScheme.rail;
             const railThickness = 3;
             context.fillRect(l.x, l.y, l.width, railThickness); // Top rail
             context.fillRect(l.x, l.y + l.height - railThickness, l.width, railThickness); // Bottom rail
             
-            // Moving belt surface
-            context.fillStyle = '#2C2C2C'; // Very dark belt color, barely different from background
+            // Moving belt surface - using color scheme
+            context.fillStyle = colorScheme.surface;
             context.fillRect(l.x, l.y + railThickness, l.width, l.height - railThickness * 2);
 
-            // Moving belt pattern (diagonal lines) - slowed down
-            context.strokeStyle = '#444';
+            // Moving belt pattern (diagonal lines) - using color scheme
+            context.strokeStyle = colorScheme.pattern;
             context.lineWidth = 1;
             const beltSpeed = frameCounter * -0.8; // Slower moving pattern
             const lineSpacing = 8;
@@ -756,8 +760,8 @@ class Level {
                 context.stroke();
             }
 
-            // Rotating gears for direction indication - discrete dark gray
-            context.fillStyle = '#2E2E2E'; // Very dark gray, barely visible
+            // Rotating gears for direction indication - using color scheme
+            context.fillStyle = colorScheme.gear;
             const gearRotation = (frameCounter * -0.02) % (Math.PI * 2); // Slow rotation, left direction
             const gearRadius = 36; // Much larger radius - 3x the previous size
             
@@ -804,14 +808,14 @@ class Level {
                 context.closePath();
                 context.fill();
                 
-                // Center hole - larger and more visible
-                context.fillStyle = '#1A1A1A'; // Even darker for center
+                // Center hole - using color scheme
+                context.fillStyle = colorScheme.gearCenter;
                 context.beginPath();
                 context.arc(0, 0, gearRadius * 0.25, 0, Math.PI * 2);
                 context.fill();
                 
                 // Add visible spokes for better rotation visibility
-                context.strokeStyle = '#1A1A1A';
+                context.strokeStyle = colorScheme.gearCenter;
                 context.lineWidth = 2;
                 for (let spoke = 0; spoke < 4; spoke++) {
                     const spokeAngle = (spoke / 4) * Math.PI * 2;
@@ -822,11 +826,11 @@ class Level {
                 }
                 
                 context.restore();
-                context.fillStyle = '#2E2E2E'; // Reset color for next gear
+                context.fillStyle = colorScheme.gear; // Reset color for next gear
             }
 
-            // Moving rail segments (visible pieces on the light gray rails) - drawn AFTER gears
-            context.fillStyle = '#555'; // Darker color for more discrete segments, closer to belt color
+            // Moving rail segments (visible pieces on the light gray rails) - using color scheme
+            context.fillStyle = colorScheme.segment;
             const segmentWidth = 6;
             const segmentSpacing = 12;
             const globalSegmentSpeed = (frameCounter * -0.3) % segmentSpacing; // Global animation for seamless belts
@@ -857,6 +861,9 @@ class Level {
             const tileY = Math.floor(r.y / TILE_SIZE);
             const leftEmpty = this.isEmptyTile(tileX - 1, tileY);
             const rightEmpty = this.isEmptyTile(tileX + 1, tileY);
+
+            // Get color scheme for this level
+            const colorScheme = MOVING_PLATFORM_COLOR_SCHEMES[this.movingPlatformScheme];
 
             context.save();
             
@@ -891,13 +898,13 @@ class Level {
                 }
             };
 
-            // Conveyor belt base (metal platform)
+            // Conveyor belt base (metal platform) - using color scheme
             createBeltPath();
             const gradient = context.createLinearGradient(r.x, r.y, r.x, r.y + r.height);
-            gradient.addColorStop(0, '#666');
-            gradient.addColorStop(0.3, '#444');
-            gradient.addColorStop(0.7, '#333');
-            gradient.addColorStop(1, '#222');
+            gradient.addColorStop(0, colorScheme.base);
+            gradient.addColorStop(0.3, this.darkenColor(colorScheme.base, 0.3));
+            gradient.addColorStop(0.7, this.darkenColor(colorScheme.base, 0.5));
+            gradient.addColorStop(1, this.darkenColor(colorScheme.base, 0.7));
             context.fillStyle = gradient;
             context.fill();
 
@@ -905,18 +912,18 @@ class Level {
             createBeltPath();
             context.clip();
 
-            // Metal side rails - adjust for rounded edges
-            context.fillStyle = '#888';
+            // Metal side rails - using color scheme
+            context.fillStyle = colorScheme.rail;
             const railThickness = 3;
             context.fillRect(r.x, r.y, r.width, railThickness); // Top rail
             context.fillRect(r.x, r.y + r.height - railThickness, r.width, railThickness); // Bottom rail
             
-            // Moving belt surface
-            context.fillStyle = '#2C2C2C'; // Very dark belt color, barely different from background
+            // Moving belt surface - using color scheme
+            context.fillStyle = colorScheme.surface;
             context.fillRect(r.x, r.y + railThickness, r.width, r.height - railThickness * 2);
 
-            // Moving belt pattern (diagonal lines) - slowed down
-            context.strokeStyle = '#444';
+            // Moving belt pattern (diagonal lines) - using color scheme
+            context.strokeStyle = colorScheme.pattern;
             context.lineWidth = 1;
             const beltSpeed = frameCounter * 0.8; // Slower moving pattern
             const lineSpacing = 8;
@@ -929,8 +936,8 @@ class Level {
                 context.stroke();
             }
 
-            // Rotating gears for direction indication - discrete dark gray
-            context.fillStyle = '#2E2E2E'; // Very dark gray, barely visible
+            // Rotating gears for direction indication - using color scheme
+            context.fillStyle = colorScheme.gear;
             const gearRotation = (frameCounter * 0.02) % (Math.PI * 2); // Slow rotation, right direction
             const gearRadius = 36; // Much larger radius - 3x the previous size
             
@@ -977,14 +984,14 @@ class Level {
                 context.closePath();
                 context.fill();
                 
-                // Center hole - larger and more visible
-                context.fillStyle = '#1A1A1A'; // Even darker for center
+                // Center hole - using color scheme
+                context.fillStyle = colorScheme.gearCenter;
                 context.beginPath();
                 context.arc(0, 0, gearRadius * 0.25, 0, Math.PI * 2);
                 context.fill();
                 
                 // Add visible spokes for better rotation visibility
-                context.strokeStyle = '#1A1A1A';
+                context.strokeStyle = colorScheme.gearCenter;
                 context.lineWidth = 2;
                 for (let spoke = 0; spoke < 4; spoke++) {
                     const spokeAngle = (spoke / 4) * Math.PI * 2;
@@ -995,11 +1002,11 @@ class Level {
                 }
                 
                 context.restore();
-                context.fillStyle = '#2E2E2E'; // Reset color for next gear
+                context.fillStyle = colorScheme.gear; // Reset color for next gear
             }
 
-            // Moving rail segments (visible pieces on the light gray rails) - drawn AFTER gears
-            context.fillStyle = '#555'; // Darker color for more discrete segments, closer to belt color
+            // Moving rail segments (visible pieces on the light gray rails) - using color scheme
+            context.fillStyle = colorScheme.segment;
             const segmentWidth = 6;
             const segmentSpacing = 12;
             const globalSegmentSpeed = (frameCounter * 0.3) % segmentSpacing; // Global animation for seamless belts
@@ -1447,5 +1454,22 @@ class Level {
         context.moveTo(p.x + 17, p.y + inset);
         context.lineTo(p.x + 22, p.y + iceHeight - 1);
         context.stroke();
+    }
+
+    // Helper function to darken a color for gradient effects
+    darkenColor(color, factor) {
+        // Convert hex color to RGB
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substr(0, 2), 16);
+        const g = parseInt(hex.substr(2, 2), 16);
+        const b = parseInt(hex.substr(4, 2), 16);
+        
+        // Apply darkening factor
+        const newR = Math.floor(r * (1 - factor));
+        const newG = Math.floor(g * (1 - factor));
+        const newB = Math.floor(b * (1 - factor));
+        
+        // Convert back to hex
+        return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`;
     }
 }
