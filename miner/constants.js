@@ -233,5 +233,6 @@ const TILE_ATTRIBUTES = {
     '2': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Tree/Cactus
     '3': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Shrub/Bush
     '4': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },  // Tall Cactus
+    'L': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false, isLadder: true },  // Ladder
     '@': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false }   // Player Start
 };

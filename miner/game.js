@@ -3,7 +3,7 @@ class Game {
         this.canvas = document.getElementById(canvasId);
         this.context = this.canvas.getContext('2d');
         this.currentLevelIndex = START_LEVEL_INDEX;
-        this.input = { left: false, right: false, jump: false };
+        this.input = { left: false, right: false, jump: false, up: false, down: false };
         this.frameCounter = 0;
         this.score = 0;
         this.lives = START_LIVES;
@@ -74,7 +74,12 @@ class Game {
         window.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowLeft') this.input.left = true;
             if (e.key === 'ArrowRight') this.input.right = true;
-            if (e.key === ' ' || e.key === 'ArrowUp') {
+            if (e.key === 'ArrowUp') {
+                this.input.up = true;
+                this.input.jump = true; // ArrowUp can also jump
+            }
+            if (e.key === 'ArrowDown') this.input.down = true;
+            if (e.key === ' ') {
                 this.input.jump = true;
                 if (this.gameState === 'START' || this.gameState === 'GAME_OVER' || this.gameState === 'WIN') {
                     this.resetGame();
@@ -84,7 +89,12 @@ class Game {
         window.addEventListener('keyup', (e) => {
             if (e.key === 'ArrowLeft') this.input.left = false;
             if (e.key === 'ArrowRight') this.input.right = false;
-            if (e.key === ' ' || e.key === 'ArrowUp') this.input.jump = false;
+            if (e.key === 'ArrowUp') {
+                this.input.up = false;
+                this.input.jump = false;
+            }
+            if (e.key === 'ArrowDown') this.input.down = false;
+            if (e.key === ' ') this.input.jump = false;
         });
 
         // Simplified, reliable touch controls
@@ -122,6 +132,8 @@ class Game {
             this.input.left = false;
             this.input.right = false;
             this.input.jump = false;
+            this.input.up = false;
+            this.input.down = false;
             
             // Horizontal movement
             if (deltaX < -moveThreshold) {
@@ -130,9 +142,16 @@ class Game {
                 this.input.right = true;
             }
             
-            // Jump (can be combined with horizontal)
+            // Vertical movement
             if (deltaY < -jumpThreshold) {
-                this.input.jump = true;
+                // Check if player is on ladder to decide between jump and climb
+                if (this.player && this.player.isOnLadder && this.player.isOnLadder(this.level)) {
+                    this.input.up = true; // Climb up on ladder
+                } else {
+                    this.input.jump = true; // Jump when not on ladder
+                }
+            } else if (deltaY > jumpThreshold) {
+                this.input.down = true; // Climb down on ladder (no effect when not on ladder)
             }
         });
 
@@ -142,6 +161,8 @@ class Game {
             this.input.left = false;
             this.input.right = false;
             this.input.jump = false;
+            this.input.up = false;
+            this.input.down = false;
         });
         
         this.canvas.addEventListener('touchcancel', (e) => {
@@ -150,6 +171,8 @@ class Game {
             this.input.left = false;
             this.input.right = false;
             this.input.jump = false;
+            this.input.up = false;
+            this.input.down = false;
         });
     }
 

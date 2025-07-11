@@ -22,6 +22,7 @@ class Level {
         this.movingLeftFloors = [];
         this.movingRightFloors = [];
         this.decorativeElements = [];
+        this.ladders = []; // Array to store ladder tiles
         this.portal = null;
         this.playerStart = { x: 0, y: 0 };
 
@@ -196,6 +197,9 @@ class Level {
                         break;
                     case '4': // Tall cactus (2 tiles high)
                         this.decorativeElements.push({ x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char });
+                        break;
+                    case 'L': // Ladder
+                        this.ladders.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
                         break;
                 }
             }
@@ -1251,6 +1255,30 @@ class Level {
                     }
                     break;
             }
+        });
+
+        // Draw ladders
+        this.ladders.forEach(ladder => {
+            const s = TILE_SIZE / 16; // Scale factor for drawing details
+            
+            // Ladder side rails (vertical) - yellow/gold color
+            context.fillStyle = '#DAA520'; // Golden rod
+            context.fillRect(ladder.x + 2 * s, ladder.y, 2 * s, TILE_SIZE); // Left rail
+            context.fillRect(ladder.x + 12 * s, ladder.y, 2 * s, TILE_SIZE); // Right rail
+            
+            // Single ladder rung (horizontal) - centered in the tile
+            const rungY = ladder.y + TILE_SIZE / 2; // Center the rung vertically
+            context.fillStyle = '#FFD700'; // Gold for rung
+            context.fillRect(ladder.x + 2 * s, rungY - s, 12 * s, 2 * s);
+            
+            // Add subtle highlight to make rung more visible
+            context.fillStyle = '#FFFF99'; // Light yellow highlight
+            context.fillRect(ladder.x + 2 * s, rungY - s, 12 * s, s);
+            
+            // Add side rail highlights - brighter gold
+            context.fillStyle = '#FFD700'; // Gold for highlights
+            context.fillRect(ladder.x + 2 * s, ladder.y, s, TILE_SIZE); // Left rail highlight
+            context.fillRect(ladder.x + 13 * s, ladder.y, s, TILE_SIZE); // Right rail highlight
         });
 
     }
