@@ -1,5 +1,6 @@
 const jsFiles = [
     "constants.js",
+    "plant.js",
     "player.js",
     "bigFoot.js",
     "bat.js",
