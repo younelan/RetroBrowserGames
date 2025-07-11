@@ -228,6 +228,16 @@ class Game {
             }
         });
 
+        // Spider collision
+        this.level.spiders.forEach(spider => {
+            if (this.player.x < spider.x + spider.width &&
+                this.player.x + this.player.width > spider.x &&
+                this.player.y < spider.y + spider.height &&
+                this.player.y + this.player.height > spider.y) {
+                this.playerDie();
+            }
+        });
+
         // Falling too far (only if maxFall > 0, otherwise fall damage is disabled)
         if (this.level.maxFall > 0 && this.player.fallDistance > this.level.maxFall * TILE_SIZE) {
             this.playerDie();

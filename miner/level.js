@@ -161,6 +161,12 @@ class Level {
                     case 'P':
                         this.enemies.push(new PenguinEnemy(worldX, worldY - TILE_SIZE));
                         break;
+                    case 'S':
+                        this.spiders.push(new SpiderEnemy(worldX, worldY, false)); // Static spider
+                        break;
+                    case 'T':
+                        this.spiders.push(new SpiderEnemy(worldX, worldY, true)); // Moving spider
+                        break;
                     case 'I':
                         this.hazards.push(new Hazard(worldX, worldY, 'SPIKES'));
                         break;
@@ -1014,6 +1020,11 @@ class Level {
 
         // Draw enemies
         this.enemies.forEach(e => e.draw(context));
+
+        // Draw spiders
+        this.spiders.forEach(spider => {
+            spider.draw(context);
+        });
 
         // Draw decorative elements (trees, shrubs, etc.)
         this.decorativeElements.forEach(d => {

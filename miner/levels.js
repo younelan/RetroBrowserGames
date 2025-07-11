@@ -41,7 +41,7 @@ _                              _
         dirtScheme: 'ice', // Blue dirt scheme for ice theme
         surfaceScheme: 'ice',
         map: `
-_                              _
+_                        T     _
 _                              _
 _              +               _
 _            ====              _

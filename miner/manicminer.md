@@ -142,6 +142,8 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `A`    | Enemy (Seal)            | A seal enemy juggling a ball on its nose.              |
 |    `N`    | Enemy (Dinosaur)        | A dinosaur enemy that walks on platforms.              |
 |    `P`    | Enemy (Penguin)         | A penguin enemy that waddles on platforms.             |
+|    `S`    | Enemy (Spider Static)   | A static spider hanging by a thread.                   |
+|    `T`    | Enemy (Spider Moving)   | A moving spider that drops down one cell and back up.  |
 |    `1`    | Tall Tree               | A 2-tile high decorative tree element.                 |
 |    `2`    | Tree / Cactus           | A purely decorative element, no collision.             |
 |    `3`    | Shrub / Bush            | A purely decorative element, no collision.             |
@@ -247,6 +249,7 @@ To ensure the project is modular and easy to maintain, we will adopt the followi
 *   `gooseEnemy.js`: Contains the `GooseEnemy` class for goose/duck enemies that walk on platforms.
 *   `sealEnemy.js`: Contains the `SealEnemy` class for seal enemies that juggle a ball on their nose.
 *   `penguinEnemy.js`: Contains the `PenguinEnemy` class for penguin enemies that waddle on platforms.
+*   `spiderEnemy.js`: Contains the `SpiderEnemy` class for spider enemies that hang by a thread and can move vertically.
 *   `hazard.js`: Contains the `Hazard` class for static dangerous objects.
 
 ### Class Structure
