@@ -167,6 +167,9 @@ class Level {
                     case 'T':
                         this.spiders.push(new SpiderEnemy(worldX, worldY, true)); // Moving spider
                         break;
+                    case 'Q':
+                        this.enemies.push(new ToiletEnemy(worldX, worldY - TILE_SIZE));
+                        break;
                     case 'I':
                         this.hazards.push(new Hazard(worldX, worldY, 'SPIKES'));
                         break;
