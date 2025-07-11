@@ -177,7 +177,15 @@ class Level {
                         this.hazards.push(new Hazard(worldX, worldY, 'FIRE'));
                         break;
                     case '3':
-                        this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'SHRUB' });
+                        const shrubBerries = [];
+                        const numBerries = 3; // Fixed number of berries
+                        for (let i = 0; i < numBerries; i++) {
+                            const randX = (Math.random() * 0.6 + 0.2); // 20% to 80% across the tile
+                            const randY = (Math.random() * 0.6 + 0.2); // 20% to 80% down the tile
+                            const berrySize = (Math.random() * 0.5 + 0.5); // 0.5 to 1.0 scale
+                            shrubBerries.push({ x: randX, y: randY, size: berrySize });
+                        }
+                        this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: 'SHRUB', berries: shrubBerries });
                         break;
                     case '2':
                         this.decorativeElements.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
@@ -1035,65 +1043,183 @@ class Level {
             
             switch(d.type) {
                 case '1': // Tall tree (2 tiles high)
-                    // Tree trunk
-                    context.fillStyle = '#4A3B28'; // Brown trunk
-                    context.fillRect(d.x + 6 * s, d.y + 8 * s, 4 * s, 24 * s);
+                    // Tree trunk (more natural, slightly irregular)
+                    context.fillStyle = '#6B4423'; // Brown
+                    context.fillRect(d.x + 7 * s, d.y + 20 * s, 2 * s, 12 * s); // Main trunk
+                    context.fillRect(d.x + 6 * s, d.y + 18 * s, 4 * s, 4 * s); // Base of trunk
                     
-                    // Tree foliage (large green canopy)
-                    context.fillStyle = '#228B22'; // Forest green
-                    context.fillRect(d.x + 2 * s, d.y + 2 * s, 12 * s, 12 * s);
-                    context.fillRect(d.x + 4 * s, d.y, 8 * s, 8 * s);
+                    // Foliage (multiple overlapping rounded shapes for a more organic look)
+                    context.fillStyle = '#228B22'; // Dark green
+                    context.beginPath();
+                    context.arc(d.x + 8 * s, d.y + 10 * s, 10 * s, 0, Math.PI * 2); // Main canopy
+                    context.arc(d.x + 4 * s, d.y + 14 * s, 6 * s, 0, Math.PI * 2); // Left cluster
+                    context.arc(d.x + 12 * s, d.y + 14 * s, 6 * s, 0, Math.PI * 2); // Right cluster
+                    context.fill();
                     
-                    // Lighter green highlights
-                    context.fillStyle = '#32CD32';
-                    context.fillRect(d.x + 4 * s, d.y + 3 * s, 8 * s, 6 * s);
-                    context.fillRect(d.x + 6 * s, d.y + 1 * s, 4 * s, 4 * s);
+                    // Lighter green highlights for depth
+                    context.fillStyle = '#32CD32'; // Medium green
+                    context.beginPath();
+                    context.arc(d.x + 7 * s, d.y + 9 * s, 8 * s, 0, Math.PI * 2);
+                    context.arc(d.x + 5 * s, d.y + 13 * s, 4 * s, 0, Math.PI * 2);
+                    context.fill();
+                    
+                    context.fillStyle = '#90EE90'; // Light green
+                    context.beginPath();
+                    context.arc(d.x + 8 * s, d.y + 8 * s, 5 * s, 0, Math.PI * 2);
+                    context.fill();
                     break;
                     
-                case '2': // Regular tree/bush (1 tile high)
-                    // Small trunk
-                    context.fillStyle = '#4A3B28'; // Brown trunk
-                    context.fillRect(d.x + 7 * s, d.y + 10 * s, 2 * s, 6 * s);
+                case '2': // Small cactus (1 tile high, organic shape)
+                    // Main cactus body (rounded rectangle)
+                    context.fillStyle = '#228B22'; // Dark green
+                    context.beginPath();
+                    context.roundRect(d.x + 4 * s, d.y + 2 * s, 8 * s, 12 * s, 4 * s); // x, y, width, height, radius
+                    context.fill();
                     
-                    // Foliage
-                    context.fillStyle = '#228B22'; // Forest green
-                    context.fillRect(d.x + 3 * s, d.y + 4 * s, 10 * s, 8 * s);
-                    context.fillRect(d.x + 5 * s, d.y + 2 * s, 6 * s, 6 * s);
+                    // Highlights for main body
+                    context.fillStyle = '#32CD32'; // Medium green
+                    context.beginPath();
+                    context.roundRect(d.x + 5 * s, d.y + 3 * s, 6 * s, 10 * s, 3 * s);
+                    context.fill();
+
+                    // Left arm (dangling, aimed up)
+                    context.fillStyle = '#228B22';
+                    context.beginPath();
+                    context.roundRect(d.x + 1 * s, d.y + 6 * s, 4 * s, 6 * s, 2 * s);
+                    context.fill();
+                    context.fillStyle = '#32CD32'; // Highlight
+                    context.beginPath();
+                    context.roundRect(d.x + 2 * s, d.y + 7 * s, 2 * s, 4 * s, 1 * s);
+                    context.fill();
+
+                    // Right arm (dangling, aimed up)
+                    context.fillStyle = '#228B22';
+                    context.beginPath();
+                    context.roundRect(d.x + 11 * s, d.y + 4 * s, 4 * s, 6 * s, 2 * s);
+                    context.fill();
+                    context.fillStyle = '#32CD32'; // Highlight
+                    context.beginPath();
+                    context.roundRect(d.x + 12 * s, d.y + 5 * s, 2 * s, 4 * s, 1 * s);
+                    context.fill();
                     
-                    // Highlights
-                    context.fillStyle = '#32CD32';
-                    context.fillRect(d.x + 5 * s, d.y + 5 * s, 6 * s, 4 * s);
+                    // Spines (subtle lines)
+                    context.strokeStyle = '#90EE90'; // Light green, almost white
+                    context.lineWidth = 0.5;
+                    for(let i = 0; i < 5; i++) {
+                        // Main body spines
+                        context.beginPath();
+                        context.moveTo(d.x + 4 * s + (i % 2) * 4 * s, d.y + 4 * s + i * 2 * s);
+                        context.lineTo(d.x + 4 * s + (i % 2) * 4 * s + 1 * s, d.y + 4 * s + i * 2 * s + 1 * s);
+                        context.stroke();
+
+                        // Arm spines
+                        if (i < 3) {
+                            context.beginPath();
+                            context.moveTo(d.x + 1 * s + (i % 2) * 3 * s, d.y + 7 * s + i * 2 * s);
+                            context.lineTo(d.x + 1 * s + (i % 2) * 3 * s + 1 * s, d.y + 7 * s + i * 2 * s + 1 * s);
+                            context.stroke();
+
+                            context.beginPath();
+                            context.moveTo(d.x + 11 * s + (i % 2) * 3 * s, d.y + 5 * s + i * 2 * s);
+                            context.lineTo(d.x + 11 * s + (i % 2) * 3 * s + 1 * s, d.y + 5 * s + i * 2 * s + 1 * s);
+                            context.stroke();
+                        }
+                    }
                     break;
                     
                 case '3':
-                case 'SHRUB': // Small shrub
-                    context.fillStyle = '#228B22'; // Forest green
-                    context.fillRect(d.x + 4 * s, d.y + 8 * s, 8 * s, 8 * s);
-                    context.fillRect(d.x + 6 * s, d.y + 6 * s, 4 * s, 4 * s);
+                case 'SHRUB': // Small shrub (irregular, organic shape)
+                    case '3':
+                case 'SHRUB': // Small shrub (highly irregular, organic shape)
+                    // Base shape (darkest green)
+                    context.fillStyle = '#1A6B1A'; // Darker green
+                    context.beginPath();
+                    context.moveTo(d.x + 4 * s, d.y + 15 * s);
+                    context.bezierCurveTo(d.x + 2 * s, d.y + 10 * s, d.x + 6 * s, d.y + 5 * s, d.x + 8 * s, d.y + 4 * s);
+                    context.bezierCurveTo(d.x + 10 * s, d.y + 3 * s, d.x + 14 * s, d.y + 7 * s, d.x + 12 * s, d.y + 12 * s);
+                    context.bezierCurveTo(d.x + 16 * s, d.y + 16 * s, d.x + 8 * s, d.y + 16 * s, d.x + 4 * s, d.y + 15 * s);
+                    context.closePath();
+                    context.fill();
                     
-                    // Highlights
-                    context.fillStyle = '#32CD32';
-                    context.fillRect(d.x + 6 * s, d.y + 9 * s, 4 * s, 4 * s);
+                    // Mid-tone layer
+                    context.fillStyle = '#228B22'; // Forest green
+                    context.beginPath();
+                    context.moveTo(d.x + 5 * s, d.y + 14 * s);
+                    context.bezierCurveTo(d.x + 3 * s, d.y + 10 * s, d.x + 7 * s, d.y + 6 * s, d.x + 9 * s, d.y + 5 * s);
+                    context.bezierCurveTo(d.x + 11 * s, d.y + 4 * s, d.x + 13 * s, d.y + 8 * s, d.x + 11 * s, d.y + 11 * s);
+                    context.bezierCurveTo(d.x + 15 * s, d.y + 15 * s, d.x + 9 * s, d.y + 15 * s, d.x + 5 * s, d.y + 14 * s);
+                    context.closePath();
+                    context.fill();
+                    
+                    // Highlight layer
+                    context.fillStyle = '#32CD32'; // Medium green
+                    context.beginPath();
+                    context.moveTo(d.x + 6 * s, d.y + 13 * s);
+                    context.bezierCurveTo(d.x + 5 * s, d.y + 10 * s, d.x + 7 * s, d.y + 7 * s, d.x + 9 * s, d.y + 6 * s);
+                    context.bezierCurveTo(d.x + 10 * s, d.y + 5 * s, d.x + 12 * s, d.y + 8 * s, d.x + 10 * s, d.y + 10 * s);
+                    context.bezierCurveTo(d.x + 13 * s, d.y + 13 * s, d.x + 9 * s, d.y + 14 * s, d.x + 6 * s, d.y + 13 * s);
+                    context.closePath();
+                    context.fill();
+
+                    // Small, subtle berries/fruits (static and subtle color)
+                    const berryColor = '#104010'; // Very dark green, almost black
+                    const berryHighlight = '#205020'; // Slightly lighter dark green
+
+                    d.berries.forEach(berry => {
+                        const berryX = d.x + berry.x * d.width;
+                        const berryY = d.y + berry.y * d.height;
+                        const berrySize = berry.size * s; // Use pre-calculated size
+
+                        context.fillStyle = berryColor;
+                        context.beginPath();
+                        context.arc(berryX, berryY, berrySize, 0, Math.PI * 2);
+                        context.fill();
+
+                        // Subtle highlight
+                        context.fillStyle = berryHighlight;
+                        context.beginPath();
+                        context.arc(berryX - berrySize * 0.3, berryY - berrySize * 0.3, berrySize * 0.5, 0, Math.PI * 2);
+                        context.fill();
+                    });
                     break;
                     
                 case '4': // Tall cactus (2 tiles high)
                     // Main cactus body
-                    context.fillStyle = '#228B22'; // Dark green cactus
-                    context.fillRect(d.x + 6 * s, d.y, 4 * s, 32 * s);
+                    context.fillStyle = '#228B22'; // Dark green
+                    context.fillRect(d.x + 6 * s, d.y, 4 * s, 32 * s); // Main vertical body
                     
                     // Cactus arms
-                    context.fillRect(d.x + 2 * s, d.y + 12 * s, 6 * s, 3 * s);
-                    context.fillRect(d.x + 10 * s, d.y + 8 * s, 6 * s, 3 * s);
+                    context.fillRect(d.x + 2 * s, d.y + 8 * s, 4 * s, 8 * s); // Left arm
+                    context.fillRect(d.x + 10 * s, d.y + 4 * s, 4 * s, 8 * s); // Right arm
                     
                     // Highlights
-                    context.fillStyle = '#32CD32';
-                    context.fillRect(d.x + 7 * s, d.y + 2 * s, 2 * s, 28 * s);
+                    context.fillStyle = '#32CD32'; // Medium green
+                    context.fillRect(d.x + 7 * s, d.y + 1 * s, 2 * s, 30 * s); // Main body highlight
+                    context.fillRect(d.x + 3 * s, d.y + 9 * s, 2 * s, 6 * s); // Left arm highlight
+                    context.fillRect(d.x + 11 * s, d.y + 5 * s, 2 * s, 6 * s); // Right arm highlight
                     
-                    // Spines
-                    context.fillStyle = '#FFFF00'; // Yellow spines
-                    for(let i = 0; i < 8; i++) {
-                        context.fillRect(d.x + 5 * s, d.y + i * 4 * s, 1 * s, 1 * s);
-                        context.fillRect(d.x + 10 * s, d.y + i * 4 * s + 2 * s, 1 * s, 1 * s);
+                    // Spines (subtle, small lines)
+                    context.strokeStyle = '#90EE90'; // Light green, almost white
+                    context.lineWidth = 0.5;
+                    for(let i = 0; i < 15; i++) {
+                        // Main body spines
+                        context.beginPath();
+                        context.moveTo(d.x + 6 * s + (i % 2) * 4 * s, d.y + 2 * s + i * 2 * s);
+                        context.lineTo(d.x + 6 * s + (i % 2) * 4 * s + 1 * s, d.y + 2 * s + i * 2 * s + 1 * s);
+                        context.stroke();
+
+                        // Arm spines
+                        if (i < 5) {
+                            context.beginPath();
+                            context.moveTo(d.x + 2 * s + (i % 2) * 4 * s, d.y + 9 * s + i * 2 * s);
+                            context.lineTo(d.x + 2 * s + (i % 2) * 4 * s + 1 * s, d.y + 9 * s + i * 2 * s + 1 * s);
+                            context.stroke();
+
+                            context.beginPath();
+                            context.moveTo(d.x + 10 * s + (i % 2) * 4 * s, d.y + 5 * s + i * 2 * s);
+                            context.lineTo(d.x + 10 * s + (i % 2) * 4 * s + 1 * s, d.y + 5 * s + i * 2 * s + 1 * s);
+                            context.stroke();
+                        }
                     }
                     break;
             }

@@ -140,7 +140,7 @@ const SURFACE_COLOR_SCHEMES = {
         crack: '#FFFFFF'       // White
     }
 };
-START_LEVEL_INDEX = 0; 
+START_LEVEL_INDEX = 3; 
 // Default surface color scheme
 const DEFAULT_SURFACE_SCHEME = 'grass';
 
