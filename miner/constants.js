@@ -144,6 +144,57 @@ START_LEVEL_INDEX = 3;
 // Default surface color scheme
 const DEFAULT_SURFACE_SCHEME = 'grass';
 
+// Moving platform color schemes for different levels
+const MOVING_PLATFORM_COLOR_SCHEMES = {
+    gray: {
+        base: '#666666',      // Dark gray metal
+        rail: '#888888',      // Medium gray for rails
+        surface: '#2C2C2C',   // Very dark gray for belt surface
+        pattern: '#444444',   // Dark gray for pattern lines
+        gear: '#2E2E2E',      // Darkest gray for gears
+        gearCenter: '#1A1A1A',// Even darker for gear center
+        segment: '#555555'    // Medium dark gray for segments
+    },
+    green: {
+        base: '#3A663A',      // Dark green metal
+        rail: '#5A885A',      // Medium green for rails
+        surface: '#1A331A',   // Very dark green for belt surface
+        pattern: '#2A552A',   // Dark green for pattern lines
+        gear: '#1E3A1E',      // Darkest green for gears
+        gearCenter: '#0A1A0A',// Even darker for gear center
+        segment: '#4A774A'    // Medium dark green for segments
+    },
+    red: {
+        base: '#663A3A',      // Dark red metal
+        rail: '#885A5A',      // Medium red for rails
+        surface: '#331A1A',   // Very dark red for belt surface
+        pattern: '#552A2A',   // Dark red for pattern lines
+        gear: '#3A1E1E',      // Darkest red for gears
+        gearCenter: '#1A0A0A',// Even darker for gear center
+        segment: '#774A4A'    // Medium dark red for segments
+    },
+    brown: {
+        base: '#664A3A',      // Dark brown metal
+        rail: '#886A5A',      // Medium brown for rails
+        surface: '#33251A',   // Very dark brown for belt surface
+        pattern: '#553A2A',   // Dark brown for pattern lines
+        gear: '#3A2A1E',      // Darkest brown for gears
+        gearCenter: '#1A100A',// Even darker for gear center
+        segment: '#775A4A'    // Medium dark brown for segments
+    },
+    blue: {
+        base: '#3A3A66',      // Dark blue metal
+        rail: '#5A5A88',      // Medium blue for rails
+        surface: '#1A1A33',   // Very dark blue for belt surface
+        pattern: '#2A2A55',   // Dark blue for pattern lines
+        gear: '#1E1E3A',      // Darkest blue for gears
+        gearCenter: '#0A0A1A',// Even darker for gear center
+        segment: '#4A4A77'    // Medium dark blue for segments
+    }
+};
+
+const DEFAULT_MOVING_PLATFORM_SCHEME = 'gray';
+
 const TILE_ATTRIBUTES = {
     ' ': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },
     'X': { isSolid: true, isPlatform: true, isHazard: false, isMoving: false, isCrumble: false },

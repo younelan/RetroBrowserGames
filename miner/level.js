@@ -1069,38 +1069,56 @@ class Level {
                     context.fill();
                     break;
                     
-                case '2': // Small cactus (1 tile high, organic shape)
+                case '2': // Small cactus (1 tile high, organic shape with dangling arms)
+                    case '2': // Small cactus (1 tile high, organic shape with dangling arms)
+                    // Helper function to draw a rounded rectangle
+                    const drawRoundedRect = (ctx, x, y, width, height, radius) => {
+                        ctx.beginPath();
+                        ctx.moveTo(x + radius, y);
+                        ctx.lineTo(x + width - radius, y);
+                        ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                        ctx.lineTo(x + width, y + height - radius);
+                        ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                        ctx.lineTo(x + radius, y + height);
+                        ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                        ctx.lineTo(x, y + radius);
+                        ctx.quadraticCurveTo(x, y, x + radius, y);
+                        ctx.closePath();
+                    };
+
                     // Main cactus body (rounded rectangle)
                     context.fillStyle = '#228B22'; // Dark green
-                    context.beginPath();
-                    context.roundRect(d.x + 4 * s, d.y + 2 * s, 8 * s, 12 * s, 4 * s); // x, y, width, height, radius
+                    drawRoundedRect(context, d.x + 6 * s, d.y + 2 * s, 4 * s, 12 * s, 2 * s);
                     context.fill();
                     
                     // Highlights for main body
                     context.fillStyle = '#32CD32'; // Medium green
-                    context.beginPath();
-                    context.roundRect(d.x + 5 * s, d.y + 3 * s, 6 * s, 10 * s, 3 * s);
+                    drawRoundedRect(context, d.x + 7 * s, d.y + 3 * s, 2 * s, 10 * s, 1 * s);
                     context.fill();
 
                     // Left arm (dangling, aimed up)
+                    context.save();
+                    context.translate(d.x + 6 * s, d.y + 10 * s); // Pivot point at connection to main body
+                    context.rotate(-Math.PI / 8); // Rotate slightly upwards
                     context.fillStyle = '#228B22';
-                    context.beginPath();
-                    context.roundRect(d.x + 1 * s, d.y + 6 * s, 4 * s, 6 * s, 2 * s);
+                    drawRoundedRect(context, -4 * s, -6 * s, 4 * s, 6 * s, 2 * s); // Draw arm relative to pivot
                     context.fill();
                     context.fillStyle = '#32CD32'; // Highlight
-                    context.beginPath();
-                    context.roundRect(d.x + 2 * s, d.y + 7 * s, 2 * s, 4 * s, 1 * s);
+                    drawRoundedRect(context, -3 * s, -5 * s, 2 * s, 4 * s, 1 * s);
                     context.fill();
+                    context.restore();
 
                     // Right arm (dangling, aimed up)
+                    context.save();
+                    context.translate(d.x + 10 * s, d.y + 8 * s); // Pivot point at connection to main body
+                    context.rotate(Math.PI / 8); // Rotate slightly upwards
                     context.fillStyle = '#228B22';
-                    context.beginPath();
-                    context.roundRect(d.x + 11 * s, d.y + 4 * s, 4 * s, 6 * s, 2 * s);
+                    drawRoundedRect(context, 0, -6 * s, 4 * s, 6 * s, 2 * s); // Draw arm relative to pivot
                     context.fill();
                     context.fillStyle = '#32CD32'; // Highlight
-                    context.beginPath();
-                    context.roundRect(d.x + 12 * s, d.y + 5 * s, 2 * s, 4 * s, 1 * s);
+                    drawRoundedRect(context, 1 * s, -5 * s, 2 * s, 4 * s, 1 * s);
                     context.fill();
+                    context.restore();
                     
                     // Spines (subtle lines)
                     context.strokeStyle = '#90EE90'; // Light green, almost white
@@ -1108,20 +1126,23 @@ class Level {
                     for(let i = 0; i < 5; i++) {
                         // Main body spines
                         context.beginPath();
-                        context.moveTo(d.x + 4 * s + (i % 2) * 4 * s, d.y + 4 * s + i * 2 * s);
-                        context.lineTo(d.x + 4 * s + (i % 2) * 4 * s + 1 * s, d.y + 4 * s + i * 2 * s + 1 * s);
+                        context.moveTo(d.x + 6 * s + (i % 2) * 4 * s, d.y + 4 * s + i * 2 * s);
+                        context.lineTo(d.x + 6 * s + (i % 2) * 4 * s + 1 * s, d.y + 4 * s + i * 2 * s + 1 * s);
                         context.stroke();
 
-                        // Arm spines
+                        // Left arm spines
                         if (i < 3) {
                             context.beginPath();
-                            context.moveTo(d.x + 1 * s + (i % 2) * 3 * s, d.y + 7 * s + i * 2 * s);
-                            context.lineTo(d.x + 1 * s + (i % 2) * 3 * s + 1 * s, d.y + 7 * s + i * 2 * s + 1 * s);
+                            context.moveTo(d.x + 2 * s + (i % 2) * 3 * s, d.y + 7 * s + i * 2 * s);
+                            context.lineTo(d.x + 2 * s + (i % 2) * 3 * s + 1 * s, d.y + 7 * s + i * 2 * s + 1 * s);
                             context.stroke();
+                        }
 
+                        // Right arm spines
+                        if (i < 3) {
                             context.beginPath();
-                            context.moveTo(d.x + 11 * s + (i % 2) * 3 * s, d.y + 5 * s + i * 2 * s);
-                            context.lineTo(d.x + 11 * s + (i % 2) * 3 * s + 1 * s, d.y + 5 * s + i * 2 * s + 1 * s);
+                            context.moveTo(d.x + 12 * s + (i % 2) * 3 * s, d.y + 5 * s + i * 2 * s);
+                            context.lineTo(d.x + 12 * s + (i % 2) * 3 * s + 1 * s, d.y + 5 * s + i * 2 * s + 1 * s);
                             context.stroke();
                         }
                     }
