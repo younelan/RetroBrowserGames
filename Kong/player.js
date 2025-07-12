@@ -7,6 +7,7 @@ export class Player {
   static SPEED = 200; // pixels per second
   static JUMP_VELOCITY = -400; // initial jump velocity
   static GRAVITY = 800; // pixels per second squared
+  static LADDER_TOLERANCE = 5; // pixels of horizontal tolerance for ladder collision
 
   constructor({ x, y, width = Player.WIDTH, height = Player.HEIGHT, speed = Player.SPEED }) {
     this.x = x;
@@ -32,8 +33,15 @@ export class Player {
   update(level, deltaTime) {
     const dt = deltaTime / 1000; // Convert deltaTime to seconds
 
-    // Apply gravity
-    if (!this.isClimbing) {
+    // Handle vertical movement based on climbing state
+    if (this.isClimbing) {
+      // dy is already set by climbUp/climbDown methods
+      // No gravity when actively climbing
+    } else if (this.isOnLadder) {
+      // If on a ladder but not actively climbing, stop vertical movement
+      this.dy = 0;
+    } else {
+      // If not climbing and not on a ladder, apply gravity
       this.dy += Player.GRAVITY * dt;
     }
 
@@ -47,6 +55,7 @@ export class Player {
     let onPlatform = false;
     let platformYToSnapTo = -1; // Initialize with an invalid value
 
+    // Check for platform collisions based on nextY
     for (const platform of level.platforms) {
       // Check if player's horizontal bounds overlap with platform's horizontal bounds
       if (this.x < platform.end_x && this.x + this.width > platform.start_x) {
@@ -66,15 +75,16 @@ export class Player {
           platformYToSnapTo = platformTopAtPlayerX;
           onPlatform = true;
           this.currentPlatform = platform;
+          this.isJumping = false; // Ensure not jumping if landed
+          this.dy = 0; // Stop vertical movement
           break; // Player is on a platform, no need to check others
         }
       }
     }
 
+    // Apply vertical movement after checking all platforms
     if (onPlatform) {
       this.y = platformYToSnapTo - this.height; // Snap player to platform
-      this.dy = 0; // Stop vertical movement
-      this.isJumping = false;
     } else {
       this.y = nextY; // Apply the predicted y if no collision
       this.currentPlatform = null;
@@ -92,13 +102,12 @@ export class Player {
       }
     }
 
-    // Ladder collision detection and climbing logic
+    // Ladder collision detection
     this.isOnLadder = false;
     for (const ladder of level.ladders) {
-      // Check for horizontal overlap between player and ladder
-      // And if player's vertical bounds overlap with ladder's vertical bounds
-      if (this.x < ladder.x + ladder.width &&
-          this.x + this.width > ladder.x &&
+      // Check for horizontal overlap between player and ladder with tolerance
+      if (this.x + this.width > ladder.x - Player.LADDER_TOLERANCE &&
+          this.x < ladder.x + ladder.width + Player.LADDER_TOLERANCE &&
           this.y + this.height > ladder.top_y &&
           this.y < ladder.bottom_y) {
         this.isOnLadder = true;
@@ -109,7 +118,7 @@ export class Player {
     // If not on a ladder, cannot be climbing
     if (!this.isOnLadder && this.isClimbing) {
       this.isClimbing = false;
-      this.dy = 0; // Stop vertical movement if player moves off a ladder
+      // Gravity will naturally take over here
     }
 
     // Prevent player from going off screen horizontally (basic boundary)
@@ -128,7 +137,6 @@ export class Player {
   }
 
   render(ctx, scale) {
-    // Pass the player object and scale to the drawPlayer function from graphics.js
     const x = this.x * scale;
     const y = this.y * scale;
     const width = this.width * scale;
@@ -242,9 +250,7 @@ export class Player {
 
   stopClimbing() {
     this.isClimbing = false;
-    if (this.isOnLadder) {
-      this.dy = 0; // Stop vertical movement if still on ladder but stopped climbing
-    }
+    // The update method now handles stopping vertical movement if still on ladder
   }
 
   collidesWith(gameObject) {
