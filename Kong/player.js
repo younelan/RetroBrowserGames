@@ -23,6 +23,9 @@ export class Player {
     this.isClimbing = false; // Ensure climbing is false at start
     this.isOnLadder = false;
     this.currentPlatform = null; // The platform the player is currently standing on
+    this.isDroppingThroughPlatform = false; // New flag for dropping through platforms
+    this.dropThroughTimer = 0; // Timer for dropping through platforms
+    this.DROP_THROUGH_DURATION = 200; // ms to ignore platform collisions when dropping
 
     this.facing = 'right'; // 'left' or 'right' for animation
     this.frame = 0; // Current animation frame
@@ -33,10 +36,35 @@ export class Player {
   update(level, deltaTime) {
     const dt = deltaTime / 1000; // Convert deltaTime to seconds
 
+    // Update drop through timer
+    if (this.isDroppingThroughPlatform) {
+      this.dropThroughTimer -= deltaTime;
+      if (this.dropThroughTimer <= 0) {
+        this.isDroppingThroughPlatform = false;
+      }
+    }
+
+    // Determine if player is currently on a ladder
+    this.isOnLadder = false;
+    for (const ladder of level.ladders) {
+      if (this.x + this.width > ladder.x - Player.LADDER_TOLERANCE &&
+          this.x < ladder.x + ladder.width + Player.LADDER_TOLERANCE &&
+          this.y + this.height > ladder.top_y &&
+          this.y < ladder.bottom_y) {
+        this.isOnLadder = true;
+        break;
+      }
+    }
+
     // Handle vertical movement based on climbing state
     if (this.isClimbing) {
-      // dy is already set by climbUp/climbDown methods
+      // dy is set by climbUp/climbDown methods
       // No gravity when actively climbing
+      // If player moves off ladder while climbing, stop climbing
+      if (!this.isOnLadder) {
+        this.isClimbing = false;
+        this.dy = 0; // Reset dy so gravity can take over
+      }
     } else if (this.isOnLadder) {
       // If on a ladder but not actively climbing, stop vertical movement
       this.dy = 0;
@@ -55,38 +83,39 @@ export class Player {
     let onPlatform = false;
     let platformYToSnapTo = -1; // Initialize with an invalid value
 
-    // Check for platform collisions based on nextY
     for (const platform of level.platforms) {
+      // If actively dropping through a platform, skip collision with the current platform
+      if (this.isDroppingThroughPlatform && platform === this.currentPlatform) {
+        continue; // Skip this platform for collision detection
+      }
+
       // Check if player's horizontal bounds overlap with platform's horizontal bounds
       if (this.x < platform.end_x && this.x + this.width > platform.start_x) {
         const slope = (platform.end_y - platform.start_y) / (platform.end_x - platform.start_x);
         const playerCenterX = this.x + this.width / 2;
         const platformTopAtPlayerX = platform.start_y + slope * (playerCenterX - platform.start_x);
 
-        // Define a small epsilon for floating point comparisons
         const EPSILON = 1; // Small tolerance
 
-        // Check if player is falling (dy >= 0) and would land on this platform
-        // This means the player's current bottom is above or at the platform top,
-        // and the player's next bottom would be below or at the platform top.
         if (this.dy >= 0 &&
-            this.y + this.height <= platformTopAtPlayerX + EPSILON && // Current bottom is above or at platform top
-            nextY + this.height >= platformTopAtPlayerX - EPSILON) { // Next bottom is below or at platform top
+            this.y + this.height <= platformTopAtPlayerX + EPSILON &&
+            nextY + this.height >= platformTopAtPlayerX - EPSILON) {
           platformYToSnapTo = platformTopAtPlayerX;
           onPlatform = true;
           this.currentPlatform = platform;
-          this.isJumping = false; // Ensure not jumping if landed
-          this.dy = 0; // Stop vertical movement
-          break; // Player is on a platform, no need to check others
+          this.isJumping = false;
+          this.dy = 0;
+          break;
         }
       }
     }
 
     // Apply vertical movement after checking all platforms
     if (onPlatform) {
-      this.y = platformYToSnapTo - this.height; // Snap player to platform
+      this.y = platformYToSnapTo - this.height;
+      this.isDroppingThroughPlatform = false; // Reset flag when landing on a platform
     } else {
-      this.y = nextY; // Apply the predicted y if no collision
+      this.y = nextY;
       this.currentPlatform = null;
     }
 
@@ -97,21 +126,8 @@ export class Player {
     } else {
       this.animationTimer += deltaTime;
       if (this.animationTimer > this.animationInterval) {
-        this.frame = (this.frame + 1) % 2; // Cycle between 0 and 1 for walking animation
+        this.frame = (this.frame + 1) % 2;
         this.animationTimer = 0;
-      }
-    }
-
-    // Ladder collision detection
-    this.isOnLadder = false;
-    for (const ladder of level.ladders) {
-      // Check for horizontal overlap between player and ladder with tolerance
-      if (this.x + this.width > ladder.x - Player.LADDER_TOLERANCE &&
-          this.x < ladder.x + ladder.width + Player.LADDER_TOLERANCE &&
-          this.y + this.height > ladder.top_y &&
-          this.y < ladder.bottom_y) {
-        this.isOnLadder = true;
-        break;
       }
     }
 
@@ -241,10 +257,17 @@ export class Player {
   }
 
   climbDown() {
+    // Only allow climbing down if currently on a ladder
     if (this.isOnLadder) {
       this.isClimbing = true;
       this.dy = this.speed * 0.7; // Slower climbing speed
       this.dx = 0; // Stop horizontal movement while climbing
+    } else if (this.currentPlatform) {
+      // If not on a ladder but on a platform, attempt to drop through
+      this.isDroppingThroughPlatform = true;
+      this.dropThroughTimer = this.DROP_THROUGH_DURATION; // Start timer
+      this.dy = this.speed; // Give a downward push to help drop through
+      this.currentPlatform = null; // Detach from current platform
     }
   }
 
