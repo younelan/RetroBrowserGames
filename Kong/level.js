@@ -51,8 +51,8 @@ export class Level {
 
   render(ctx) {
     // Pass scale to all render methods
-    this.platforms.forEach(p => p.render(ctx, this.scale));
     this.ladders.forEach(l => l.render(ctx, this.scale));
+    this.platforms.forEach(p => p.render(ctx, this.scale));
     this.kong.render(ctx, this.scale);
     this.damsel.render(ctx, this.scale);
     this.barrels.forEach(b => b.render(ctx, this.scale));
