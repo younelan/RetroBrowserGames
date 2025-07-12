@@ -14,22 +14,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const ctx = canvas.getContext('2d');
 
   function resizeCanvas() {
-    const aspectRatio = GAME_WIDTH / GAME_HEIGHT;
-    let newWidth = window.innerWidth;
-    let newHeight = window.innerHeight;
-
-    const windowAspectRatio = newWidth / newHeight;
-
-    if (windowAspectRatio > aspectRatio) {
-      newWidth = newHeight * aspectRatio;
-    } else {
-      newHeight = newWidth / aspectRatio;
-    }
-
     canvas.width = GAME_WIDTH;
     canvas.height = GAME_HEIGHT;
-    canvas.style.width = `${newWidth}px`;
-    canvas.style.height = `${newHeight}px`;
   }
 
   window.addEventListener('resize', resizeCanvas);
@@ -45,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let barrelTimer = 0;
   let isGameOver = false;
   let isGameWon = false;
+  let lastTime = 0;
 
   function init() {
     currentLevel = 1;
@@ -54,24 +41,28 @@ document.addEventListener('DOMContentLoaded', () => {
     barrelTimer = 0;
     isGameOver = false;
     isGameWon = false;
+    lastTime = 0;
 
     loadLevel(currentLevel).then(levelData => {
       player = createPlayer(levelData.player_start);
       window.player = player;
-      gameLoop(levelData);
+      requestAnimationFrame((timestamp) => gameLoop(timestamp, levelData));
     });
   }
 
-  function gameLoop(levelData) {
+  function gameLoop(timestamp, levelData) {
     if (isGameOver || isGameWon) {
       return;
     }
 
-    updatePlayer(player, levelData);
-    score += updateBarrels(barrels, levelData, player, canvas.height);
+    const deltaTime = timestamp - lastTime;
+    lastTime = timestamp;
 
-    barrelTimer++;
-    if (barrelTimer > (levelData.barrel_release_frequency || DEFAULT_BARREL_RELEASE_FREQUENCY)) {
+    updatePlayer(player, levelData, deltaTime);
+    score += updateBarrels(barrels, levelData, player, canvas.height, deltaTime);
+
+    barrelTimer += deltaTime;
+    if (barrelTimer > (levelData.barrel_release_frequency || DEFAULT_BARREL_RELEASE_FREQUENCY) * 10) { // Scale frequency by 10 for milliseconds
       barrels.push(createBarrel(levelData));
       barrelTimer = 0;
     }
@@ -101,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     render(ctx, player, barrels, levelData, score, lives);
 
-    requestAnimationFrame(() => gameLoop(levelData));
+    requestAnimationFrame((timestamp) => gameLoop(timestamp, levelData));
   }
 
   document.addEventListener('keydown', () => {

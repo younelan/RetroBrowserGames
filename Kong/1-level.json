@@ -1,0 +1,25 @@
+{
+  "name": "Stage 1",
+  "time": 5000,
+  "player_start": { "x": 50, "y": 550 },
+  "pauline_pos": { "x": 700, "y": 60 },
+  "dk_pos": { "x": 100, "y": 120 },
+  "barrel_speed": 1, 
+  "barrel_release_frequency": 200,
+  "platforms": [
+    { "start_x": 0, "start_y": 610, "end_x": 800, "end_y": 600 },
+    { "start_x": 0, "start_y": 500, "end_x": 750, "end_y": 510 },
+    { "start_x": 50, "start_y": 415, "end_x": 800, "end_y": 400 },
+    { "start_x": 0, "start_y": 200, "end_x": 700, "end_y": 200 },
+    { "start_x": 220, "start_y": 100, "end_x": 800, "end_y": 100 }
+  ],
+  "ladders": [
+    { "x": 300, "top_y": 510, "bottom_y": 600 },
+    { "x": 100, "top_y": 420, "bottom_y": 500, "broken": true },
+    { "x": 400, "top_y": 200, "bottom_y": 410 },
+        { "x": 650, "top_y": 100, "bottom_y": 200 }
+  ],
+  "items": [
+    { "type": "hammer", "x": 150, "y": 480 }
+  ]
+}

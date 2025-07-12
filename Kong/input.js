@@ -16,8 +16,8 @@ document.addEventListener('keydown', (e) => {
       if (player.isOnLadder) {
         player.isClimbing = true;
         player.dy = -player.speed;
-      } else if (!player.isJumping) { // Allow jump if not on ladder
-        player.dy = -10; // Increased jump strength
+      } else if (!player.isJumping && player.currentPlatform && player.dy === 0) { // Only jump if on a platform
+        player.dy = -400; // Jump strength
         player.isJumping = true;
       }
       break;
@@ -29,8 +29,8 @@ document.addEventListener('keydown', (e) => {
       }
       break;
     case ' ': // Space
-      if (!player.isJumping && !player.isClimbing) {
-        player.dy = -10; // Increased jump strength
+      if (!player.isJumping && !player.isClimbing && player.currentPlatform && player.dy === 0) { // Only jump if on a platform
+        player.dy = -400; // Jump strength
         player.isJumping = true;
       }
       break;
@@ -133,8 +133,8 @@ document.addEventListener('touchend', (e) => {
 
   // If it was a tap (small movement), trigger jump
   if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
-    if (!player.isJumping && !player.isClimbing) {
-      player.dy = -10; // Jump strength
+    if (!player.isJumping && !player.isClimbing && player.currentPlatform && player.dy === 0) { // Only jump if on a platform
+      player.dy = -400; // Jump strength
       player.isJumping = true;
     }
   }

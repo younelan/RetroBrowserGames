@@ -25,6 +25,13 @@ The game will support multiple input methods for maximum accessibility:
     *   Dragging up or down a ladder initiates climbing.
     *   A quick upward flick will trigger a jump.
 
+### Player Movement Rules
+
+*   **Jump Height:** The player can jump approximately their own height. Jumps are designed to allow traversal across the current platform, not to reach platforms directly above.
+*   **Mid-Air Jumps:** The player cannot perform multiple jumps while in the air. A jump can only be initiated when the player is on a platform.
+*   **Platform Collision:** Upon landing, the player will always remain on the platform they jumped from or landed on, without falling through.
+*   **Ladder Movement:** The player can move both up and down ladders. Movement on ladders is restricted to vertical motion.
+
 ### Platforms and Ladders
 
 *   **Platforms:** These are the main surfaces for movement. They will be implemented as line segments and can be either perfectly horizontal or diagonal, faithfully recreating the original game's level design.
@@ -32,7 +39,7 @@ The game will support multiple input methods for maximum accessibility:
 
 ### Barrels, Obstacles, and Enemies
 
-*   **Rolling Barrels:** The primary obstacle. Thrown by Donkey Kong from his perch. They roll along platforms and descend ladders.
+*   **Rolling Barrels:** The primary obstacle. Thrown by Donkey Kong from his perch. They roll along platforms and descend ladders, always moving towards the lower side of an inclined platform.
 *   **Blue Barrels:** Identical to rolling barrels but visually distinct.
 *   **Wild Barrels:** Bounce diagonally and unpredictably.
 *   **Fireballs (Firefoxes):** Emerge from oil drums. They are intelligent enemies that actively track the player.
