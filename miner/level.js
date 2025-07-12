@@ -8,13 +8,10 @@ class Level {
         this.dirtScheme = levelData.dirtScheme || DEFAULT_DIRT_SCHEME; // Store dirt color scheme
         this.surfaceScheme = levelData.surfaceScheme || DEFAULT_SURFACE_SCHEME; // Store surface color scheme
         this.movingPlatformScheme = levelData.movingPlatformScheme || DEFAULT_MOVING_PLATFORM_SCHEME; // Store moving platform color scheme
-        this.platforms = [];
+        this.platforms = []; // All platform tile objects (Wall, Dirt, MovingWalkway)
         this.keys = [];
         this.enemies = [];
         this.hazards = [];
-        this.dirtPlatforms = []; // All dirt platforms (regular and 2-layer)
-        this.crumblingPlatforms = []; // All crumbling dirt platforms
-        this.movingPlatformObjects = []; // MovingWalkway objects for rendering
         this.decorativeElements = [];
         this.ladders = []; // Array to store ladder tiles
         this.portal = null;
@@ -29,11 +26,7 @@ class Level {
         this.levelWidth = this.mapRows[0].length;
         this.levelHeight = this.mapRows.length;
 
-        // Unified platform arrays based on TILE_ATTRIBUTES
-        this.allPlatforms = []; // All platforms regardless of type
-        this.solidPlatforms = []; // All solid platforms (isPlatform && !isMoving)
-        this.movingPlatforms = []; // All moving platforms (isPlatform && isMoving)
-        this.crumblePlatforms = []; // All crumbling platforms (isCrumble)
+        // Platform arrays will be derived from the unified platforms array
 
         // Store map rows for checking adjacent tiles
         this.mapRows = this.map.trim().split('\n');
@@ -48,6 +41,23 @@ class Level {
         this.maxFall = levelData.maxFall || 0; // Default: no fall damage (0 = disabled)
 
         this.parseMap();
+    }
+
+    // Getter to provide collision objects for enemies
+    get allPlatforms() {
+        return this.platforms.filter(p => !p.crumbled); // Exclude crumbled platforms from collision
+    }
+
+    get solidPlatforms() {
+        return this.platforms.filter(p => !['<', '>', '-', ';'].includes(p.type) && !p.crumbled);
+    }
+
+    get movingPlatforms() {
+        return this.platforms.filter(p => (p.type === '<' || p.type === '>') && !p.crumbled);
+    }
+
+    get crumblePlatforms() {
+        return this.platforms.filter(p => (p.type === '-' || p.type === ';') && !p.crumbled);
     }
 
     // Helper method to darken a color for gradient effects
@@ -96,36 +106,31 @@ class Level {
                         decay: tileAttr.isCrumble ? 0 : undefined
                     };
 
-                    // Add to appropriate arrays
-                    this.allPlatforms.push(platform);
-                    
-                    if (tileAttr.isCrumble) {
-                        this.crumblePlatforms.push(platform);
-                        // this.crumblingPlatforms.push(platform); // Handled by Dirt class now
-                    } else if (tileAttr.isMoving) {
-                        this.movingPlatforms.push(platform);
-                    } else {
-                        this.solidPlatforms.push(platform);
-                    }
+                    // Platform arrays are now computed via getters
 
-                    // Keep legacy arrays for rendering
+                    // Create platform tile objects
+                    let platformTile = null;
                     switch (char) {
                         case 'X':
                         case '_':
-                            this.platforms.push(new Wall(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.brickScheme));
+                            platformTile = new Wall(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.brickScheme);
                             break;
                         case '=':
                         case ':':
-                            this.dirtPlatforms.push(new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme));
+                            platformTile = new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme);
                             break;
                         case ';':
                         case '-':
-                            this.crumblingPlatforms.push(new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme, 0));
+                            platformTile = new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme, 0);
                             break;
                         case '<':
                         case '>':
-                            this.movingPlatformObjects.push(new MovingWalkway(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this));
+                            platformTile = new MovingWalkway(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this);
                             break;
+                    }
+                    
+                    if (platformTile) {
+                        this.platforms.push(platformTile);
                     }
                 }
 
@@ -237,52 +242,38 @@ class Level {
     }
 
     setPlayerReference(player) {
-        // Set player reference for all crumbling dirt tiles
-        this.crumblingPlatforms.forEach(dirt => {
-            dirt.setPlayer(player);
+        // Set player reference for crumbling platforms
+        this.platforms.forEach(platform => {
+            if (platform.setPlayer && (platform.type === '-' || platform.type === ';')) {
+                platform.setPlayer(player);
+            }
         });
     }
 
     setLevelReference() {
         // Set level reference for tiles that need it
-        const allTiles = [
-            ...this.platforms,
-            ...this.dirtPlatforms,
-            ...this.crumblingPlatforms,
-            ...this.movingPlatformObjects
-        ];
-        
-        allTiles.forEach(tile => {
-            if (tile.setLevel) {
-                tile.setLevel(this);
+        this.platforms.forEach(platform => {
+            if (platform.setLevel) {
+                platform.setLevel(this);
             }
         });
     }
 
     updateTiles() {
-        // Update all tiles that have update methods
-        const allTiles = [
-            ...this.crumblingPlatforms,
-            ...this.movingPlatformObjects
-        ];
-        
-        allTiles.forEach(tile => {
-            if (tile.update) {
-                tile.update();
+        // Update all platforms that have update methods
+        this.platforms.forEach(platform => {
+            if (platform.update) {
+                platform.update();
             }
         });
 
-        // Remove crumbled tiles from collision arrays
-        this.crumblePlatforms = this.crumblePlatforms.filter(platform => {
-            // Find the corresponding dirt tile
-            const dirtTile = this.crumblingPlatforms.find(tile => 
-                tile.x === platform.x && tile.y === platform.y
-            );
-            return !dirtTile || !dirtTile.crumbled;
+        // Remove crumbled tiles from platforms array
+        this.platforms = this.platforms.filter(platform => {
+            // Keep platform if it doesn't have crumbled property or if it's not crumbled
+            return !platform.crumbled;
         });
 
-        // Remove crumbled tiles from rendering arrays
-        this.crumblingPlatforms = this.crumblingPlatforms.filter(tile => !tile.crumbled);
+        // Collision arrays are automatically updated via getters
     }
 
     draw(context, frameCounter, allKeysCollected) {
@@ -310,11 +301,13 @@ class Level {
             }
         }
 
-        // Draw platforms using their individual tile renderers
-        this.platforms.forEach(p => p.draw(context));
-        this.dirtPlatforms.forEach(d => d.draw(context));
-        this.crumblingPlatforms.forEach(p => p.draw(context));
-        this.movingPlatformObjects.forEach(m => m.draw(context, frameCounter));
+        // Draw all platforms using their draw methods
+        this.platforms.forEach(platform => {
+            if (platform.draw) {
+                // Pass frameCounter for MovingWalkway animations
+                platform.draw(context, frameCounter);
+            }
+        });
 
         // Draw keys
         this.keys.forEach(k => {

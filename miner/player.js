@@ -394,31 +394,15 @@ class Player {
                     this.velocityY = 0;
                     this.isJumping = false;
                     onGroundThisFrame = true;
-                    platform.decay++; // Start decay
+                    // Decay is now handled by the platform's own update() method
                 } 
             }
         };
 
         this.onGround = onGroundThisFrame;
 
-        // Update crumbling platforms decay
-        level.crumblePlatforms = level.crumblePlatforms.filter(p => {
-            if (p.decay > 0) {
-                p.decay++;
-                if (p.decay > 30) { // Disappear after 30 frames of decay
-                    // Also remove from legacy array
-                    const index = level.crumblingPlatforms.indexOf(p);
-                    if (index > -1) level.crumblingPlatforms.splice(index, 1);
-                    return false; // Remove platform
-                }
-            }
-            return true;
-        });
-        
-        // Update legacy array as well
-        level.crumblingPlatforms = level.crumblingPlatforms.filter(p => {
-            return p.decay === undefined || p.decay <= 30;
-        });
+        // Crumbling platform decay is now handled automatically by each platform's update() method
+        // and removed from the unified platforms array via level.updateTiles()
     }
 
     checkCollision(rect) {
