@@ -13,6 +13,8 @@ const jsFiles = [
     "spiderEnemy.js",
     "hazard.js",
     "movingWalkway.js",
+    "dirt.js",
+    "wall.js",
     "level.js",
     "levels.js",
     "game.js"
