@@ -86,9 +86,10 @@ class Game {
             }
             if (e.key === 'ArrowDown') this.input.down = true;
             if (e.key === ' ') {
-                this.input.jump = true;
                 if (this.gameState === 'START' || this.gameState === 'GAME_OVER' || this.gameState === 'WIN') {
                     this.resetGame();
+                } else if (this.gameState === 'PLAYING') {
+                    this.input.jump = true;
                 }
             }
         });
@@ -101,6 +102,80 @@ class Game {
             }
             if (e.key === 'ArrowDown') this.input.down = false;
             if (e.key === ' ') this.input.jump = false;
+        });
+
+        // Mouse controls
+        let mouseActive = false;
+        let mouseStartX = 0;
+        let mouseStartY = 0;
+
+        this.canvas.addEventListener('mousedown', (e) => {
+            mouseStartX = e.clientX;
+            mouseStartY = e.clientY;
+            mouseActive = true;
+
+            if (this.gameState === 'START' || this.gameState === 'GAME_OVER' || this.gameState === 'WIN') {
+                this.resetGame();
+            }
+        });
+
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (!mouseActive) return;
+            
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
+            // Calculate delta from mouse start point
+            const deltaX = mouseX - mouseStartX;
+            const deltaY = mouseY - mouseStartY;
+            
+            // Simple, reliable thresholds
+            const moveThreshold = 30;
+            const jumpThreshold = 40;
+            
+            // Reset all inputs first
+            this.input.left = false;
+            this.input.right = false;
+            this.input.jump = false;
+            this.input.up = false;
+            this.input.down = false;
+            
+            // Horizontal movement
+            if (deltaX < -moveThreshold) {
+                this.input.left = true;
+            } else if (deltaX > moveThreshold) {
+                this.input.right = true;
+            }
+            
+            // Vertical movement
+            if (deltaY < -jumpThreshold) {
+                // Check if player is on ladder to decide between jump and climb
+                if (this.player && this.player.isOnLadder && this.player.isOnLadder(this.level)) {
+                    this.input.up = true; // Climb up on ladder
+                } else {
+                    this.input.jump = true; // Jump when not on ladder
+                }
+            } else if (deltaY > jumpThreshold) {
+                this.input.down = true; // Climb down on ladder (no effect when not on ladder)
+            }
+        });
+
+        this.canvas.addEventListener('mouseup', (e) => {
+            mouseActive = false;
+            this.input.left = false;
+            this.input.right = false;
+            this.input.jump = false;
+            this.input.up = false;
+            this.input.down = false;
+        });
+
+        this.canvas.addEventListener('mouseleave', (e) => {
+            mouseActive = false;
+            this.input.left = false;
+            this.input.right = false;
+            this.input.jump = false;
+            this.input.up = false;
+            this.input.down = false;
         });
 
         // Simplified, reliable touch controls
