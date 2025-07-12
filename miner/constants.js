@@ -203,6 +203,7 @@ const MOVING_PLATFORM_COLOR_SCHEMES = {
 };
 
 const DEFAULT_MOVING_PLATFORM_SCHEME = 'gray';
+const RAINBOW_COLORS = ['#FFD700','#FF6B35', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
 
 const TILE_ATTRIBUTES = {
     ' ': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false },
@@ -236,3 +237,6 @@ const TILE_ATTRIBUTES = {
     'L': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false, isLadder: true },  // Ladder
     '@': { isSolid: false, isPlatform: false, isHazard: false, isMoving: false, isCrumble: false }   // Player Start
 };
+
+// Default key colors
+const DEFAULT_KEY_COLORS = ['#FFD700'];

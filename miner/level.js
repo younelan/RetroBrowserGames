@@ -10,6 +10,8 @@ class Level {
         this.movingPlatformScheme = levelData.movingPlatformScheme || DEFAULT_MOVING_PLATFORM_SCHEME; // Store moving platform color scheme
         this.platforms = []; // All platform tile objects (Wall, Dirt, MovingWalkway)
         this.keys = [];
+        this.keyCounter = 0; // Counter for cycling through key colors
+        this.keyColors = levelData.keyColors || DEFAULT_KEY_COLORS; // Use level-specific or default colors
         this.enemies = [];
         this.hazards = [];
         this.decorativeElements = [];
@@ -140,7 +142,8 @@ class Level {
                         this.playerStart = { x: worldX, y: worldY };
                         break;
                     case '+':
-                        this.keys.push({ x: worldX, y: worldY, width: TILE_SIZE, height: TILE_SIZE, type: char });
+                        this.keys.push(new Key(worldX, worldY, TILE_SIZE, TILE_SIZE, this.keyCounter, this.keyColors));
+                        this.keyCounter++; // Increment counter for next key
                         break;
                     case '*':
                         this.portal = { x: worldX, y: worldY - TILE_SIZE, width: TILE_SIZE, height: TILE_SIZE * 2, type: char };
@@ -309,41 +312,9 @@ class Level {
             }
         });
 
-        // Draw keys
-        this.keys.forEach(k => {
-            context.save(); // Save current context state
-
-            // Translate to the center of the key's tile for rotation
-            const centerX = k.x + k.width / 2;
-            const centerY = k.y + k.height / 2;
-            context.translate(centerX, centerY);
-
-            // Rotate by -90 degrees (counter-clockwise) to make a vertical key appear horizontal
-            context.rotate(-Math.PI / 2);
-
-            // Translate back so that drawing coordinates are relative to the top-left of the key's *original* bounding box
-            // This means (0,0) is now the top-left of the key's tile, but the canvas is rotated.
-            context.translate(-k.width / 2, -k.height / 2);
-
-            context.fillStyle = 'gold';
-            const s = k.width / 16; // Scale factor for a 16x16 sprite
-
-            // Key Bow (circular outline)
-            context.beginPath();
-            context.arc(8 * s, 4 * s, 4 * s, 0, Math.PI * 2); // Center at (8s, 4s), radius 4s
-            context.strokeStyle = 'gold';
-            context.lineWidth = 2;
-            context.stroke();
-
-            // Key Shaft (rectangle)
-            context.fillStyle = 'gold';
-            context.fillRect(7.5 * s, 8 * s, 1 * s, 8 * s);
-
-            // Key Bit (teeth)
-            context.fillRect(6 * s, 14 * s, 1 * s, 2 * s);
-            context.fillRect(9 * s, 14 * s, 1 * s, 2 * s);
-
-            context.restore(); // Restore context to original state
+        // Draw keys using their own draw methods
+        this.keys.forEach(key => {
+            key.draw(context);
         });
 
         // Draw portal

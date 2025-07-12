@@ -6,7 +6,7 @@ const levels = [
         surfaceScheme: 'ice',
         dirtScheme: 'red',
         brickScheme: 'red', // Default red/brown brick scheme
-        movingPlatformScheme: 'gray', // Gray moving platforms (default)
+        movingPlatformScheme: 'green', // Gray moving platforms (default)
         map: `
 _         +                 +  _
 _                              _
@@ -22,7 +22,7 @@ _                              _
 _                              _
 _                              _
 _====                          _
-_                    P         _
+_                              _
 _         4       ____ ========_
 _   ============               _
 _                              _
