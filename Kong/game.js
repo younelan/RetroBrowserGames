@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let isGameOver = false;
   let isGameWon = false;
   let lastTime = 0;
+  let animationFrame = 0;
 
   function init() {
     currentLevel = 1;
@@ -42,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     isGameOver = false;
     isGameWon = false;
     lastTime = 0;
+    animationFrame = 0;
 
     loadLevel(currentLevel).then(levelData => {
       player = createPlayer(levelData.player_start);
@@ -57,6 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deltaTime = timestamp - lastTime;
     lastTime = timestamp;
+    animationFrame++; // Increment animation frame
 
     updatePlayer(player, levelData, deltaTime);
     score += updateBarrels(barrels, levelData, player, canvas.height, deltaTime);
@@ -90,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
-    render(ctx, player, barrels, levelData, score, lives);
+    render(ctx, player, barrels, levelData, score, lives, animationFrame);
 
     requestAnimationFrame((timestamp) => gameLoop(timestamp, levelData));
   }

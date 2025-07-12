@@ -1,7 +1,7 @@
 import { drawPlayer, drawDonkeyKong, drawPlatforms, drawBarrels, drawPauline, drawLadders } from './graphics.js';
 import { GAME_WIDTH, GAME_HEIGHT } from './game.js';
 
-export function render(ctx, player, barrels, levelData, score, lives) {
+export function render(ctx, player, barrels, levelData, score, lives, animationFrame = 0) {
   // Clear the canvas
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -11,8 +11,8 @@ export function render(ctx, player, barrels, levelData, score, lives) {
   // Draw ladders
   drawLadders(ctx, levelData.ladders);
 
-  // Draw Donkey Kong
-  drawDonkeyKong(ctx, levelData.dk_pos);
+  // Draw Donkey Kong with animation
+  drawDonkeyKong(ctx, levelData.dk_pos, animationFrame);
 
   // Draw Pauline
   drawPauline(ctx, levelData.pauline_pos);
