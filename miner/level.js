@@ -12,15 +12,9 @@ class Level {
         this.keys = [];
         this.enemies = [];
         this.hazards = [];
-        this.crumblingPlatforms = [];
-        this.brickFloors = [];
-        this.dirtFloors = [];
-        this.grassFloors = [];
-        this.grassCrumbleFloors = [];
-        this.redSandFloors = [];
-        this.redSandCrumbleFloors = [];
-        this.movingLeftFloors = [];
-        this.movingRightFloors = [];
+        this.dirtPlatforms = []; // All dirt platforms (regular and 2-layer)
+        this.crumblingPlatforms = []; // All crumbling dirt platforms
+        this.movingPlatformObjects = []; // MovingWalkway objects for rendering
         this.decorativeElements = [];
         this.ladders = []; // Array to store ladder tiles
         this.portal = null;
@@ -109,13 +103,7 @@ class Level {
                         this.crumblePlatforms.push(platform);
                         // this.crumblingPlatforms.push(platform); // Handled by Dirt class now
                     } else if (tileAttr.isMoving) {
-                        // Create MovingWalkway object instead of generic platform
                         this.movingPlatforms.push(platform);
-                        if (char === '<') {
-                            this.movingLeftFloors.push(new MovingWalkway(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this));
-                        } else if (char === '>') {
-                            this.movingRightFloors.push(new MovingWalkway(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this));
-                        }
                     } else {
                         this.solidPlatforms.push(platform);
                     }
@@ -123,28 +111,20 @@ class Level {
                     // Keep legacy arrays for rendering
                     switch (char) {
                         case 'X':
+                        case '_':
                             this.platforms.push(new Wall(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.brickScheme));
                             break;
-                        case '_':
-                            this.brickFloors.push(new Wall(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.brickScheme));
-                            break;
                         case '=':
-                            this.dirtFloors.push(new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme));
-                            break;
                         case ':':
-                            this.grassFloors.push(new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme));
+                            this.dirtPlatforms.push(new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme));
                             break;
                         case ';':
-                            this.grassCrumbleFloors.push(new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme, 0));
-                            break;
                         case '-':
                             this.crumblingPlatforms.push(new Dirt(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this.dirtScheme, this.surfaceScheme, 0));
                             break;
                         case '<':
-                            // Handled by MovingWalkway now
-                            break;
                         case '>':
-                            // Handled by MovingWalkway now
+                            this.movingPlatformObjects.push(new MovingWalkway(worldX, worldY, TILE_SIZE, TILE_SIZE, char, this));
                             break;
                     }
                 }
@@ -258,9 +238,6 @@ class Level {
 
     setPlayerReference(player) {
         // Set player reference for all crumbling dirt tiles
-        this.grassCrumbleFloors.forEach(dirt => {
-            dirt.setPlayer(player);
-        });
         this.crumblingPlatforms.forEach(dirt => {
             dirt.setPlayer(player);
         });
@@ -270,13 +247,9 @@ class Level {
         // Set level reference for tiles that need it
         const allTiles = [
             ...this.platforms,
-            ...this.brickFloors,
-            ...this.dirtFloors,
-            ...this.grassFloors,
-            ...this.grassCrumbleFloors,
+            ...this.dirtPlatforms,
             ...this.crumblingPlatforms,
-            ...this.movingLeftFloors,
-            ...this.movingRightFloors
+            ...this.movingPlatformObjects
         ];
         
         allTiles.forEach(tile => {
@@ -289,10 +262,8 @@ class Level {
     updateTiles() {
         // Update all tiles that have update methods
         const allTiles = [
-            ...this.grassCrumbleFloors,
             ...this.crumblingPlatforms,
-            ...this.movingLeftFloors,
-            ...this.movingRightFloors
+            ...this.movingPlatformObjects
         ];
         
         allTiles.forEach(tile => {
@@ -304,14 +275,13 @@ class Level {
         // Remove crumbled tiles from collision arrays
         this.crumblePlatforms = this.crumblePlatforms.filter(platform => {
             // Find the corresponding dirt tile
-            const dirtTile = [...this.grassCrumbleFloors, ...this.crumblingPlatforms].find(tile => 
+            const dirtTile = this.crumblingPlatforms.find(tile => 
                 tile.x === platform.x && tile.y === platform.y
             );
             return !dirtTile || !dirtTile.crumbled;
         });
 
         // Remove crumbled tiles from rendering arrays
-        this.grassCrumbleFloors = this.grassCrumbleFloors.filter(tile => !tile.crumbled);
         this.crumblingPlatforms = this.crumblingPlatforms.filter(tile => !tile.crumbled);
     }
 
@@ -340,9 +310,11 @@ class Level {
             }
         }
 
-        this.platforms.forEach(p => {
-            p.draw(context);
-        });
+        // Draw platforms using their individual tile renderers
+        this.platforms.forEach(p => p.draw(context));
+        this.dirtPlatforms.forEach(d => d.draw(context));
+        this.crumblingPlatforms.forEach(p => p.draw(context));
+        this.movingPlatformObjects.forEach(m => m.draw(context, frameCounter));
 
         // Draw keys
         this.keys.forEach(k => {
@@ -501,41 +473,6 @@ class Level {
 
         // Draw hazards
         this.hazards.forEach(h => h.draw(context, frameCounter));
-
-        // Draw crumbling platforms with dirt-like appearance (noticeably darker than dirt)
-        this.crumblingPlatforms.forEach(p => {
-            p.draw(context);
-        });
-
-        // Draw brick floors with small brick pattern
-        this.brickFloors.forEach(b => {
-            b.draw(context);
-        });
-
-        // Draw dirt floors with patchy surface and jagged bottom edge
-        this.dirtFloors.forEach(d => {
-            d.draw(context);
-        });
-
-        // Draw grass floors (dirt base with a surface layer on top)
-        this.grassFloors.forEach(g => {
-            g.draw(context);
-        });
-
-        // Draw grass crumble floors (dirt base with a surface layer on top, crumbles)
-        this.grassCrumbleFloors.forEach(m => {
-            m.draw(context);
-        });
-
-        // Draw moving left floors (conveyor belts)
-        this.movingLeftFloors.forEach(l => {
-            l.draw(context, frameCounter);
-        });
-
-        // Draw moving right floors (conveyor belts)
-        this.movingRightFloors.forEach(r => {
-            r.draw(context, frameCounter);
-        });
 
         // Update spiders
         this.spiders.forEach(spider => {
