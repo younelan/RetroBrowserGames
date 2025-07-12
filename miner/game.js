@@ -63,6 +63,12 @@ class Game {
     loadLevel(levelIndex) {
         this.level = new Level(levels[levelIndex]);
         this.player = new Player(this.level.playerStart.x, this.level.playerStart.y);
+        
+        // Set level reference for tiles that need it
+        this.level.setLevelReference();
+        
+        // Set player reference for crumbling dirt tiles
+        this.level.setPlayerReference(this.player);
 
         // Set background color and oxygen based on level configuration
         this.backgroundColor = this.level.backgroundColor || 'black'; // Default to black
@@ -202,6 +208,7 @@ class Game {
 
     update() {
         this.player.update(this.input, this.level);
+        this.level.updateTiles(); // Update all tiles
         this.level.enemies.forEach(e => e.update(this.level));
 
         // Oxygen depletion

@@ -256,6 +256,65 @@ class Level {
         }
     }
 
+    setPlayerReference(player) {
+        // Set player reference for all crumbling dirt tiles
+        this.grassCrumbleFloors.forEach(dirt => {
+            dirt.setPlayer(player);
+        });
+        this.crumblingPlatforms.forEach(dirt => {
+            dirt.setPlayer(player);
+        });
+    }
+
+    setLevelReference() {
+        // Set level reference for tiles that need it
+        const allTiles = [
+            ...this.platforms,
+            ...this.brickFloors,
+            ...this.dirtFloors,
+            ...this.grassFloors,
+            ...this.grassCrumbleFloors,
+            ...this.crumblingPlatforms,
+            ...this.movingLeftFloors,
+            ...this.movingRightFloors
+        ];
+        
+        allTiles.forEach(tile => {
+            if (tile.setLevel) {
+                tile.setLevel(this);
+            }
+        });
+    }
+
+    updateTiles() {
+        // Update all tiles that have update methods
+        const allTiles = [
+            ...this.grassCrumbleFloors,
+            ...this.crumblingPlatforms,
+            ...this.movingLeftFloors,
+            ...this.movingRightFloors
+        ];
+        
+        allTiles.forEach(tile => {
+            if (tile.update) {
+                tile.update();
+            }
+        });
+
+        // Remove crumbled tiles from collision arrays
+        this.crumblePlatforms = this.crumblePlatforms.filter(platform => {
+            // Find the corresponding dirt tile
+            const dirtTile = [...this.grassCrumbleFloors, ...this.crumblingPlatforms].find(tile => 
+                tile.x === platform.x && tile.y === platform.y
+            );
+            return !dirtTile || !dirtTile.crumbled;
+        });
+
+        // Remove crumbled tiles from rendering arrays
+        this.grassCrumbleFloors = this.grassCrumbleFloors.filter(tile => !tile.crumbled);
+        this.crumblingPlatforms = this.crumblingPlatforms.filter(tile => !tile.crumbled);
+    }
+
     draw(context, frameCounter, allKeysCollected) {
         // Ensure background color covers all tiles
         if (this.backgroundColor) {

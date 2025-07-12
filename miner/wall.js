@@ -1,10 +1,6 @@
-class Wall {
+class Wall extends Tile {
     constructor(x, y, width, height, type, brickScheme) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.type = type;
+        super(x, y, width, height, type);
         this.brickScheme = brickScheme;
     }
 

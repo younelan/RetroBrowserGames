@@ -1,13 +1,25 @@
-class Dirt {
+class Dirt extends Tile {
     constructor(x, y, width, height, type, dirtScheme, surfaceScheme, decay = 0) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.type = type;
+        super(x, y, width, height, type);
         this.dirtScheme = dirtScheme;
         this.surfaceScheme = surfaceScheme;
         this.decay = decay;
+        this.crumbled = false; // Track if tile has fully crumbled
+    }
+
+    update() {
+        // Only process crumbling logic for crumbling dirt types
+        if ((this.type === '-' || this.type === ';') && this.player && !this.crumbled) {
+            // Check if player is standing on this tile
+            if (this.checkCollision(this.player)) {
+                if (this.player.velocityY >= 0) { // Player is falling or stationary
+                    this.decay++;
+                    if (this.decay > 30) {
+                        this.crumbled = true;
+                    }
+                }
+            }
+        }
     }
 
     // Helper function to darken a color for gradient effects
@@ -28,6 +40,11 @@ class Dirt {
     }
 
     draw(context) {
+        // Skip rendering if the tile is fully crumbled
+        if (this.crumbled) {
+            return;
+        }
+
         const s = TILE_SIZE / 16; // Scale factor for drawing details
 
         // Determine if it's a crumbling platform
