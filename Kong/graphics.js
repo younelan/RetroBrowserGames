@@ -363,46 +363,102 @@ export function drawPlatforms(ctx, platforms) {
   ctx.restore();
 }
 
-export function drawBarrels(ctx, barrels) {
+export function drawBarrels(ctx, barrels, animationFrame = 0) {
   barrels.forEach(barrel => {
     const x = barrel.x;
     const y = barrel.y;
-    const width = barrel.width;
-    const height = barrel.height;
+    const w = barrel.width;
+    const h = barrel.height;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    const depth = 8;
+    const rot = ((barrel.x + animationFrame * 2) / 32) % (2 * Math.PI);
 
-    // Main barrel body
-    ctx.fillStyle = '#8B4513'; // SaddleBrown
-    ctx.fillRect(x, y, width, height);
-
-    // Top and bottom bands
-    ctx.strokeStyle = '#696969'; // DimGray
-    ctx.lineWidth = 3;
+    ctx.save();
+    // Draw shadow on ground
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.moveTo(x, y + height * 0.1);
-    ctx.lineTo(x + width, y + height * 0.1);
-    ctx.stroke();
+    ctx.ellipse(cx + depth, cy + h * 0.7, w * 0.6, h * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
+    // Draw barrel body (side cylinder) with bold wood texture
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rot);
+    // Stronger wood gradient
+    const grad = ctx.createLinearGradient(-w/2, 0, w/2, 0);
+    grad.addColorStop(0, '#5a2d0c');
+    grad.addColorStop(0.15, '#a0522d');
+    grad.addColorStop(0.5, '#e2a86b');
+    grad.addColorStop(0.85, '#a0522d');
+    grad.addColorStop(1, '#5a2d0c');
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.moveTo(x, y + height * 0.9);
-    ctx.lineTo(x + width, y + height * 0.9);
-    ctx.stroke();
+    ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.shadowColor = '#442200';
+    ctx.shadowBlur = 6;
+    ctx.fill();
+    ctx.shadowBlur = 0;
 
-    // Vertical planks (simplified)
-    ctx.strokeStyle = '#A0522D'; // Sienna
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 5; i++) {
+    // Bold wood grain lines
+    ctx.save();
+    ctx.strokeStyle = 'rgba(80,40,10,0.55)';
+    ctx.lineWidth = 2.2;
+    for (let i = -2; i <= 2; i++) {
       ctx.beginPath();
-      ctx.moveTo(x + (i * width / 4), y);
-      ctx.lineTo(x + (i * width / 4), y + height);
+      ctx.ellipse(0, 0, w * 0.32 + i * 2, h * 0.22 + i, 0, Math.PI * 0.15, Math.PI * 1.85);
+      ctx.stroke();
+    }
+    // Big knots
+    ctx.beginPath();
+    ctx.arc(-w * 0.18, h * 0.08, 3, 0, Math.PI * 2);
+    ctx.arc(w * 0.13, -h * 0.12, 2.2, 0, Math.PI * 2);
+    ctx.arc(0, 0, 1.8, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+
+    // Staves (vertical lines for wood planks, high contrast)
+    ctx.strokeStyle = 'rgba(60,30,10,0.7)';
+    ctx.lineWidth = 2.2;
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(angle) * w * 0.38, Math.sin(angle) * h * 0.38);
+      ctx.lineTo(Math.cos(angle) * w * 0.48, Math.sin(angle) * h * 0.48);
       ctx.stroke();
     }
 
-    // Highlight for rounded effect
+    // Barrel bands (metal hoops)
+    ctx.strokeStyle = '#d2cfc7';
+    ctx.lineWidth = 3;
+    for (let i = -1; i <= 1; i++) {
+      ctx.beginPath();
+      ctx.ellipse(0, i * h * 0.18, w / 2, h * 0.22, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Barrel rim (dark)
     ctx.beginPath();
-    ctx.ellipse(x + width / 2, y + height / 2, width / 2 * 0.8, height / 2 * 0.9, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1;
+    ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#442200';
     ctx.stroke();
+
+    // Barrel highlight (curved, subtle, not white)
+    ctx.save();
+    ctx.globalAlpha = 0.13;
+    ctx.beginPath();
+    ctx.ellipse(-w * 0.13, -h * 0.18, w * 0.18, h * 0.13, 0, Math.PI * 0.1, Math.PI * 1.1);
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = '#fffbe6';
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore(); // barrel rotation
+    ctx.restore();
   });
 }
 
