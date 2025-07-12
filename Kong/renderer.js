@@ -1,8 +1,16 @@
 import { drawPlayer, drawDonkeyKong, drawPlatforms, drawBarrels, drawPauline, drawLadders } from './graphics.js';
+import { GAME_WIDTH, GAME_HEIGHT } from './game.js';
 
 export function render(ctx, player, barrels, levelData, score, lives) {
   // Clear the canvas
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+  ctx.save();
+
+  // Calculate scaling factor
+  const scaleX = ctx.canvas.width / GAME_WIDTH;
+  const scaleY = ctx.canvas.height / GAME_HEIGHT;
+  ctx.scale(scaleX, scaleY);
 
   // Draw platforms
   drawPlatforms(ctx, levelData.platforms);
@@ -22,9 +30,11 @@ export function render(ctx, player, barrels, levelData, score, lives) {
   // Draw player
   drawPlayer(ctx, player);
 
-  // Draw UI
+  // Draw UI (positions and font sizes are now relative to GAME_WIDTH/HEIGHT)
   ctx.fillStyle = '#fff';
   ctx.font = '20px Arial';
   ctx.fillText(`Score: ${score}`, 10, 20);
-  ctx.fillText(`Lives: ${lives}`, ctx.canvas.width - 80, 20);
+  ctx.fillText(`Lives: ${lives}`, GAME_WIDTH - 80, 20);
+
+  ctx.restore();
 }

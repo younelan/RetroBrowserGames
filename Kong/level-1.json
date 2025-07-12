@@ -7,11 +7,11 @@
   "barrel_speed": 1, 
   "barrel_release_frequency": 200,
   "platforms": [
-    { "start_x": 0, "start_y": 600, "end_x": 400, "end_y": 610 },
-    { "start_x": 0, "start_y": 500, "end_x": 350, "end_y": 510 },
-    { "start_x": 50, "start_y": 420, "end_x": 400, "end_y": 410 },
-    { "start_x": 0, "start_y": 200, "end_x": 300, "end_y": 200 },
-    { "start_x": 220, "start_y": 100, "end_x": 400, "end_y": 100 }
+    { "start_x": 0, "start_y": 600, "end_x": 800, "end_y": 610 },
+    { "start_x": 0, "start_y": 500, "end_x": 750, "end_y": 510 },
+    { "start_x": 50, "start_y": 420, "end_x": 800, "end_y": 410 },
+    { "start_x": 0, "start_y": 200, "end_x": 700, "end_y": 200 },
+    { "start_x": 220, "start_y": 100, "end_x": 800, "end_y": 100 }
   ],
   "ladders": [
     { "x": 300, "top_y": 510, "bottom_y": 600 },

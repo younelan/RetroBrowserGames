@@ -17,7 +17,7 @@ document.addEventListener('keydown', (e) => {
         player.isClimbing = true;
         player.dy = -player.speed;
       } else if (!player.isJumping) { // Allow jump if not on ladder
-        player.dy = -7; // Jump strength for barrels
+        player.dy = -10; // Increased jump strength
         player.isJumping = true;
       }
       break;
@@ -30,7 +30,7 @@ document.addEventListener('keydown', (e) => {
       break;
     case ' ': // Space
       if (!player.isJumping && !player.isClimbing) {
-        player.dy = -7; // Jump strength for barrels
+        player.dy = -10; // Increased jump strength
         player.isJumping = true;
       }
       break;
@@ -60,21 +60,35 @@ document.addEventListener('keyup', (e) => {
   }
 });
 
+import { GAME_WIDTH, GAME_HEIGHT } from './game.js';
+
 // Touch and Drag Controls
 let touchStartX = 0;
 let touchStartY = 0;
 
 document.addEventListener('touchstart', (e) => {
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
+  e.preventDefault(); // Prevent scrolling
+  const canvas = document.getElementById('gameCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  touchStartX = (e.touches[0].clientX - rect.left) * scaleX;
+  touchStartY = (e.touches[0].clientY - rect.top) * scaleY;
 });
 
 document.addEventListener('touchmove', (e) => {
+  e.preventDefault(); // Prevent scrolling
   const player = window.player;
   if (!player) return;
 
-  const touchCurrentX = e.touches[0].clientX;
-  const touchCurrentY = e.touches[0].clientY;
+  const canvas = document.getElementById('gameCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const touchCurrentX = (e.touches[0].clientX - rect.left) * scaleX;
+  const touchCurrentY = (e.touches[0].clientY - rect.top) * scaleY;
 
   const dx = touchCurrentX - touchStartX;
   const dy = touchCurrentY - touchStartY;
@@ -106,8 +120,13 @@ document.addEventListener('touchend', (e) => {
   const player = window.player;
   if (!player) return;
 
-  const touchEndX = e.changedTouches[0].clientX;
-  const touchEndY = e.changedTouches[0].clientY;
+  const canvas = document.getElementById('gameCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const touchEndX = (e.changedTouches[0].clientX - rect.left) * scaleX;
+  const touchEndY = (e.changedTouches[0].clientY - rect.top) * scaleY;
 
   const dx = touchEndX - touchStartX;
   const dy = touchEndY - touchStartY;
@@ -115,7 +134,7 @@ document.addEventListener('touchend', (e) => {
   // If it was a tap (small movement), trigger jump
   if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
     if (!player.isJumping && !player.isClimbing) {
-      player.dy = -7; // Jump strength
+      player.dy = -10; // Jump strength
       player.isJumping = true;
     }
   }

@@ -20,7 +20,7 @@ export function createPlayer(startPosition) {
 export function updatePlayer(player, levelData) {
   // Apply gravity
   if (!player.isClimbing && !player.isOnLadder) {
-    player.dy += 0.4; // Reduced gravity
+    player.dy += 0.2; // Further reduced gravity for higher/longer jumps
   }
 
   // Move the player
@@ -37,7 +37,7 @@ export function updatePlayer(player, levelData) {
       const slope = (end_y - start_y) / (end_x - start_x);
       const y_on_platform = start_y + slope * (player.x - start_x);
 
-      if (player_bottom > y_on_platform && player_bottom < y_on_platform + 10) { // Increased tolerance
+      if (player_bottom > y_on_platform && player_bottom < y_on_platform + 20) { // Increased tolerance
         player.dy = 0;
         player.isJumping = false;
         player.y = y_on_platform - player.height;
