@@ -1,7 +1,7 @@
 {
   "name": "Stage 1",
   "time": 5000,
-  "player_start": { "x": 50, "y": 550 },
+  "player_start": { "x": 50, "y": 580 },
   "pauline_pos": { "x": 700, "y": 60 },
   "dk_pos": { "x": 100, "y": 120 },
   "barrel_speed": 1, 

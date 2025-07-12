@@ -1,129 +1,259 @@
-export function createPlayer(startPosition) {
-  return {
-    x: startPosition.x,
-    y: startPosition.y,
-    width: 20,
-    height: 30, // Make Mario taller
-    speed: 200, // pixels per second
-    dx: 0,
-    dy: 0,
-    isJumping: false,
-    isClimbing: false,
-    isOnLadder: false,
-    currentLadderX: null, // Store the x-position of the ladder Mario is on
-    frame: 0, // Current animation frame
-    facing: 'right', // 'left' or 'right'
-    animationTimer: 0,
-    currentPlatform: null, // Track which platform the player is on
-  };
-}
+import { Platform } from './Platform.js';
 
-export function updatePlayer(player, levelData, deltaTime) {
-  const dt = deltaTime / 1000; // Convert deltaTime to seconds
 
-  // Apply gravity
-  if (!player.isClimbing && !player.isOnLadder) {
-    player.dy += 800 * dt; // Gravity in pixels/second^2
+export class Player {
+  static WIDTH = 20;
+  static HEIGHT = 30;
+  static SPEED = 200; // pixels per second
+  static JUMP_VELOCITY = -400; // initial jump velocity
+  static GRAVITY = 800; // pixels per second squared
+
+  constructor({ x, y, width = Player.WIDTH, height = Player.HEIGHT, speed = Player.SPEED }) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+    this.speed = speed;
+
+    this.dx = 0; // velocity in x direction
+    this.dy = 0; // velocity in y direction
+
+    this.isJumping = false;
+    this.isClimbing = false; // Ensure climbing is false at start
+    this.isOnLadder = false;
+    this.currentPlatform = null; // The platform the player is currently standing on
+
+    this.facing = 'right'; // 'left' or 'right' for animation
+    this.frame = 0; // Current animation frame
+    this.animationTimer = 0;
+    this.animationInterval = 100; // Milliseconds per frame
   }
 
-  // Move the player
-  player.x += player.dx * dt;
-  player.y += player.dy * dt;
+  update(level, deltaTime) {
+    const dt = deltaTime / 1000; // Convert deltaTime to seconds
 
-  // If player is jumping, only check collision with their current platform
-  if (player.isJumping && player.currentPlatform) {
-    const platform = player.currentPlatform;
-    const { start_x, start_y, end_x, end_y } = platform;
-    const player_bottom = player.y + player.height;
-
-    // Only land back on the same platform if falling down and overlapping horizontally
-    if (player.dy >= 0 && player.x + player.width > start_x && player.x < end_x) {
-      const slope = (end_y - start_y) / (end_x - start_x);
-      const y_on_platform = start_y + slope * (player.x - start_x);
-
-      if (player_bottom >= y_on_platform && player_bottom <= y_on_platform + 15) {
-        player.dy = 0;
-        player.isJumping = false;
-        player.y = y_on_platform - player.height;
-      }
+    // Apply gravity
+    if (!this.isClimbing) {
+      this.dy += Player.GRAVITY * dt;
     }
-  } 
-  // If player is not jumping, find which platform they should be on
-  else if (!player.isJumping) {
-    let foundPlatform = false;
-    
-    // Check all platforms to find the one the player should be standing on
-    levelData.platforms.forEach(platform => {
-      if (foundPlatform) return; // Already found a platform
-      
-      const { start_x, start_y, end_x, end_y } = platform;
-      const player_bottom = player.y + player.height;
 
-      // Check if player is horizontally on this platform and falling/on it
-      if (player.x + player.width > start_x && player.x < end_x && player.dy >= 0) {
-        const slope = (end_y - start_y) / (end_x - start_x);
-        const y_on_platform = start_y + slope * (player.x - start_x);
+    // Calculate potential next y position
+    let nextY = this.y + this.dy * dt;
 
-        // If player is close to this platform, land on it
-        if (player_bottom >= y_on_platform && player_bottom <= y_on_platform + 15) {
-          player.dy = 0;
-          player.isJumping = false;
-          player.y = y_on_platform - player.height;
-          player.currentPlatform = platform; // Remember this platform
-          foundPlatform = true;
+    // Update x position
+    this.x += this.dx * dt;
+
+    // Platform collision detection
+    let onPlatform = false;
+    let platformYToSnapTo = -1; // Initialize with an invalid value
+
+    for (const platform of level.platforms) {
+      // Check if player's horizontal bounds overlap with platform's horizontal bounds
+      if (this.x < platform.end_x && this.x + this.width > platform.start_x) {
+        const slope = (platform.end_y - platform.start_y) / (platform.end_x - platform.start_x);
+        const playerCenterX = this.x + this.width / 2;
+        const platformTopAtPlayerX = platform.start_y + slope * (playerCenterX - platform.start_x);
+
+        // Define a small epsilon for floating point comparisons
+        const EPSILON = 1; // Small tolerance
+
+        // Check if player is falling (dy >= 0) and would land on this platform
+        // This means the player's current bottom is above or at the platform top,
+        // and the player's next bottom would be below or at the platform top.
+        if (this.dy >= 0 &&
+            this.y + this.height <= platformTopAtPlayerX + EPSILON && // Current bottom is above or at platform top
+            nextY + this.height >= platformTopAtPlayerX - EPSILON) { // Next bottom is below or at platform top
+          platformYToSnapTo = platformTopAtPlayerX;
+          onPlatform = true;
+          this.currentPlatform = platform;
+          break; // Player is on a platform, no need to check others
         }
       }
-    });
+    }
 
-    // If no platform found and player was on one, they've fallen off
-    if (!foundPlatform && player.currentPlatform && player.dy >= 0) {
-      player.currentPlatform = null;
+    if (onPlatform) {
+      this.y = platformYToSnapTo - this.height; // Snap player to platform
+      this.dy = 0; // Stop vertical movement
+      this.isJumping = false;
+    } else {
+      this.y = nextY; // Apply the predicted y if no collision
+      this.currentPlatform = null;
+    }
+
+    // Reset horizontal velocity if no input
+    if (this.dx === 0) {
+      this.animationTimer = 0;
+      this.frame = 0;
+    } else {
+      this.animationTimer += deltaTime;
+      if (this.animationTimer > this.animationInterval) {
+        this.frame = (this.frame + 1) % 2; // Cycle between 0 and 1 for walking animation
+        this.animationTimer = 0;
+      }
+    }
+
+    // Ladder collision detection and climbing logic
+    this.isOnLadder = false;
+    for (const ladder of level.ladders) {
+      // Check for horizontal overlap between player and ladder
+      // And if player's vertical bounds overlap with ladder's vertical bounds
+      if (this.x < ladder.x + ladder.width &&
+          this.x + this.width > ladder.x &&
+          this.y + this.height > ladder.top_y &&
+          this.y < ladder.bottom_y) {
+        this.isOnLadder = true;
+        break;
+      }
+    }
+
+    // If not on a ladder, cannot be climbing
+    if (!this.isOnLadder && this.isClimbing) {
+      this.isClimbing = false;
+      this.dy = 0; // Stop vertical movement if player moves off a ladder
+    }
+
+    // Prevent player from going off screen horizontally (basic boundary)
+    if (this.x < 0) {
+      this.x = 0;
+    } else if (this.x + this.width > level.virtualWidth) {
+      this.x = level.virtualWidth - this.width;
+    }
+
+    // Prevent player from going off screen vertically (basic boundary for falling)
+    if (this.y + this.height > level.virtualHeight) {
+      this.y = level.virtualHeight - this.height;
+      this.dy = 0;
+      this.isJumping = false;
     }
   }
 
-  // Ladder collision and climbing logic
-  let wasOnLadder = player.isOnLadder; // Store previous state
-  player.isOnLadder = false;
-  player.currentLadderX = null; // Reset current ladder x
+  render(ctx, scale) {
+    // Pass the player object and scale to the drawPlayer function from graphics.js
+    const x = this.x * scale;
+    const y = this.y * scale;
+    const width = this.width * scale;
+    const height = this.height * scale;
 
-  levelData.ladders.forEach(ladder => {
-    if (
-      player.x + player.width > ladder.x &&
-      player.x < ladder.x + 20 && // 20 is ladder width
-      player.y + player.height > ladder.top_y - player.height / 2 && // Allow grabbing from above
-      player.y < ladder.bottom_y
-    ) {
-      player.isOnLadder = true;
-      player.currentLadderX = ladder.x; // Store ladder x
+    ctx.save();
+    if (this.facing === 'left') {
+      ctx.translate(x + width, y);
+      ctx.scale(-1, 1);
+      ctx.translate(-(x + width), -y);
     }
-  });
 
-  if (player.isOnLadder) {
-    // If player just got on ladder, snap to ladder x
-    if (!wasOnLadder && (player.dy > 0 || player.dy < 0)) {
-      player.x = player.currentLadderX + 10 - player.width / 2; // Center on ladder using stored x
+    // Body (overalls)
+    ctx.fillStyle = '#0000ff'; // Blue
+    ctx.fillRect(x, y + height * 0.4, width, height * 0.6);
+
+    // Shirt
+    ctx.fillStyle = '#ff0000'; // Red
+    ctx.fillRect(x, y, width, height * 0.5);
+
+    // Head
+    ctx.fillStyle = '#f0c0a0'; // Skin color
+    ctx.fillRect(x + width * 0.1, y - height * 0.3, width * 0.8, height * 0.4);
+
+    // Eyes
+    ctx.fillStyle = 'white';
+    ctx.fillRect(x + width * 0.25, y - height * 0.2, width * 0.1, height * 0.05);
+    ctx.fillRect(x + width * 0.55, y - height * 0.2, width * 0.1, height * 0.05);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(x + width * 0.28, y - height * 0.18, width * 0.04, height * 0.02);
+    ctx.fillRect(x + width * 0.58, y - height * 0.18, width * 0.04, height * 0.02);
+
+    // Hat
+    ctx.fillStyle = '#ff0000'; // Red
+    ctx.fillRect(x, y - height * 0.4, width, height * 0.15);
+    ctx.fillRect(x + width * 0.7, y - height * 0.5, width * 0.3, height * 0.2);
+
+    // Moustache
+    ctx.fillStyle = '#4B3621'; // Brown
+    ctx.fillRect(x + width * 0.2, y + height * 0.1, width * 0.6, height * 0.05);
+
+    // Legs
+    ctx.fillStyle = '#0000ff'; // Blue
+    ctx.fillRect(x + width * 0.1, y + height * 0.8, width * 0.3, height * 0.2);
+    ctx.fillRect(x + width * 0.6, y + height * 0.8, width * 0.3, height * 0.2);
+
+    // Arms (simple, will animate later)
+    ctx.fillStyle = '#ff0000'; // Red
+    ctx.fillRect(x - width * 0.2, y + height * 0.4, width * 0.4, height * 0.4);
+    ctx.fillRect(x + width * 0.8, y + height * 0.4, width * 0.4, height * 0.4);
+
+    // Animation for walking
+    if (this.dx !== 0) {
+      if (this.frame === 0) {
+        // Leg forward
+        ctx.fillStyle = '#0000ff';
+        ctx.fillRect(x + width * 0.6, y + height * 0.8, width * 0.3, height * 0.2);
+        // Arm forward
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(x + width * 0.8, y + height * 0.4, width * 0.4, height * 0.4);
+      } else {
+        // Leg back
+        ctx.fillStyle = '#0000ff';
+        ctx.fillRect(x + width * 0.1, y + height * 0.8, width * 0.3, height * 0.2);
+        // Arm back
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(x - width * 0.2, y + height * 0.4, width * 0.4, height * 0.4);
+      }
     }
-    player.isJumping = false; // Cannot jump on ladder
-    // Only stop vertical movement if not actively climbing
-    if (!player.isClimbing) {
-      player.dy = 0;
-    }
-  } else {
-    player.isClimbing = false; // Not on ladder, so not climbing
+
+    ctx.restore();
   }
-}
 
-export function checkBarrelCollision(player, barrels) {
-  for (const barrel of barrels) {
-    if (
-      player.x < barrel.x + barrel.width &&
-      player.x + player.width > barrel.x &&
-      player.y < barrel.y + barrel.height &&
-      player.y + player.height > barrel.y
-    ) {
-      // Collision detected
-      return true;
+  // Input handling methods (called from InputHandler)
+  moveLeft() {
+    this.dx = -this.speed;
+    this.facing = 'left';
+  }
+
+  moveRight() {
+    this.dx = this.speed;
+    this.facing = 'right';
+  }
+
+  stopMovingX() {
+    this.dx = 0;
+  }
+
+  jump() {
+    if (!this.isJumping && !this.isClimbing) {
+      this.dy = Player.JUMP_VELOCITY;
+      this.isJumping = true;
     }
   }
-  return false;
+
+  climbUp() {
+    if (this.isOnLadder) {
+      this.isClimbing = true;
+      this.dy = -this.speed * 0.7; // Slower climbing speed
+      this.dx = 0; // Stop horizontal movement while climbing
+    }
+  }
+
+  climbDown() {
+    if (this.isOnLadder) {
+      this.isClimbing = true;
+      this.dy = this.speed * 0.7; // Slower climbing speed
+      this.dx = 0; // Stop horizontal movement while climbing
+    }
+  }
+
+  stopClimbing() {
+    this.isClimbing = false;
+    if (this.isOnLadder) {
+      this.dy = 0; // Stop vertical movement if still on ladder but stopped climbing
+    }
+  }
+
+  collidesWith(gameObject) {
+    // Basic AABB collision detection
+    return (
+      this.x < gameObject.x + gameObject.width &&
+      this.x + this.width > gameObject.x &&
+      this.y < gameObject.y + gameObject.height &&
+      this.y + this.height > gameObject.y
+    );
+  }
 }

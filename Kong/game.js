@@ -1,120 +1,98 @@
-import { createPlayer, updatePlayer, checkBarrelCollision } from './player.js';
-import { loadLevel } from './levels.js';
-import { render } from './renderer.js';
-import { createBarrel, updateBarrels } from './barrels.js';
-import './input.js';
+// document.addEventListener('DOMContentLoaded', () => {
+import { Level } from './level.js';
+import { Barrel } from './Barrel.js';
 import { showWinScreen, showGameOverScreen } from './ui.js';
+import './input.js';
 
-const DEFAULT_BARREL_RELEASE_FREQUENCY = 100; // Default value
 export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 800;
 
-document.addEventListener('DOMContentLoaded', () => {
-  const canvas = document.getElementById('gameCanvas');
-  const ctx = canvas.getContext('2d');
-
-  function resizeCanvas() {
-    canvas.width = GAME_WIDTH;
-    canvas.height = GAME_HEIGHT;
+export class Game {
+  constructor(canvas, levelData) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    // Calculate scale based on canvas size and virtual game size
+    const virtualWidth = levelData.virtualWidth || 800;
+    const virtualHeight = levelData.virtualHeight || 800;
+    // Use the actual canvas size for scaling
+    this.resizeCanvas();
+    const scale = Math.min(this.canvas.width / virtualWidth, this.canvas.height / virtualHeight);
+    this.level = new Level(levelData, scale);
+    this.score = 0;
+    this.lives = 3;
+    this.isGameOver = false;
+    this.isGameWon = false;
+    this.lastTime = 0;
+    this.animationFrame = 0;
+    this.barrelTimer = 0;
+    
+    this.resizeCanvas();
+    window.addEventListener('resize', () => this.resizeCanvas());
   }
 
-  window.addEventListener('resize', resizeCanvas);
-  resizeCanvas(); // Initial resize
-
-  // Game state
-  let currentLevel = 1;
-  let score = 0;
-  let lives = 3;
-  let player;
-  let barrels = [];
-
-  let barrelTimer = 0;
-  let isGameOver = false;
-  let isGameWon = false;
-  let lastTime = 0;
-  let animationFrame = 0;
-
-  function init() {
-    currentLevel = 1;
-    score = 0;
-    lives = 3;
-    barrels = [];
-    barrelTimer = 0;
-    isGameOver = false;
-    isGameWon = false;
-    lastTime = 0;
-    animationFrame = 0;
-
-    loadLevel(currentLevel).then(levelData => {
-      player = createPlayer(levelData.player_start);
-      window.player = player;
-      requestAnimationFrame((timestamp) => gameLoop(timestamp, levelData));
-    });
+  resizeCanvas() {
+    // Make the canvas fill the window while maintaining aspect ratio
+    const size = Math.min(window.innerWidth, window.innerHeight);
+    this.canvas.width = size;
+    this.canvas.height = size;
   }
 
-  function gameLoop(timestamp, levelData) {
-    if (isGameOver || isGameWon) {
-      return;
+  start() {
+    this.score = 0;
+    this.lives = 3;
+    this.isGameOver = false;
+    this.isGameWon = false;
+    this.lastTime = 0;
+    this.animationFrame = 0;
+    this.barrelTimer = 0;
+    requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+  }
+
+  gameLoop(timestamp) {
+    if (this.isGameOver || this.isGameWon) return;
+    const deltaTime = timestamp - this.lastTime;
+    this.lastTime = timestamp;
+    this.animationFrame++;
+    // Clear the canvas before rendering
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.level.update(deltaTime);
+    // Barrel spawn logic (should create Barrels, not Players)
+    this.barrelTimer += deltaTime;
+    if (this.barrelTimer > (this.level.barrel_release_frequency || 100) * 10) {
+      this.level.barrels.push(new Barrel({
+        x: this.level.kong.x + 60,
+        y: this.level.kong.y + 80,
+        dx: this.level.barrel_speed || 100,
+        dy: -100
+      }));
+      this.barrelTimer = 0;
     }
-
-    const deltaTime = timestamp - lastTime;
-    lastTime = timestamp;
-    animationFrame++; // Increment animation frame
-
-    updatePlayer(player, levelData, deltaTime);
-    score += updateBarrels(barrels, levelData, player, canvas.height, deltaTime);
-
-    barrelTimer += deltaTime;
-    if (barrelTimer > (levelData.barrel_release_frequency || DEFAULT_BARREL_RELEASE_FREQUENCY) * 10) { // Scale frequency by 10 for milliseconds
-      barrels.push(createBarrel(levelData));
-      barrelTimer = 0;
-    }
-
+    // Win condition
     if (
-      player.x < levelData.pauline_pos.x + 30 &&
-      player.x + player.width > levelData.pauline_pos.x &&
-      player.y < levelData.pauline_pos.y + 40 &&
-      player.y + player.height > levelData.pauline_pos.y
+      this.level.player.x < this.level.damsel.x + 30 &&
+      this.level.player.x + this.level.player.width > this.level.damsel.x &&
+      this.level.player.y < this.level.damsel.y + 40 &&
+      this.level.player.y + this.level.player.height > this.level.damsel.y
     ) {
-      isGameWon = true;
-      showWinScreen(score);
+      this.isGameWon = true;
+      showWinScreen(this.score);
       return;
     }
-
-    if (checkBarrelCollision(player, barrels)) {
-      lives--;
-      if (lives > 0) {
-        player.x = levelData.player_start.x;
-        player.y = levelData.player_start.y;
-      } else {
-        isGameOver = true;
-        showGameOverScreen(score);
-        return;
+    // Barrel collision
+    for (const barrel of this.level.barrels) {
+      if (this.level.player.collidesWith(barrel)) {
+        this.lives--;
+        if (this.lives > 0) {
+          this.level.player.x = this.level.player.x;
+          this.level.player.y = this.level.player.y;
+        } else {
+          this.isGameOver = true;
+          showGameOverScreen(this.score);
+          return;
+        }
       }
     }
-
-    render(ctx, player, barrels, levelData, score, lives, animationFrame);
-
-    requestAnimationFrame((timestamp) => gameLoop(timestamp, levelData));
+    this.level.render(this.ctx);
+    requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
   }
-
-  document.addEventListener('keydown', () => {
-    if (isGameOver || isGameWon) {
-      init();
-    }
-  });
-
-  document.addEventListener('click', () => {
-    if (isGameOver || isGameWon) {
-      init();
-    }
-  });
-
-  document.addEventListener('touchstart', () => {
-    if (isGameOver || isGameWon) {
-      init();
-    }
-  });
-
-  init();
-});
+}
