@@ -23,11 +23,47 @@ _                              _
 _                              _
 _====                          _
 _                              _
-_         4       ____ ========_
+_         4       ___-----=====_
 _   ============               _
 _                              _
 _                              _
 _   @                        * _
+_==============================_
+_                              _
+
+`,
+        backgroundColor: '#0000AA', // Dark blue for the first level
+        oxygenLevel: 2000, // Correct key for oxygen level
+    },
+    {
+        name: "The Cold Room",
+        viewportWidth: 32,  // Smaller viewport (scrolling)
+        viewportHeight: 24, // Smaller viewport (scrolling)
+        surfaceScheme: 'ice',
+        dirtScheme: 'pink',
+        brickScheme: 'brown', // Default red/brown brick scheme
+        movingPlatformScheme: 'gold', // Gray moving platforms (default)
+        map: `
+_                       ________
+_                       +      _
+_            +             +   _
+_                              _
+_                ======        _
+_        +                     _
+_                              _
+_  =================           _
+_                        ---_  _
+_                       _+  _  _
+_ =====             === _---_  _
+_                       _---_  _
+_        ========       _---_  _
+_====               --- _---_  _
+_   +                   _---_  _
+_               ===    -_---_  _
+_  >>>>                        _
+_        -----  +              _
+_                              _
+_   @                   P    * _
 _==============================_
 _                              _
 
@@ -67,7 +103,7 @@ _                              _
         oxygenLevel: 2000, // Correct key for oxygen level
     },
     {
-        name: "The Cold Room",
+        name: "Vintage Room",
         viewportWidth: 32,  // Full level width (no scrolling)
         viewportHeight: 17, // Full level width (no scrolling)
         brickScheme: 'gray', // Gray brick scheme for cold/metallic theme
