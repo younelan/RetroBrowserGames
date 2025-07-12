@@ -132,19 +132,19 @@ The `map` string is a direct visual representation of the level. Each character 
 |    `>`    | Moving Right Floor      | Conveyor belt that moves player right.                |
 |    `+`    | Key                     | An item to be collected.                               |
 |    `*`    | Portal                  | The exit, becomes active after all keys are taken.     |
-|    `H`    | Hazard (Generic)        | A static object that is deadly to touch (e.g. spikes). |
-|    `I`    | Spikes                  | A static hazard with a spiky appearance.               |
-|    `F`    | Fire / Poisonous Pansy  | A static hazard with a fiery/pulsating appearance.     |
+|    `A`    | Enemy (Seal)            | A seal enemy juggling a ball on its nose.              |
 |    `E`    | Enemy (Horizontal)      | A simple enemy patrolling horizontally.                |
+|    `F`    | Fire / Poisonous Pansy  | A static hazard with a fiery/pulsating appearance.     |
+|    `H`    | Hazard (Generic)        | A static object that is deadly to touch (e.g. spikes). |
+|    `J`    | Enemy (Goose)           | A goose/duck enemy that walks on platforms like E.     |
+|    `I`    | Spikes                  | A static hazard with a spiky appearance.               |
 |    `V`    | Enemy (Vertical)        | A simple enemy patrolling vertically.                  |
 |    `Z`    | Enemy (Complex)         | An enemy following a more complex, switching path.     |
-|    `J`    | Enemy (Goose)           | A goose/duck enemy that walks on platforms like E.     |
-|    `A`    | Enemy (Seal)            | A seal enemy juggling a ball on its nose.              |
 |    `N`    | Enemy (Dinosaur)        | A dinosaur enemy that walks on platforms.              |
 |    `P`    | Enemy (Penguin)         | A penguin enemy that waddles on platforms.             |
+|    `Q`    | Enemy (Toilet)          | A sideways toilet with animated seat like Pac-Man.     |
 |    `S`    | Enemy (Spider Static)   | A static spider hanging by a thread.                   |
 |    `T`    | Enemy (Spider Moving)   | A moving spider that drops down one cell and back up.  |
-|    `Q`    | Enemy (Toilet)          | A sideways toilet with animated seat like Pac-Man.     |
 |    `1`    | Tall Tree               | A 2-tile high decorative tree element.                 |
 |    `2`    | Tree / Cactus           | A purely decorative element, no collision.             |
 |    `3`    | Shrub / Bush            | A purely decorative element, no collision.             |

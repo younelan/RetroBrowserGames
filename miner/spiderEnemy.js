@@ -38,8 +38,17 @@ class SpiderEnemy {
     }
 
     draw(context) {
-        // Draw the hanging thread
-        const threadStartY = this.startY - TILE_SIZE; // Thread starts from above the starting position
+        // Draw the hanging thread - much shorter thread that stays within intended cell bounds
+        let threadStartY;
+        
+        if (this.isMoving) {
+            // For moving spiders: thread starts from the top of the starting cell
+            threadStartY = this.startY - TILE_SIZE;
+        } else {
+            // For static spiders: thread starts from the top of the current cell (much shorter)
+            threadStartY = this.y;
+        }
+        
         const threadEndY = this.y + this.height / 2; // Thread ends at spider center
         
         context.strokeStyle = '#888888';
