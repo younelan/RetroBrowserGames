@@ -274,31 +274,31 @@ export class Player {
       shirtGradient.addColorStop(1, '#cc0000');
       ctx.fillStyle = shirtGradient;
       ctx.fillRect(x + width * 0.325, y + height * 0.1, width * 0.35, height * 0.4);
-      // Head (rounder, with face)
+      // Head (climb view: same height as walk view, but wider face)
       ctx.fillStyle = '#f0c0a0';
       ctx.beginPath();
-      ctx.ellipse(x + width/2, y, width * 0.16, height * 0.28, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width/2, y, width * 0.19, height * 0.13, 0, 0, 2 * Math.PI); // wider, not taller
       ctx.fill();
-      // Eyes (bigger, blue irises)
+      // Eyes (smaller, blue irises)
       ctx.fillStyle = 'white';
       ctx.beginPath();
-      ctx.ellipse(x + width * 0.44, y - height * 0.05, width * 0.035, height * 0.06, 0, 0, 2 * Math.PI);
-      ctx.ellipse(x + width * 0.56, y - height * 0.05, width * 0.035, height * 0.06, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.44, y - height * 0.03, width * 0.022, height * 0.025, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.56, y - height * 0.03, width * 0.022, height * 0.025, 0, 0, 2 * Math.PI);
       ctx.fill();
       ctx.fillStyle = '#3399ff';
       ctx.beginPath();
-      ctx.ellipse(x + width * 0.44, y - height * 0.05, width * 0.015, height * 0.025, 0, 0, 2 * Math.PI);
-      ctx.ellipse(x + width * 0.56, y - height * 0.05, width * 0.015, height * 0.025, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.44, y - height * 0.03, width * 0.009, height * 0.01, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.56, y - height * 0.03, width * 0.009, height * 0.01, 0, 0, 2 * Math.PI);
       ctx.fill();
       ctx.fillStyle = 'black';
       ctx.beginPath();
-      ctx.ellipse(x + width * 0.44, y - height * 0.05, width * 0.006, height * 0.012, 0, 0, 2 * Math.PI);
-      ctx.ellipse(x + width * 0.56, y - height * 0.05, width * 0.006, height * 0.012, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.44, y - height * 0.03, width * 0.0035, height * 0.005, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.56, y - height * 0.03, width * 0.0035, height * 0.005, 0, 0, 2 * Math.PI);
       ctx.fill();
-      // Hat (Mario style, with brim)
+      // Hat (Mario style, with flatter dome and brim)
       ctx.fillStyle = '#ff2222';
       ctx.beginPath();
-      ctx.ellipse(x + width/2, y - height * 0.18, width * 0.16, height * 0.13, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width/2, y - height * 0.15, width * 0.16, height * 0.08, 0, 0, 2 * Math.PI); // flatter dome
       ctx.fill();
       ctx.fillStyle = '#cc0000';
       ctx.fillRect(x + width * 0.36, y - height * 0.18, width * 0.28, height * 0.07);
@@ -307,12 +307,23 @@ export class Player {
       ctx.beginPath();
       ctx.ellipse(x + width/2, y - height * 0.13, width * 0.19, height * 0.06, 0, 0, Math.PI);
       ctx.fill();
-      // Moustache (curved)
+      // Moustache (smaller, stays up)
       ctx.strokeStyle = '#4B3621';
-      ctx.lineWidth = 3 * scale;
+      ctx.lineWidth = 1.7 * scale;
       ctx.beginPath();
-      ctx.arc(x + width/2, y + height * 0.04, width * 0.09, Math.PI * 0.1, Math.PI * 0.9, false);
+      ctx.arc(x + width/2, y + height * 0.01, width * 0.06, Math.PI * 0.1, Math.PI * 0.9, false);
       ctx.stroke();
+
+      // Vertical hair patches (left and right sides)
+      ctx.fillStyle = '#7a4b13';
+      // Left patch
+      ctx.beginPath();
+      ctx.ellipse(x + width * 0.325, y + height * 0.01, width * 0.025, height * 0.09, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      // Right patch
+      ctx.beginPath();
+      ctx.ellipse(x + width * 0.675, y + height * 0.01, width * 0.025, height * 0.09, 0, 0, 2 * Math.PI);
+      ctx.fill();
 
       // --- Arms/Legs (always drawn in climb view, only animate if actively climbing, otherwise freeze in last position) ---
       // Store last animated positions as properties on the player instance
