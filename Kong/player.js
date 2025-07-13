@@ -1,7 +1,69 @@
+
 import { Platform } from './Platform.js';
 
-
 export class Player {
+  // Called by Level to draw the hammer if the player is carrying it
+  drawCarriedHammer(ctx, hammer, scale) {
+    // Draw hammer at the player's front hand position (use actual hand coordinates from arm drawing)
+    const x = this.x * scale;
+    const y = this.y * scale;
+    const width = this.width * scale;
+    const height = this.height * scale;
+    // Animation timing for pendulum arms/legs
+    let walkTime = (this.frame + performance.now() / 120) * 0.18;
+    let walkCycle2 = Math.sin(walkTime * 2 + Math.PI);
+    let isMoving = Math.abs(this.dx) > 0.1;
+    let bodyBob = isMoving && !this.isClimbing ? Math.sin(walkTime * 2) * 0.5 * height * 0.05 : 0;
+    // Arm attach point
+    let armAttachY = y + bodyBob + height * 0.03;
+    // Front arm (right hand if facing right, left if facing left)
+    let armSwing = isMoving ? walkCycle2 * 0.7 : 0;
+    let handX, handY;
+    if (this.facing === 'left') {
+      handX = x + width * 0.5 - Math.sin(armSwing) * width * 0.22;
+    } else {
+      handX = x + width * 0.5 + Math.sin(armSwing) * width * 0.22;
+    }
+    handY = armAttachY + Math.abs(Math.cos(armSwing)) * height * 0.38;
+    // Center hammer on hand
+    // handX, handY are in screen (canvas) coordinates, hammer.render expects screen coordinates
+    // Draw hammer rotated 180deg and flipped for facing
+    ctx.save();
+    ctx.translate(handX, handY);
+    let flip = this.facing === 'left' ? -1 : 1;
+    ctx.scale(flip, 1);
+    ctx.rotate(Math.PI); // 180 degrees
+    // Draw hammer centered at (0,0)
+    hammer.render(ctx, 1, -hammer.width / 2, -hammer.height / 2);
+    ctx.restore();
+  }
+  renderHammer(ctx, hammer, scale) {
+    // Draw hammer at the player's front hand position (use actual hand coordinates from arm drawing)
+    const x = this.x * scale;
+    const y = this.y * scale;
+    const width = this.width * scale;
+    const height = this.height * scale;
+    let walkTime = (this.frame + performance.now() / 120) * 0.18;
+    let walkCycle2 = Math.sin(walkTime * 2 + Math.PI);
+    let isMoving = Math.abs(this.dx) > 0.1;
+    let bodyBob = isMoving && !this.isClimbing ? Math.sin(walkTime * 2) * 0.5 * height * 0.05 : 0;
+    let armAttachY = y + bodyBob + height * 0.03;
+    let armSwing = isMoving ? walkCycle2 * 0.7 : 0;
+    let handX, handY;
+    if (this.facing === 'left') {
+      handX = x + width * 0.5 - Math.sin(armSwing) * width * 0.22;
+    } else {
+      handX = x + width * 0.5 + Math.sin(armSwing) * width * 0.22;
+    }
+    handY = armAttachY + Math.abs(Math.cos(armSwing)) * height * 0.38;
+    ctx.save();
+    ctx.translate(handX, handY);
+    let flip = this.facing === 'left' ? -1 : 1;
+    ctx.scale(flip, 1);
+    ctx.rotate(Math.PI);
+    hammer.render(ctx, 1, -hammer.width / 2, -hammer.height / 2);
+    ctx.restore();
+  }
   static WIDTH = 68; // was 56, now wider
   static HEIGHT = 84;
   static SPEED = 200; // pixels per second
