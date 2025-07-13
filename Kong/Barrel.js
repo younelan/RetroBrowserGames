@@ -45,8 +45,18 @@ export class Barrel {
   }
 
   render(ctx, scale = 1, animationFrame = 0) {
+    // Parabolic bounce for rolling barrels (jump-like, half barrel height)
+    let bounceOffset = 0;
+    if (this.dy === 0) { // Only while rolling
+      // Double the bounce period for even longer/slower bounce
+      const period = this.width * 4.4;
+      const t = ((this.x % period) / period);
+      // Double the parabola width (even less steep)
+      const amplitude = this.height * 0.5;
+      bounceOffset = (-1.1 * amplitude * Math.pow(t - 0.5, 2) + amplitude * 0.95);
+    }
     const x = this.x * scale;
-    const y = this.y * scale;
+    const y = (this.y - bounceOffset) * scale;
     const w = this.width * scale;
     const h = this.height * scale;
     const cx = x + w / 2;

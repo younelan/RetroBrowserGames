@@ -374,11 +374,13 @@ export class Player {
   }
 
   collidesWith(gameObject) {
-    // Basic AABB collision detection
+    // AABB collision, but ignore the top of the player (the head) for barrel collision
+    // Only the lower 2/3 of the player counts for collision
+    const bodyTop = this.y + this.height / 3;
     return (
       this.x < gameObject.x + gameObject.width &&
       this.x + this.width > gameObject.x &&
-      this.y < gameObject.y + gameObject.height &&
+      bodyTop < gameObject.y + gameObject.height &&
       this.y + this.height > gameObject.y
     );
   }
