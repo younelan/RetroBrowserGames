@@ -20,7 +20,7 @@ export function showWinScreen(score) {
 
   ctx.fillStyle = '#00FF00'; // Green for restart message
   ctx.font = '20px "Press Start 2P", cursive';
-  ctx.fillText('Click or Press Any Key to Restart', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 80);
+  ctx.fillText('Tap, Click, or Press Any Key to Restart', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 80);
 }
 
 export function showGameOverScreen(score) {
@@ -42,5 +42,5 @@ export function showGameOverScreen(score) {
 
   ctx.fillStyle = '#00FF00'; // Green for restart message
   ctx.font = '20px "Press Start 2P", cursive';
-  ctx.fillText('Click or Press Any Key to Restart', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 80);
+  ctx.fillText('Tap, Click, or Press Any Key to Restart', GAME_WIDTH / 2, GAME_HEIGHT / 2 + 80);
 }

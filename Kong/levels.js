@@ -1,7 +1,7 @@
 // levels.js
 // All level data for the game
 
-export const START_LEVEL = 1; // Change to 1 to start at level 1, etc.
+export const START_LEVEL = 2; // Change to 1 to start at level 1, etc.
 
 export const LEVELS = [
   // Level 1 (reverted: whichever is top is now bottom, ladders reach top of above platform)
@@ -55,6 +55,98 @@ export const LEVELS = [
     ],
     items: [
       { type: "hammer", x: 400, y: 420 }
+    ]
+  }
+  ,
+  // Level 3 (new layout)
+  {
+    name: "Stage 3",
+    time: 5000,
+    player_start: { x: 60, y: 700 },
+    pauline_pos: { x: 720, y: 110 },
+    dk_pos: { x: 80, y: 180 },
+    barrel_speed: 70,
+    barrel_release_frequency: 300,
+    platforms: [
+      { start_x: 0, start_y: 760, end_x: 800, end_y: 750 }, // 0
+      { start_x: 120, start_y: 630, end_x: 700, end_y: 640 }, // 1
+      { start_x: 0, start_y: 500, end_x: 650, end_y: 510 }, // 2
+      { start_x: 180, start_y: 370, end_x: 800, end_y: 360 }, // 3
+      { start_x: 100, start_y: 240, end_x: 700, end_y: 250 }, // 4
+      { start_x: 250, start_y: 120, end_x: 800, end_y: 130 } // 5 (top)
+    ],
+    ladders: [
+      { x: 200, top_y: 640, bottom_y: 750 },
+      { x: 600, top_y: 510, bottom_y: 640 },
+      { x: 400, top_y: 360, bottom_y: 510 },
+      { x: 700, top_y: 250, bottom_y: 360 },
+      { x: 300, top_y: 130, bottom_y: 250 }, // long ladder
+      { x: 500, top_y: 250, bottom_y: 360 }
+    ],
+    items: [
+      { type: "hammer", x: 350, y: 480 },
+      { type: "hammer", x: 600, y: 350 }
+    ]
+  }
+  ,
+  // Level 3 (new layout)
+  {
+    name: "Stage 3",
+    time: 5000,
+    player_start: { x: 60, y: 700 },
+    pauline_pos: { x: 720, y: 110 },
+    dk_pos: { x: 80, y: 180 },
+    barrel_speed: 70,
+    barrel_release_frequency: 300,
+    platforms: [
+      { start_x: 0, start_y: 760, end_x: 800, end_y: 750 }, // 0
+      { start_x: 120, start_y: 630, end_x: 700, end_y: 640 }, // 1
+      { start_x: 0, start_y: 500, end_x: 650, end_y: 510 }, // 2
+      { start_x: 180, start_y: 370, end_x: 800, end_y: 360 }, // 3
+      { start_x: 100, start_y: 240, end_x: 700, end_y: 250 }, // 4
+      { start_x: 250, start_y: 120, end_x: 800, end_y: 130 } // 5 (top)
+    ],
+    ladders: [
+      { x: 200, top_y: 640, bottom_y: 750 },
+      { x: 600, top_y: 510, bottom_y: 640 },
+      { x: 400, top_y: 360, bottom_y: 510 },
+      { x: 700, top_y: 250, bottom_y: 360 },
+      { x: 300, top_y: 130, bottom_y: 250 }, // long ladder
+      { x: 500, top_y: 250, bottom_y: 360 }
+    ],
+    items: [
+      { type: "hammer", x: 350, y: 480 },
+      { type: "hammer", x: 600, y: 350 }
+    ]
+  },
+  // Level 3 (new layout)
+  {
+    name: "Stage 3",
+    time: 5000,
+    player_start: { x: 60, y: 700 },
+    pauline_pos: { x: 720, y: 110 },
+    dk_pos: { x: 80, y: 180 },
+    barrel_speed: 70,
+    barrel_release_frequency: 300,
+    platforms: [
+      { start_x: 0, start_y: 760, end_x: 800, end_y: 750 }, // 0
+      { start_x: 120, start_y: 630, end_x: 700, end_y: 640 }, // 1
+      { start_x: 0, start_y: 500, end_x: 650, end_y: 510 }, // 2
+      { start_x: 180, start_y: 370, end_x: 800, end_y: 360 }, // 3
+      { start_x: 100, start_y: 240, end_x: 700, end_y: 250 }, // 4
+      { start_x: 250, start_y: 120, end_x: 800, end_y: 130 } // 5 (top)
+    ],
+    ladders: [
+      { x: 200, top_y: 640, bottom_y: 750 },
+      { x: 600, top_y: 510, bottom_y: 640 },
+      { x: 400, top_y: 360, bottom_y: 510 },
+      { x: 700, top_y: 250, bottom_y: 360 },
+      { x: 300, top_y: 130, bottom_y: 250 }, // long ladder
+      { x: 500, top_y: 250, bottom_y: 360 }
+    ],
+    items: [
+      { type: "hammer", x: 350, y: 480 },
+      { type: "hammer", x: 600, y: 350 }
     ]
   }
 ];

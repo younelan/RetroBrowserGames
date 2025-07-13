@@ -1,9 +1,12 @@
 // document.addEventListener('DOMContentLoaded', () => {
+
 import { Level } from './level.js';
 import { Barrel } from './Barrel.js';
 import { showWinScreen, showGameOverScreen } from './ui.js';
 import { LEVELS } from './levels.js';
 import './input.js';
+
+export const START_LIVES = 5;
 
 export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 800;
@@ -20,7 +23,7 @@ export class Game {
     const scale = Math.min(this.canvas.width / virtualWidth, this.canvas.height / virtualHeight);
     this.level = new Level(levelData, scale);
     this.score = 0;
-    this.lives = 3;
+    this.lives = START_LIVES;
     this.isGameOver = false;
     this.isGameWon = false;
     this.lastTime = 0;
@@ -41,12 +44,13 @@ export class Game {
 
   start() {
     this.score = 0;
-    this.lives = 3;
+    this.lives = START_LIVES;
     this.isGameOver = false;
     this.isGameWon = false;
     this.lastTime = 0;
     this.animationFrame = 0;
     this.barrelTimer = 0;
+    this._spawnProtectTime = null; // Reset spawn protection
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
   }
 
@@ -55,10 +59,7 @@ export class Game {
     const deltaTime = timestamp - this.lastTime;
     this.lastTime = timestamp;
     this.animationFrame++;
-    // Clear the canvas before rendering
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.level.update(deltaTime);
-    // Barrel spawn logic (should create Barrels, not Players)
     this.barrelTimer += deltaTime;
     if (this.barrelTimer > (this.level.barrel_release_frequency || 100) * 10) {
       this.level.barrels.push(new Barrel({
@@ -69,6 +70,11 @@ export class Game {
       }));
       this.barrelTimer = 0;
     }
+
+    // --- SPAWN PROTECTION: Prevent instant death for 1.2s after spawn or level start ---
+    if (!this._spawnProtectTime) this._spawnProtectTime = timestamp;
+    const spawnProtect = (timestamp - this._spawnProtectTime < 1200);
+
     // Win condition
     if (
       this.level.player.x < this.level.damsel.x + 30 &&
@@ -79,35 +85,68 @@ export class Game {
       this.isGameWon = true;
       if (!this._winHandled) {
         this._winHandled = true;
-        // If not last level, skip win screen and go straight to next level
         if (this.levelIndex < LEVELS.length - 1) {
           setTimeout(() => {
             let nextLevel = this.levelIndex + 1;
             window.game = new Game(this.canvas, LEVELS[nextLevel], nextLevel);
             window.game.start();
-          }, 500); // short delay for smoothness
+          }, 500);
         } else {
-          // Last level: show win screen
           showWinScreen(this.score);
         }
       }
       return;
     }
-    // Barrel collision
-    for (const barrel of this.level.barrels) {
-      if (this.level.player.collidesWith(barrel)) {
-        this.lives--;
-        if (this.lives > 0) {
-          this.level.player.x = this.level.player.x;
-          this.level.player.y = this.level.player.y;
-        } else {
-          this.isGameOver = true;
-          showGameOverScreen(this.score);
-          return;
+
+    // Barrel collision (ignore if spawn protected)
+    if (!spawnProtect) {
+      for (const barrel of this.level.barrels) {
+        if (this.level.player.collidesWith(barrel)) {
+          this.lives--;
+          if (this.lives < 0) this.lives = 0;
+          if (this.lives > 0) {
+            // Respawn: reset player position and give spawn protection
+            this.level.player.x = this.level.player_start.x;
+            this.level.player.y = this.level.player_start.y - (this.level.player.height - 30);
+            this.level.player.dx = 0;
+            this.level.player.dy = 0;
+            this._spawnProtectTime = timestamp;
+          } else {
+            this.isGameOver = true;
+            showGameOverScreen(this.score);
+            return;
+          }
+          break;
         }
       }
     }
+
+    // --- RENDER: Draw everything including UI ---
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.level.render(this.ctx);
+    // Draw UI: Emojis only, no text labels
+    this.ctx.save();
+    this.ctx.font = '28px Arial';
+    this.ctx.fillStyle = '#fff';
+    this.ctx.textAlign = 'left';
+    this.ctx.fillText(`🏆${this.score}`, 10, 32);
+    this.ctx.textAlign = 'right';
+    this.ctx.fillText(`❤️${this.lives}`, this.canvas.width - 10, 32);
+    this.ctx.textAlign = 'center';
+    this.ctx.font = '32px Arial';
+    this.ctx.fillText(`🗺️${this.levelIndex + 1}`, this.canvas.width / 2, 32);
+    this.ctx.restore();
+
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
+  }
+
+  restoreLife() {
+    if (this.lives < START_LIVES) {
+      this.lives++;
+    }
+  }
+
+  addScore(points) {
+    this.score += points;
   }
 }
