@@ -1,11 +1,11 @@
 export class Ladder {
-  static WIDTH = 20;
+  static WIDTH = 40; // doubled from 20
   constructor({ x, top_y, bottom_y, broken = false }) {
     this.x = x;
     this.top_y = top_y;
     this.bottom_y = bottom_y;
     this.broken = broken;
-    this.width = Ladder.WIDTH; // Add this line
+    this.width = Ladder.WIDTH;
   }
 
   update(level, deltaTime) {

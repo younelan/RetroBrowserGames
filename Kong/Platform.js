@@ -5,6 +5,7 @@ export class Platform {
     this.start_y = start_y;
     this.end_x = end_x;
     this.end_y = end_y;
+    this.index = undefined; // Will be set by Level
   }
 
   update(level, deltaTime) {
@@ -21,6 +22,23 @@ export class Platform {
     ctx.save();
     ctx.translate(this.start_x * scale, this.start_y * scale);
     ctx.rotate(angle);
+
+    // Draw platform index at the center of the platform
+    if (typeof this.index === 'number') {
+      ctx.save();
+      ctx.font = `${32 * scale}px monospace`;
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 6 * scale;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // Center of the platform
+      const centerX = length / 2;
+      const centerY = 0;
+      ctx.strokeText(`${this.index}`, centerX, centerY);
+      ctx.fillText(`${this.index}`, centerX, centerY);
+      ctx.restore();
+    }
     // Main girder body (deep gradient for metallic look)
     const grad = ctx.createLinearGradient(0, -18 * scale, 0, 18 * scale);
     grad.addColorStop(0, '#fffbe6');

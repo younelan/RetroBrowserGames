@@ -1,11 +1,12 @@
 export class Damsel {
   static WIDTH = 30;
-  static HEIGHT = 40;
+  static HEIGHT = 80; // doubled
   constructor({ x, y, width = Damsel.WIDTH, height = Damsel.HEIGHT }) {
     this.x = x;
-    this.y = y;
-    this.width = width;
+    // Adjust y so feet stay in same place
     this.height = height;
+    this.width = width;
+    this.y = y - (this.height / 2); // move up by half new height
   }
 
   update(level, deltaTime) {
@@ -17,7 +18,7 @@ export class Damsel {
     const x = this.x * scale;
     const y = this.y * scale;
     const width = (this.width || 30) * scale;
-    const height = (this.height || 40) * scale;
+    const height = (this.height || 80) * scale;
     // Dress
     ctx.fillStyle = '#ff69b4'; // Pink
     ctx.fillRect(x, y + height * 0.3, width, height * 0.7);

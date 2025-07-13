@@ -2,13 +2,14 @@
 import { Level } from './level.js';
 import { Barrel } from './Barrel.js';
 import { showWinScreen, showGameOverScreen } from './ui.js';
+import { LEVELS } from './levels.js';
 import './input.js';
 
 export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 800;
 
 export class Game {
-  constructor(canvas, levelData) {
+  constructor(canvas, levelData, levelIndex = 0) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
     // Calculate scale based on canvas size and virtual game size
@@ -25,7 +26,8 @@ export class Game {
     this.lastTime = 0;
     this.animationFrame = 0;
     this.barrelTimer = 0;
-    
+    this.levelIndex = levelIndex;
+    this._winHandled = false;
     this.resizeCanvas();
     window.addEventListener('resize', () => this.resizeCanvas());
   }
@@ -75,7 +77,20 @@ export class Game {
       this.level.player.y + this.level.player.height > this.level.damsel.y
     ) {
       this.isGameWon = true;
-      showWinScreen(this.score);
+      if (!this._winHandled) {
+        this._winHandled = true;
+        // If not last level, skip win screen and go straight to next level
+        if (this.levelIndex < LEVELS.length - 1) {
+          setTimeout(() => {
+            let nextLevel = this.levelIndex + 1;
+            window.game = new Game(this.canvas, LEVELS[nextLevel], nextLevel);
+            window.game.start();
+          }, 500); // short delay for smoothness
+        } else {
+          // Last level: show win screen
+          showWinScreen(this.score);
+        }
+      }
       return;
     }
     // Barrel collision
