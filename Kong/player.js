@@ -240,8 +240,8 @@ export class Player {
 
     // Animation timing for pendulum arms/legs
     let walkTime = (this.frame + performance.now() / 120) * 0.18;
-    let walkCycle = Math.sin(walkTime);
-    let walkCycle2 = Math.sin(walkTime * 2 + Math.PI); // legs rotate twice as fast
+    let walkCycle2 = Math.sin(walkTime * 2 + Math.PI); // legs and arms rotate at same speed
+    let walkCycle = walkCycle2;
     let isMoving = Math.abs(this.dx) > 0.1;
     let isClimbing = this.isClimbing;
     let bodyBob = isMoving && !isClimbing ? Math.sin(walkTime * 2) * 0.5 * height * 0.05 : 0;
