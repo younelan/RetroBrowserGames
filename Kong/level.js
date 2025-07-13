@@ -1,4 +1,3 @@
-
 import { Player } from './player.js';
 import { Damsel } from './Damsel.js';
 import { Barrel } from './Barrel.js';
@@ -15,9 +14,11 @@ export class Level {
     this.scale = scale;
     console.log(`Level initialized with scale: ${this.scale}`);
     // Store all positions/sizes in virtual units
-    this.platforms = (levelData.platforms || []).map(p => {
+    this.platforms = (levelData.platforms || []).map((p, idx) => {
       console.log(`Platform: start_x=${p.start_x}, start_y=${p.start_y}, end_x=${p.end_x}, end_y=${p.end_y}`);
-      return new Platform(p);
+      const plat = new Platform(p);
+      plat.index = idx;
+      return plat;
     });
     this.ladders = (levelData.ladders || []).map(l => new Ladder(l));
     // Use the y from the level data directly for Damsel (Pauline) position
@@ -50,9 +51,10 @@ export class Level {
   }
 
   render(ctx) {
-    // Pass scale to all render methods
-    this.ladders.forEach(l => l.render(ctx, this.scale));
+    // Draw platforms first (so index is on top of girder)
     this.platforms.forEach(p => p.render(ctx, this.scale));
+    // Then ladders, Kong, Damsel, barrels, player
+    this.ladders.forEach(l => l.render(ctx, this.scale));
     this.kong.render(ctx, this.scale);
     this.damsel.render(ctx, this.scale);
     this.barrels.forEach(b => b.render(ctx, this.scale));

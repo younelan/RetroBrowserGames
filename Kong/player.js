@@ -2,8 +2,8 @@ import { Platform } from './Platform.js';
 
 
 export class Player {
-  static WIDTH = 20;
-  static HEIGHT = 30;
+  static WIDTH = 40;
+  static HEIGHT = 60;
   static SPEED = 200; // pixels per second
   static JUMP_VELOCITY = -400; // initial jump velocity
   static GRAVITY = 800; // pixels per second squared
@@ -11,7 +11,8 @@ export class Player {
 
   constructor({ x, y, width = Player.WIDTH, height = Player.HEIGHT, speed = Player.SPEED }) {
     this.x = x;
-    this.y = y;
+    // Shift y upward by the increase in height so feet stay in the same place
+    this.y = y - (Player.HEIGHT - 30); // 30 is the old height
     this.width = width;
     this.height = height;
     this.speed = speed;
@@ -22,6 +23,7 @@ export class Player {
     this.isJumping = false;
     this.isClimbing = false; // Ensure climbing is false at start
     this.isOnLadder = false;
+    this.isOnLadderBelow = false; // New flag: true if there's a ladder segment below the player
     this.currentPlatform = null; // The platform the player is currently standing on
     this.isDroppingThroughPlatform = false; // New flag for dropping through platforms
     this.dropThroughTimer = 0; // Timer for dropping through platforms
@@ -44,15 +46,28 @@ export class Player {
       }
     }
 
-    // Determine if player is currently on a ladder
+    // Determine if player is currently on a ladder or has a ladder below
     this.isOnLadder = false;
+    this.isOnLadderBelow = false;
     for (const ladder of level.ladders) {
-      if (this.x + this.width > ladder.x - Player.LADDER_TOLERANCE &&
-          this.x < ladder.x + ladder.width + Player.LADDER_TOLERANCE &&
-          this.y + this.height > ladder.top_y &&
-          this.y < ladder.bottom_y) {
+      // Check for horizontal overlap between player and ladder with tolerance
+      const horizontalOverlap = (this.x + this.width > ladder.x - Player.LADDER_TOLERANCE &&
+                                 this.x < ladder.x + ladder.width + Player.LADDER_TOLERANCE);
+
+      // Check if player is vertically within the ladder bounds
+      const verticalOverlap = (this.y + this.height > ladder.top_y &&
+                               this.y < ladder.bottom_y);
+
+      if (horizontalOverlap && verticalOverlap) {
         this.isOnLadder = true;
-        break;
+      }
+
+      // Check if there's a ladder segment below the player's feet
+      // Player's feet are above or at ladder top, and ladder extends below player
+      if (horizontalOverlap &&
+          this.y + this.height <= ladder.bottom_y &&
+          this.y + this.height + 5 >= ladder.top_y) { // Check a few pixels below player for ladder top
+        this.isOnLadderBelow = true;
       }
     }
 
@@ -165,63 +180,92 @@ export class Player {
       ctx.translate(-(x + width), -y);
     }
 
-    // Body (overalls)
-    ctx.fillStyle = '#0000ff'; // Blue
-    ctx.fillRect(x, y + height * 0.4, width, height * 0.6);
+    // Shadow
+    ctx.save();
+    ctx.globalAlpha = 0.2;
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.ellipse(x + width/2, y + height * 1.05, width * 0.4, height * 0.12, 0, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
 
-    // Shirt
-    ctx.fillStyle = '#ff0000'; // Red
-    ctx.fillRect(x, y, width, height * 0.5);
+    // Body (overalls, with gradient)
+    let bodyGradient = ctx.createLinearGradient(x, y + height * 0.4, x, y + height);
+    bodyGradient.addColorStop(0, '#3366ff');
+    bodyGradient.addColorStop(1, '#0000aa');
+    ctx.fillStyle = bodyGradient;
+    ctx.fillRect(x + width * 0.15, y + height * 0.45, width * 0.7, height * 0.5);
 
-    // Head
-    ctx.fillStyle = '#f0c0a0'; // Skin color
-    ctx.fillRect(x + width * 0.1, y - height * 0.3, width * 0.8, height * 0.4);
+    // Shirt (with gradient)
+    let shirtGradient = ctx.createLinearGradient(x, y, x, y + height * 0.5);
+    shirtGradient.addColorStop(0, '#ff6666');
+    shirtGradient.addColorStop(1, '#cc0000');
+    ctx.fillStyle = shirtGradient;
+    ctx.fillRect(x + width * 0.15, y + height * 0.1, width * 0.7, height * 0.4);
 
-    // Eyes
+    // Head (rounder, with face)
+    ctx.fillStyle = '#f0c0a0';
+    ctx.beginPath();
+    ctx.ellipse(x + width/2, y, width * 0.32, height * 0.28, 0, 0, 2 * Math.PI);
+    ctx.fill();
+
+    // Eyes (bigger, blue irises)
     ctx.fillStyle = 'white';
-    ctx.fillRect(x + width * 0.25, y - height * 0.2, width * 0.1, height * 0.05);
-    ctx.fillRect(x + width * 0.55, y - height * 0.2, width * 0.1, height * 0.05);
+    ctx.beginPath();
+    ctx.ellipse(x + width * 0.38, y - height * 0.05, width * 0.07, height * 0.06, 0, 0, 2 * Math.PI);
+    ctx.ellipse(x + width * 0.62, y - height * 0.05, width * 0.07, height * 0.06, 0, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillStyle = '#3399ff';
+    ctx.beginPath();
+    ctx.ellipse(x + width * 0.38, y - height * 0.05, width * 0.03, height * 0.025, 0, 0, 2 * Math.PI);
+    ctx.ellipse(x + width * 0.62, y - height * 0.05, width * 0.03, height * 0.025, 0, 0, 2 * Math.PI);
+    ctx.fill();
     ctx.fillStyle = 'black';
-    ctx.fillRect(x + width * 0.28, y - height * 0.18, width * 0.04, height * 0.02);
-    ctx.fillRect(x + width * 0.58, y - height * 0.18, width * 0.04, height * 0.02);
+    ctx.beginPath();
+    ctx.ellipse(x + width * 0.38, y - height * 0.05, width * 0.012, height * 0.012, 0, 0, 2 * Math.PI);
+    ctx.ellipse(x + width * 0.62, y - height * 0.05, width * 0.012, height * 0.012, 0, 0, 2 * Math.PI);
+    ctx.fill();
 
-    // Hat
-    ctx.fillStyle = '#ff0000'; // Red
-    ctx.fillRect(x, y - height * 0.4, width, height * 0.15);
-    ctx.fillRect(x + width * 0.7, y - height * 0.5, width * 0.3, height * 0.2);
+    // Hat (Mario style, with brim)
+    ctx.fillStyle = '#ff2222';
+    ctx.beginPath();
+    ctx.ellipse(x + width/2, y - height * 0.18, width * 0.32, height * 0.13, 0, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.fillStyle = '#cc0000';
+    ctx.fillRect(x + width * 0.18, y - height * 0.18, width * 0.64, height * 0.07);
+    // Brim
+    ctx.fillStyle = '#aa0000';
+    ctx.beginPath();
+    ctx.ellipse(x + width/2, y - height * 0.13, width * 0.38, height * 0.06, 0, 0, Math.PI);
+    ctx.fill();
 
-    // Moustache
-    ctx.fillStyle = '#4B3621'; // Brown
-    ctx.fillRect(x + width * 0.2, y + height * 0.1, width * 0.6, height * 0.05);
+    // Moustache (curved)
+    ctx.strokeStyle = '#4B3621';
+    ctx.lineWidth = 3 * scale;
+    ctx.beginPath();
+    ctx.arc(x + width/2, y + height * 0.04, width * 0.18, Math.PI * 0.1, Math.PI * 0.9, false);
+    ctx.stroke();
 
-    // Legs
-    ctx.fillStyle = '#0000ff'; // Blue
-    ctx.fillRect(x + width * 0.1, y + height * 0.8, width * 0.3, height * 0.2);
-    ctx.fillRect(x + width * 0.6, y + height * 0.8, width * 0.3, height * 0.2);
+    // Legs (with boots)
+    ctx.fillStyle = '#0000ff';
+    ctx.fillRect(x + width * 0.22, y + height * 0.85, width * 0.18, height * 0.15);
+    ctx.fillRect(x + width * 0.60, y + height * 0.85, width * 0.18, height * 0.15);
+    ctx.fillStyle = '#442200';
+    ctx.fillRect(x + width * 0.22, y + height * 0.97, width * 0.18, height * 0.06);
+    ctx.fillRect(x + width * 0.60, y + height * 0.97, width * 0.18, height * 0.06);
 
-    // Arms (simple, will animate later)
-    ctx.fillStyle = '#ff0000'; // Red
-    ctx.fillRect(x - width * 0.2, y + height * 0.4, width * 0.4, height * 0.4);
-    ctx.fillRect(x + width * 0.8, y + height * 0.4, width * 0.4, height * 0.4);
-
-    // Animation for walking
-    if (this.dx !== 0) {
-      if (this.frame === 0) {
-        // Leg forward
-        ctx.fillStyle = '#0000ff';
-        ctx.fillRect(x + width * 0.6, y + height * 0.8, width * 0.3, height * 0.2);
-        // Arm forward
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(x + width * 0.8, y + height * 0.4, width * 0.4, height * 0.4);
-      } else {
-        // Leg back
-        ctx.fillStyle = '#0000ff';
-        ctx.fillRect(x + width * 0.1, y + height * 0.8, width * 0.3, height * 0.2);
-        // Arm back
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(x - width * 0.2, y + height * 0.4, width * 0.4, height * 0.4);
-      }
-    }
+    // Arms (with gloves) - start at shoulders
+    ctx.fillStyle = '#ff2222';
+    // Left arm
+    ctx.fillRect(x - width * 0.08, y + height * 0.1, width * 0.22, height * 0.52);
+    // Right arm
+    ctx.fillRect(x + width * 0.86, y + height * 0.1, width * 0.22, height * 0.52);
+    // Gloves
+    ctx.fillStyle = '#f0f0f0';
+    ctx.beginPath();
+    ctx.ellipse(x - width * 0.02, y + height * 0.62, width * 0.07, height * 0.06, 0, 0, 2 * Math.PI);
+    ctx.ellipse(x + width * 0.98, y + height * 0.62, width * 0.07, height * 0.06, 0, 0, 2 * Math.PI);
+    ctx.fill();
 
     ctx.restore();
   }
@@ -257,13 +301,13 @@ export class Player {
   }
 
   climbDown() {
-    // Only allow climbing down if currently on a ladder
-    if (this.isOnLadder) {
+    // Only allow climbing down if currently on a ladder AND there's a ladder segment below
+    if (this.isOnLadder && this.isOnLadderBelow) {
       this.isClimbing = true;
       this.dy = this.speed * 0.7; // Slower climbing speed
       this.dx = 0; // Stop horizontal movement while climbing
-    } else if (this.currentPlatform) {
-      // If not on a ladder but on a platform, attempt to drop through
+    } else if (this.currentPlatform && this.isOnLadderBelow) {
+      // If not on a ladder but on a platform, and there's a ladder below, attempt to drop through
       this.isDroppingThroughPlatform = true;
       this.dropThroughTimer = this.DROP_THROUGH_DURATION; // Start timer
       this.dy = this.speed; // Give a downward push to help drop through
