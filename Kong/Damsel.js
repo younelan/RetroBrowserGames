@@ -3,10 +3,10 @@ export class Damsel {
   static HEIGHT = 80; // doubled
   constructor({ x, y, width = Damsel.WIDTH, height = Damsel.HEIGHT }) {
     this.x = x;
-    // Adjust y so feet stay in same place
     this.height = height;
     this.width = width;
-    this.y = y - (this.height / 2); // move up by half new height
+    // y is now FEET position, not center
+    this.y = y - this.height; // place feet at y
   }
 
   update(level, deltaTime) {

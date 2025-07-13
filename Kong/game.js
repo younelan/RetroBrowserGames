@@ -98,19 +98,17 @@ export class Game {
       return;
     }
 
-    // Barrel collision (ignore if spawn protected)
-    if (!spawnProtect) {
+    // Barrel collision (ignore if spawn protected or player is fading)
+    if (!spawnProtect && !this.level.player.isFrozen()) {
       for (const barrel of this.level.barrels) {
         if (this.level.player.collidesWith(barrel)) {
           this.lives--;
           if (this.lives < 0) this.lives = 0;
           if (this.lives > 0) {
-            // Respawn: reset player position and give spawn protection
-            this.level.player.x = this.level.player_start.x;
-            this.level.player.y = this.level.player_start.y - (this.level.player.height - 30);
-            this.level.player.dx = 0;
-            this.level.player.dy = 0;
-            this._spawnProtectTime = timestamp;
+            // Fade out, then respawn after fade
+            this.level.player.triggerFade();
+            this._pendingRespawn = true;
+            this._pendingRespawnTime = timestamp + this.level.player.FADE_DURATION;
           } else {
             this.isGameOver = true;
             showGameOverScreen(this.score);
@@ -121,10 +119,25 @@ export class Game {
       }
     }
 
+    // Handle pending respawn after fade
+    if (this._pendingRespawn && timestamp >= this._pendingRespawnTime) {
+      this.level.player.x = this.level.player_start.x;
+      this.level.player.y = this.level.player_start.y - (this.level.player.height - 30);
+      this.level.player.dx = 0;
+      this.level.player.dy = 0;
+      this._spawnProtectTime = timestamp;
+      this._pendingRespawn = false;
+    }
+
+    // Update player (skip input/movement if frozen)
+    if (!this.level.player.isFrozen()) {
+      // ...existing code for input, movement, etc...
+    }
+
     // --- RENDER: Draw everything including UI ---
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.level.render(this.ctx);
-    // Draw UI: Emojis only, no text labels
+    // Draw UI: Emojis only, plus level name in HUD
     this.ctx.save();
     this.ctx.font = '28px Arial';
     this.ctx.fillStyle = '#fff';
@@ -134,7 +147,7 @@ export class Game {
     this.ctx.fillText(`❤️${this.lives}`, this.canvas.width - 10, 32);
     this.ctx.textAlign = 'center';
     this.ctx.font = '32px Arial';
-    this.ctx.fillText(`🗺️${this.levelIndex + 1}`, this.canvas.width / 2, 32);
+    this.ctx.fillText(`🗺️${this.levelIndex + 1}  ${this.level.name ? ' ' + this.level.name : ''}`, this.canvas.width / 2, 32);
     this.ctx.restore();
 
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));

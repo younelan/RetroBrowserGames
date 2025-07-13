@@ -1,7 +1,7 @@
 // levels.js
 // All level data for the game
 
-export const START_LEVEL = 2; // Change to 1 to start at level 1, etc.
+export const START_LEVEL = 4; // Change to 1 to start at level 1, etc.
 
 export const LEVELS = [
   // Level 1 (reverted: whichever is top is now bottom, ladders reach top of above platform)
@@ -63,7 +63,7 @@ export const LEVELS = [
     name: "Stage 3",
     time: 5000,
     player_start: { x: 60, y: 700 },
-    pauline_pos: { x: 720, y: 110 },
+    pauline_pos: { x: 720, y: 120 },
     dk_pos: { x: 80, y: 180 },
     barrel_speed: 70,
     barrel_release_frequency: 300,
@@ -91,10 +91,10 @@ export const LEVELS = [
   ,
   // Level 3 (new layout)
   {
-    name: "Stage 3",
+    name: "Stage 4",
     time: 5000,
     player_start: { x: 60, y: 700 },
-    pauline_pos: { x: 720, y: 110 },
+    pauline_pos: { x: 720, y: 60 },
     dk_pos: { x: 80, y: 180 },
     barrel_speed: 70,
     barrel_release_frequency: 300,
@@ -119,9 +119,9 @@ export const LEVELS = [
       { type: "hammer", x: 600, y: 350 }
     ]
   },
-  // Level 3 (new layout)
+  // Level 4 (new layout)
   {
-    name: "Stage 3",
+    name: "Stage 5",
     time: 5000,
     player_start: { x: 60, y: 700 },
     pauline_pos: { x: 720, y: 110 },
