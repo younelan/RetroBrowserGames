@@ -10,7 +10,7 @@ export class Damsel {
   }
 
   update(level, deltaTime) {
-    // Sway slower, blink less often
+    // Sway slower, blink less often, wave every ~10s
     if (!this._animTime) this._animTime = 0;
     this._animTime += deltaTime;
     // Sway: oscillate x offset, slower
@@ -18,6 +18,11 @@ export class Damsel {
     // Blink: eyes closed for 120ms every ~4.5s
     this._blink = (Math.floor(this._animTime / 4500) !== Math.floor((this._animTime - deltaTime) / 4500)) ? 1 : (this._blink || 0);
     if (this._blink && this._animTime % 4500 > 120) this._blink = 0;
+    // Waving: every 10s, wave for 1.2s
+    const wavePeriod = 10000;
+    const waveDuration = 1200;
+    const t = this._animTime % wavePeriod;
+    this._waving = t < waveDuration;
   }
 
   render(ctx, scale = 1) {
@@ -164,21 +169,56 @@ export class Damsel {
     ctx.arc(x + width * 0.5, y + height * 0.17, width * 0.03, 0, Math.PI, false);
     ctx.stroke();
     ctx.restore();
-    // Arms (symmetric, natural)
+    // Arms (waving or natural)
     ctx.save();
     ctx.fillStyle = '#f0c0a0';
-    ctx.beginPath();
-    ctx.ellipse(x + width * 0.22, y + height * 0.38, width * 0.06, height * 0.13, 0, 0, Math.PI * 2);
-    ctx.ellipse(x + width * 0.78, y + height * 0.38, width * 0.06, height * 0.13, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    // Hands
-    ctx.save();
-    ctx.fillStyle = '#f0c0a0';
-    ctx.beginPath();
-    ctx.ellipse(x + width * 0.22, y + height * 0.53, width * 0.03, height * 0.02, 0, 0, Math.PI * 2);
-    ctx.ellipse(x + width * 0.78, y + height * 0.53, width * 0.03, height * 0.02, 0, 0, Math.PI * 2);
-    ctx.fill();
+    if (this._waving) {
+      // Waving: animate a handkerchief in her right hand
+      // Draw right arm as usual
+      ctx.beginPath();
+      ctx.ellipse(x + width * 0.22, y + height * 0.38, width * 0.06, height * 0.13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(x + width * 0.22, y + height * 0.53, width * 0.03, height * 0.02, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Animate a waving handkerchief
+      const handX = x + width * 0.22;
+      const handY = y + height * 0.53;
+      const waveAngle = Math.sin((this._animTime % 600) / 600 * Math.PI * 2) * 0.7;
+      ctx.save();
+      ctx.translate(handX, handY);
+      ctx.rotate(waveAngle);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(width * 0.04, -height * 0.04);
+      ctx.lineTo(width * 0.08, 0);
+      ctx.lineTo(width * 0.04, height * 0.04);
+      ctx.closePath();
+      ctx.fillStyle = '#fff';
+      ctx.globalAlpha = 0.85;
+      ctx.fill();
+      ctx.globalAlpha = 1.0;
+      ctx.restore();
+      // Left arm (static)
+      ctx.beginPath();
+      ctx.ellipse(x + width * 0.78, y + height * 0.38, width * 0.06, height * 0.13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Left hand
+      ctx.beginPath();
+      ctx.ellipse(x + width * 0.78, y + height * 0.53, width * 0.03, height * 0.02, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Both arms natural
+      ctx.beginPath();
+      ctx.ellipse(x + width * 0.22, y + height * 0.38, width * 0.06, height * 0.13, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + width * 0.78, y + height * 0.38, width * 0.06, height * 0.13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Hands
+      ctx.beginPath();
+      ctx.ellipse(x + width * 0.22, y + height * 0.53, width * 0.03, height * 0.02, 0, 0, Math.PI * 2);
+      ctx.ellipse(x + width * 0.78, y + height * 0.53, width * 0.03, height * 0.02, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
     // Shoes
     ctx.save();
