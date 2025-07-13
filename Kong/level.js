@@ -48,6 +48,68 @@ export class Level {
   }
 
   update(deltaTime) {
+    // --- Hammer-barrel and player-barrel collision logic (coordinate system fix) ---
+    // All objects use virtual (unscaled) coordinates for collision
+
+    // 1. Hammer-barrel collision (destroy barrel, award points)
+    if (this.player.hasHammer && this.player.hammer) {
+      // Get hammer hitbox in virtual coordinates (scale = 1)
+      const hammerHitbox = this.player.getHammerHitbox(1);
+      if (hammerHitbox) {
+        for (let i = this.barrels.length - 1; i >= 0; i--) {
+          const barrel = this.barrels[i];
+          if (
+            barrel.x + barrel.width > hammerHitbox.x &&
+            barrel.x < hammerHitbox.x + hammerHitbox.width &&
+            barrel.y + barrel.height > hammerHitbox.y &&
+            barrel.y < hammerHitbox.y + hammerHitbox.height
+          ) {
+            // Barrel hit by hammer: destroy barrel, award points, play sound/animation
+            const [removedBarrel] = this.barrels.splice(i, 1);
+            if (removedBarrel) removedBarrel._destroyedByHammer = true;
+            if (!this.player.score) this.player.score = 0;
+            this.player.score += 300;
+            // TODO: Play sound/animation
+          }
+        }
+      }
+    }
+
+    // 2. Player-barrel collision (player dies if not fading and not protected by hammer)
+    if (!this.player.fading && !this.player.isHammerActive) {
+      for (let i = this.barrels.length - 1; i >= 0; i--) {
+        const barrel = this.barrels[i];
+        // Only check barrels not destroyed by hammer this frame
+        if (!barrel._destroyedByHammer && this.player.collidesWith(barrel)) {
+          // Player dies (trigger fade or death logic)
+          this.player.triggerFade();
+          break;
+        }
+      }
+    }
+
+    // 3. Player front hitbox (punch/attack zone) destroys barrels in front (if not holding hammer)
+    if (!this.player.fading && !this.player.isHammerActive) {
+      const frontHitbox = this.player.getFrontHitbox(1);
+      if (frontHitbox) {
+        for (let i = this.barrels.length - 1; i >= 0; i--) {
+          const barrel = this.barrels[i];
+          if (
+            barrel.x + barrel.width > frontHitbox.x &&
+            barrel.x < frontHitbox.x + frontHitbox.width &&
+            barrel.y + barrel.height > frontHitbox.y &&
+            barrel.y < frontHitbox.y + frontHitbox.height
+          ) {
+            // Barrel hit by punch: destroy barrel, award points, play sound/animation
+            const [removedBarrel] = this.barrels.splice(i, 1);
+            if (removedBarrel) removedBarrel._destroyedByPunch = true;
+            if (!this.player.score) this.player.score = 0;
+            this.player.score += 100;
+            // TODO: Play punch sound/animation
+          }
+        }
+      }
+    }
     // Hammer pickup logic
     let hammerCarried = false;
     this.items.forEach(item => {
@@ -72,7 +134,17 @@ export class Level {
     this.player.update(this, deltaTime);
     this.kong.update(this, deltaTime);
     this.damsel.update(this, deltaTime);
-    this.barrels.forEach(barrel => barrel.update(this, deltaTime));
+    // Only update barrels that were not destroyed by hammer this frame
+    for (let i = this.barrels.length - 1; i >= 0; i--) {
+      const barrel = this.barrels[i];
+      if (!barrel._destroyedByHammer) {
+        barrel.update(this, deltaTime);
+      }
+    }
+    // Clean up _destroyedByHammer flags (in case any remain)
+    for (let i = this.barrels.length - 1; i >= 0; i--) {
+      if (this.barrels[i]._destroyedByHammer) delete this.barrels[i]._destroyedByHammer;
+    }
     // Update hammers (if needed)
     this.items.forEach(item => {
       if (item instanceof Hammer) item.update(this, deltaTime);

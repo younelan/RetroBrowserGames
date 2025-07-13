@@ -2,40 +2,118 @@
 import { Platform } from './Platform.js';
 
 export class Player {
+  // Hammer state
+  hammerTimer = 0;
+  isHammerActive = false;
+  hammerDuration = 6000; // ms, classic DK is about 6 seconds
+  hammer = null; // reference to carried hammer object
   // Called by Level to draw the hammer if the player is carrying it
   drawCarriedHammer(ctx, hammer, scale) {
-    // Draw hammer at the player's front hand position (use actual hand coordinates from arm drawing)
+    // Classic DK: hammer alternates between above head and in front
     const x = this.x * scale;
     const y = this.y * scale;
     const width = this.width * scale;
     const height = this.height * scale;
-    // Animation timing for pendulum arms/legs
     let walkTime = (this.frame + performance.now() / 120) * 0.18;
-    let walkCycle2 = Math.sin(walkTime * 2 + Math.PI);
-    let isMoving = Math.abs(this.dx) > 0.1;
-    let bodyBob = isMoving && !this.isClimbing ? Math.sin(walkTime * 2) * 0.5 * height * 0.05 : 0;
-    // Arm attach point
-    let armAttachY = y + bodyBob + height * 0.03;
-    // Front arm (right hand if facing right, left if facing left)
-    let armSwing = isMoving ? walkCycle2 * 0.7 : 0;
-    let handX, handY;
-    if (this.facing === 'left') {
-      handX = x + width * 0.5 - Math.sin(armSwing) * width * 0.22;
+    let swingPeriod = 0.22; // seconds per swing (approx 4.5 swings in 1s)
+    let swingPhase = ((performance.now() / 1000) % swingPeriod) / swingPeriod;
+    let aboveHead = swingPhase < 0.5;
+    let hammerX, hammerY, hammerAngle, flip;
+    if (aboveHead) {
+      // Above head, perfectly vertical, even higher
+      hammerX = x + width * 0.5;
+      hammerY = y - height * 0.36; // even higher above the head
+      // Draw hammer: handle is vertical, head is at top
+      ctx.save();
+      ctx.translate(hammerX, hammerY);
+      ctx.scale(1, 1);
+      // Draw handle (vertical rectangle)
+      ctx.fillStyle = '#a0522d';
+      ctx.fillRect(-7, 0, 14, 38); // handle, 14px wide, 38px tall
+      // Draw head (square at top)
+      ctx.fillStyle = '#888';
+      ctx.fillRect(-16, -18, 32, 18); // head, 32px wide, 18px tall, sits on top of handle
+      ctx.restore();
     } else {
-      handX = x + width * 0.5 + Math.sin(armSwing) * width * 0.22;
+      // In front of player, lower and much closer (X axis)
+      let isMoving = Math.abs(this.dx) > 0.1;
+      let bodyBob = isMoving && !this.isClimbing ? Math.sin(walkTime * 2) * 0.5 * height * 0.05 : 0;
+      let armAttachY = y + bodyBob + height * 0.32; // higher up, at red shirt
+      let walkCycle2 = Math.sin(walkTime * 2 + Math.PI);
+      let armSwing = isMoving ? walkCycle2 * 0.7 : 0;
+      let forwardOffset = width * 0.13; // MUCH closer in front (classic DK: hammer almost touches hand/body)
+      if (this.facing === 'left') {
+        hammerX = x + width * 0.5 - forwardOffset;
+        flip = -1;
+      } else {
+        hammerX = x + width * 0.5 + forwardOffset;
+        flip = 1;
+      }
+      hammerY = armAttachY + Math.abs(Math.cos(armSwing)) * height * 0.10; // lower (kept for slight bob)
+      // Draw hammer: handle is horizontal, head at end
+      ctx.save();
+      ctx.translate(hammerX, hammerY);
+      ctx.scale(flip, 1);
+      // Draw handle (horizontal rectangle)
+      ctx.fillStyle = '#a0522d';
+      ctx.fillRect(0, -7, 38, 14); // handle, 38px wide, 14px tall
+      // Draw head (square at end of handle)
+      ctx.fillStyle = '#888';
+      ctx.fillRect(38, -16, 18, 32); // head, 18px wide, 32px tall, at end of handle
+      ctx.restore();
     }
-    handY = armAttachY + Math.abs(Math.cos(armSwing)) * height * 0.38;
-    // Center hammer on hand
-    // handX, handY are in screen (canvas) coordinates, hammer.render expects screen coordinates
-    // Draw hammer rotated 180deg and flipped for facing
-    ctx.save();
-    ctx.translate(handX, handY);
-    let flip = this.facing === 'left' ? -1 : 1;
-    ctx.scale(flip, 1);
-    ctx.rotate(Math.PI); // 180 degrees
-    // Draw hammer centered at (0,0)
-    hammer.render(ctx, 1, -hammer.width / 2, -hammer.height / 2);
-    ctx.restore();
+  }
+  // Returns the hammer's hitbox (for collision with barrels) in screen coordinates
+  getHammerHitbox(scale) {
+    if (!this.isHammerActive || !this.hammer) return null;
+    const x = this.x * scale;
+    const y = this.y * scale;
+    const width = this.width * scale;
+    const height = this.height * scale;
+    let walkTime = (this.frame + performance.now() / 120) * 0.18;
+    let swingPeriod = 0.22;
+    let swingPhase = ((performance.now() / 1000) % swingPeriod) / swingPeriod;
+    let aboveHead = swingPhase < 0.5;
+    let hammerX, hammerY, hitboxW, hitboxH;
+    // Make hitbox a bit wider for easier hits
+    const hitboxScale = 1.35;
+    if (aboveHead) {
+      // Match drawCarriedHammer above-head position
+      hammerX = x + width * 0.5;
+      hammerY = y - height * 0.36;
+      hitboxW = 38 * hitboxScale;
+      hitboxH = 32 * hitboxScale;
+      // Centered on hammer head
+      return {
+        x: hammerX - hitboxW / 2,
+        y: hammerY - hitboxH,
+        width: hitboxW,
+        height: hitboxH
+      };
+    } else {
+      // Match drawCarriedHammer in-front position
+      let isMoving = Math.abs(this.dx) > 0.1;
+      let bodyBob = isMoving && !this.isClimbing ? Math.sin(walkTime * 2) * 0.5 * height * 0.05 : 0;
+      let armAttachY = y + bodyBob + height * 0.32;
+      let walkCycle2 = Math.sin(walkTime * 2 + Math.PI);
+      let armSwing = isMoving ? walkCycle2 * 0.7 : 0;
+      let forwardOffset = width * 0.13;
+      if (this.facing === 'left') {
+        hammerX = x + width * 0.5 - forwardOffset;
+      } else {
+        hammerX = x + width * 0.5 + forwardOffset;
+      }
+      hammerY = armAttachY + Math.abs(Math.cos(armSwing)) * height * 0.10;
+      hitboxW = 38 * hitboxScale;
+      hitboxH = 32 * hitboxScale;
+      // Place hitbox at the hammer head (end of handle)
+      return {
+        x: hammerX + (this.facing === 'left' ? hitboxW : 0) - hitboxW,
+        y: hammerY - hitboxH / 2,
+        width: hitboxW,
+        height: hitboxH
+      };
+    }
   }
   renderHammer(ctx, hammer, scale) {
     // Draw hammer at the player's front hand position (use actual hand coordinates from arm drawing)
@@ -101,6 +179,11 @@ export class Player {
     this.fadeAlpha = 1;
     this.fadeTimer = 0;
     this.FADE_DURATION = 1000; // ms
+
+    // Hammer state
+    this.hammerTimer = 0;
+    this.isHammerActive = false;
+    this.hammer = null;
   }
 
   triggerFade() {
@@ -114,6 +197,14 @@ export class Player {
   }
 
   update(level, deltaTime) {
+    // Hammer timer logic
+    if (this.isHammerActive) {
+      this.hammerTimer -= deltaTime;
+      if (this.hammerTimer <= 0) {
+        this.isHammerActive = false;
+        this.hammer = null;
+      }
+    }
     if (this.fading) {
       // Only update fade logic, skip all movement and input
       this.fadeTimer -= deltaTime;
@@ -138,6 +229,12 @@ export class Player {
       if (this.dropThroughTimer <= 0) {
         this.isDroppingThroughPlatform = false;
       }
+    }
+
+    // Restrict movement if hammer is active
+    if (this.isHammerActive) {
+      // Can't climb or jump while hammer is active
+      this.isClimbing = false;
     }
 
     // Determine if player is currently on a ladder or has a ladder below
@@ -836,6 +933,8 @@ export class Player {
   }
 
   jump() {
+    // Can't jump while hammer is active
+    if (this.isHammerActive) return;
     // Allow jump if not already jumping and not actively climbing (but allow if just standing on ladder)
     if (!this.isJumping && !this.isClimbing) {
       this.dy = Player.JUMP_VELOCITY;
@@ -849,6 +948,8 @@ export class Player {
   }
 
   climbUp() {
+    // Can't climb while hammer is active
+    if (this.isHammerActive) return;
     if (this.isOnLadder) {
       this.isClimbing = true;
       this.dy = -this.speed * 0.7; // Slower climbing speed
@@ -857,6 +958,8 @@ export class Player {
   }
 
   climbDown() {
+    // Can't climb while hammer is active
+    if (this.isHammerActive) return;
     // Only allow climbing down if currently on a ladder AND there's a ladder segment below
     if (this.isOnLadder && this.isOnLadderBelow) {
       this.isClimbing = true;
@@ -869,6 +972,20 @@ export class Player {
       this.dy = this.speed; // Give a downward push to help drop through
       this.currentPlatform = null; // Detach from current platform
     }
+  }
+  // Call this when picking up a hammer
+  pickUpHammer(hammer) {
+    this.isHammerActive = true;
+    this.hammerTimer = this.hammerDuration;
+    this.hammer = hammer;
+    if (hammer) hammer.isCarried = true;
+  }
+
+  // Call this to forcibly drop the hammer (e.g. on death)
+  dropHammer() {
+    this.isHammerActive = false;
+    if (this.hammer) this.hammer.isCarried = false;
+    this.hammer = null;
   }
 
   stopClimbing() {
@@ -886,5 +1003,37 @@ export class Player {
       bodyTop < gameObject.y + gameObject.height &&
       this.y + this.height > gameObject.y
     );
+  }
+  // Returns a hitbox in front of the player (for punch/attack zone), in screen coordinates if scale is provided
+  getFrontHitbox(scale = 1) {
+    // The hitbox is a rectangle in front of the player, from hand height down to the player's feet
+    const x = this.x * scale;
+    const y = this.y * scale;
+    const width = this.width * scale;
+    const height = this.height * scale;
+    let walkTime = (this.frame + performance.now() / 120) * 0.18;
+    let isMoving = Math.abs(this.dx) > 0.1;
+    let bodyBob = isMoving && !this.isClimbing ? Math.sin(walkTime * 2) * 0.5 * height * 0.05 : 0;
+    let armAttachY = y + bodyBob + height * 0.32;
+    let walkCycle2 = Math.sin(walkTime * 2 + Math.PI);
+    let armSwing = isMoving ? walkCycle2 * 0.7 : 0;
+    let forwardOffset = width * 0.13;
+    let hitboxW = 38 * 1.1;
+    // Extend hitbox from hand to feet
+    let handY = armAttachY + Math.abs(Math.cos(armSwing)) * height * 0.10;
+    let hitboxH = (y + height) - handY;
+    let frontX;
+    if (this.facing === 'left') {
+      frontX = x + width * 0.5 - forwardOffset - hitboxW;
+    } else {
+      frontX = x + width * 0.5 + forwardOffset;
+    }
+    let frontY = handY;
+    return {
+      x: frontX,
+      y: frontY,
+      width: hitboxW,
+      height: hitboxH
+    };
   }
 }
