@@ -1,7 +1,6 @@
 export class InputHandler {
   constructor(game) {
-    this.game = game;
-    this.player = game.level.player;
+    this.game = game; // Store the game instance directly
     this._boundKeyDown = this.handleKeyDown.bind(this);
     this._boundKeyUp = this.handleKeyUp.bind(this);
     this._boundTouchStart = this.handleTouchStart.bind(this);
@@ -9,6 +8,8 @@ export class InputHandler {
     this._boundTouchEnd = this.handleTouchEnd.bind(this);
     this.attachEvents();
   }
+
+  // No setGame needed if Game instance is persistent
 
   attachEvents() {
     document.addEventListener('keydown', this._boundKeyDown);

@@ -1,10 +1,7 @@
-// document.addEventListener('DOMContentLoaded', () => {
-
 import { Level } from './level.js';
 import { Barrel } from './Barrel.js';
 import { showWinScreen, showGameOverScreen } from './ui.js';
 import { LEVELS } from './levels.js';
-import './input.js';
 
 export const START_LIVES = 5;
 
@@ -12,16 +9,9 @@ export const GAME_WIDTH = 800;
 export const GAME_HEIGHT = 800;
 
 export class Game {
-  constructor(canvas, levelData, levelIndex = 0) {
+  constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    // Calculate scale based on canvas size and virtual game size
-    const virtualWidth = levelData.virtualWidth || 800;
-    const virtualHeight = levelData.virtualHeight || 800;
-    // Use the actual canvas size for scaling
-    this.resizeCanvas();
-    const scale = Math.min(this.canvas.width / virtualWidth, this.canvas.height / virtualHeight);
-    this.level = new Level(levelData, scale);
     this.score = 0;
     this.lives = START_LIVES;
     this.isGameOver = false;
@@ -29,35 +19,50 @@ export class Game {
     this.lastTime = 0;
     this.animationFrame = 0;
     this.barrelTimer = 0;
-    this.levelIndex = levelIndex;
+    this.levelIndex = 0;
     this._winHandled = false;
+    this._spawnProtectTime = null;
+    this._pendingRespawn = false;
+    this._pendingRespawnTime = 0;
+
     this.resizeCanvas();
     window.addEventListener('resize', () => this.resizeCanvas());
   }
 
   resizeCanvas() {
-    // Make the canvas fill the window while maintaining aspect ratio
     const size = Math.min(window.innerWidth, window.innerHeight);
     this.canvas.width = size;
     this.canvas.height = size;
   }
 
-  start() {
-    this.score = 0;
-    this.lives = START_LIVES;
-    this.isGameOver = false;
-    this.isGameWon = false;
-    this.lastTime = 0;
-    this.animationFrame = 0;
-    this.barrelTimer = 0;
-    this._spawnProtectTime = null; // Reset spawn protection
+  loadLevel(levelData, levelIndex) {
+    this.level = new Level(levelData, this.canvas.width / (levelData.virtualWidth || GAME_WIDTH));
+    this.levelIndex = levelIndex;
+    this.barrelTimer = 0; // Reset barrel timer for new level
+    this._spawnProtectTime = null; // Reset spawn protection for new level
     this._pendingRespawn = false;
     this._pendingRespawnTime = 0;
-    // Explicitly unfreeze player at start
+    this._winHandled = false; // Reset win handled flag for new level
+
+    // Ensure player is unfrozen and visible when loading a new level
     if (this.level && this.level.player) {
       this.level.player.fading = false;
       this.level.player.fadeAlpha = 1;
       this.level.player.fadeTimer = 0;
+    }
+  }
+
+  start() {
+    // Only reset score and lives if starting a new game from scratch
+    if (this.isGameOver || this.isGameWon) {
+      this.score = 0;
+      this.lives = START_LIVES;
+      this.isGameOver = false;
+      this.isGameWon = false;
+    }
+    // Load the initial level if not already loaded
+    if (!this.level) {
+        this.loadLevel(LEVELS[this.levelIndex], this.levelIndex);
     }
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
   }
@@ -67,7 +72,10 @@ export class Game {
     const deltaTime = timestamp - this.lastTime;
     this.lastTime = timestamp;
     this.animationFrame++;
+    // Clear the canvas before rendering
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.level.update(deltaTime);
+    // Barrel spawn logic
     this.barrelTimer += deltaTime;
     if (this.barrelTimer > (this.level.barrel_release_frequency || 100) * 10) {
       this.level.barrels.push(new Barrel({
@@ -95,9 +103,9 @@ export class Game {
         this._winHandled = true;
         if (this.levelIndex < LEVELS.length - 1) {
           setTimeout(() => {
-            let nextLevel = this.levelIndex + 1;
-            window.game = new Game(this.canvas, LEVELS[nextLevel], nextLevel);
-            window.game.start();
+            this.levelIndex++;
+            this.loadLevel(LEVELS[this.levelIndex], this.levelIndex);
+            this.start(); // Restart game loop for new level
           }, 500);
         } else {
           showWinScreen(this.score);
@@ -144,7 +152,7 @@ export class Game {
 
     // --- RENDER: Draw everything including UI ---
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.level.render(this.ctx);
+    this.level.render(this.ctx, this.animationFrame);
     // Draw UI: Emojis only, plus level name in HUD
     this.ctx.save();
     this.ctx.font = '28px Arial';
@@ -173,24 +181,43 @@ export class Game {
 
   // Player control wrappers for InputHandler
   movePlayerLeft() {
-    this.level.player.moveLeft();
+    if (this.level && this.level.player) {
+      this.level.player.moveLeft();
+    }
   }
+
   movePlayerRight() {
-    this.level.player.moveRight();
+    if (this.level && this.level.player) {
+      this.level.player.moveRight();
+    }
   }
+
   stopPlayerMovingX() {
-    this.level.player.stopMovingX();
+    if (this.level && this.level.player) {
+      this.level.player.stopMovingX();
+    }
   }
+
   jumpPlayer() {
-    this.level.player.jump();
+    if (this.level && this.level.player) {
+      this.level.player.jump();
+    }
   }
+
   climbPlayerUp() {
-    this.level.player.climbUp();
+    if (this.level && this.level.player) {
+      this.level.player.climbUp();
+    }
   }
+
   climbPlayerDown() {
-    this.level.player.climbDown();
+    if (this.level && this.level.player) {
+      this.level.player.climbDown();
+    }
   }
   stopPlayerClimbing() {
-    this.level.player.stopClimbing();
+    if (this.level && this.level.player) {
+      this.level.player.stopClimbing();
+    }
   }
 }
