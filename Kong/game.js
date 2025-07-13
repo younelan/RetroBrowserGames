@@ -51,6 +51,14 @@ export class Game {
     this.animationFrame = 0;
     this.barrelTimer = 0;
     this._spawnProtectTime = null; // Reset spawn protection
+    this._pendingRespawn = false;
+    this._pendingRespawnTime = 0;
+    // Explicitly unfreeze player at start
+    if (this.level && this.level.player) {
+      this.level.player.fading = false;
+      this.level.player.fadeAlpha = 1;
+      this.level.player.fadeTimer = 0;
+    }
     requestAnimationFrame((timestamp) => this.gameLoop(timestamp));
   }
 
@@ -161,5 +169,28 @@ export class Game {
 
   addScore(points) {
     this.score += points;
+  }
+
+  // Player control wrappers for InputHandler
+  movePlayerLeft() {
+    this.level.player.moveLeft();
+  }
+  movePlayerRight() {
+    this.level.player.moveRight();
+  }
+  stopPlayerMovingX() {
+    this.level.player.stopMovingX();
+  }
+  jumpPlayer() {
+    this.level.player.jump();
+  }
+  climbPlayerUp() {
+    this.level.player.climbUp();
+  }
+  climbPlayerDown() {
+    this.level.player.climbDown();
+  }
+  stopPlayerClimbing() {
+    this.level.player.stopClimbing();
   }
 }

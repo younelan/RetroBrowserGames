@@ -7,7 +7,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Load all levels from levels.js
   let currentLevel = START_LEVEL;
   let game = new Game(canvas, LEVELS[currentLevel], currentLevel);
-  new InputHandler(game);
+  let inputHandler = new InputHandler(game);
   window.game = game;
   game.start();
 
@@ -16,12 +16,16 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (e.key === 'n') { // Press 'n' for next level
       currentLevel = (currentLevel + 1) % LEVELS.length;
       game = new Game(canvas, LEVELS[currentLevel], currentLevel);
+      inputHandler.detachEvents();
+      inputHandler = new InputHandler(game);
       window.game = game;
       game.start();
     }
     if (e.key === 'p') { // Press 'p' for previous level
       currentLevel = (currentLevel - 1 + LEVELS.length) % LEVELS.length;
       game = new Game(canvas, LEVELS[currentLevel], currentLevel);
+      inputHandler.detachEvents();
+      inputHandler = new InputHandler(game);
       window.game = game;
       game.start();
     }
@@ -32,6 +36,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       // Restart the game at the first level
       currentLevel = 0;
       game = new Game(canvas, LEVELS[currentLevel], currentLevel);
+      inputHandler.detachEvents();
+      inputHandler = new InputHandler(game);
       window.game = game;
       game.start();
       window._winScreenActive = false;

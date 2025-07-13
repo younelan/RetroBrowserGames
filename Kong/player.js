@@ -333,9 +333,15 @@ export class Player {
   }
 
   jump() {
+    // Allow jump if not already jumping and not actively climbing (but allow if just standing on ladder)
     if (!this.isJumping && !this.isClimbing) {
       this.dy = Player.JUMP_VELOCITY;
       this.isJumping = true;
+    } else if (!this.isJumping && this.isOnLadder && !this.isClimbing) {
+      // Standing on a ladder (not climbing): allow jump
+      this.dy = Player.JUMP_VELOCITY;
+      this.isJumping = true;
+      this.isClimbing = false;
     }
   }
 

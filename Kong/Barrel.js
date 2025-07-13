@@ -1,7 +1,8 @@
 export class Barrel {
-  constructor({ x, y, width = 20, height = 20, speed = 100, dx = 100, dy = 0 }) {
+  constructor({ x, y, width = 30, height = 30, speed = 100, dx = 100, dy = 0 }) {
     this.x = x;
-    this.y = y;
+    // Move up by 10px to keep bottom at same level after increasing size by 1.5x
+    this.y = y - 10;
     this.width = width;
     this.height = height;
     this.speed = speed;
