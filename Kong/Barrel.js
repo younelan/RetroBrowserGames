@@ -63,14 +63,16 @@ export class Barrel {
     const cy = y + h / 2;
     const depth = 8 * scale;
     const rot = ((this.x + (animationFrame || 0) * 2) / 32) % (2 * Math.PI);
-    ctx.save();
-    ctx.save();
+
+    // Draw shadow on ground
     ctx.globalAlpha = 0.25;
     ctx.fillStyle = '#000';
     ctx.beginPath();
     ctx.ellipse(cx + depth, cy + h * 0.7, w * 0.6, h * 0.25, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
+    ctx.globalAlpha = 1.0;
+
+    // Draw barrel body (side cylinder) with bold wood texture
     ctx.save();
     ctx.translate(cx, cy);
     ctx.rotate(rot);
@@ -87,7 +89,9 @@ export class Barrel {
     ctx.shadowBlur = 6;
     ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.save();
+    ctx.shadowColor = 'transparent';
+
+    // Bold wood grain lines
     ctx.strokeStyle = 'rgba(80,40,10,0.55)';
     ctx.lineWidth = 2.2;
     for (let i = -2; i <= 2; i++) {
@@ -100,7 +104,8 @@ export class Barrel {
     ctx.arc(w * 0.13, -h * 0.12, 2.2, 0, Math.PI * 2);
     ctx.arc(0, 0, 1.8, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.restore();
+
+    // Staves (vertical lines for wood planks, high contrast)
     ctx.strokeStyle = 'rgba(60,30,10,0.7)';
     ctx.lineWidth = 2.2;
     for (let i = 0; i < 8; i++) {
@@ -110,6 +115,8 @@ export class Barrel {
       ctx.lineTo(Math.cos(angle) * w * 0.48, Math.sin(angle) * h * 0.48);
       ctx.stroke();
     }
+
+    // Barrel bands (metal hoops)
     ctx.strokeStyle = '#d2cfc7';
     ctx.lineWidth = 3;
     for (let i = -1; i <= 1; i++) {
@@ -117,21 +124,23 @@ export class Barrel {
       ctx.ellipse(0, i * h * 0.18, w / 2, h * 0.22, 0, 0, Math.PI * 2);
       ctx.stroke();
     }
+
+    // Barrel rim (dark)
     ctx.beginPath();
     ctx.ellipse(0, 0, w / 2, h / 2, 0, 0, Math.PI * 2);
     ctx.lineWidth = 4;
     ctx.strokeStyle = '#442200';
     ctx.stroke();
-    ctx.save();
+
+    // Barrel highlight (curved, subtle, not white)
     ctx.globalAlpha = 0.13;
     ctx.beginPath();
     ctx.ellipse(-w * 0.13, -h * 0.18, w * 0.18, h * 0.13, 0, Math.PI * 0.1, Math.PI * 1.1);
     ctx.lineWidth = 7;
     ctx.strokeStyle = '#fffbe6';
     ctx.stroke();
-    ctx.restore();
+    ctx.globalAlpha = 1.0;
+
     ctx.restore(); // barrel rotation
-    ctx.restore();
-    ctx.restore();
   }
 }

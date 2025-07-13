@@ -8,7 +8,7 @@ export const LEVELS = [
   {
     name: "Stage 1",
     time: 5000,
-    player_start: { x: 50, y: 560 },
+    player_start: { x: 20, y: 560 },
     pauline_pos: { x: 700, y: 160 },
     dk_pos: { x: 100, y: 220 },
     barrel_speed: 50,
@@ -18,7 +18,7 @@ export const LEVELS = [
       { start_x: 100, start_y: 600, end_x: 750, end_y: 580 }, // 1
       { start_x: 50, start_y: 450, end_x: 600, end_y: 470 }, // 2
       { start_x: 0, start_y: 300, end_x: 700, end_y: 280 }, // 3
-      { start_x: 220, start_y: 150, end_x: 800, end_y: 170 } // 4 (top)
+      { start_x: 350, start_y: 150, end_x: 800, end_y: 170 } // 4 (top)
     ],
     ladders: [
       { x: 380, top_y: 150, bottom_y: 280 }, // between 3 and 4

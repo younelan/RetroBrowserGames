@@ -21,7 +21,7 @@ export class Kong {
     const isWindingUp = throwPhase < 30;
     const isThrowing = throwPhase >= 30 && throwPhase < 60;
     const isRecovering = throwPhase >= 60;
-    ctx.save();
+    // All drawing is done in the current context, no save/restore here
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
     ctx.beginPath();
     ctx.ellipse(x + 45 * kongScale, y + 95 * kongScale, 40 * kongScale, 8 * kongScale, 0, 0, Math.PI * 2);
@@ -157,6 +157,5 @@ export class Kong {
         ctx.stroke();
       }
     }
-    ctx.restore();
   }
 }

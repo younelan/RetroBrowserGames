@@ -22,6 +22,7 @@ export class Player {
 
     this.isJumping = false;
     this.isClimbing = false; // Ensure climbing is false at start
+    this.isClimbViewActive = false; // Persist climb view while off ground
     this.isOnLadder = false;
     this.isOnLadderBelow = false; // New flag: true if there's a ladder segment below the player
     this.currentPlatform = null; // The platform the player is currently standing on
@@ -103,10 +104,11 @@ export class Player {
     }
 
     // Handle vertical movement based on climbing state
+    // Platform collision detection must be done before using onPlatform
+    // So move climb view logic after platform collision detection
     if (this.isClimbing) {
       // dy is set by climbUp/climbDown methods
       // No gravity when actively climbing
-      // If player moves off ladder while climbing, stop climbing
       if (!this.isOnLadder) {
         this.isClimbing = false;
         this.dy = 0; // Reset dy so gravity can take over
@@ -141,7 +143,7 @@ export class Player {
         const playerCenterX = this.x + this.width / 2;
         const platformTopAtPlayerX = platform.start_y + slope * (playerCenterX - platform.start_x);
 
-        const EPSILON = 1; // Small tolerance
+        const EPSILON = 2; // Slightly larger tolerance to reduce clipping/halo
 
         if (this.dy >= 0 &&
             this.y + this.height <= platformTopAtPlayerX + EPSILON &&
@@ -156,6 +158,13 @@ export class Player {
       }
     }
 
+    // --- Climb view persistence logic (after onPlatform is known) ---
+    if (!this.isClimbViewActive) this.isClimbViewActive = false;
+    if (this.isClimbing && !onPlatform) {
+      this.isClimbViewActive = true;
+    } else if (onPlatform || (!this.isClimbing && !this.isOnLadder)) {
+      this.isClimbViewActive = false;
+    }
     // Apply vertical movement after checking all platforms
     if (onPlatform) {
       this.y = platformYToSnapTo - this.height;
@@ -181,6 +190,10 @@ export class Player {
     if (!this.isOnLadder && this.isClimbing) {
       this.isClimbing = false;
       // Gravity will naturally take over here
+    }
+    // If player lands on a platform or reaches the top of the ladder, disable climb view
+    if ((onPlatform || (this.isClimbViewActive && !this.isClimbing && !this.isOnLadder)) && this.isClimbViewActive) {
+      this.isClimbViewActive = false;
     }
 
     // Prevent player from going off screen horizontally (basic boundary)
@@ -244,92 +257,135 @@ export class Player {
     let walkCycle = walkCycle2;
     let isMoving = Math.abs(this.dx) > 0.1;
     let isClimbing = this.isClimbing;
+    let isClimbViewActive = this.isClimbViewActive;
     let bodyBob = isMoving && !isClimbing ? Math.sin(walkTime * 2) * 0.5 * height * 0.05 : 0;
 
-    if (isClimbing) {
+    if (isClimbing || isClimbViewActive) {
       // --- Climbing (front view, as before) ---
-      // Body (overalls, with gradient)
+      // Body (overalls, with gradient) -- narrower for climb view
       let bodyGradient = ctx.createLinearGradient(x, y + height * 0.4, x, y + height);
       bodyGradient.addColorStop(0, '#3366ff');
       bodyGradient.addColorStop(1, '#0000aa');
       ctx.fillStyle = bodyGradient;
-      ctx.fillRect(x + width * 0.15, y + height * 0.45, width * 0.7, height * 0.5);
+      ctx.fillRect(x + width * 0.325, y + height * 0.45, width * 0.35, height * 0.5);
       // Shirt (with gradient)
       let shirtGradient = ctx.createLinearGradient(x, y, x, y + height * 0.5);
       shirtGradient.addColorStop(0, '#ff6666');
       shirtGradient.addColorStop(1, '#cc0000');
       ctx.fillStyle = shirtGradient;
-      ctx.fillRect(x + width * 0.15, y + height * 0.1, width * 0.7, height * 0.4);
+      ctx.fillRect(x + width * 0.325, y + height * 0.1, width * 0.35, height * 0.4);
       // Head (rounder, with face)
       ctx.fillStyle = '#f0c0a0';
       ctx.beginPath();
-      ctx.ellipse(x + width/2, y, width * 0.32, height * 0.28, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width/2, y, width * 0.16, height * 0.28, 0, 0, 2 * Math.PI);
       ctx.fill();
       // Eyes (bigger, blue irises)
       ctx.fillStyle = 'white';
       ctx.beginPath();
-      ctx.ellipse(x + width * 0.38, y - height * 0.05, width * 0.07, height * 0.06, 0, 0, 2 * Math.PI);
-      ctx.ellipse(x + width * 0.62, y - height * 0.05, width * 0.07, height * 0.06, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.44, y - height * 0.05, width * 0.035, height * 0.06, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.56, y - height * 0.05, width * 0.035, height * 0.06, 0, 0, 2 * Math.PI);
       ctx.fill();
       ctx.fillStyle = '#3399ff';
       ctx.beginPath();
-      ctx.ellipse(x + width * 0.38, y - height * 0.05, width * 0.03, height * 0.025, 0, 0, 2 * Math.PI);
-      ctx.ellipse(x + width * 0.62, y - height * 0.05, width * 0.03, height * 0.025, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.44, y - height * 0.05, width * 0.015, height * 0.025, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.56, y - height * 0.05, width * 0.015, height * 0.025, 0, 0, 2 * Math.PI);
       ctx.fill();
       ctx.fillStyle = 'black';
       ctx.beginPath();
-      ctx.ellipse(x + width * 0.38, y - height * 0.05, width * 0.012, height * 0.012, 0, 0, 2 * Math.PI);
-      ctx.ellipse(x + width * 0.62, y - height * 0.05, width * 0.012, height * 0.012, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.44, y - height * 0.05, width * 0.006, height * 0.012, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width * 0.56, y - height * 0.05, width * 0.006, height * 0.012, 0, 0, 2 * Math.PI);
       ctx.fill();
       // Hat (Mario style, with brim)
       ctx.fillStyle = '#ff2222';
       ctx.beginPath();
-      ctx.ellipse(x + width/2, y - height * 0.18, width * 0.32, height * 0.13, 0, 0, 2 * Math.PI);
+      ctx.ellipse(x + width/2, y - height * 0.18, width * 0.16, height * 0.13, 0, 0, 2 * Math.PI);
       ctx.fill();
       ctx.fillStyle = '#cc0000';
-      ctx.fillRect(x + width * 0.18, y - height * 0.18, width * 0.64, height * 0.07);
+      ctx.fillRect(x + width * 0.36, y - height * 0.18, width * 0.28, height * 0.07);
       // Brim
       ctx.fillStyle = '#aa0000';
       ctx.beginPath();
-      ctx.ellipse(x + width/2, y - height * 0.13, width * 0.38, height * 0.06, 0, 0, Math.PI);
+      ctx.ellipse(x + width/2, y - height * 0.13, width * 0.19, height * 0.06, 0, 0, Math.PI);
       ctx.fill();
       // Moustache (curved)
       ctx.strokeStyle = '#4B3621';
       ctx.lineWidth = 3 * scale;
       ctx.beginPath();
-      ctx.arc(x + width/2, y + height * 0.04, width * 0.18, Math.PI * 0.1, Math.PI * 0.9, false);
+      ctx.arc(x + width/2, y + height * 0.04, width * 0.09, Math.PI * 0.1, Math.PI * 0.9, false);
       ctx.stroke();
-      // Arms (climbing, up/down alternately)
+
+      // --- Arms/Legs (always drawn in climb view, only animate if actively climbing, otherwise freeze in last position) ---
+      // Store last animated positions as properties on the player instance
+      if (!this.lastClimbArmYManic) this.lastClimbArmYManic = { left: null, right: null };
+      if (!this.lastClimbLegYManic) this.lastClimbLegYManic = { left: null, right: null };
+
+      // --- Arms (back view: arms on sides, reach to bottom of red part) ---
       ctx.save();
       ctx.strokeStyle = '#ff2222';
       ctx.lineWidth = 6 * scale;
-      let climbTime = performance.now() * 0.008;
-      let armCycle = (Math.sin(climbTime) + 1) / 2;
-      let leftArmY = y + height * 0.35 + armCycle * height * 0.18;
-      let rightArmY = y + height * 0.35 + (1 - armCycle) * height * 0.18;
+      let leftArmX = x + width * 0.325;
+      let rightArmX = x + width * 0.675;
+      let armAttachY = y + height * 0.18;
+      let overallsTopY = y + height * 0.45;
+      let leftArmYManic, rightArmYManic;
+      if (isClimbing) {
+        let climbTimeManic = performance.now() * 0.016;
+        let armSwing = Math.sin(climbTimeManic);
+        leftArmYManic = armAttachY + ((armSwing + 1) / 2) * (overallsTopY - armAttachY);
+        rightArmYManic = armAttachY + ((-armSwing + 1) / 2) * (overallsTopY - armAttachY);
+        this.lastClimbArmYManic.left = leftArmYManic;
+        this.lastClimbArmYManic.right = rightArmYManic;
+      } else {
+        leftArmYManic = this.lastClimbArmYManic.left !== null ? this.lastClimbArmYManic.left : overallsTopY;
+        rightArmYManic = this.lastClimbArmYManic.right !== null ? this.lastClimbArmYManic.right : overallsTopY;
+      }
       ctx.beginPath();
-      ctx.moveTo(x + width * 0.38, y + height * 0.35);
-      ctx.lineTo(x + width * 0.38, leftArmY);
-      ctx.moveTo(x + width * 0.62, y + height * 0.35);
-      ctx.lineTo(x + width * 0.62, rightArmY);
+      ctx.moveTo(leftArmX, armAttachY);
+      ctx.lineTo(leftArmX, leftArmYManic);
+      ctx.moveTo(rightArmX, armAttachY);
+      ctx.lineTo(rightArmX, rightArmYManic);
       ctx.stroke();
+      // Hands
+      ctx.fillStyle = '#f0c0a0';
+      ctx.beginPath();
+      ctx.ellipse(leftArmX, leftArmYManic, width * 0.025, height * 0.025, 0, 0, 2 * Math.PI);
+      ctx.ellipse(rightArmX, rightArmYManic, width * 0.025, height * 0.025, 0, 0, 2 * Math.PI);
+      ctx.fill();
       ctx.restore();
-      // Legs (climbing, up/down alternately)
+
+      // --- Legs (back view: legs on sides) ---
       ctx.save();
       ctx.strokeStyle = '#0000ff';
       ctx.lineWidth = 8 * scale;
-      let legTime = performance.now() * 0.004;
-      let legCycle = (Math.sin(legTime) + 1) / 2;
-      let leftLegY = y + height * 0.85 + legCycle * height * 0.12;
-      let rightLegY = y + height * 0.85 + (1 - legCycle) * height * 0.12;
+      let leftLegX = x + width * 0.36;
+      let rightLegX = x + width * 0.64;
+      let legAttachY = y + height * 0.95;
+      let leftLegYManic, rightLegYManic;
+      if (isClimbing) {
+        let legTimeManic = performance.now() * 0.016;
+        let legCycleManic = (Math.sin(legTimeManic) + 1) / 2;
+        leftLegYManic = legAttachY + legCycleManic * height * 0.13;
+        rightLegYManic = legAttachY + (1 - legCycleManic) * height * 0.13;
+        this.lastClimbLegYManic.left = leftLegYManic;
+        this.lastClimbLegYManic.right = rightLegYManic;
+      } else {
+        leftLegYManic = this.lastClimbLegYManic.left !== null ? this.lastClimbLegYManic.left : (legAttachY + height * 0.13 * 0.5);
+        rightLegYManic = this.lastClimbLegYManic.right !== null ? this.lastClimbLegYManic.right : (legAttachY + height * 0.13 * 0.5);
+      }
       ctx.beginPath();
-      ctx.moveTo(x + width * 0.44, y + height * 0.85);
-      ctx.lineTo(x + width * 0.44, leftLegY);
-      ctx.moveTo(x + width * 0.56, y + height * 0.85);
-      ctx.lineTo(x + width * 0.56, rightLegY);
+      ctx.moveTo(leftLegX, legAttachY);
+      ctx.lineTo(leftLegX, leftLegYManic);
+      ctx.moveTo(rightLegX, legAttachY);
+      ctx.lineTo(rightLegX, rightLegYManic);
       ctx.stroke();
+      // Feet
+      ctx.fillStyle = '#7a4b13';
+      ctx.beginPath();
+      ctx.ellipse(leftLegX, leftLegYManic + height * 0.015, width * 0.06, height * 0.025, 0, 0, 2 * Math.PI);
+      ctx.ellipse(rightLegX, rightLegYManic + height * 0.015, width * 0.06, height * 0.025, 0, 0, 2 * Math.PI);
+      ctx.fill();
       ctx.restore();
-      ctx.restore();
+      ctx.restore(); // restore the initial save
       return;
     }
 
@@ -389,7 +445,7 @@ export class Player {
     ctx.beginPath();
     ctx.ellipse(capDomeCenterX + width * 0.10, capDomeBottomY + height * 0.03, width * 0.13, height * 0.035, 0, Math.PI * 0.95, Math.PI * 0.05, false);
     ctx.fill();
-    ctx.restore();
+    ctx.restore(); // restore the initial save
 
     // --- Hair (drawn after cap, in front of the red hat arc) ---
     ctx.save();
