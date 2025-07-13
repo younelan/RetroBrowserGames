@@ -26,4 +26,19 @@ window.addEventListener('DOMContentLoaded', async () => {
       game.start();
     }
   });
+
+  let restartHandler = (e) => {
+    if (window._winScreenActive || window._gameOverScreenActive) {
+      // Restart the game at the first level
+      currentLevel = 0;
+      game = new Game(canvas, LEVELS[currentLevel], currentLevel);
+      window.game = game;
+      game.start();
+      window._winScreenActive = false;
+      window._gameOverScreenActive = false;
+    }
+  };
+  window.addEventListener('keydown', restartHandler);
+  window.addEventListener('mousedown', restartHandler);
+  window.addEventListener('touchstart', restartHandler);
 });

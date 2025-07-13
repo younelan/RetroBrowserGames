@@ -33,9 +33,40 @@ export class Player {
     this.frame = 0; // Current animation frame
     this.animationTimer = 0;
     this.animationInterval = 100; // Milliseconds per frame
+
+    this.fading = false;
+    this.fadeAlpha = 1;
+    this.fadeTimer = 0;
+    this.FADE_DURATION = 1000; // ms
+  }
+
+  triggerFade() {
+    this.fading = true;
+    this.fadeAlpha = 1;
+    this.fadeTimer = this.FADE_DURATION;
+  }
+
+  isFrozen() {
+    return this.fading;
   }
 
   update(level, deltaTime) {
+    if (this.fading) {
+      // Only update fade logic, skip all movement and input
+      this.fadeTimer -= deltaTime;
+      if (this.fadeTimer > this.FADE_DURATION / 2) {
+        // Fade out
+        this.fadeAlpha = (this.fadeTimer - this.FADE_DURATION / 2) / (this.FADE_DURATION / 2);
+      } else if (this.fadeTimer > 0) {
+        // Fade in
+        this.fadeAlpha = 1 - (this.fadeTimer / (this.FADE_DURATION / 2));
+      } else {
+        this.fading = false;
+        this.fadeAlpha = 1;
+      }
+      return;
+    }
+
     const dt = deltaTime / 1000; // Convert deltaTime to seconds
 
     // Update drop through timer
@@ -165,6 +196,21 @@ export class Player {
       this.dy = 0;
       this.isJumping = false;
     }
+
+    // Fade logic
+    if (this.fading) {
+      this.fadeTimer -= deltaTime;
+      if (this.fadeTimer > this.FADE_DURATION / 2) {
+        // Fade out
+        this.fadeAlpha = (this.fadeTimer - this.FADE_DURATION / 2) / (this.FADE_DURATION / 2);
+      } else if (this.fadeTimer > 0) {
+        // Fade in
+        this.fadeAlpha = 1 - (this.fadeTimer / (this.FADE_DURATION / 2));
+      } else {
+        this.fading = false;
+        this.fadeAlpha = 1;
+      }
+    }
   }
 
   render(ctx, scale) {
@@ -174,6 +220,7 @@ export class Player {
     const height = this.height * scale;
 
     ctx.save();
+    ctx.globalAlpha = this.fadeAlpha;
     if (this.facing === 'left') {
       ctx.translate(x + width, y);
       ctx.scale(-1, 1);
