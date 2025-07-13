@@ -35,14 +35,14 @@ export const LEVELS = [
     name: "Stage 2",
     time: 5000,
     player_start: { x: 100, y: 650 },
-    pauline_pos: { x: 700, y: 80 },
+    pauline_pos: { x: 700, y: 130 },
     dk_pos: { x: 120, y: 180 },
     barrel_speed: 60,
     barrel_release_frequency: 350,
     platforms: [
       { start_x: 0, start_y: 780, end_x: 800, end_y: 770 }, // 0
       { start_x: 100, start_y: 600, end_x: 700, end_y: 610 }, // 1
-      { start_x: 0, start_y: 450, end_x: 800, end_y: 440 }, // 2
+      { start_x: 150, start_y: 450, end_x: 800, end_y: 440 }, // 2
       { start_x: 150, start_y: 320, end_x: 650, end_y: 320 }, // 3
       { start_x: 300, start_y: 180, end_x: 800, end_y: 180 } // 4
     ],
@@ -50,7 +50,7 @@ export const LEVELS = [
       { x: 200, top_y: 610, bottom_y: 770 },
       { x: 600, top_y: 450, bottom_y: 610 },
       { x: 400, top_y: 320, bottom_y: 440 },
-      { x: 700, top_y: 180, bottom_y: 320 },
+      { x: 600, top_y: 180, bottom_y: 320 },
       { x: 350, top_y: 320, bottom_y: 610 } // long ladder
     ],
     items: [
