@@ -6,9 +6,10 @@ window.addEventListener('DOMContentLoaded', async () => {
   const canvas = document.getElementById('gameCanvas');
   // Load all levels from levels.js
   let currentLevel = START_LEVEL;
-  let game = new Game(canvas, LEVELS[currentLevel], currentLevel);
+  let game = new Game(canvas);
   let inputHandler = new InputHandler(game);
   window.game = game;
+  game.loadLevel(LEVELS[currentLevel], currentLevel);
   game.start();
 
   // Add keyboard shortcut to switch levels for testing

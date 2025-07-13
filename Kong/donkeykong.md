@@ -2,7 +2,7 @@
 
 ## 1. Game Description
 
-A Javascript-based, mobile-first recreation of the classic arcade game, Donkey Kong. The player controls Mario (originally Jumpman) who must ascend a construction site to rescue Pauline from the clutches of Donkey Kong. The game is played on a single screen with multiple levels of increasing difficulty.
+A Javascript-based, mobile-first recreation of the classic arcade game, Donkey Kong. The player must ascend a construction site to rescue Damsel from the clutches of Donkey Kong. The game is played on a single screen with multiple levels of increasing difficulty.
 
 ## 2. Core Gameplay Mechanics
 
@@ -21,7 +21,7 @@ The game will support multiple input methods for maximum accessibility:
     *   Tap on a ladder to start climbing.
     *   Tap above the player to jump.
 *   **Drag (Mobile):**
-    *   A primary design focus. The player can drag their finger across the screen to control Mario. A continuous drag allows for seamless direction changes (e.g., moving right then immediately left) without lifting the finger.
+    *   A primary design focus. The player can drag their finger across the screen to control the player. A continuous drag allows for seamless direction changes (e.g., moving right then immediately left) without lifting the finger.
     *   Dragging up or down a ladder initiates climbing.
     *   A quick upward flick will trigger a jump.
 
@@ -47,19 +47,19 @@ The game will support multiple input methods for maximum accessibility:
 
 ### Power-ups
 
-*   **Hammer:** A temporary item that grants invincibility and allows Mario to smash barrels and other enemies for bonus points.
+*   **Hammer:** A temporary item that grants invincibility and allows the player to smash barrels and other enemies for bonus points.
 
 ## 3. Characters
 
-*   **Mario (Jumpman):** The player-controlled protagonist.
+*   **the player (Jumpman):** The player-controlled protagonist.
 *   **Donkey Kong:** The main antagonist who throws obstacles from the top of the screen.
-*   **Pauline (Lady):** The damsel-in-distress. Reaching her completes the level.
+*   **Damsel (Lady):** The damsel-in-distress. Reaching her completes the level.
 
 ## 4. Scoring
 
 *   **Jumping over barrels:** 100 points
 *   **Destroying items with hammer:** 300-800 points
-*   **Collecting Pauline's items (parasol, hat, purse):** 300, 500, 800 points respectively.
+*   **Collecting Damsel's items (parasol, hat, purse):** 300, 500, 800 points respectively.
 *   **Level Completion:** A bonus score is awarded based on the time remaining on a countdown timer.
 
 ## 5. Levels
@@ -79,7 +79,7 @@ To facilitate the creation of multiple levels, a simple and extensible **JSON fo
   "name": "Stage 1",
   "time": 5000,
   "player_start": { "x": 50, "y": 550 },
-  "pauline_pos": { "x": 250, "y": 80 },
+  "damsel_pos": { "x": 250, "y": 80 },
   "dk_pos": { "x": 100, "y": 120 },
   "platforms": [
     { "start_x": 0, "start_y": 600, "end_x": 400, "end_y": 600 },

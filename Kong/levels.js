@@ -9,7 +9,7 @@ export const LEVELS = [
     name: "Stage 1",
     time: 5000,
     player_start: { x: 20, y: 560 },
-    pauline_pos: { x: 700, y: 160 },
+    damsel_pos: { x: 400,  y: 160 },
     dk_pos: { x: 100, y: 220 },
     barrel_speed: 50,
     barrel_release_frequency: 400,
@@ -35,7 +35,7 @@ export const LEVELS = [
     name: "Stage 2",
     time: 5000,
     player_start: { x: 100, y: 650 },
-    pauline_pos: { x: 700, y: 160 },
+    damsel_pos: { x: 700, y: 160 },
     dk_pos: { x: 120, y: 180 },
     barrel_speed: 60,
     barrel_release_frequency: 350,
@@ -63,7 +63,7 @@ export const LEVELS = [
     name: "Stage 3",
     time: 5000,
     player_start: { x: 60, y: 700 },
-    pauline_pos: { x: 720, y: 120 },
+    damsel_pos: { x: 720, y: 120 },
     dk_pos: { x: 80, y: 180 },
     barrel_speed: 70,
     barrel_release_frequency: 300,
@@ -94,7 +94,7 @@ export const LEVELS = [
     name: "Stage 4",
     time: 5000,
     player_start: { x: 60, y: 700 },
-    pauline_pos: { x: 720, y: 60 },
+    damsel_pos: { x: 720, y: 110 },
     dk_pos: { x: 80, y: 180 },
     barrel_speed: 70,
     barrel_release_frequency: 300,
@@ -108,9 +108,9 @@ export const LEVELS = [
     ],
     ladders: [
       { x: 200, top_y: 640, bottom_y: 750 },
-      { x: 600, top_y: 510, bottom_y: 640 },
+      { x: 500, top_y: 510, bottom_y: 640 },
       { x: 400, top_y: 360, bottom_y: 510 },
-      { x: 700, top_y: 250, bottom_y: 360 },
+      { x: 600, top_y: 250, bottom_y: 360 },
       { x: 300, top_y: 130, bottom_y: 250 }, // long ladder
       { x: 500, top_y: 250, bottom_y: 360 }
     ],
@@ -121,10 +121,10 @@ export const LEVELS = [
   },
   // Level 4 (new layout)
   {
-    name: "Stage 5",
+    name: "Stage 5 yes",
     time: 5000,
     player_start: { x: 60, y: 700 },
-    pauline_pos: { x: 720, y: 110 },
+    damsel_pos: { x: 420, y: 110 },
     dk_pos: { x: 80, y: 180 },
     barrel_speed: 70,
     barrel_release_frequency: 300,
@@ -133,16 +133,18 @@ export const LEVELS = [
       { start_x: 120, start_y: 630, end_x: 700, end_y: 640 }, // 1
       { start_x: 0, start_y: 500, end_x: 650, end_y: 510 }, // 2
       { start_x: 180, start_y: 370, end_x: 800, end_y: 360 }, // 3
-      { start_x: 100, start_y: 240, end_x: 700, end_y: 250 }, // 4
+      { start_x: 100, start_y: 240, end_x: 550, end_y: 250 }, // 4
+      { start_x: 650, start_y: 250, end_x: 800, end_y: 240 }, // 4
       { start_x: 250, start_y: 120, end_x: 800, end_y: 130 } // 5 (top)
     ],
     ladders: [
       { x: 200, top_y: 640, bottom_y: 750 },
       { x: 600, top_y: 510, bottom_y: 640 },
+      { x: 600, top_y: 510, bottom_y: 640 },
       { x: 400, top_y: 360, bottom_y: 510 },
-      { x: 700, top_y: 250, bottom_y: 360 },
-      { x: 300, top_y: 130, bottom_y: 250 }, // long ladder
-      { x: 500, top_y: 250, bottom_y: 360 }
+      { x: 500, top_y: 250, bottom_y: 360 },
+      { x: 340, top_y: 130, bottom_y: 250 }, // long ladder
+      { x: 700, top_y: 250, bottom_y: 360 }
     ],
     items: [
       { type: "hammer", x: 350, y: 480 },

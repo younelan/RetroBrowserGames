@@ -21,8 +21,8 @@ export class Level {
       return plat;
     });
     this.ladders = (levelData.ladders || []).map(l => new Ladder(l));
-    // Use the y from the level data directly for Damsel (Pauline) position
-    this.damsel = new Damsel({ ...levelData.pauline_pos });
+    // Use the y from the level data directly for Damsel position
+    this.damsel = new Damsel({ ...levelData.damsel_pos });
     // Use player start position in virtual coordinates (no scaling here)
     this.player_start = levelData.player_start;
     console.log(`Player start position from levelData: x=${this.player_start.x}, y=${this.player_start.y}`);
@@ -51,10 +51,9 @@ export class Level {
   }
 
   render(ctx) {
-    // Draw platforms first (so index is on top of girder)
-    this.platforms.forEach(p => p.render(ctx, this.scale));
-    // Then ladders, Kong, Damsel, barrels, player
+    // Draw ladders first, then platforms, Kong, Damsel, barrels, player
     this.ladders.forEach(l => l.render(ctx, this.scale));
+    this.platforms.forEach(p => p.render(ctx, this.scale));
     this.kong.render(ctx, this.scale);
     this.damsel.render(ctx, this.scale);
     this.barrels.forEach(b => b.render(ctx, this.scale));

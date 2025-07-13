@@ -89,7 +89,7 @@ export function showWinScreen(score) {
   ctx.fillText('Victory!', canvas.width / 2, canvas.height / 2 - 30 + Math.sin(t*2)*6);
   ctx.restore();
 
-  // Pauline and Mario (emoji)
+  // Player (emoji)
   ctx.font = '60px Arial';
   ctx.textAlign = 'center';
   ctx.fillText('👸🏻  +  👨🏻‍🔧', canvas.width / 2, canvas.height / 2 + 40);
