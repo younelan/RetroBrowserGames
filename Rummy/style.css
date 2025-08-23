@@ -1,0 +1,117 @@
+/* Mobile-first square game container */
+:root{
+  --bg: #2d2d2d;
+  --panel: #3a3a3a;
+  --accent: #4caf50;
+  --muted: #bdbdbd;
+}
+html,body{height:100%;}
+body{
+  margin:0;
+  font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background:var(--bg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+}
+.game-container{
+  width:100vw;
+  max-width:720px;
+  aspect-ratio:1/1; /* enforce square */
+  position:relative;
+  background:var(--panel);
+  border-radius:16px;
+  padding:12px;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+}
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.header h1{font-size:1.4rem;margin:0}
+.btn{background:var(--accent);border:none;padding:8px 12px;border-radius:8px;color:#012;cursor:pointer}
+.btn:active{transform:translateY(1px)}
+.board{flex:1;display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.center-pile{display:flex;gap:8px;justify-content:center}
+.pile{background:transparent;padding:0;border-radius:8px;text-align:center;font-size:0.9rem;display:flex;flex-direction:column;align-items:center}
+.pile.clickable{box-shadow:0 0 0 3px rgba(76,175,80,0.12);cursor:pointer}
+
+/* small card shown in the pile (discard top) */
+.pile .mini-card{
+  width:44px;height:66px;background:#fff;color:#000;border-radius:6px;margin:6px auto 0;display:block;position:relative;padding:4px;box-shadow:0 2px 6px rgba(0,0,0,0.25);
+}
+.pile .mini-card .corner{font-size:0.7rem}
+.pile .mini-card .suit{font-size:0.9rem}
+
+/* computer area */
+.computer-area{display:flex;justify-content:center;align-items:center;padding:6px}
+.computer-hand{display:flex;gap:0;align-items:center}
+.computer-card{width:56px;height:92px;background:#0b2d18;border-radius:6px;margin-left:-36px;border:2px solid rgba(0,0,0,0.18);box-shadow:0 2px 8px rgba(0,0,0,0.35)}
+
+/* center piles should be stacked neatly */
+.center-pile{gap:16px;align-items:center;display:flex}
+.pile.stock{position:relative;width:64px;height:104px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.pile.stock .back{
+  width:56px;height:92px;border-radius:6px;background:linear-gradient(180deg,#083,#062);display:block;margin-top:6px;box-shadow:0 6px 14px rgba(0,0,0,0.45);
+}
+.pile.discard{width:64px;height:104px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.pile.discard .card{margin-top:6px}
+.table-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.laid-sets{width:100%;display:flex;flex-wrap:wrap;gap:6px;padding:6px;overflow:auto}
+/* green table surface */
+.table-area{background:linear-gradient(180deg,#0b6623,#0a5b20);border-radius:8px;padding:8px}
+.player-area{border-top:1px solid rgba(255,255,255,0.04);padding-top:8px}
+.player-info{font-size:0.9rem;margin-bottom:6px}
+.hand{display:flex;align-items:flex-end;gap:0;flex-wrap:nowrap;padding:8px;overflow-x:auto}
+.hand::-webkit-scrollbar{height:8px}
+.hand::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.2);border-radius:4px}
+.card{
+  background:#fff;color:#000;
+  width:56px; height:92px; /* half-card look: narrow and tall */
+  border-radius:6px 6px 4px 4px;
+  padding:6px 6px 8px 6px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.25);
+  display:flex;flex-direction:column;justify-content:space-between;align-items:center;
+  margin-left:-36px; /* overlap like held cards */
+  cursor:grab; user-select:none;
+}
+.card:first-child{margin-left:0}
+.card.selected{outline:3px solid rgba(76,175,80,0.35)}
+.card.picked{transform:translateY(10px);box-shadow:0 6px 18px rgba(0,0,0,0.45)}
+.card .rank{font-weight:700}
+.card .suit{font-size:1.05rem}
+
+/* corner rank/suit */
+.card{position:relative}
+.card .corner{position:absolute;display:flex;flex-direction:column;line-height:1;}
+.card .corner .rank{font-size:0.85rem}
+.card .corner .suit{font-size:1rem}
+.card .corner.top-left{top:6px;left:6px;align-items:flex-start}
+.card .corner.bottom-right{bottom:6px;right:6px;align-items:flex-end;transform:rotate(180deg)}
+.suit.red{color:#c0392b}
+.suit.black{color:#111}
+.actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.quick-discard{background:#e74c3c;color:#fff;border:none;padding:8px 12px;border-radius:8px;position:absolute;right:18px;bottom:18px;z-index:60}
+.dealt-temp{transition:transform 180ms ease, opacity 180ms ease}
+.dealt-temp{transform-origin:center}
+
+/* smooth transitions when cards are removed so the hand doesn't briefly reflow
+   unexpectedly. Cards will fade/translate out, and remaining cards will shift
+   smoothly into place. */
+.card{
+  transition:margin-left 180ms ease, transform 180ms ease, opacity 180ms ease;
+}
+.card.removing{
+  opacity:0;
+  transform:translateY(20px) scale(0.96);
+  pointer-events:none;
+}
+@media(min-width:721px){
+  .game-container{max-width:960px}
+}
+/* small helper */
+.small{font-size:0.85rem;color:var(--muted)}

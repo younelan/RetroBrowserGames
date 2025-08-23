@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rummy 71 Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-container">
+    <section id="computer-area" class="computer-area">
+      <div id="computer-hand" class="computer-hand"></div>
+    </section>
+    <header class="header">
+      <h1>Rummy 71</h1>
+      <button id="start-btn" class="btn">Start / Reset</button>
+    </header>
+
+    <main id="game-area" class="board">
+
+      <section id="table" class="table-area">
+        <section class="center-pile">
+          <div id="stock" class="pile stock">Stock<br><span id="stock-count">0</span></div>
+          <div id="discard" class="pile discard">Discard<br><span id="discard-top">—</span></div>
+        </section>
+        <div id="laid-sets" class="laid-sets"></div>
+      </section>
+
+      <section id="player-area" class="player-area">
+        <div id="player-info" class="player-info"></div>
+        <div id="hand" class="hand"></div>
+  <div class="actions">
+          <label><input type="checkbox" id="will-lay"> Will lay down this turn</label>
+          <button id="draw-stock" class="btn">Draw from Stock (center)</button>
+          <button id="draw-discard" class="btn">Draw from Discard Pile</button>
+          <button id="lay-down" class="btn">Lay Down Selected</button>
+          <button id="discard-btn" class="btn">Discard Selected</button>
+        </div>
+  <button id="quick-discard" class="btn quick-discard" style="display:none">Discard</button>
+      </section>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+ 
