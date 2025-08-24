@@ -1,0 +1,130 @@
+:root {
+    --tile-size: 0; /* JS will set this */
+    --target-tile-size: 0;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #121212;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    display: grid;
+    place-items: center; /* Centers the game-container */
+}
+
+/* --- Main Layout: The Two Squares --- */
+
+#game-container {
+    width: 80vw; /* Overall game view 80% of viewport width */
+    height: 80vh; /* Overall game view 80% of viewport height */
+    display: grid;
+    gap: 1vmin; /* Space between the two squares */
+    padding: 1vmin; /* Padding around the entire game area */
+    box-sizing: border-box;
+
+    /* Mobile First: 2 rows, 1 column */
+    grid-template-rows: 1fr 1fr;
+    grid-template-columns: 1fr;
+}
+
+/* Desktop/Landscape: 1 row, 2 columns */
+@media (orientation: landscape) {
+    #game-container {
+        grid-template-rows: 1fr;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+#play-area-wrapper, #info-area-wrapper {
+    width: 100%; /* Fill grid cell */
+    height: 100%; /* Fill grid cell */
+    display: grid;
+    place-items: center; /* Centers the content of the square */
+}
+
+/* --- Content of the Squares --- */
+
+#board-container {
+    width: 75%; /* 75% of its parent wrapper */
+    aspect-ratio: 1 / 1; /* Makes it a perfect square */
+    display: grid;
+    border: 2px solid #333;
+    touch-action: none;
+}
+
+#info-area-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+#header {
+    width: 75%; /* Relative to info-area-wrapper */
+    display: flex;
+    justify-content: space-between;
+    font-size: clamp(1rem, 3vmin, 1.5rem);
+}
+
+#info-area-content {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10%;
+}
+
+#target-container { text-align: center; }
+
+#target-grid {
+    width: 40%; /* 40% of its parent (info-area-content) */
+    aspect-ratio: 1 / 1;
+    display: grid;
+    border: 1px solid #333;
+}
+
+#controls {
+    display: flex;
+    flex-direction: column; /* Stack buttons */
+    gap: 15px;
+}
+
+/* --- Tiles & Generics --- */
+
+.tile, .target-tile {
+    border: 1px solid #333;
+    box-sizing: border-box;
+    display: grid;
+    place-items: center;
+    background-color: #444;
+}
+
+.tile { width: var(--tile-size); height: var(--tile-size); cursor: grab; position: relative; }
+.target-tile { width: var(--target-tile-size); height: var(--target-tile-size); }
+
+#controls button { padding: 12px; font-size: clamp(0.8rem, 2.5vmin, 1rem); cursor: pointer; border: none; border-radius: 8px; color: white; }
+#hint-button { background-color: #007bff; }
+#help-button { background-color: #6c757d; }
+#restart-button { background-color: #ffc107; color: #333; }
+.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 100; padding: 20px; box-sizing: border-box; }
+.modal.hidden { display: none; }
+.modal-content { background-color: #2a2a2a; padding: clamp(20px, 5vw, 40px); border-radius: 10px; text-align: center; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; }
+#help-modal .modal-content { text-align: left; }
+#restart-modal .modal-content button { display: block; width: 80%; margin: 10px auto; padding: 10px; font-size: 1.1em; border-radius: 5px; border: none; cursor: pointer; }
+#restart-level-button { background-color: #28a745; color: white; }
+#restart-full-game-button { background-color: #dc3545; color: white; }
+#cancel-restart-button { background-color: #6c757d; color: white; }
+.tile-example { display: inline-block; width: 20px; height: 20px; border: 1px solid #333; vertical-align: middle; margin-right: 10px; }
+#next-level-button, #close-help-button { padding: 12px 24px; font-size: 1em; cursor: pointer; border: none; border-radius: 8px; color: white; margin-top: 10px; }
+#next-level-button { background-color: #28a745; }
+#close-help-button { background-color: #6c757d; }
+.hint-highlight { box-shadow: 0 0 20px #007bff, inset 0 0 20px #007bff; }
+.hint-arrow { position: absolute; font-size: 1.5em; color: #007bff; animation: pulse 1s infinite; pointer-events: none; }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+.locked-tile::after { content: '\1F512'; font-size: 50%; }
+.wildcard-tile { background: repeating-linear-gradient(45deg, #606dbc, #606dbc 10px, #465298 10px, #465298 20px); }

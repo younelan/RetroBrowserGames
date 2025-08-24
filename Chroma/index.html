@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Chroma Shift</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Square 1: The Play Area -->
+        <div id="play-area-wrapper">
+            <div id="board-container"></div>
+        </div>
+
+        <!-- Square 2: The Info Area -->
+        <div id="info-area-wrapper">
+            <div id="header">
+                <div id="level-container">Level: <span id="level">1</span></div>
+                <div id="moves-container">Moves: <span id="moves">0</span></div>
+            </div>
+            <div id="info-area-content">
+                <div id="target-container">
+                    <p>Target:</p>
+                    <div id="target-grid"></div>
+                </div>
+                <div id="controls">
+                    <button id="hint-button">Hint</button>
+                    <button id="help-button">Help</button>
+                    <button id="restart-button">Restart</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="restart-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Restart Game?</h2>
+            <button id="restart-level-button">Restart Level</button>
+            <button id="restart-full-game-button">Restart Full Game</button>
+            <button id="cancel-restart-button">Cancel</button>
+        </div>
+    </div>
+    <div id="win-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Level Complete!</h2>
+            <div id="star-container"></div>
+            <p>Moves: <span id="final-moves"></span></p>
+            <button id="next-level-button">Next Level</button>
+        </div>
+    </div>
+    <div id="help-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>How to Play</h2>
+            <p><strong>Objective:</strong> Make the main grid match the target grid.</p>
+            <p><strong>Controls:</strong> Click and drag (or swipe) a row or column to shift it.</p>
+            <p><span class="tile-example locked-tile"></span> <strong>Locked:</strong> Cannot be moved.</p>
+            <p><span class="tile-example wildcard-tile"></span> <strong>Wildcard:</strong> Matches any color.</p>
+            <button id="close-help-button">Close</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
