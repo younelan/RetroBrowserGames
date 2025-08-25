@@ -18,16 +18,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const restartFullGameButton = document.getElementById('restart-full-game-button');
     const cancelRestartButton = document.getElementById('cancel-restart-button');
 
-    const colors = ['#ff6b6b', '#f0e68c', '#84fab0', '#8fd3f4', '#a18cd1'];
+    const colors = ['#ff6b6b', '#f0e68c', '#84fab0', '#8fd3f4', '#a18cd1', '#fbc2eb', '#ff9a9e', '#cfd9df', '#e0c3fc', '#8ec5fc', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
 
     const levels = [
         { grid: [[0, 1], [2, 0]], target: [[0, 0], [1, 2]], stars: { 3: 2, 2: 4 } },
         { grid: [[0, 1, 2], [1, 2, 0], [2, 0, 1]], target: [[1, 1, 1], [0, 0, 0], [2, 2, 2]], stars: { 3: 4, 2: 6 } },
-        { grid: [[0, 1, 2], ['L', 2, 0], [2, 0, 1]], target: [[1, 1, 1], ['L', 0, 0], [2, 2, 2]], stars: { 3: 5, 2: 7 } },
-        { grid: [[0, 1, 'W'], [1, 2, 0], [2, 0, 1]], target: [[1, 1, 1], [0, 0, 0], [2, 2, 2]], stars: { 3: 3, 2: 5 } }
+        { grid: [[1, 1, 2], ['L', 2, 0], [2, 0, 1]], target: [[1, 1, 1], ['L', 0, 0], [2, 2, 2]], stars: { 3: 5, 2: 7 } },
+        { grid: [[0, 1, 'W'], [1, 2, 0], [2, 0, 1]], target: [[1, 1, 1], [0, 0, 0], [2, 2, 2]], stars: { 3: 3, 2: 5 } },
+        
+        { grid: [[2, 0, 1], [3, 'L', 4], [5, 6, 7]], target: [[0, 1, 2], [3, 'L', 4], [5, 6, 7]], stars: { 3: 5, 2: 7 } },
+        { grid: [[2, 0, 1], [4, 'W', 3], [5, 6, 7]], target: [[0, 1, 2], [3, 'W', 4], [5, 6, 7]], stars: { 3: 3, 2: 5 } },
+        { grid: [[1, 2, 0], [3, 'L', 4], [6, 5, 'W']], target: [[0, 1, 2], [3, 'L', 4], [5, 6, 'W']], stars: { 3: 6, 2: 9 } },
+        { grid: [[3, 0, 0, 0], [0, 1, 1, 1], [1, 2, 2, 2], [2, 3, 3, 3]], target: [[0, 0, 0, 0], [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]], stars: { 3: 8, 2: 12 } },
+        // Level 7 (New - 4x4, 2 Locked)
+        { grid: [[3, 0, 1, 2], ['L', 4, 5, 'L'], [9, 6, 7, 8], [13, 10, 11, 12]], target: [[0, 1, 2, 3], ['L', 4, 5, 'L'], [6, 7, 8, 9], [10, 11, 12, 13]], stars: { 3: 10, 2: 15 } },
+        // Level 8 (New - 4x4, 2 Wildcard)
+        { grid: [[2, 'W', 0, 1], [5, 3, 'W', 4], [9, 6, 7, 8], [13, 10, 11, 12]], target: [[0, 'W', 1, 2], [3, 4, 'W', 5], [6, 7, 8, 9], [10, 11, 12, 13]], stars: { 3: 12, 2: 18 } },
+        // Level 9 (New - 5x5, 1 Locked, 1 Wildcard)
+        { grid: [[4, 0, 1, 2, 3], [8, 'L', 5, 6, 7], [12, 9, 'W', 10, 11], [17, 13, 14, 15, 16], [22, 18, 19, 20, 21]], target: [[0, 1, 2, 3, 4], [5, 'L', 6, 7, 8], [9, 10, 'W', 11, 12], [13, 14, 15, 16, 17], [18, 19, 20, 21, 22]], stars: { 3: 15, 2: 22 } }
     ];
 
-    let currentLevel = 0;
+    let startLevel = 4; // User can change this to start at a different level (e.g., 0 for Level 1, 1 for Level 2, etc.)
+    let currentLevel = startLevel; // Initialize currentLevel with startLevel
     let moves = 0;
     let grid = [];
     let hintInCooldown = false;
@@ -100,8 +112,16 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let c = 0; c < gridState[r].length; c++) {
                 const boardCell = gridState[r][c];
                 const targetCell = target[r][c];
-                if (targetCell === 'W' || boardCell === 'W') continue;
-                if (boardCell !== targetCell) return false;
+
+                // If either cell is a wildcard, they match.
+                if (boardCell === 'W' || targetCell === 'W') {
+                    continue; // They match, move to the next cell
+                }
+
+                // If neither is a wildcard, they must be an exact match.
+                if (boardCell !== targetCell) {
+                    return false; // Mismatch found
+                }
             }
         }
         return true;
@@ -176,7 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     for (let k = 0; k < col.length; k++) {
                         if (col[k] === 'L') { newCol[k] = 'L'; continue; }
                         let newIndex = k;
-                        do { newIndex = (newIndex - dy + col.length) % col.length; } while (col[newIndex] === 'L');
+                        do { newIndex = (newIndex - dir + col.length) % col.length; } while (col[newIndex] === 'L');
                         newCol[k] = col[newIndex];
                     }
                     for (let k = 0; k < nextStateCol.length; k++) nextStateCol[k][i] = newCol[k];
@@ -250,5 +270,5 @@ document.addEventListener('DOMContentLoaded', () => {
     nextLevelButton.addEventListener('click', () => { loadLevel(currentLevel + 1); });
 
     window.addEventListener('resize', resizeGame);
-    loadLevel(0);
+    loadLevel(currentLevel);
 });
