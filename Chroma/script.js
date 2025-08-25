@@ -18,27 +18,130 @@ document.addEventListener('DOMContentLoaded', () => {
     const restartFullGameButton = document.getElementById('restart-full-game-button');
     const cancelRestartButton = document.getElementById('cancel-restart-button');
 
-    const colors = ['#ff6b6b', '#f0e68c', '#84fab0', '#8fd3f4', '#a18cd1', '#fbc2eb', '#ff9a9e', '#cfd9df', '#e0c3fc', '#8ec5fc', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
+    const colors = ['#ff6b6b', '#f0e68c', '#84fab0', '#8fd3f4', '#a18cd1'];
+
+    // Helper to parse grid strings into arrays
+    function parseGridString(gridString) {
+        return gridString.trim().split('\n').map(rowString => {
+            return rowString.trim().split('').map(char => {
+                if (char === 'L' || char === 'W') {
+                    return char;
+                }
+                return parseInt(char, 10); // Convert color characters to numbers
+            });
+        });
+    }
 
     const levels = [
-        { grid: [[0, 1], [2, 0]], target: [[0, 0], [1, 2]], stars: { 3: 2, 2: 4 } },
-        { grid: [[0, 1, 2], [1, 2, 0], [2, 0, 1]], target: [[1, 1, 1], [0, 0, 0], [2, 2, 2]], stars: { 3: 4, 2: 6 } },
-        { grid: [[1, 1, 2], ['L', 2, 0], [2, 0, 1]], target: [[1, 1, 1], ['L', 0, 0], [2, 2, 2]], stars: { 3: 5, 2: 7 } },
-        { grid: [[0, 1, 'W'], [1, 2, 0], [2, 0, 1]], target: [[1, 1, 1], [0, 0, 0], [2, 2, 2]], stars: { 3: 3, 2: 5 } },
-        
-        { grid: [[2, 0, 1], [3, 'L', 4], [5, 6, 7]], target: [[0, 1, 2], [3, 'L', 4], [5, 6, 7]], stars: { 3: 5, 2: 7 } },
-        { grid: [[2, 0, 1], [4, 'W', 3], [5, 6, 7]], target: [[0, 1, 2], [3, 'W', 4], [5, 6, 7]], stars: { 3: 3, 2: 5 } },
-        { grid: [[1, 2, 0], [3, 'L', 4], [6, 5, 'W']], target: [[0, 1, 2], [3, 'L', 4], [5, 6, 'W']], stars: { 3: 6, 2: 9 } },
-        { grid: [[3, 0, 0, 0], [0, 1, 1, 1], [1, 2, 2, 2], [2, 3, 3, 3]], target: [[0, 0, 0, 0], [1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]], stars: { 3: 8, 2: 12 } },
-        // Level 7 (New - 4x4, 2 Locked)
-        { grid: [[3, 0, 1, 2], ['L', 4, 5, 'L'], [9, 6, 7, 8], [13, 10, 11, 12]], target: [[0, 1, 2, 3], ['L', 4, 5, 'L'], [6, 7, 8, 9], [10, 11, 12, 13]], stars: { 3: 10, 2: 15 } },
-        // Level 8 (New - 4x4, 2 Wildcard)
-        { grid: [[2, 'W', 0, 1], [5, 3, 'W', 4], [9, 6, 7, 8], [13, 10, 11, 12]], target: [[0, 'W', 1, 2], [3, 4, 'W', 5], [6, 7, 8, 9], [10, 11, 12, 13]], stars: { 3: 12, 2: 18 } },
-        // Level 9 (New - 5x5, 1 Locked, 1 Wildcard)
-        { grid: [[4, 0, 1, 2, 3], [8, 'L', 5, 6, 7], [12, 9, 'W', 10, 11], [17, 13, 14, 15, 16], [22, 18, 19, 20, 21]], target: [[0, 1, 2, 3, 4], [5, 'L', 6, 7, 8], [9, 10, 'W', 11, 12], [13, 14, 15, 16, 17], [18, 19, 20, 21, 22]], stars: { 3: 15, 2: 22 } }
+        // Level 1
+        {
+            grid: `
+                01
+                20
+            `,
+            target: `
+                00
+                12
+            `,
+            stars: { 3: 2, 2: 4 }
+        },
+        // Level 2
+        {
+            grid: `
+                012
+                120
+                201
+            `,
+            target: `
+                012
+                120
+                201
+            `,
+            target: `
+                111
+                000
+                222
+            `,
+            stars: { 3: 4, 2: 6 }
+        },
+        // Level 3
+        {
+            grid: `
+                012
+                L34
+                567
+            `,
+            target: `
+                012
+                L34
+                567
+            `,
+            stars: { 3: 5, 2: 7 }
+        },
+        // Level 4
+        {
+            grid: `
+                201
+                3W4
+                567
+            `,
+            target: `
+                012
+                3W4
+                567
+            `,
+            stars: { 3: 3, 2: 5 }
+        },
+        // Level 5
+        {
+            grid: `
+                012
+                L34
+                5W6
+            `,
+            target: `
+                120
+                L34
+                65W
+            `,
+
+            stars: { 3: 6, 2: 9 }
+        },
+        // Level 6 (4x4, no special tiles)
+        {
+            grid: `
+                3000
+                0111
+                1222
+                2333
+            `,
+            target: `
+                0000
+                1111
+                2222
+                3333
+            `,
+            stars: { 3: 8, 2: 12 }
+        },
+        // Level 7
+        {
+            grid: `
+                3012
+                L45L
+                9678
+                DABC
+            `,
+            target: `
+                0123
+                L45L
+                6789
+                ABCDEF
+            `,
+            stars: { 3: 10, 2: 15 }
+        },
     ];
 
-    let startLevel = 4; // User can change this to start at a different level (e.g., 0 for Level 1, 1 for Level 2, etc.)
+    let startLevel = 0; // User can change this to start at a different level (e.g., 0 for Level 1, 1 for Level 2, etc.)
     let currentLevel = startLevel; // Initialize currentLevel with startLevel
     let moves = 0;
     let grid = [];
@@ -90,7 +193,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         currentLevel = levelIndex;
         const levelData = levels[currentLevel];
-        grid = deepCopy(levelData.grid);
+        grid = parseGridString(levelData.grid); // Use parseGridString
+        const targetParsed = parseGridString(levelData.target); // Use parseGridString
+        
+        // Ensure locked tiles are consistent between grid and target
+        for(let r = 0; r < grid.length; r++) {
+            for(let c = 0; c < grid[r].length; c++) {
+                if(grid[r][c] === 'L' && targetParsed[r][c] !== 'L') {
+                    // If grid has a lock, target must also have a lock
+                    targetParsed[r][c] = 'L';
+                } else if (targetParsed[r][c] === 'L' && grid[r][c] !== 'L') {
+                    // If target has a lock, grid must also have a lock
+                    grid[r][c] = 'L';
+                }
+            }
+        }
+
         moves = 0;
         hintInCooldown = false;
         hintButton.disabled = false;
@@ -99,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         movesDisplay.textContent = moves;
 
         renderGrid(boardContainer, grid);
-        renderGrid(targetGrid, levelData.target);
+        renderGrid(targetGrid, targetParsed);
         resizeGame(); // Resize after rendering
         winModal.classList.add('hidden');
         helpModal.classList.add('hidden');
@@ -107,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function isGridSolved(gridState) {
-        const target = levels[currentLevel].target;
+        const target = parseGridString(levels[currentLevel].target); // Parse target here too
         for (let r = 0; r < gridState.length; r++) {
             for (let c = 0; c < gridState[r].length; c++) {
                 const boardCell = gridState[r][c];
@@ -270,5 +388,5 @@ document.addEventListener('DOMContentLoaded', () => {
     nextLevelButton.addEventListener('click', () => { loadLevel(currentLevel + 1); });
 
     window.addEventListener('resize', resizeGame);
-    loadLevel(currentLevel);
+    loadLevel(0);
 });
