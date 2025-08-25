@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const restartFullGameButton = document.getElementById('restart-full-game-button');
     const cancelRestartButton = document.getElementById('cancel-restart-button');
 
-    const colors = ['#ff6b6b', '#f0e68c', '#84fab0', '#8fd3f4', '#a18cd1'];
+    const colors = ['#ff6b6b', '#f0e68c', '#84fab0', '#8fd3f4', '#a18cd1', '#ff9a9e', '#cfd9df', '#e0c3fc', '#ffffff'];
 
     // Helper to parse grid strings into arrays
     function parseGridString(gridString) {
@@ -32,114 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const levels = [
-        // Level 1
-        {
-            grid: `
-                01
-                20
-            `,
-            target: `
-                00
-                12
-            `,
-            stars: { 3: 2, 2: 4 }
-        },
-        // Level 2
-        {
-            grid: `
-                012
-                120
-                201
-            `,
-            target: `
-                012
-                120
-                201
-            `,
-            target: `
-                111
-                000
-                222
-            `,
-            stars: { 3: 4, 2: 6 }
-        },
-        // Level 3
-        {
-            grid: `
-                012
-                L34
-                567
-            `,
-            target: `
-                012
-                L34
-                567
-            `,
-            stars: { 3: 5, 2: 7 }
-        },
-        // Level 4
-        {
-            grid: `
-                201
-                3W4
-                567
-            `,
-            target: `
-                012
-                3W4
-                567
-            `,
-            stars: { 3: 3, 2: 5 }
-        },
-        // Level 5
-        {
-            grid: `
-                012
-                L34
-                5W6
-            `,
-            target: `
-                120
-                L34
-                65W
-            `,
 
-            stars: { 3: 6, 2: 9 }
-        },
-        // Level 6 (4x4, no special tiles)
-        {
-            grid: `
-                3000
-                0111
-                1222
-                2333
-            `,
-            target: `
-                0000
-                1111
-                2222
-                3333
-            `,
-            stars: { 3: 8, 2: 12 }
-        },
-        // Level 7
-        {
-            grid: `
-                3012
-                L45L
-                9678
-                DABC
-            `,
-            target: `
-                0123
-                L45L
-                6789
-                ABCDEF
-            `,
-            stars: { 3: 10, 2: 15 }
-        },
-    ];
 
     let startLevel = 0; // User can change this to start at a different level (e.g., 0 for Level 1, 1 for Level 2, etc.)
     let currentLevel = startLevel; // Initialize currentLevel with startLevel
