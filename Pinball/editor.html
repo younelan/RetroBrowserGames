@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Pinball Level Editor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Pinball Level Editor</h1>
+  <div id="toolbar">
+    <button id="select-tool">Select</button>
+    <button id="wall-tool">Wall</button>
+    <button id="flipper-tool">Flipper</button>
+    <button id="bumper-tool">Bumper</button>
+    <button id="slingshot-tool">Slingshot</button>
+    <button id="rollover-tool">Rollover</button>
+    <button id="target-tool">Target</button>
+    <button id="hole-tool">Hole/Trap</button>
+    <button id="ramp-tool">Ramp</button>
+  </div>
+  <canvas id="editor-canvas" width="800" height="1200"></canvas>
+  <div>
+    <textarea id="level-data" rows="10" cols="80"></textarea>
+    <br>
+    <button id="load-button">Load Level</button>
+    <button id="save-button">Save Level</button>
+  </div>
+  <script src="editor.js"></script>
+</body>
+</html>
