@@ -1,0 +1,56 @@
+[
+    // Level 1
+    {
+        "grid": "\n                01\n                20\n            ",
+        "target": "\n                00\n                12\n            ",
+        "stars": { "3": 2, "2": 4 }
+    },
+    // Level 2
+    {
+        "grid": "\n                012\n                120\n                201\n            ",
+        "target": "\n                111\n                000\n                222\n            ",
+        "stars": { "3": 4, "2": 6 }
+    },
+    // Level 3 (Fixed - Solvable with Locked Tile)
+    {
+        "grid": "\n                201\n                L34\n                567\n            ",
+        "target": "\n                012\n                L34\n                567\n            ",
+        "stars": { "3": 5, "2": 7 }
+    },
+    // Level 4 (Fixed - Solvable with Wildcard Tile)
+    {
+        "grid": "\n                201\n                3W4\n                567\n            ",
+        "target": "\n                012\n                3W4\n                567\n            ",
+        "stars": { "3": 3, "2": 5 }
+    },
+    // Level 5 (3x3, 1 Locked, 1 Wildcard)
+    {
+        "grid": "\n                120\n                L34\n                65W\n            ",
+        "target": "\n                012\n                L34\n                56W\n            ",
+        "stars": { "3": 6, "2": 9 }
+    },
+    // Level 6 (4x4, no special tiles)
+    {
+        "grid": "\n                3000\n                0111\n                1222\n                2333\n            ",
+        "target": "\n                0000\n                1111\n                2222\n                3333\n            ",
+        "stars": { "3": 8, "2": 12 }
+    },
+    // Level 7 (4x4, 2 Locked) - Corrected color indices
+    {
+        "grid": "\n                3012\n                L40L\n                0123\n                0123\n            ",
+        "target": "\n                0123\n                L40L\n                0123\n                0123\n            ",
+        "stars": { "3": 10, "2": 15 }
+    },
+    // Level 8 (4x4, 2 Wildcard) - Corrected color indices
+    {
+        "grid": "\n                2W01\n                30W4\n                0123\n                0123\n            ",
+        "target": "\n                0W12\n                34W0\n                0123\n                0123\n            ",
+        "stars": { "3": 12, "2": 18 }
+    },
+    // Level 9 (5x5, 1 Locked, 1 Wildcard) - Corrected color indices
+    {
+        "grid": "\n                40123\n                0L012\n                01W01\n                01234\n                01234\n            ",
+        "target": "\n                01234\n                0L012\n                01W01\n                01234\n                01234\n            ",
+        "stars": { "3": 15, "2": 22 }
+    }
+]
