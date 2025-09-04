@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pinball</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* Minimal layout helpers for the game */
+    .hud { position: absolute; top: 8px; left: 8px; color: #333; background: rgba(255,255,255,0.8); padding: 6px 10px; border-radius: 6px; font-weight: bold; }
+    .container { position: relative; }
+  </style>
+</head>
+<body>
+  <h1>Pinball</h1>
+  <div class="container">
+    <canvas id="game-canvas" width="800" height="1200"></canvas>
+    <div class="hud" id="hud">Score: 0 | Balls: 3</div>
+  </div>
+
+  <!-- Load the loader; it fetches level.json and then loads game.js -->
+  <script src="loader.js"></script>
+</body>
+</html>
+</html>
