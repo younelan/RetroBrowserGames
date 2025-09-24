@@ -1,4 +1,4 @@
-# Car Shooter Game
+# Space Wars Horizontal Shooter Game
 
 This is a horizontal shoot 'em up game built with JavaScript, HTML, and CSS, featuring terrain, highly detailed spaceship designs with gradients, animated rocket fire, and multiple distinct enemy types.
 
