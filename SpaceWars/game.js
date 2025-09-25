@@ -15,7 +15,11 @@ let enemyBullets = [];
 let bases = [];
 let baseBullets = [];
 let collectibles = [];
+let boss = null;
+let bossBullets = [];
+let isBossFight = false;
 let score = 0;
+let highScore = 0;
 let gameOver = false;
 let level = 1;
 let enemiesToDefeat = 5; // Start with fewer enemies to defeat
@@ -202,6 +206,30 @@ const ENEMY_TYPES = [
             context.fillRect(ex + ew * 0.35, ey + eh * 0.35, ew * 0.2, eh * 0.1);
             context.fillRect(ex + ew * 0.35, ey + eh * 0.55, ew * 0.2, eh * 0.1);
         }
+    },
+    {
+        name: 'Serpent',
+        width: 60,
+        height: 20,
+        speedMin: 3,
+        speedMax: 5,
+        color: '#006400', // Dark Green
+        draw: function(context, enemy) {
+            const ex = enemy.x;
+            const ey = enemy.y;
+            const ew = enemy.width;
+            const eh = enemy.height;
+
+            // Segmented body
+            for (let i = 0; i < 5; i++) {
+                let segmentX = ex + (i * (ew / 5));
+                let segmentY = ey + Math.sin(segmentX / 20) * (eh / 4);
+                context.fillStyle = i % 2 === 0 ? '#006400' : '#2E8B57'; // Alternating green
+                context.beginPath();
+                context.arc(segmentX, segmentY, eh / 2, 0, Math.PI * 2);
+                context.fill();
+            }
+        }
     }
 ];
 
@@ -264,6 +292,9 @@ function initGame() {
     bases = [];
     baseBullets = [];
     collectibles = [];
+    boss = null;
+    bossBullets = [];
+    isBossFight = false;
     score = 0;
     gameOver = false;
     lastBulletTime = 0;
@@ -275,6 +306,7 @@ function initGame() {
     levelMessage = '';
     levelMessageAlpha = 0;
     screenFlashAlpha = 0;
+    highScore = localStorage.getItem('spaceWarsHighScore') || 0;
 
     ENEMY_SPAWN_INTERVAL = 1500;
     ENEMY_FIRE_COOLDOWN = 3000;
@@ -534,6 +566,75 @@ function drawBaseBullet(context, bullet) {
     context.fillRect(bullet.x, bullet.y, 5, 10);
 }
 
+function drawBoss(context) {
+    if (!boss) return;
+
+    const { x, y, width, height, parts } = boss;
+
+    // Main body
+    const gradient = context.createLinearGradient(x, y, x, y + height);
+    gradient.addColorStop(0, '#301934');
+    gradient.addColorStop(1, '#4B0082');
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.moveTo(x + width * 0.2, y);
+    context.lineTo(x + width * 0.8, y);
+    context.lineTo(x + width, y + height * 0.4);
+    context.lineTo(x + width, y + height * 0.6);
+    context.lineTo(x + width * 0.8, y + height);
+    context.lineTo(x + width * 0.2, y + height);
+    context.lineTo(x, y + height * 0.6);
+    context.lineTo(x, y + height * 0.4);
+    context.closePath();
+    context.fill();
+
+    // Cockpit
+    context.fillStyle = '#FF00FF';
+    context.beginPath();
+    context.arc(x + width / 2, y + height / 2, 25, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    context.beginPath();
+    context.arc(x + width / 2, y + height / 2, 20, 0, Math.PI * 2);
+    context.fill();
+
+    // Turrets
+    parts.forEach(part => {
+        if (part.health > 0) {
+            context.fillStyle = '#800080';
+            context.fillRect(part.x, part.y, part.width, part.height);
+            context.fillStyle = '#4B0082';
+            context.fillRect(part.x + 5, part.y + 5, part.width - 10, part.height - 10);
+        }
+    });
+}
+
+function drawBossBullet(context, bullet) {
+    context.fillStyle = '#FF00FF';
+    context.beginPath();
+    context.arc(bullet.x, bullet.y, 10, 0, Math.PI * 2);
+    context.fill();
+}
+
+function drawBossHealthBar(context) {
+    if (!boss) return;
+
+    const barWidth = GAME_SIZE - 200;
+    const barHeight = 20;
+    const x = GAME_SIZE / 2 - barWidth / 2;
+    const y = 10;
+    const healthPercentage = boss.health / boss.maxHealth;
+
+    context.fillStyle = '#333';
+    context.fillRect(x, y, barWidth, barHeight);
+
+    context.fillStyle = '#8B0000';
+    context.fillRect(x, y, barWidth * healthPercentage, barHeight);
+
+    context.strokeStyle = 'white';
+    context.strokeRect(x, y, barWidth, barHeight);
+}
+
 function drawCollectible(context, collectible) {
     const x = collectible.x;
     const y = collectible.y;
@@ -657,9 +758,136 @@ function drawProgressBar(context, x, y, width, height, progress) { // Changed to
     context.fillText(`${Math.floor(progress * 100)}%`, x + width / 2, y + height / 2 + 4);
 }
 
-function update(deltaTime) {
-    if (gameOver) return;
+function spawnBoss() {
+    isBossFight = true;
+    boss = {
+        x: GAME_SIZE,
+        y: GAME_SIZE / 2 - 100,
+        width: 200,
+        height: 200,
+        speed: 1,
+        health: 100,
+        maxHealth: 100,
+        parts: [
+            { x: GAME_SIZE + 50, y: GAME_SIZE / 2 - 75, width: 30, height: 30, health: 20, lastFire: 0 },
+            { x: GAME_SIZE + 50, y: GAME_SIZE / 2 + 45, width: 30, height: 30, health: 20, lastFire: 0 }
+        ],
+        lastMainFire: 0
+    };
+    levelMessage = 'WARNING! BOSS APPROACHING!';
+    levelMessageAlpha = 1;
+}
 
+function updateBoss(deltaTime) {
+    if (!boss) return;
+
+    // Boss movement
+    if (boss.x > GAME_SIZE - 250) {
+        boss.x -= boss.speed;
+        boss.parts.forEach(part => part.x -= boss.speed);
+    } else {
+        boss.y += Math.sin(Date.now() / 1000) * 2;
+    }
+
+    // Turret firing
+    boss.parts.forEach(part => {
+        if (part.health > 0 && Date.now() - part.lastFire > 2000) {
+            bossBullets.push({ x: part.x, y: part.y + part.height / 2, width: 15, height: 5, speed: -7 });
+            part.lastFire = Date.now();
+        }
+    });
+
+    // Main weapon firing
+    if (Date.now() - boss.lastMainFire > 3000) {
+        for (let i = 0; i < 5; i++) {
+            bossBullets.push({
+                x: boss.x,
+                y: boss.y + boss.height / 2,
+                width: 20,
+                height: 20,
+                speed: -5,
+                angle: (i - 2) * 0.2
+            });
+        }
+        boss.lastMainFire = Date.now();
+    }
+
+    // Update boss bullets
+    for (let i = bossBullets.length - 1; i >= 0; i--) {
+        const bullet = bossBullets[i];
+        bullet.x += bullet.speed;
+        if (bullet.angle) {
+            bullet.y += bullet.angle * 5;
+        }
+        if (bullet.x < 0) {
+            bossBullets.splice(i, 1);
+        }
+    }
+
+    // Player bullets vs boss
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        if (!bullets[i]) continue;
+
+        // Check against main body
+        if (checkCollision(bullets[i], boss)) {
+            boss.health--;
+            bullets.splice(i, 1);
+            continue;
+        }
+
+        // Check against parts
+        for (let j = boss.parts.length - 1; j >= 0; j--) {
+            if (boss.parts[j].health > 0 && checkCollision(bullets[i], boss.parts[j])) {
+                boss.parts[j].health--;
+                boss.health--;
+                bullets.splice(i, 1);
+                break;
+            }
+        }
+    }
+
+    // Player vs boss bullets
+    for (let i = bossBullets.length - 1; i >= 0; i--) {
+        if (checkCollision(player, bossBullets[i]) && !player.isShielded) {
+            player.health--;
+            player.weaponLevel = 1;
+            screenFlashAlpha = 1;
+            bossBullets.splice(i, 1);
+            if (player.health <= 0) {
+                gameOver = true;
+            }
+        }
+    }
+
+    // Player vs boss body
+    if (checkCollision(player, boss) && !player.isShielded) {
+        player.health = 0;
+        gameOver = true;
+    }
+
+    // Boss defeated
+    if (boss.health <= 0) {
+        score += 1000;
+        isBossFight = false;
+        boss = null;
+        level++;
+        currentEnemiesDefeated = 0;
+        enemiesToDefeat = 5 + (level * 2);
+        levelMessage = 'BOSS DEFEATED!';
+        levelMessageAlpha = 1;
+    }
+}
+
+function update(deltaTime) {
+    if (gameOver) {
+        if (score > highScore) {
+            localStorage.setItem('spaceWarsHighScore', score);
+            highScore = score;
+        }
+        return;
+    }
+
+    // Shared update logic
     if (screenFlashAlpha > 0) {
         screenFlashAlpha -= 0.05;
     }
@@ -713,78 +941,6 @@ function update(deltaTime) {
         }
     }
 
-    // Spawn enemies
-    if (enemies.length < (level * 2) && Date.now() - lastEnemySpawnTime > ENEMY_SPAWN_INTERVAL) {
-        const enemyType = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)];
-        const spawnX = GAME_SIZE;
-        const terrainY = getTerrainHeightAt(spawnX);
-        const spawnY = Math.random() * (terrainY - enemyType.height - 50);
-
-        enemies.push({
-            x: spawnX,
-            y: spawnY,
-            width: enemyType.width,
-            height: enemyType.height,
-            speed: enemyType.speedMin + Math.random() * (enemyType.speedMax - enemyType.speedMin),
-            type: enemyType,
-            lastFire: Date.now() + Math.random() * ENEMY_FIRE_COOLDOWN
-        });
-        lastEnemySpawnTime = Date.now();
-    }
-    // Spawn bases
-    if (level >= 3 && Date.now() - lastBaseSpawnTime > BASE_SPAWN_INTERVAL) {
-        const spawnX = GAME_SIZE;
-        const spawnY = getTerrainHeightAt(spawnX) - BASE_HEIGHT;
-        bases.push({
-            x: spawnX,
-            y: spawnY,
-            width: BASE_WIDTH,
-            height: BASE_HEIGHT,
-            health: BASE_HEALTH,
-            lastFire: Date.now() + Math.random() * BASE_FIRE_COOLDOWN
-        });
-        lastBaseSpawnTime = Date.now();
-    }
-
-    // Update enemies
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        if (!enemies[i]) continue;
-        enemies[i].x -= enemies[i].speed;
-        if (enemies[i].x + enemies[i].width < 0) {
-            enemies.splice(i, 1);
-        }
-
-        if (Math.random() < 0.01 * level && Date.now() - enemies[i].lastFire > ENEMY_FIRE_COOLDOWN) {
-            enemyBullets.push({
-                x: enemies[i].x,
-                y: enemies[i].y + enemies[i].height / 2,
-                width: 15,
-                height: 5,
-                speed: -5
-            });
-            enemies[i].lastFire = Date.now();
-        }
-    }
-
-    // Update bases
-    for (let i = bases.length - 1; i >= 0; i--) {
-        bases[i].x -= ENEMY_SPEED_MIN; // Scroll with terrain
-        if (bases[i].x + bases[i].width < 0) {
-            bases.splice(i, 1);
-        }
-
-        if (Date.now() - bases[i].lastFire > BASE_FIRE_COOLDOWN) {
-            baseBullets.push({
-                x: bases[i].x + bases[i].width / 2 - 2.5,
-                y: bases[i].y - 10,
-                width: 5,
-                height: 10,
-                speed: -5
-            });
-            bases[i].lastFire = Date.now();
-        }
-    }
-
     // Update collectibles
     for (let i = collectibles.length - 1; i >= 0; i--) {
         collectibles[i].y += 2; // Fall down
@@ -794,65 +950,201 @@ function update(deltaTime) {
         }
     }
 
-    // Update enemy bullets
-    for (let i = enemyBullets.length - 1; i >= 0; i--) {
-        enemyBullets[i].x += enemyBullets[i].speed;
-        if (enemyBullets[i].x < 0) {
-            enemyBullets.splice(i, 1);
-        }
-    }
+    if (isBossFight) {
+        updateBoss(deltaTime);
+    } else {
+        // REGULAR GAMEPLAY
 
-    // Update base bullets
-    for (let i = baseBullets.length - 1; i >= 0; i--) {
-        baseBullets[i].y += baseBullets[i].speed;
-        if (baseBullets[i].y + baseBullets[i].height < 0) {
-            baseBullets.splice(i, 1);
-        }
-    }
+        // Spawn enemies
+        if (enemies.length < (level * 2) && Date.now() - lastEnemySpawnTime > ENEMY_SPAWN_INTERVAL) {
+            let availableEnemies = ENEMY_TYPES;
+            if (level < 5) {
+                availableEnemies = ENEMY_TYPES.filter(type => type.name !== 'Serpent');
+            }
+            const enemyType = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
 
-    // Collision detection
-    // Player bullets vs enemies
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        for (let j = enemies.length - 1; j >= 0; j--) {
-            if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
-                if (Math.random() < 0.2) { // 20% chance to drop
-                    const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse', 'shield'];
-                    const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
-                    collectibles.push({ x: enemies[j].x, y: enemies[j].y, width: 20, height: 20, type: type });
-                }
-                bullets.splice(i, 1);
-                enemies.splice(j, 1);
-                score += 10;
-                currentEnemiesDefeated++;
-                break;
+            const spawnX = GAME_SIZE;
+            const terrainY = getTerrainHeightAt(spawnX);
+            const spawnY = Math.random() * (terrainY - enemyType.height - 50);
+
+            let newEnemy = {
+                x: spawnX,
+                y: spawnY,
+                width: enemyType.width,
+                height: enemyType.height,
+                speed: enemyType.speedMin + Math.random() * (enemyType.speedMax - enemyType.speedMin),
+                type: enemyType,
+                lastFire: Date.now() + Math.random() * ENEMY_FIRE_COOLDOWN
+            };
+
+            if (enemyType.name === 'Serpent') {
+                newEnemy.startY = newEnemy.y;
+                newEnemy.amplitude = 20 + Math.random() * 30;
+                newEnemy.frequency = 50 + Math.random() * 50;
+            }
+
+            enemies.push(newEnemy);
+            lastEnemySpawnTime = Date.now();
+        }
+        // Spawn bases
+        if (level >= 3 && Date.now() - lastBaseSpawnTime > BASE_SPAWN_INTERVAL) {
+            const spawnX = GAME_SIZE;
+            const spawnY = getTerrainHeightAt(spawnX) - BASE_HEIGHT;
+            bases.push({
+                x: spawnX,
+                y: spawnY,
+                width: BASE_WIDTH,
+                height: BASE_HEIGHT,
+                health: BASE_HEALTH,
+                lastFire: Date.now() + Math.random() * BASE_FIRE_COOLDOWN
+            });
+            lastBaseSpawnTime = Date.now();
+        }
+
+        // Update enemies
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            if (!enemies[i]) continue;
+            enemies[i].x -= enemies[i].speed;
+
+            if (enemies[i].type.name === 'Serpent') {
+                enemies[i].y = enemies[i].startY + Math.sin(enemies[i].x / enemies[i].frequency) * enemies[i].amplitude;
+            }
+
+            if (enemies[i].x + enemies[i].width < 0) {
+                enemies.splice(i, 1);
+            }
+
+            if (Math.random() < 0.01 * level && Date.now() - enemies[i].lastFire > ENEMY_FIRE_COOLDOWN) {
+                enemyBullets.push({
+                    x: enemies[i].x,
+                    y: enemies[i].y + enemies[i].height / 2,
+                    width: 15,
+                    height: 5,
+                    speed: -5
+                });
+                enemies[i].lastFire = Date.now();
             }
         }
-    }
 
-    // Player bullets vs bases
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        for (let j = bases.length - 1; j >= 0; j--) {
-            if (bullets[i] && bases[j] && checkCollision(bullets[i], bases[j])) {
-                bullets.splice(i, 1);
-                bases[j].health--;
-                if (bases[j].health <= 0) {
-                    bases.splice(j, 1);
-                    score += 25;
-                }
-                break;
+        // Update bases
+        for (let i = bases.length - 1; i >= 0; i--) {
+            bases[i].x -= ENEMY_SPEED_MIN; // Scroll with terrain
+            if (bases[i].x + bases[i].width < 0) {
+                bases.splice(i, 1);
+            }
+
+            if (Date.now() - bases[i].lastFire > BASE_FIRE_COOLDOWN) {
+                baseBullets.push({
+                    x: bases[i].x + bases[i].width / 2 - 2.5,
+                    y: bases[i].y - 10,
+                    width: 5,
+                    height: 10,
+                    speed: -5
+                });
+                bases[i].lastFire = Date.now();
             }
         }
-    }
 
-    // Player vs enemies
-    for (let i = enemies.length - 1; i >= 0; i--) {
-        if (enemies[i] && checkCollision(player, enemies[i]) && !player.isShielded) {
-            player.health--;
-            player.weaponLevel = 1;
-            screenFlashAlpha = 1;
-            enemies.splice(i, 1);
-            if (player.health <= 0) {
-                gameOver = true;
+        // Update enemy bullets
+        for (let i = enemyBullets.length - 1; i >= 0; i--) {
+            enemyBullets[i].x += enemyBullets[i].speed;
+            if (enemyBullets[i].x < 0) {
+                enemyBullets.splice(i, 1);
+            }
+        }
+
+        // Update base bullets
+        for (let i = baseBullets.length - 1; i >= 0; i--) {
+            baseBullets[i].y += baseBullets[i].speed;
+            if (baseBullets[i].y + baseBullets[i].height < 0) {
+                baseBullets.splice(i, 1);
+            }
+        }
+
+        // Collision detection
+        // Player bullets vs enemies
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
+                    if (Math.random() < 0.2) { // 20% chance to drop
+                        const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse', 'shield'];
+                        const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
+                        collectibles.push({ x: enemies[j].x, y: enemies[j].y, width: 20, height: 20, type: type });
+                    }
+                    bullets.splice(i, 1);
+                    enemies.splice(j, 1);
+                    score += 10;
+                    currentEnemiesDefeated++;
+                    break;
+                }
+            }
+        }
+
+        // Player bullets vs bases
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            for (let j = bases.length - 1; j >= 0; j--) {
+                if (bullets[i] && bases[j] && checkCollision(bullets[i], bases[j])) {
+                    bullets.splice(i, 1);
+                    bases[j].health--;
+                    if (bases[j].health <= 0) {
+                        bases.splice(j, 1);
+                        score += 25;
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Player vs enemies
+        for (let i = enemies.length - 1; i >= 0; i--) {
+            if (enemies[i] && checkCollision(player, enemies[i]) && !player.isShielded) {
+                player.health--;
+                player.weaponLevel = 1;
+                screenFlashAlpha = 1;
+                enemies.splice(i, 1);
+                if (player.health <= 0) {
+                    gameOver = true;
+                }
+            }
+        }
+
+        // Player vs enemy bullets
+        for (let i = enemyBullets.length - 1; i >= 0; i--) {
+            if (enemyBullets[i] && checkCollision(player, enemyBullets[i]) && !player.isShielded) {
+                player.health--;
+                player.weaponLevel = 1;
+                screenFlashAlpha = 1;
+                enemyBullets.splice(i, 1);
+                if (player.health <= 0) {
+                    gameOver = true;
+                }
+            }
+        }
+
+        // Player vs base bullets
+        for (let i = baseBullets.length - 1; i >= 0; i--) {
+            if (baseBullets[i] && checkCollision(player, baseBullets[i]) && !player.isShielded) {
+                player.health--;
+                player.weaponLevel = 1;
+                screenFlashAlpha = 1;
+                baseBullets.splice(i, 1);
+                if (player.health <= 0) {
+                    gameOver = true;
+                }
+            }
+        }
+
+        if (currentEnemiesDefeated >= enemiesToDefeat) {
+            if (level % 3 === 0) {
+                spawnBoss();
+            } else {
+                level++;
+                currentEnemiesDefeated = 0;
+                enemiesToDefeat = 5 + (level * 2);
+                ENEMY_SPAWN_INTERVAL = Math.max(200, ENEMY_SPAWN_INTERVAL - 100);
+                ENEMY_FIRE_COOLDOWN = Math.max(500, ENEMY_FIRE_COOLDOWN - 200);
+                levelMessage = `LEVEL ${level-1} COMPLETE!`;
+                levelMessageAlpha = 1;
             }
         }
     }
@@ -886,32 +1178,6 @@ function update(deltaTime) {
         }
     }
 
-    // Player vs enemy bullets
-    for (let i = enemyBullets.length - 1; i >= 0; i--) {
-        if (enemyBullets[i] && checkCollision(player, enemyBullets[i]) && !player.isShielded) {
-            player.health--;
-            player.weaponLevel = 1;
-            screenFlashAlpha = 1;
-            enemyBullets.splice(i, 1);
-            if (player.health <= 0) {
-                gameOver = true;
-            }
-        }
-    }
-
-    // Player vs base bullets
-    for (let i = baseBullets.length - 1; i >= 0; i--) {
-        if (baseBullets[i] && checkCollision(player, baseBullets[i]) && !player.isShielded) {
-            player.health--;
-            player.weaponLevel = 1;
-            screenFlashAlpha = 1;
-            baseBullets.splice(i, 1);
-            if (player.health <= 0) {
-                gameOver = true;
-            }
-        }
-    }
-
     if (checkTerrainCollision(player)) {
         player.health--;
         player.weaponLevel = 1;
@@ -933,16 +1199,6 @@ function update(deltaTime) {
         }
     }
 
-    if (currentEnemiesDefeated >= enemiesToDefeat) {
-        level++;
-        currentEnemiesDefeated = 0;
-        enemiesToDefeat = 5 + (level * 2);
-        ENEMY_SPAWN_INTERVAL = Math.max(200, ENEMY_SPAWN_INTERVAL - 100);
-        ENEMY_FIRE_COOLDOWN = Math.max(500, ENEMY_FIRE_COOLDOWN - 200);
-        levelMessage = `LEVEL ${level-1} COMPLETE!`;
-        levelMessageAlpha = 1;
-    }
-
     if (levelMessageAlpha > 0) {
         levelMessageAlpha -= 0.01;
     }
@@ -956,6 +1212,12 @@ function draw() {
     drawTerrain(offscreenCtx);
     bases.forEach(base => drawBase(offscreenCtx, base));
     collectibles.forEach(c => drawCollectible(offscreenCtx, c));
+    
+    if (isBossFight) {
+        drawBoss(offscreenCtx);
+        bossBullets.forEach(bullet => drawBossBullet(offscreenCtx, bullet));
+    }
+
     drawPlayer(offscreenCtx);
 
     bullets.forEach(bullet => drawBullet(offscreenCtx, bullet));
@@ -977,20 +1239,26 @@ function draw() {
     let powerupY = 60;
     if (player.weaponLevel > 1) {
         offscreenCtx.fillStyle = '#FFD700';
+        offscreenCtx.textAlign = 'left';
         offscreenCtx.fillText(`WEAPON LVL: ${player.weaponLevel}`, 10, powerupY);
         powerupY += 30;
     }
     if (player.isShielded) {
         offscreenCtx.fillStyle = '#00BFFF';
+        offscreenCtx.textAlign = 'left';
         offscreenCtx.fillText(`SHIELD: ${Math.ceil(player.shieldTimer / 1000)}s`, 10, powerupY);
     }
 
-    const progressBarX = offscreenCtx.measureText(statusText).width + 20;
-    const progressBarY = 15;
-    const progressBarWidth = 150;
-    const progressBarHeight = 15;
-    const progress = currentEnemiesDefeated / enemiesToDefeat;
-    drawProgressBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress);
+    if (isBossFight) {
+        drawBossHealthBar(offscreenCtx);
+    } else {
+        // const progressBarX = offscreenCtx.measureText(statusText).width + 20;
+        // const progressBarY = 15;
+        // const progressBarWidth = 150;
+        // const progressBarHeight = 15;
+        // const progress = currentEnemiesDefeated / enemiesToDefeat;
+        // drawProgressBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress);
+    }
 
     drawHelpIcon(offscreenCtx);
 
@@ -1010,9 +1278,12 @@ function draw() {
         offscreenCtx.fillStyle = 'white';
         offscreenCtx.font = `40px Arial`;
         offscreenCtx.textAlign = 'center';
-        offscreenCtx.fillText('GAME OVER', GAME_SIZE / 2, GAME_SIZE / 2 - 20);
+        offscreenCtx.fillText('GAME OVER', GAME_SIZE / 2, GAME_SIZE / 2 - 40);
+        offscreenCtx.font = `24px Arial`;
+        offscreenCtx.fillText(`Score: ${score}`, GAME_SIZE / 2, GAME_SIZE / 2);
+        offscreenCtx.fillText(`High Score: ${highScore}`, GAME_SIZE / 2, GAME_SIZE / 2 + 30);
         offscreenCtx.font = `20px Arial`;
-        offscreenCtx.fillText('Tap or Press Space to Restart', GAME_SIZE / 2, GAME_SIZE / 2 + 20);
+        offscreenCtx.fillText('Tap or Press Space to Restart', GAME_SIZE / 2, GAME_SIZE / 2 + 70);
     }
 
     if (isHelpScreenVisible) {
