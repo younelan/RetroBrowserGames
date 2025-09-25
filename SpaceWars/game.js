@@ -12,6 +12,8 @@ let player;
 let bullets = [];
 let enemies = [];
 let enemyBullets = [];
+let bases = [];
+let baseBullets = [];
 let score = 0;
 let gameOver = false;
 let level = 1;
@@ -46,6 +48,14 @@ const ENEMY_SPEED_MAX = 4; // Slightly slower max speed
 let ENEMY_SPAWN_INTERVAL = 1500; // milliseconds
 let lastEnemySpawnTime = 0;
 let ENEMY_FIRE_COOLDOWN = 3000; // milliseconds
+
+// Base properties
+const BASE_WIDTH = 40;
+const BASE_HEIGHT = 20;
+const BASE_HEALTH = 3;
+let BASE_SPAWN_INTERVAL = 5000; // ms
+let lastBaseSpawnTime = 0;
+const BASE_FIRE_COOLDOWN = 2000; // ms
 
 // Enemy Types
 const ENEMY_TYPES = [
@@ -240,10 +250,13 @@ function initGame() {
     bullets = [];
     enemies = [];
     enemyBullets = [];
+    bases = [];
+    baseBullets = [];
     score = 0;
     gameOver = false;
     lastBulletTime = 0;
     lastEnemySpawnTime = 0;
+    lastBaseSpawnTime = 0;
     level = 1;
     enemiesToDefeat = 5;
     currentEnemiesDefeated = 0;
@@ -479,6 +492,26 @@ function drawEnemyBullet(context, bullet) { // Changed to accept context
     context.fill();
 }
 
+function drawBase(context, base) {
+    const bx = base.x;
+    const by = base.y;
+    const bw = base.width;
+    const bh = base.height;
+
+    // Base structure
+    context.fillStyle = '#696969'; // DimGray
+    context.fillRect(bx, by, bw, bh);
+
+    // Cannon
+    context.fillStyle = '#444';
+    context.fillRect(bx + bw / 2 - 5, by - 10, 10, 10);
+}
+
+function drawBaseBullet(context, bullet) {
+    context.fillStyle = '#00FF00'; // Green
+    context.fillRect(bullet.x, bullet.y, 5, 10);
+}
+
 function drawStars(context) { // Changed to accept context
     context.fillStyle = 'white';
     stars.forEach(star => {
@@ -563,6 +596,20 @@ function update(deltaTime) {
         });
         lastEnemySpawnTime = Date.now();
     }
+    // Spawn bases
+    if (level >= 3 && Date.now() - lastBaseSpawnTime > BASE_SPAWN_INTERVAL) {
+        const spawnX = GAME_SIZE;
+        const spawnY = getTerrainHeightAt(spawnX) - BASE_HEIGHT;
+        bases.push({
+            x: spawnX,
+            y: spawnY,
+            width: BASE_WIDTH,
+            height: BASE_HEIGHT,
+            health: BASE_HEALTH,
+            lastFire: Date.now() + Math.random() * BASE_FIRE_COOLDOWN
+        });
+        lastBaseSpawnTime = Date.now();
+    }
 
     // Update enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
@@ -584,6 +631,25 @@ function update(deltaTime) {
         }
     }
 
+    // Update bases
+    for (let i = bases.length - 1; i >= 0; i--) {
+        bases[i].x -= ENEMY_SPEED_MIN; // Scroll with terrain
+        if (bases[i].x + bases[i].width < 0) {
+            bases.splice(i, 1);
+        }
+
+        if (Date.now() - bases[i].lastFire > BASE_FIRE_COOLDOWN) {
+            baseBullets.push({
+                x: bases[i].x + bases[i].width / 2 - 2.5,
+                y: bases[i].y - 10,
+                width: 5,
+                height: 10,
+                speed: -5
+            });
+            bases[i].lastFire = Date.now();
+        }
+    }
+
     // Update enemy bullets
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         enemyBullets[i].x += enemyBullets[i].speed;
@@ -592,7 +658,16 @@ function update(deltaTime) {
         }
     }
 
+    // Update base bullets
+    for (let i = baseBullets.length - 1; i >= 0; i--) {
+        baseBullets[i].y += baseBullets[i].speed;
+        if (baseBullets[i].y + baseBullets[i].height < 0) {
+            baseBullets.splice(i, 1);
+        }
+    }
+
     // Collision detection
+    // Player bullets vs enemies
     for (let i = bullets.length - 1; i >= 0; i--) {
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
@@ -605,6 +680,22 @@ function update(deltaTime) {
         }
     }
 
+    // Player bullets vs bases
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        for (let j = bases.length - 1; j >= 0; j--) {
+            if (bullets[i] && bases[j] && checkCollision(bullets[i], bases[j])) {
+                bullets.splice(i, 1);
+                bases[j].health--;
+                if (bases[j].health <= 0) {
+                    bases.splice(j, 1);
+                    score += 25;
+                }
+                break;
+            }
+        }
+    }
+
+    // Player vs enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
         if (enemies[i] && checkCollision(player, enemies[i])) {
             player.health--;
@@ -615,10 +706,22 @@ function update(deltaTime) {
         }
     }
 
+    // Player vs enemy bullets
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         if (enemyBullets[i] && checkCollision(player, enemyBullets[i])) {
             player.health--;
             enemyBullets.splice(i, 1);
+            if (player.health <= 0) {
+                gameOver = true;
+            }
+        }
+    }
+
+    // Player vs base bullets
+    for (let i = baseBullets.length - 1; i >= 0; i--) {
+        if (baseBullets[i] && checkCollision(player, baseBullets[i])) {
+            player.health--;
+            baseBullets.splice(i, 1);
             if (player.health <= 0) {
                 gameOver = true;
             }
@@ -661,10 +764,12 @@ function draw() {
 
     drawStars(offscreenCtx);
     drawTerrain(offscreenCtx);
+    bases.forEach(base => drawBase(offscreenCtx, base));
     drawPlayer(offscreenCtx);
 
     bullets.forEach(bullet => drawBullet(offscreenCtx, bullet));
     enemyBullets.forEach(bullet => drawEnemyBullet(offscreenCtx, bullet));
+    baseBullets.forEach(bullet => drawBaseBullet(offscreenCtx, bullet));
     enemies.forEach(enemy => drawEnemy(offscreenCtx, enemy));
 
     offscreenCtx.fillStyle = 'white';
