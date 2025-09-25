@@ -15,6 +15,7 @@ let enemyBullets = [];
 let bases = [];
 let baseBullets = [];
 let collectibles = [];
+let explosions = [];
 let boss = null;
 let bossBullets = [];
 let isBossFight = false;
@@ -40,6 +41,7 @@ const PLAYER_WIDTH = 50;
 const PLAYER_HEIGHT = 30;
 const PLAYER_SPEED = 5;
 const PLAYER_SMOOTHING = 0.1; // Smoothing factor for touch movement
+const MAX_PLAYER_HEALTH = 3;
 
 // Bullet properties
 const BULLET_WIDTH = 20;
@@ -282,7 +284,7 @@ function initGame() {
         width: PLAYER_WIDTH,
         height: PLAYER_HEIGHT,
         speed: PLAYER_SPEED,
-        health: 3,
+        health: MAX_PLAYER_HEALTH,
         weaponLevel: 1,
         isShielded: false,
         shieldTimer: 0
@@ -293,6 +295,7 @@ function initGame() {
     bases = [];
     baseBullets = [];
     collectibles = [];
+    explosions = [];
     boss = null;
     bossBullets = [];
     isBossFight = false;
@@ -603,10 +606,14 @@ function drawBoss(context) {
     // Turrets
     parts.forEach(part => {
         if (part.health > 0) {
+            context.save();
+            context.translate(part.x + part.width / 2, part.y + part.height / 2);
+            context.rotate(part.angle);
             context.fillStyle = '#800080';
-            context.fillRect(part.x, part.y, part.width, part.height);
+            context.fillRect(-part.width / 2, -part.height / 2, part.width, part.height);
             context.fillStyle = '#4B0082';
-            context.fillRect(part.x + 5, part.y + 5, part.width - 10, part.height - 10);
+            context.fillRect(-part.width / 2 + 5, -part.height / 2 + 5, part.width - 10, part.height - 10);
+            context.restore();
         }
     });
 }
@@ -743,8 +750,47 @@ function drawStars(context) { // Changed to accept context
     });
 }
 
+function createExplosion(x, y, count, color) {
+    for (let i = 0; i < count; i++) {
+        explosions.push({
+            x: x,
+            y: y,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+            size: Math.random() * 5 + 2,
+            color: color || 'orange',
+            lifespan: Math.random() * 50 + 50
+        });
+    }
+}
+
+function updateExplosions() {
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        const p = explosions[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.lifespan--;
+        if (p.lifespan <= 0) {
+            explosions.splice(i, 1);
+        }
+    }
+}
+
+function drawExplosions(context) {
+    explosions.forEach(p => {
+        context.fillStyle = p.color;
+        context.beginPath();
+        context.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        context.fill();
+    });
+}
+
 function spawnBoss() {
     isBossFight = true;
+    enemies = [];
+    enemyBullets = [];
+    bases = [];
+    baseBullets = [];
     boss = {
         x: GAME_SIZE,
         y: GAME_SIZE / 2 - 100,
@@ -754,8 +800,8 @@ function spawnBoss() {
         health: 100,
         maxHealth: 100,
         parts: [
-            { x: GAME_SIZE + 50, y: GAME_SIZE / 2 - 75, width: 30, height: 30, health: 20, lastFire: 0 },
-            { x: GAME_SIZE + 50, y: GAME_SIZE / 2 + 45, width: 30, height: 30, health: 20, lastFire: 0 }
+            { x: GAME_SIZE + 50, y: GAME_SIZE / 2 - 75, width: 30, height: 30, health: 20, lastFire: 0, angle: 0 },
+            { x: GAME_SIZE + 50, y: GAME_SIZE / 2 + 45, width: 30, height: 30, health: 20, lastFire: 0, angle: 0 }
         ],
         lastMainFire: 0
     };
@@ -775,11 +821,22 @@ function updateBoss(deltaTime) {
         boss.parts.forEach(part => part.y += Math.sin(Date.now() / 1000) * 2);
     }
 
-    // Turret firing
+    // Turret aiming and firing
     boss.parts.forEach(part => {
-        if (part.health > 0 && Date.now() - part.lastFire > 2000) {
-            bossBullets.push({ x: part.x, y: part.y + part.height / 2, width: 15, height: 5, speed: -7 });
-            part.lastFire = Date.now();
+        if (part.health > 0) {
+            part.angle = Math.atan2(player.y - part.y, player.x - part.x);
+            if (Date.now() - part.lastFire > 2000) {
+                const speed = -7;
+                bossBullets.push({
+                    x: part.x + part.width / 2,
+                    y: part.y + part.height / 2,
+                    width: 15,
+                    height: 5,
+                    vx: Math.cos(part.angle) * speed,
+                    vy: Math.sin(part.angle) * speed
+                });
+                part.lastFire = Date.now();
+            }
         }
     });
 
@@ -787,12 +844,12 @@ function updateBoss(deltaTime) {
     if (Date.now() - boss.lastMainFire > 3000) {
         for (let i = 0; i < 5; i++) {
             bossBullets.push({
-                x: boss.x,
+                x: boss.x + boss.width / 2,
                 y: boss.y + boss.height / 2,
                 width: 20,
                 height: 20,
-                speed: -5,
-                angle: (i - 2) * 0.2
+                vx: -5,
+                vy: (i - 2) * 1.5
             });
         }
         boss.lastMainFire = Date.now();
@@ -801,10 +858,8 @@ function updateBoss(deltaTime) {
     // Update boss bullets
     for (let i = bossBullets.length - 1; i >= 0; i--) {
         const bullet = bossBullets[i];
-        bullet.x += bullet.speed;
-        if (bullet.angle) {
-            bullet.y += bullet.angle * 5;
-        }
+        bullet.x += bullet.vx;
+        bullet.y += bullet.vy;
         if (bullet.x < 0) {
             bossBullets.splice(i, 1);
         }
@@ -817,42 +872,30 @@ function updateBoss(deltaTime) {
         // Check against main body
         if (checkCollision(bullets[i], boss)) {
             boss.health--;
+            createExplosion(bullets[i].x, bullets[i].y, 5, '#FFD700');
             bullets.splice(i, 1);
             continue;
         }
 
         // Check against parts
         for (let j = boss.parts.length - 1; j >= 0; j--) {
-            if (boss.parts[j].health > 0 && checkCollision(bullets[i], boss.parts[j])) {
-                boss.parts[j].health--;
+            const part = boss.parts[j];
+            if (part.health > 0 && checkCollision(bullets[i], part)) {
+                part.health--;
                 boss.health--;
+                createExplosion(bullets[i].x, bullets[i].y, 5, '#FFD700');
+                if (part.health <= 0) {
+                    createExplosion(part.x + part.width / 2, part.y + part.height / 2, 30);
+                }
                 bullets.splice(i, 1);
                 break;
             }
         }
     }
 
-    // Player vs boss bullets
-    for (let i = bossBullets.length - 1; i >= 0; i--) {
-        if (checkCollision(player, bossBullets[i]) && !player.isShielded) {
-            player.health--;
-            player.weaponLevel = 1;
-            screenFlashAlpha = 1;
-            bossBullets.splice(i, 1);
-            if (player.health <= 0) {
-                gameOver = true;
-            }
-        }
-    }
-
-    // Player vs boss body
-    if (checkCollision(player, boss) && !player.isShielded) {
-        player.health = 0;
-        gameOver = true;
-    }
-
     // Boss defeated
     if (boss.health <= 0) {
+        createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, 100, '#FF00FF');
         score += 1000;
         isBossFight = false;
         boss = null;
@@ -861,6 +904,20 @@ function updateBoss(deltaTime) {
         enemiesToDefeat = 5 + (level * 2);
         levelMessage = 'BOSS DEFEATED!';
         levelMessageAlpha = 1;
+    }
+}
+
+function applyPlayerDamage(damage) {
+    if (player.isShielded) return;
+
+    player.health -= damage;
+    player.weaponLevel = 1;
+    screenShake = 15;
+    screenFlashAlpha = 1;
+    createExplosion(player.x + player.width / 2, player.y + player.height / 2, 20);
+
+    if (player.health <= 0) {
+        gameOver = true;
     }
 }
 
@@ -874,9 +931,8 @@ function update(deltaTime) {
     }
 
     // Shared update logic
-    if (screenFlashAlpha > 0) {
-        screenFlashAlpha -= 0.05;
-    }
+    if (screenShake > 0) screenShake--;
+    if (screenFlashAlpha > 0) screenFlashAlpha -= 0.05;
 
     if (player.shieldTimer > 0) {
         player.shieldTimer -= deltaTime;
@@ -935,6 +991,8 @@ function update(deltaTime) {
             collectibles.splice(i, 1);
         }
     }
+
+    updateExplosions();
 
     if (isBossFight) {
         updateBoss(deltaTime);
@@ -1048,10 +1106,10 @@ function update(deltaTime) {
         }
 
         // Collision detection
-        // Player bullets vs enemies
         for (let i = bullets.length - 1; i >= 0; i--) {
             for (let j = enemies.length - 1; j >= 0; j--) {
                 if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
+                    createExplosion(enemies[j].x + enemies[j].width / 2, enemies[j].y + enemies[j].height / 2, 10);
                     if (Math.random() < 0.2) { // 20% chance to drop
                         const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse', 'shield'];
                         const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
@@ -1066,62 +1124,45 @@ function update(deltaTime) {
             }
         }
 
-        // Player bullets vs bases
         for (let i = bullets.length - 1; i >= 0; i--) {
             for (let j = bases.length - 1; j >= 0; j--) {
                 if (bullets[i] && bases[j] && checkCollision(bullets[i], bases[j])) {
-                    bullets.splice(i, 1);
                     bases[j].health--;
+                    createExplosion(bullets[i].x, bullets[i].y, 5, '#FFD700');
                     if (bases[j].health <= 0) {
+                        createExplosion(bases[j].x + bases[j].width / 2, bases[j].y + bases[j].height / 2, 20);
                         bases.splice(j, 1);
                         score += 25;
                     }
+                    bullets.splice(i, 1);
                     break;
                 }
             }
         }
 
-        // Player vs enemies
         for (let i = enemies.length - 1; i >= 0; i--) {
-            if (enemies[i] && checkCollision(player, enemies[i]) && !player.isShielded) {
-                player.health--;
-                player.weaponLevel = 1;
-                screenFlashAlpha = 1;
+            if (enemies[i] && checkCollision(player, enemies[i])) {
+                applyPlayerDamage(1);
                 enemies.splice(i, 1);
-                if (player.health <= 0) {
-                    gameOver = true;
-                }
             }
         }
 
-        // Player vs enemy bullets
         for (let i = enemyBullets.length - 1; i >= 0; i--) {
-            if (enemyBullets[i] && checkCollision(player, enemyBullets[i]) && !player.isShielded) {
-                player.health--;
-                player.weaponLevel = 1;
-                screenFlashAlpha = 1;
+            if (enemyBullets[i] && checkCollision(player, enemyBullets[i])) {
+                applyPlayerDamage(1);
                 enemyBullets.splice(i, 1);
-                if (player.health <= 0) {
-                    gameOver = true;
-                }
             }
         }
 
-        // Player vs base bullets
         for (let i = baseBullets.length - 1; i >= 0; i--) {
-            if (baseBullets[i] && checkCollision(player, baseBullets[i]) && !player.isShielded) {
-                player.health--;
-                player.weaponLevel = 1;
-                screenFlashAlpha = 1;
+            if (baseBullets[i] && checkCollision(player, baseBullets[i])) {
+                applyPlayerDamage(1);
                 baseBullets.splice(i, 1);
-                if (player.health <= 0) {
-                    gameOver = true;
-                }
             }
         }
 
         if (currentEnemiesDefeated >= enemiesToDefeat) {
-            if (level % 3 === 0) {
+            if (level > 0 && level % 3 === 0) {
                 spawnBoss();
             } else {
                 level++;
@@ -1152,6 +1193,7 @@ function update(deltaTime) {
                     break;
                 case 'emp-pulse':
                     score += enemies.length * 10;
+                    enemies.forEach(e => createExplosion(e.x + e.width/2, e.y + e.height/2, 30));
                     enemies = [];
                     enemyBullets = [];
                     break;
@@ -1165,14 +1207,9 @@ function update(deltaTime) {
     }
 
     if (checkTerrainCollision(player)) {
-        player.health--;
-        player.weaponLevel = 1;
-        screenFlashAlpha = 1;
+        applyPlayerDamage(1);
         player.x = GAME_SIZE / 4;
         player.y = GAME_SIZE / 2 - PLAYER_HEIGHT / 2;
-        if (player.health <= 0) {
-            gameOver = true;
-        }
     }
 
     updateTerrain();
@@ -1205,17 +1242,20 @@ function draw() {
     bases.forEach(base => drawBase(offscreenCtx, base));
     collectibles.forEach(c => drawCollectible(offscreenCtx, c));
     
-    if (isBossFight) {
+    if (isBossFight && boss) {
         drawBoss(offscreenCtx);
         bossBullets.forEach(bullet => drawBossBullet(offscreenCtx, bullet));
     }
 
-    drawPlayer(offscreenCtx);
+    if (!gameOver) {
+        drawPlayer(offscreenCtx);
+    }
 
     bullets.forEach(bullet => drawBullet(offscreenCtx, bullet));
     enemyBullets.forEach(bullet => drawEnemyBullet(offscreenCtx, bullet));
     baseBullets.forEach(bullet => drawBaseBullet(offscreenCtx, bullet));
     enemies.forEach(enemy => drawEnemy(offscreenCtx, enemy));
+    drawExplosions(offscreenCtx);
 
     if (screenFlashAlpha > 0) {
         offscreenCtx.fillStyle = `rgba(255, 0, 0, ${screenFlashAlpha})`;
@@ -1223,11 +1263,32 @@ function draw() {
     }
     offscreenCtx.restore();
 
-    offscreenCtx.fillStyle = 'white';
-    offscreenCtx.font = `20px Arial`;
-    offscreenCtx.textAlign = 'left';
-    let statusText = `⭐ ${score}  ❤️ ${player.health}  ${level}`;
-    offscreenCtx.fillText(statusText, 10, 30);
+    // UI on top of everything
+    if (isBossFight) {
+        const bossHealthProgress = boss ? boss.health / boss.maxHealth : 0;
+        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 40, 300, 20, bossHealthProgress, 'BOSS HEALTH');
+        
+        const playerHealthProgress = player.health / MAX_PLAYER_HEALTH;
+        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 70, 300, 15, playerHealthProgress, 'PLAYER HEALTH');
+
+        if (player.isShielded) {
+            const shieldProgress = player.shieldTimer / SHIELD_DURATION;
+            drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 95, 300, 10, shieldProgress, 'SHIELD');
+        }
+    } else {
+        offscreenCtx.fillStyle = 'white';
+        offscreenCtx.font = `20px Arial`;
+        offscreenCtx.textAlign = 'left';
+        let statusText = `⭐ ${score}  ❤️ ${player.health}  ${level}`;
+        offscreenCtx.fillText(statusText, 10, 30);
+
+        const progressBarX = offscreenCtx.measureText(statusText).width + 20;
+        const progressBarY = 15;
+        const progressBarWidth = 150;
+        const progressBarHeight = 15;
+        const progress = enemiesToDefeat > 0 ? currentEnemiesDefeated / enemiesToDefeat : 0;
+        drawDynamicBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress, `${Math.floor(progress * 100)}%`);
+    }
 
     let powerupY = 60;
     if (player.weaponLevel > 1) {
@@ -1236,26 +1297,10 @@ function draw() {
         offscreenCtx.fillText(`WEAPON LVL: ${player.weaponLevel}`, 10, powerupY);
         powerupY += 30;
     }
-    if (player.isShielded) {
+    if (player.isShielded && !isBossFight) {
         offscreenCtx.fillStyle = '#00BFFF';
         offscreenCtx.textAlign = 'left';
         offscreenCtx.fillText(`SHIELD: ${Math.ceil(player.shieldTimer / 1000)}s`, 10, powerupY);
-    }
-
-    if (isBossFight) {
-        const bossHealthProgress = boss ? boss.health / boss.maxHealth : 0;
-        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 40, 300, 20, bossHealthProgress, 'BOSS HEALTH');
-        if (player.isShielded) {
-            const shieldProgress = player.shieldTimer / SHIELD_DURATION;
-            drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 70, 300, 15, shieldProgress, 'SHIELD');
-        }
-    } else {
-        const progressBarX = offscreenCtx.measureText(statusText).width + 20;
-        const progressBarY = 15;
-        const progressBarWidth = 150;
-        const progressBarHeight = 15;
-        const progress = currentEnemiesDefeated / enemiesToDefeat;
-        drawDynamicBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress, `${Math.floor(progress * 100)}%`);
     }
 
     drawHelpIcon(offscreenCtx);
