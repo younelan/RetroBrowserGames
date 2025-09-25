@@ -59,6 +59,9 @@ let BASE_SPAWN_INTERVAL = 5000; // ms
 let lastBaseSpawnTime = 0;
 const BASE_FIRE_COOLDOWN = 2000; // ms
 
+// Power-up properties
+const SHIELD_DURATION = 20000; // 20 seconds
+
 // Help icon
 const helpIcon = { x: GAME_SIZE - 40, y: GAME_SIZE - 40, width: 30, height: 30 };
 
@@ -251,7 +254,9 @@ function initGame() {
         height: PLAYER_HEIGHT,
         speed: PLAYER_SPEED,
         health: 3,
-        weaponLevel: 1
+        weaponLevel: 1,
+        isShielded: false,
+        shieldTimer: 0
     };
     bullets = [];
     enemies = [];
@@ -364,6 +369,7 @@ function getTerrainHeightAt(x) {
 }
 
 function checkTerrainCollision(player) {
+    if (player.isShielded) return false;
     const playerCenterX = player.x + player.width / 2;
     let terrainYAtPlayerX = getTerrainHeightAt(playerCenterX);
 
@@ -378,6 +384,14 @@ function drawPlayer(context) { // Changed to accept context
     const py = player.y;
     const pw = player.width;
     const ph = player.height;
+
+    if (player.isShielded) {
+        context.fillStyle = 'rgba(0, 191, 255, 0.3)'; // Deep sky blue with transparency
+        context.beginPath();
+        const shieldRadius = (player.width + player.height) / 2 * (1 + Math.sin(Date.now() / 200) * 0.1); // Pulsating effect
+        context.arc(player.x + player.width / 2, player.y + player.height / 2, shieldRadius, 0, Math.PI * 2);
+        context.fill();
+    }
 
     let mainBodyGradient = context.createLinearGradient(px, py, px + pw, py + ph);
     mainBodyGradient.addColorStop(0, '#A9A9A9');
@@ -555,6 +569,12 @@ function drawCollectible(context, collectible) {
             context.closePath();
             context.fill();
             break;
+        case 'shield':
+            context.fillStyle = '#00BFFF';
+            context.beginPath();
+            context.arc(x + width / 2, y + height / 2, width / 2, 0, Math.PI * 2);
+            context.fill();
+            break;
     }
     context.restore();
 }
@@ -601,7 +621,10 @@ function drawHelpScreen(context) {
     context.fillText('Extra Life: Gain one health point.', 80, y); y += 35;
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'emp-pulse' });
-    context.fillText('EMP Pulse: Destroys all enemies on screen.', 80, y); y += 50;
+    context.fillText('EMP Pulse: Destroys all enemies on screen.', 80, y); y += 35;
+
+    drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'shield' });
+    context.fillText('Shield: 20 seconds of invincibility.', 80, y); y += 50;
 
     context.textAlign = 'center';
     context.fillText('Tap screen to close help.', GAME_SIZE / 2, y);
@@ -639,6 +662,13 @@ function update(deltaTime) {
 
     if (screenFlashAlpha > 0) {
         screenFlashAlpha -= 0.05;
+    }
+
+    if (player.shieldTimer > 0) {
+        player.shieldTimer -= deltaTime;
+        if (player.shieldTimer <= 0) {
+            player.isShielded = false;
+        }
     }
 
     // Keyboard movement
@@ -786,7 +816,7 @@ function update(deltaTime) {
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
                 if (Math.random() < 0.2) { // 20% chance to drop
-                    const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse'];
+                    const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse', 'shield'];
                     const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
                     collectibles.push({ x: enemies[j].x, y: enemies[j].y, width: 20, height: 20, type: type });
                 }
@@ -816,7 +846,7 @@ function update(deltaTime) {
 
     // Player vs enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
-        if (enemies[i] && checkCollision(player, enemies[i])) {
+        if (enemies[i] && checkCollision(player, enemies[i]) && !player.isShielded) {
             player.health--;
             player.weaponLevel = 1;
             screenFlashAlpha = 1;
@@ -847,6 +877,10 @@ function update(deltaTime) {
                     enemies = [];
                     enemyBullets = [];
                     break;
+                case 'shield':
+                    player.isShielded = true;
+                    player.shieldTimer = SHIELD_DURATION;
+                    break;
             }
             collectibles.splice(i, 1);
         }
@@ -854,7 +888,7 @@ function update(deltaTime) {
 
     // Player vs enemy bullets
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
-        if (enemyBullets[i] && checkCollision(player, enemyBullets[i])) {
+        if (enemyBullets[i] && checkCollision(player, enemyBullets[i]) && !player.isShielded) {
             player.health--;
             player.weaponLevel = 1;
             screenFlashAlpha = 1;
@@ -867,7 +901,7 @@ function update(deltaTime) {
 
     // Player vs base bullets
     for (let i = baseBullets.length - 1; i >= 0; i--) {
-        if (baseBullets[i] && checkCollision(player, baseBullets[i])) {
+        if (baseBullets[i] && checkCollision(player, baseBullets[i]) && !player.isShielded) {
             player.health--;
             player.weaponLevel = 1;
             screenFlashAlpha = 1;
@@ -940,9 +974,15 @@ function draw() {
     let statusText = `⭐ ${score}  ❤️ ${player.health}  ${level}`;
     offscreenCtx.fillText(statusText, 10, 30);
 
+    let powerupY = 60;
     if (player.weaponLevel > 1) {
         offscreenCtx.fillStyle = '#FFD700';
-        offscreenCtx.fillText(`WEAPON LVL: ${player.weaponLevel}`, 10, 60);
+        offscreenCtx.fillText(`WEAPON LVL: ${player.weaponLevel}`, 10, powerupY);
+        powerupY += 30;
+    }
+    if (player.isShielded) {
+        offscreenCtx.fillStyle = '#00BFFF';
+        offscreenCtx.fillText(`SHIELD: ${Math.ceil(player.shieldTimer / 1000)}s`, 10, powerupY);
     }
 
     const progressBarX = offscreenCtx.measureText(statusText).width + 20;
