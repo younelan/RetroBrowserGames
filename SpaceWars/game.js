@@ -26,6 +26,7 @@ let enemiesToDefeat = 5; // Start with fewer enemies to defeat
 let currentEnemiesDefeated = 0; // Track enemies defeated in current level
 let isHelpScreenVisible = false;
 let screenFlashAlpha = 0;
+let screenShake = 0;
 
 let levelMessage = '';
 let levelMessageAlpha = 0;
@@ -306,6 +307,7 @@ function initGame() {
     levelMessage = '';
     levelMessageAlpha = 0;
     screenFlashAlpha = 0;
+    screenShake = 0;
     highScore = localStorage.getItem('spaceWarsHighScore') || 0;
 
     ENEMY_SPAWN_INTERVAL = 1500;
@@ -616,23 +618,23 @@ function drawBossBullet(context, bullet) {
     context.fill();
 }
 
-function drawBossHealthBar(context) {
-    if (!boss) return;
-
-    const barWidth = GAME_SIZE - 200;
-    const barHeight = 20;
-    const x = GAME_SIZE / 2 - barWidth / 2;
-    const y = 10;
-    const healthPercentage = boss.health / boss.maxHealth;
+function drawDynamicBar(context, x, y, width, height, progress, label) {
+    const color = progress > 0.6 ? '#00FF00' : progress > 0.3 ? '#FFA500' : '#FF0000';
 
     context.fillStyle = '#333';
-    context.fillRect(x, y, barWidth, barHeight);
+    context.fillRect(x, y, width, height);
 
-    context.fillStyle = '#8B0000';
-    context.fillRect(x, y, barWidth * healthPercentage, barHeight);
+    context.fillStyle = color;
+    context.fillRect(x, y, width * progress, height);
 
     context.strokeStyle = 'white';
-    context.strokeRect(x, y, barWidth, barHeight);
+    context.strokeRect(x, y, width, height);
+
+    context.fillStyle = 'white';
+    context.font = `14px Arial`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(label, x + width / 2, y + height / 2);
 }
 
 function drawCollectible(context, collectible) {
@@ -741,23 +743,6 @@ function drawStars(context) { // Changed to accept context
     });
 }
 
-function drawProgressBar(context, x, y, width, height, progress) { // Changed to accept context
-    context.fillStyle = '#333';
-    context.fillRect(x, y, width, height);
-
-    context.fillStyle = '#00FF00';
-    context.fillRect(x, y, width * progress, height);
-
-    context.strokeStyle = 'white';
-    context.lineWidth = 1;
-    context.strokeRect(x, y, width, height);
-
-    context.fillStyle = 'white';
-    context.font = `12px Arial`;
-    context.textAlign = 'center';
-    context.fillText(`${Math.floor(progress * 100)}%`, x + width / 2, y + height / 2 + 4);
-}
-
 function spawnBoss() {
     isBossFight = true;
     boss = {
@@ -787,6 +772,7 @@ function updateBoss(deltaTime) {
         boss.parts.forEach(part => part.x -= boss.speed);
     } else {
         boss.y += Math.sin(Date.now() / 1000) * 2;
+        boss.parts.forEach(part => part.y += Math.sin(Date.now() / 1000) * 2);
     }
 
     // Turret firing
@@ -1206,6 +1192,12 @@ function update(deltaTime) {
 
 function draw() {
     // --- Start drawing to the offscreen canvas ---
+    offscreenCtx.save();
+    if (screenShake > 0) {
+        const shakeX = (Math.random() - 0.5) * screenShake;
+        const shakeY = (Math.random() - 0.5) * screenShake;
+        offscreenCtx.translate(shakeX, shakeY);
+    }
     offscreenCtx.clearRect(0, 0, GAME_SIZE, GAME_SIZE);
 
     drawStars(offscreenCtx);
@@ -1229,6 +1221,7 @@ function draw() {
         offscreenCtx.fillStyle = `rgba(255, 0, 0, ${screenFlashAlpha})`;
         offscreenCtx.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
     }
+    offscreenCtx.restore();
 
     offscreenCtx.fillStyle = 'white';
     offscreenCtx.font = `20px Arial`;
@@ -1250,22 +1243,31 @@ function draw() {
     }
 
     if (isBossFight) {
-        drawBossHealthBar(offscreenCtx);
+        const bossHealthProgress = boss ? boss.health / boss.maxHealth : 0;
+        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 40, 300, 20, bossHealthProgress, 'BOSS HEALTH');
+        if (player.isShielded) {
+            const shieldProgress = player.shieldTimer / SHIELD_DURATION;
+            drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 70, 300, 15, shieldProgress, 'SHIELD');
+        }
     } else {
-        // const progressBarX = offscreenCtx.measureText(statusText).width + 20;
-        // const progressBarY = 15;
-        // const progressBarWidth = 150;
-        // const progressBarHeight = 15;
-        // const progress = currentEnemiesDefeated / enemiesToDefeat;
-        // drawProgressBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress);
+        const progressBarX = offscreenCtx.measureText(statusText).width + 20;
+        const progressBarY = 15;
+        const progressBarWidth = 150;
+        const progressBarHeight = 15;
+        const progress = currentEnemiesDefeated / enemiesToDefeat;
+        drawDynamicBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress, `${Math.floor(progress * 100)}%`);
     }
 
     drawHelpIcon(offscreenCtx);
 
     if (levelMessageAlpha > 0) {
         offscreenCtx.save();
-        offscreenCtx.globalAlpha = levelMessageAlpha;
-        offscreenCtx.fillStyle = 'white';
+        if (levelMessage.includes('WARNING')) {
+            offscreenCtx.globalAlpha = 0.5 + Math.sin(Date.now() / 100) * 0.5;
+        } else {
+            offscreenCtx.globalAlpha = levelMessageAlpha;
+        }
+        offscreenCtx.fillStyle = 'red';
         offscreenCtx.font = `40px Arial`;
         offscreenCtx.textAlign = 'center';
         offscreenCtx.fillText(levelMessage, GAME_SIZE / 2, GAME_SIZE / 2);
