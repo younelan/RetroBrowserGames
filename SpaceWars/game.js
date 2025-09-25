@@ -14,11 +14,13 @@ let enemies = [];
 let enemyBullets = [];
 let bases = [];
 let baseBullets = [];
+let collectibles = [];
 let score = 0;
 let gameOver = false;
 let level = 1;
 let enemiesToDefeat = 5; // Start with fewer enemies to defeat
 let currentEnemiesDefeated = 0; // Track enemies defeated in current level
+let isHelpScreenVisible = false;
 
 let levelMessage = '';
 let levelMessageAlpha = 0;
@@ -41,8 +43,6 @@ const BULLET_COOLDOWN = 150; // milliseconds
 let lastBulletTime = 0;
 
 // Enemy properties
-const ENEMY_WIDTH = 60;
-const ENEMY_HEIGHT = 40;
 const ENEMY_SPEED_MIN = 2;
 const ENEMY_SPEED_MAX = 4; // Slightly slower max speed
 let ENEMY_SPAWN_INTERVAL = 1500; // milliseconds
@@ -56,6 +56,12 @@ const BASE_HEALTH = 3;
 let BASE_SPAWN_INTERVAL = 5000; // ms
 let lastBaseSpawnTime = 0;
 const BASE_FIRE_COOLDOWN = 2000; // ms
+
+// Collectible properties
+const POWERUP_DURATION = 10000; // 10 seconds
+
+// Help icon
+const helpIcon = { x: GAME_SIZE - 40, y: GAME_SIZE - 40, width: 30, height: 30 };
 
 // Enemy Types
 const ENEMY_TYPES = [
@@ -245,13 +251,16 @@ function initGame() {
         width: PLAYER_WIDTH,
         height: PLAYER_HEIGHT,
         speed: PLAYER_SPEED,
-        health: 3
+        health: 3,
+        powerup: 'none',
+        powerupTimer: 0
     };
     bullets = [];
     enemies = [];
     enemyBullets = [];
     bases = [];
     baseBullets = [];
+    collectibles = [];
     score = 0;
     gameOver = false;
     lastBulletTime = 0;
@@ -512,6 +521,92 @@ function drawBaseBullet(context, bullet) {
     context.fillRect(bullet.x, bullet.y, 5, 10);
 }
 
+function drawCollectible(context, collectible) {
+    const x = collectible.x;
+    const y = collectible.y;
+    const width = collectible.width;
+    const height = collectible.height;
+
+    context.save();
+    switch (collectible.type) {
+        case 'double-weapon':
+            context.fillStyle = '#FFD700';
+            context.fillRect(x + width / 4, y, width / 2, height);
+            context.fillRect(x, y + height / 4, width, height / 2);
+            break;
+        case 'extra-life':
+            context.fillStyle = '#FF0000';
+            context.beginPath();
+            context.moveTo(x + width / 2, y + height / 4);
+            context.arc(x + width / 4, y + height / 4, width / 4, Math.PI, 0);
+            context.arc(x + (width * 3) / 4, y + height / 4, width / 4, Math.PI, 0);
+            context.lineTo(x + width / 2, y + height);
+            context.closePath();
+            context.fill();
+            break;
+        case 'emp-pulse':
+            context.fillStyle = '#00FFFF';
+            context.beginPath();
+            context.moveTo(x + width / 2, y);
+            context.lineTo(x, y + height / 2);
+            context.lineTo(x + width / 2, y + height / 2);
+            context.lineTo(x + width / 2, y + height);
+            context.lineTo(x + width, y + height / 2);
+            context.lineTo(x + width / 2, y + height / 2);
+            context.closePath();
+            context.fill();
+            break;
+    }
+    context.restore();
+}
+
+function drawHelpIcon(context) {
+    context.fillStyle = 'rgba(128, 128, 128, 0.5)';
+    context.beginPath();
+    context.arc(helpIcon.x + helpIcon.width / 2, helpIcon.y + helpIcon.height / 2, helpIcon.width / 2, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = 'white';
+    context.font = `20px Arial`;
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText('?', helpIcon.x + helpIcon.width / 2, helpIcon.y + helpIcon.height / 2);
+}
+
+function drawHelpScreen(context) {
+    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    context.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
+
+    context.fillStyle = 'white';
+    context.font = `30px Arial`;
+    context.textAlign = 'center';
+    context.fillText('HELP', GAME_SIZE / 2, 50);
+
+    context.font = `16px Arial`;
+    context.textAlign = 'left';
+    let y = 100;
+    const text = [
+        'Controls:',
+        '- Desktop: Arrow keys to move, Space to shoot.',
+        '- Mobile: Drag to move, auto-fire is on.',
+        ' ',
+        'Objective:',
+        '- Survive as long as possible.',
+        '- Destroy enemies and bases for points.',
+        ' ',
+        'Collectibles:',
+        '(D) Double Weapon: Fire two bullets for a short time.',
+        '(+) Extra Life: Gain one health point.',
+        '(E) EMP Pulse: Destroys all enemies on screen.',
+        ' ',
+        'Tap screen to close help.'
+    ];
+
+    text.forEach(line => {
+        context.fillText(line, 50, y);
+        y += 25;
+    });
+}
+
 function drawStars(context) { // Changed to accept context
     context.fillStyle = 'white';
     stars.forEach(star => {
@@ -541,6 +636,13 @@ function drawProgressBar(context, x, y, width, height, progress) { // Changed to
 function update(deltaTime) {
     if (gameOver) return;
 
+    // Update player powerup timer
+    if (player.powerupTimer > 0) {
+        player.powerupTimer -= deltaTime;
+    } else {
+        player.powerup = 'none';
+    }
+
     // Keyboard movement
     if (keys.ArrowUp) player.y -= player.speed;
     if (keys.ArrowDown) player.y += player.speed;
@@ -560,13 +662,30 @@ function update(deltaTime) {
 
     // Shooting (Keyboard or Touch)
     if ((keys.Space || isFiring) && Date.now() - lastBulletTime > BULLET_COOLDOWN) {
-        bullets.push({
-            x: player.x + player.width,
-            y: player.y + player.height / 2 - BULLET_HEIGHT / 2,
-            width: BULLET_WIDTH,
-            height: BULLET_HEIGHT,
-            speed: BULLET_SPEED
-        });
+        if (player.powerup === 'double-weapon') {
+            bullets.push({
+                x: player.x + player.width,
+                y: player.y + player.height / 4 - BULLET_HEIGHT / 2,
+                width: BULLET_WIDTH,
+                height: BULLET_HEIGHT,
+                speed: BULLET_SPEED
+            });
+            bullets.push({
+                x: player.x + player.width,
+                y: player.y + (player.height * 3/4) - BULLET_HEIGHT / 2,
+                width: BULLET_WIDTH,
+                height: BULLET_HEIGHT,
+                speed: BULLET_SPEED
+            });
+        } else {
+            bullets.push({
+                x: player.x + player.width,
+                y: player.y + player.height / 2 - BULLET_HEIGHT / 2,
+                width: BULLET_WIDTH,
+                height: BULLET_HEIGHT,
+                speed: BULLET_SPEED
+            });
+        }
         lastBulletTime = Date.now();
     }
 
@@ -650,6 +769,15 @@ function update(deltaTime) {
         }
     }
 
+    // Update collectibles
+    for (let i = collectibles.length - 1; i >= 0; i--) {
+        collectibles[i].y += 2; // Fall down
+        collectibles[i].x -= 1; // Drift left
+        if (collectibles[i].y > GAME_SIZE) {
+            collectibles.splice(i, 1);
+        }
+    }
+
     // Update enemy bullets
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         enemyBullets[i].x += enemyBullets[i].speed;
@@ -671,6 +799,11 @@ function update(deltaTime) {
     for (let i = bullets.length - 1; i >= 0; i--) {
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
+                if (Math.random() < 0.2) { // 20% chance to drop
+                    const collectibleTypes = ['double-weapon', 'extra-life', 'emp-pulse'];
+                    const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
+                    collectibles.push({ x: enemies[j].x, y: enemies[j].y, width: 20, height: 20, type: type });
+                }
                 bullets.splice(i, 1);
                 enemies.splice(j, 1);
                 score += 10;
@@ -703,6 +836,28 @@ function update(deltaTime) {
             if (player.health <= 0) {
                 gameOver = true;
             }
+        }
+    }
+
+    // Player vs collectibles
+    for (let i = collectibles.length - 1; i >= 0; i--) {
+        if (checkCollision(player, collectibles[i])) {
+            const collectible = collectibles[i];
+            switch (collectible.type) {
+                case 'double-weapon':
+                    player.powerup = 'double-weapon';
+                    player.powerupTimer = POWERUP_DURATION;
+                    break;
+                case 'extra-life':
+                    player.health++;
+                    break;
+                case 'emp-pulse':
+                    score += enemies.length * 10;
+                    enemies = [];
+                    enemyBullets = [];
+                    break;
+            }
+            collectibles.splice(i, 1);
         }
     }
 
@@ -765,6 +920,7 @@ function draw() {
     drawStars(offscreenCtx);
     drawTerrain(offscreenCtx);
     bases.forEach(base => drawBase(offscreenCtx, base));
+    collectibles.forEach(c => drawCollectible(offscreenCtx, c));
     drawPlayer(offscreenCtx);
 
     bullets.forEach(bullet => drawBullet(offscreenCtx, bullet));
@@ -778,12 +934,19 @@ function draw() {
     let statusText = `⭐ ${score}  ❤️ ${player.health}  ${level}`;
     offscreenCtx.fillText(statusText, 10, 30);
 
+    if (player.powerup !== 'none') {
+        offscreenCtx.fillStyle = '#FFD700';
+        offscreenCtx.fillText(player.powerup.replace('-', ' ').toUpperCase(), 10, 60);
+    }
+
     const progressBarX = offscreenCtx.measureText(statusText).width + 20;
     const progressBarY = 15;
     const progressBarWidth = 150;
     const progressBarHeight = 15;
     const progress = currentEnemiesDefeated / enemiesToDefeat;
     drawProgressBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress);
+
+    drawHelpIcon(offscreenCtx);
 
     if (levelMessageAlpha > 0) {
         offscreenCtx.save();
@@ -805,6 +968,10 @@ function draw() {
         offscreenCtx.font = `20px Arial`;
         offscreenCtx.fillText('Tap or Press Space to Restart', GAME_SIZE / 2, GAME_SIZE / 2 + 20);
     }
+
+    if (isHelpScreenVisible) {
+        drawHelpScreen(offscreenCtx);
+    }
     // --- End drawing to the offscreen canvas ---
 
     // --- Copy the offscreen canvas to the visible canvas ---
@@ -812,6 +979,9 @@ function draw() {
     ctx.drawImage(offscreenCanvas, 0, 0, canvas.width, canvas.height);
 }
 
+function isClickInsideRect(x, y, rect) {
+    return x > rect.x && x < rect.x + rect.width && y > rect.y && y < rect.y + rect.height;
+}
 
 // Event Listeners for Keyboard
 document.addEventListener('keydown', (e) => {
@@ -836,12 +1006,29 @@ canvas.addEventListener('touchstart', (e) => {
         initGame();
         return;
     }
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const touchX = (touch.clientX - rect.left) * (GAME_SIZE / rect.width);
+    const touchY = (touch.clientY - rect.top) * (GAME_SIZE / rect.height);
+
+    if (isHelpScreenVisible) {
+        isHelpScreenVisible = false;
+        return;
+    }
+
+    if (isClickInsideRect(touchX, touchY, helpIcon)) {
+        isHelpScreenVisible = true;
+        return;
+    }
+
     e.preventDefault();
     isTouching = true;
     isFiring = true; // Start firing on touch
-    const rect = canvas.getBoundingClientRect();
-    touchX = (e.touches[0].clientX - rect.left) * (GAME_SIZE / rect.width);
-    touchY = (e.touches[0].clientY - rect.top) * (GAME_SIZE / rect.height);
+    
+    // Update touchX and touchY for movement
+    this.touchX = touchX;
+    this.touchY = touchY;
 });
 
 canvas.addEventListener('touchmove', (e) => {
@@ -865,7 +1052,9 @@ function gameLoop(currentTime) {
     const deltaTime = currentTime - lastTime;
     lastTime = currentTime;
 
-    update(deltaTime);
+    if (!isHelpScreenVisible) {
+        update(deltaTime);
+    }
     draw();
 
     requestAnimationFrame(gameLoop);
