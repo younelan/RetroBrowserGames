@@ -3,6 +3,10 @@ const ctx = canvas.getContext('2d');
 
 const GAME_SIZE = 800; // Logical game size
 
+// Create an offscreen canvas for double buffering
+const offscreenCanvas = document.createElement('canvas');
+const offscreenCtx = offscreenCanvas.getContext('2d');
+
 // Game variables
 let player;
 let bullets = [];
@@ -25,6 +29,7 @@ const NUM_STARS = 100;
 const PLAYER_WIDTH = 50;
 const PLAYER_HEIGHT = 30;
 const PLAYER_SPEED = 5;
+const PLAYER_SMOOTHING = 0.1; // Smoothing factor for touch movement
 
 // Bullet properties
 const BULLET_WIDTH = 20;
@@ -51,48 +56,48 @@ const ENEMY_TYPES = [
         speedMin: 3,
         speedMax: 5,
         color: '#8B0000', // Dark Red
-        draw: function(ctx, enemy) {
+        draw: function(context, enemy) { // Changed to accept context
             const ex = enemy.x;
             const ey = enemy.y;
             const ew = enemy.width;
             const eh = enemy.height;
 
             // Main body - sleek, fast-looking
-            let mainBodyGradient = ctx.createLinearGradient(ex, ey, ex + ew, ey + eh);
+            let mainBodyGradient = context.createLinearGradient(ex, ey, ex + ew, ey + eh);
             mainBodyGradient.addColorStop(0, '#8B0000'); // Dark Red
             mainBodyGradient.addColorStop(0.5, '#DC143C'); // Crimson
             mainBodyGradient.addColorStop(1, '#8B0000'); // Dark Red
-            ctx.fillStyle = mainBodyGradient;
+            context.fillStyle = mainBodyGradient;
 
-            ctx.beginPath();
-            ctx.moveTo(ex, ey + eh / 2); // Front tip
-            ctx.lineTo(ex + ew * 0.8, ey); // Top back
-            ctx.lineTo(ex + ew, ey + eh / 2); // Rear tip
-            ctx.lineTo(ex + ew * 0.8, ey + eh); // Bottom back
-            ctx.closePath();
-            ctx.fill();
+            context.beginPath();
+            context.moveTo(ex, ey + eh / 2); // Front tip
+            context.lineTo(ex + ew * 0.8, ey); // Top back
+            context.lineTo(ex + ew, ey + eh / 2); // Rear tip
+            context.lineTo(ex + ew * 0.8, ey + eh); // Bottom back
+            context.closePath();
+            context.fill();
 
             // Cockpit
-            ctx.fillStyle = '#FFD700'; // Gold
-            ctx.beginPath();
-            ctx.arc(ex + ew * 0.4, ey + eh / 2, eh / 6, 0, Math.PI * 2);
-            ctx.fill();
+            context.fillStyle = '#FFD700'; // Gold
+            context.beginPath();
+            context.arc(ex + ew * 0.4, ey + eh / 2, eh / 6, 0, Math.PI * 2);
+            context.fill();
 
             // Small wings/stabilizers
-            ctx.fillStyle = '#696969'; // DimGray
-            ctx.beginPath();
-            ctx.moveTo(ex + ew * 0.6, ey + eh * 0.1);
-            ctx.lineTo(ex + ew * 0.7, ey - eh * 0.1);
-            ctx.lineTo(ex + ew * 0.7, ey + eh * 0.2);
-            ctx.closePath();
-            ctx.fill();
+            context.fillStyle = '#696969'; // DimGray
+            context.beginPath();
+            context.moveTo(ex + ew * 0.6, ey + eh * 0.1);
+            context.lineTo(ex + ew * 0.7, ey - eh * 0.1);
+            context.lineTo(ex + ew * 0.7, ey + eh * 0.2);
+            context.closePath();
+            context.fill();
 
-            ctx.beginPath();
-            ctx.moveTo(ex + ew * 0.6, ey + eh * 0.9);
-            ctx.lineTo(ex + ew * 0.7, ey + eh * 1.1);
-            ctx.lineTo(ex + ew * 0.7, ey + eh * 0.8);
-            ctx.closePath();
-            ctx.fill();
+            context.beginPath();
+            context.moveTo(ex + ew * 0.6, ey + eh * 0.9);
+            context.lineTo(ex + ew * 0.7, ey + eh * 1.1);
+            context.lineTo(ex + ew * 0.7, ey + eh * 0.8);
+            context.closePath();
+            context.fill();
         }
     },
     {
@@ -102,39 +107,39 @@ const ENEMY_TYPES = [
         speedMin: 2,
         speedMax: 4,
         color: '#4B0082', // Indigo
-        draw: function(ctx, enemy) {
+        draw: function(context, enemy) { // Changed to accept context
             const ex = enemy.x;
             const ey = enemy.y;
             const ew = enemy.width;
             const eh = enemy.height;
 
             // Main body with gradient - more aggressive, angular
-            let mainBodyGradient = ctx.createLinearGradient(ex, ey, ex + ew, ey + eh);
+            let mainBodyGradient = context.createLinearGradient(ex, ey, ex + ew, ey + eh);
             mainBodyGradient.addColorStop(0, '#4B0082'); // Indigo
             mainBodyGradient.addColorStop(0.5, '#8A2BE2'); // BlueViolet
             mainBodyGradient.addColorStop(1, '#4B0082'); // Indigo
-            ctx.fillStyle = mainBodyGradient;
+            context.fillStyle = mainBodyGradient;
 
-            ctx.beginPath();
-            ctx.moveTo(ex, ey + eh / 2); // Front tip
-            ctx.lineTo(ex + ew * 0.7, ey - eh * 0.2); // Top wing front
-            ctx.lineTo(ex + ew, ey); // Top wing back
-            ctx.lineTo(ex + ew * 0.8, ey + eh / 2); // Mid-body back
-            ctx.lineTo(ex + ew, ey + eh); // Bottom wing back
-            ctx.lineTo(ex + ew * 0.7, ey + eh * 1.2); // Bottom wing front
-            ctx.closePath();
-            ctx.fill();
+            context.beginPath();
+            context.moveTo(ex, ey + eh / 2); // Front tip
+            context.lineTo(ex + ew * 0.7, ey - eh * 0.2); // Top wing front
+            context.lineTo(ex + ew, ey); // Top wing back
+            context.lineTo(ex + ew * 0.8, ey + eh / 2); // Mid-body back
+            context.lineTo(ex + ew, ey + eh); // Bottom wing back
+            context.lineTo(ex + ew * 0.7, ey + eh * 1.2); // Bottom wing front
+            context.closePath();
+            context.fill();
 
             // Cockpit
-            ctx.fillStyle = '#ADD8E6'; // Light Blue
-            ctx.beginPath();
-            ctx.ellipse(ex + ew * 0.6, ey + eh / 2, ew * 0.15, eh * 0.25, 0, 0, Math.PI * 2);
-            ctx.fill();
+            context.fillStyle = '#ADD8E6'; // Light Blue
+            context.beginPath();
+            context.ellipse(ex + ew * 0.6, ey + eh / 2, ew * 0.15, eh * 0.25, 0, 0, Math.PI * 2);
+            context.fill();
 
             // Cannons - prominent
-            ctx.fillStyle = '#696969'; // DimGray
-            ctx.fillRect(ex + ew * 0.8, ey - eh * 0.1, ew * 0.2, eh * 0.1);
-            ctx.fillRect(ex + ew * 0.8, ey + eh, ew * 0.2, eh * 0.1);
+            context.fillStyle = '#696969'; // DimGray
+            context.fillRect(ex + ew * 0.8, ey - eh * 0.1, ew * 0.2, eh * 0.1);
+            context.fillRect(ex + ew * 0.8, ey + eh, ew * 0.2, eh * 0.1);
         }
     },
     {
@@ -144,40 +149,40 @@ const ENEMY_TYPES = [
         speedMin: 1,
         speedMax: 3,
         color: '#2F4F4F', // DarkSlateGray
-        draw: function(ctx, enemy) {
+        draw: function(context, enemy) { // Changed to accept context
             const ex = enemy.x;
             const ey = enemy.y;
             const ew = enemy.width;
             const eh = enemy.height;
 
             // Main body with gradient - large, imposing
-            let mainBodyGradient = ctx.createLinearGradient(ex, ey, ex + ew, ey + eh);
+            let mainBodyGradient = context.createLinearGradient(ex, ey, ex + ew, ey + eh);
             mainBodyGradient.addColorStop(0, '#2F4F4F'); // DarkSlateGray
             mainBodyGradient.addColorStop(0.5, '#708090'); // SlateGray
             mainBodyGradient.addColorStop(1, '#2F4F4F'); // DarkSlateGray
-            ctx.fillStyle = mainBodyGradient;
+            context.fillStyle = mainBodyGradient;
 
-            ctx.beginPath();
-            ctx.moveTo(ex, ey + eh / 2); // Front
-            ctx.lineTo(ex + ew * 0.8, ey); // Top front
-            ctx.lineTo(ex + ew, ey + eh * 0.2); // Top rear
-            ctx.lineTo(ex + ew, ey + eh * 0.8); // Bottom rear
-            ctx.lineTo(ex + ew * 0.8, ey + eh); // Bottom front
-            ctx.closePath();
-            ctx.fill();
+            context.beginPath();
+            context.moveTo(ex, ey + eh / 2); // Front
+            context.lineTo(ex + ew * 0.8, ey); // Top front
+            context.lineTo(ex + ew, ey + eh * 0.2); // Top rear
+            context.lineTo(ex + ew, ey + eh * 0.8); // Bottom rear
+            context.lineTo(ex + ew * 0.8, ey + eh); // Bottom front
+            context.closePath();
+            context.fill();
 
             // Cockpit - central, armored
-            ctx.fillStyle = '#B0C4DE'; // LightSteelBlue
-            ctx.beginPath();
-            ctx.ellipse(ex + ew * 0.6, ey + eh / 2, ew * 0.15, eh * 0.2, 0, 0, Math.PI * 2);
-            ctx.fill();
+            context.fillStyle = '#B0C4DE'; // LightSteelBlue
+            context.beginPath();
+            context.ellipse(ex + ew * 0.6, ey + eh / 2, ew * 0.15, eh * 0.2, 0, 0, Math.PI * 2);
+            context.fill();
 
             // Bomb Bay / Cargo Pods
-            ctx.fillStyle = '#000000'; // Black
-            ctx.fillRect(ex + ew * 0.3, ey + eh * 0.3, ew * 0.3, eh * 0.4);
-            ctx.fillStyle = '#696969'; // DimGray for details
-            ctx.fillRect(ex + ew * 0.35, ey + eh * 0.35, ew * 0.2, eh * 0.1);
-            ctx.fillRect(ex + ew * 0.35, ey + eh * 0.55, ew * 0.2, eh * 0.1);
+            context.fillStyle = '#000000'; // Black
+            context.fillRect(ex + ew * 0.3, ey + eh * 0.3, ew * 0.3, eh * 0.4);
+            context.fillStyle = '#696969'; // DimGray for details
+            context.fillRect(ex + ew * 0.35, ey + eh * 0.35, ew * 0.2, eh * 0.1);
+            context.fillRect(ex + ew * 0.35, ey + eh * 0.55, ew * 0.2, eh * 0.1);
         }
     }
 ];
@@ -200,10 +205,14 @@ const keys = {
 let touchX = -1;
 let touchY = -1;
 let isTouching = false;
+let isFiring = false; // For touch auto-fire
 
 function setupCanvas() {
-    canvas.width = GAME_SIZE; // Set drawing buffer to logical game size
+    // Set logical size for both canvases
+    canvas.width = GAME_SIZE;
     canvas.height = GAME_SIZE;
+    offscreenCanvas.width = GAME_SIZE;
+    offscreenCanvas.height = GAME_SIZE;
 
     const aspectRatio = GAME_SIZE / GAME_SIZE; // 1:1 aspect ratio
     let newWidth = window.innerWidth;
@@ -217,9 +226,6 @@ function setupCanvas() {
 
     canvas.style.width = `${newWidth}px`;
     canvas.style.height = `${newHeight}px`;
-
-    // For touch events, we need to scale touch coordinates back to GAME_SIZE
-    // This is handled in the touch event listeners directly now.
 }
 
 function initGame() {
@@ -239,16 +245,14 @@ function initGame() {
     lastBulletTime = 0;
     lastEnemySpawnTime = 0;
     level = 1;
-    enemiesToDefeat = 5; // Start with fewer enemies to defeat
+    enemiesToDefeat = 5;
     currentEnemiesDefeated = 0;
     levelMessage = '';
     levelMessageAlpha = 0;
 
-    // Reset difficulty parameters for new game
-    ENEMY_SPAWN_INTERVAL = 1500; // Slower initial spawn
-    ENEMY_FIRE_COOLDOWN = 3000; // Much slower initial enemy fire
+    ENEMY_SPAWN_INTERVAL = 1500;
+    ENEMY_FIRE_COOLDOWN = 3000;
 
-    // Initialize terrain
     terrain = [];
     let currentHeight = TERRAIN_BASE_HEIGHT;
     for (let i = 0; i < GAME_SIZE / TERRAIN_SEGMENT_WIDTH + 2; i++) {
@@ -256,18 +260,17 @@ function initGame() {
             x: i * TERRAIN_SEGMENT_WIDTH,
             y: currentHeight
         });
-        currentHeight += (Math.random() - 0.5) * TERRAIN_HEIGHT_VARIATION * 0.5; // Smaller initial variation
+        currentHeight += (Math.random() - 0.5) * TERRAIN_HEIGHT_VARIATION * 0.5;
         currentHeight = Math.max(TERRAIN_BASE_HEIGHT - TERRAIN_HEIGHT_VARIATION, Math.min(TERRAIN_BASE_HEIGHT + TERRAIN_HEIGHT_VARIATION, currentHeight));
     }
 
-    // Initialize stars
     stars = [];
     for (let i = 0; i < NUM_STARS; i++) {
         stars.push({
             x: Math.random() * GAME_SIZE,
             y: Math.random() * GAME_SIZE,
             radius: Math.random() * 1.5,
-            speed: Math.random() * 0.5 + 0.1 // Slower stars
+            speed: Math.random() * 0.5 + 0.1
         });
     }
 }
@@ -279,12 +282,10 @@ function generateTerrainSegment(lastHeight) {
 }
 
 function updateTerrain() {
-    // Scroll terrain
     for (let i = 0; i < terrain.length; i++) {
-        terrain[i].x -= ENEMY_SPEED_MIN; // Use enemy speed for terrain scrolling
+        terrain[i].x -= ENEMY_SPEED_MIN;
     }
 
-    // Remove off-screen segments and add new ones
     if (terrain[0].x + TERRAIN_SEGMENT_WIDTH < 0) {
         terrain.shift();
         const lastSegment = terrain[terrain.length - 1];
@@ -295,31 +296,30 @@ function updateTerrain() {
     }
 }
 
-function drawTerrain() {
-    ctx.fillStyle = '#8B4513'; // Saddle Brown
-    ctx.beginPath();
-    ctx.moveTo(terrain[0].x, terrain[0].y);
+function drawTerrain(context) { // Changed to accept context
+    context.fillStyle = '#8B4513'; // Saddle Brown
+    context.beginPath();
+    context.moveTo(terrain[0].x, terrain[0].y);
     for (let i = 1; i < terrain.length; i++) {
-        ctx.lineTo(terrain[i].x, terrain[i].y);
+        context.lineTo(terrain[i].x, terrain[i].y);
     }
-    ctx.lineTo(GAME_SIZE, GAME_SIZE);
-    ctx.lineTo(0, GAME_SIZE);
-    ctx.closePath();
-    ctx.fill();
+    context.lineTo(GAME_SIZE, GAME_SIZE);
+    context.lineTo(0, GAME_SIZE);
+    context.closePath();
+    context.fill();
 
-    // Draw a green top layer for grass/foliage
-    ctx.fillStyle = '#228B22'; // Forest Green
-    ctx.beginPath();
-    ctx.moveTo(terrain[0].x, terrain[0].y);
+    context.fillStyle = '#228B22'; // Forest Green
+    context.beginPath();
+    context.moveTo(terrain[0].x, terrain[0].y);
     for (let i = 1; i < terrain.length; i++) {
-        ctx.lineTo(terrain[i].x, terrain[i].y);
+        context.lineTo(terrain[i].x, terrain[i].y);
     }
-    ctx.lineTo(terrain[terrain.length - 1].x, terrain[terrain.length - 1].y - 5); // Slightly above terrain
+    context.lineTo(terrain[terrain.length - 1].x, terrain[terrain.length - 1].y - 5);
     for (let i = terrain.length - 2; i >= 0; i--) {
-        ctx.lineTo(terrain[i].x, terrain[i].y - 5);
+        context.lineTo(terrain[i].x, terrain[i].y - 5);
     }
-    ctx.closePath();
-    ctx.fill();
+    context.closePath();
+    context.fill();
 }
 
 function checkCollision(rect1, rect2) {
@@ -339,212 +339,194 @@ function getTerrainHeightAt(x) {
             return segmentStart.y + (segmentEnd.y - segmentStart.y) * ratio;
         }
     }
-    return TERRAIN_BASE_HEIGHT; // Default if outside current terrain view
+    return TERRAIN_BASE_HEIGHT;
 }
 
 function checkTerrainCollision(player) {
-    // Find the terrain segment directly below the player's center x-coordinate
     const playerCenterX = player.x + player.width / 2;
     let terrainYAtPlayerX = getTerrainHeightAt(playerCenterX);
 
-    // If player's bottom is below terrain, it's a collision
     if (player.y + player.height > terrainYAtPlayerX) {
         return true;
     }
     return false;
 }
 
-function drawPlayer() {
+function drawPlayer(context) { // Changed to accept context
     const px = player.x;
     const py = player.y;
     const pw = player.width;
     const ph = player.height;
 
-    // Main body - sleek, layered design, facing right
-    let mainBodyGradient = ctx.createLinearGradient(px, py, px + pw, py + ph);
-    mainBodyGradient.addColorStop(0, '#A9A9A9'); // DarkGray
-    mainBodyGradient.addColorStop(0.5, '#D3D3D3'); // LightGray
-    mainBodyGradient.addColorStop(1, '#A9A9A9'); // DarkGray
-    ctx.fillStyle = mainBodyGradient;
+    let mainBodyGradient = context.createLinearGradient(px, py, px + pw, py + ph);
+    mainBodyGradient.addColorStop(0, '#A9A9A9');
+    mainBodyGradient.addColorStop(0.5, '#D3D3D3');
+    mainBodyGradient.addColorStop(1, '#A9A9A9');
+    context.fillStyle = mainBodyGradient;
 
-    ctx.beginPath();
-    ctx.moveTo(px + pw, py + ph / 2); // Front tip
-    ctx.lineTo(px + pw * 0.2, py); // Top front wing connection
-    ctx.lineTo(px, py + ph * 0.1); // Top rear wing tip
-    ctx.lineTo(px, py + ph * 0.9); // Bottom rear wing tip
-    ctx.lineTo(px + pw * 0.2, py + ph); // Bottom front wing connection
-    ctx.closePath();
-    ctx.fill();
+    context.beginPath();
+    context.moveTo(px + pw, py + ph / 2);
+    context.lineTo(px + pw * 0.2, py);
+    context.lineTo(px, py + ph * 0.1);
+    context.lineTo(px, py + ph * 0.9);
+    context.lineTo(px + pw * 0.2, py + ph);
+    context.closePath();
+    context.fill();
 
-    // Cockpit - more distinct bubble
-    ctx.fillStyle = '#87CEEB'; // SkyBlue for glass
-    ctx.beginPath();
-    ctx.ellipse(px + pw * 0.4, py + ph / 2, pw * 0.2, ph * 0.3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#5F9EA0'; // CadetBlue for frame
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    context.fillStyle = '#87CEEB';
+    context.beginPath();
+    context.ellipse(px + pw * 0.4, py + ph / 2, pw * 0.2, ph * 0.3, 0, 0, Math.PI * 2);
+    context.fill();
+    context.strokeStyle = '#5F9EA0';
+    context.lineWidth = 2;
+    context.stroke();
 
-    // Side fins/wings
-    ctx.fillStyle = '#696969'; // DimGray
-    ctx.beginPath();
-    ctx.moveTo(px + pw * 0.3, py);
-    ctx.lineTo(px + pw * 0.1, py - ph * 0.2);
-    ctx.lineTo(px + pw * 0.1, py + ph * 0.1);
-    ctx.closePath();
-    ctx.fill();
+    context.fillStyle = '#696969';
+    context.beginPath();
+    context.moveTo(px + pw * 0.3, py);
+    context.lineTo(px + pw * 0.1, py - ph * 0.2);
+    context.lineTo(px + pw * 0.1, py + ph * 0.1);
+    context.closePath();
+    context.fill();
 
-    ctx.beginPath();
-    ctx.moveTo(px + pw * 0.3, py + ph);
-    ctx.lineTo(px + pw * 0.1, py + ph * 1.2);
-    ctx.lineTo(px + pw * 0.1, py + ph * 0.9);
-    ctx.closePath();
-    ctx.fill();
+    context.beginPath();
+    context.moveTo(px + pw * 0.3, py + ph);
+    context.lineTo(px + pw * 0.1, py + ph * 1.2);
+    context.lineTo(px + pw * 0.1, py + ph * 0.9);
+    context.closePath();
+    context.fill();
 
-    // Thrusters/Engines at the back (left side)
-    ctx.fillStyle = '#483D8B'; // DarkSlateBlue
-    ctx.fillRect(px + pw * 0.1, py + ph * 0.2, pw * 0.2, ph * 0.6);
+    context.fillStyle = '#483D8B';
+    context.fillRect(px + pw * 0.1, py + ph * 0.2, pw * 0.2, ph * 0.6);
 
-    // Engine exhaust
-    const flameSize = ph / 2 + Math.random() * (ph / 3); // More pronounced flickering
-    ctx.fillStyle = `rgba(255, ${165 + Math.random() * 90}, 0, ${0.8 + Math.random() * 0.2})`; // Brighter, more opaque
-    ctx.beginPath();
-    ctx.moveTo(px + pw * 0.1, py + ph * 0.5); // Center of thruster exit
-    ctx.lineTo(px + pw * 0.1 - flameSize, py + ph * 0.5 - flameSize / 2);
-    ctx.lineTo(px + pw * 0.1 - flameSize * 0.7, py + ph * 0.5);
-    ctx.lineTo(px + pw * 0.1 - flameSize, py + ph * 0.5 + flameSize / 2);
-    ctx.closePath();
-    ctx.fill();
+    const flameSize = ph / 2 + Math.random() * (ph / 3);
+    context.fillStyle = `rgba(255, ${165 + Math.random() * 90}, 0, ${0.8 + Math.random() * 0.2})`;
+    context.beginPath();
+    context.moveTo(px + pw * 0.1, py + ph * 0.5);
+    context.lineTo(px + pw * 0.1 - flameSize, py + ph * 0.5 - flameSize / 2);
+    context.lineTo(px + pw * 0.1 - flameSize * 0.7, py + ph * 0.5);
+    context.lineTo(px + pw * 0.1 - flameSize, py + ph * 0.5 + flameSize / 2);
+    context.closePath();
+    context.fill();
 }
 
-function drawEnemy(enemy) {
-    enemy.type.draw(ctx, enemy);
+function drawEnemy(context, enemy) { // Changed to accept context
+    enemy.type.draw(context, enemy);
 
-    // Engine exhaust for enemy (moved here to be drawn after the ship body)
     const ex = enemy.x;
     const ey = enemy.y;
     const ew = enemy.width;
     const eh = enemy.height;
 
-    const enemyFlameSize = eh / 4 + Math.random() * (eh / 5); // Flickering effect
-    ctx.fillStyle = `rgba(255, ${0 + Math.random() * 100}, 0, ${0.6 + Math.random() * 0.3})`; // Reddish to dark orange, flickering alpha
-    ctx.beginPath();
-    ctx.moveTo(ex + ew, ey + eh / 2); // Start at the back of the enemy ship
-    ctx.lineTo(ex + ew + enemyFlameSize, ey + eh / 2 - enemyFlameSize / 2);
-    ctx.lineTo(ex + ew + enemyFlameSize * 0.7, ey + eh / 2);
-    ctx.lineTo(ex + ew + enemyFlameSize, ey + eh / 2 + enemyFlameSize / 2);
-    ctx.closePath();
-    ctx.fill();
+    const enemyFlameSize = eh / 4 + Math.random() * (eh / 5);
+    context.fillStyle = `rgba(255, ${0 + Math.random() * 100}, 0, ${0.6 + Math.random() * 0.3})`;
+    context.beginPath();
+    context.moveTo(ex + ew, ey + eh / 2);
+    context.lineTo(ex + ew + enemyFlameSize, ey + eh / 2 - enemyFlameSize / 2);
+    context.lineTo(ex + ew + enemyFlameSize * 0.7, ey + eh / 2);
+    context.lineTo(ex + ew + enemyFlameSize, ey + eh / 2 + enemyFlameSize / 2);
+    context.closePath();
+    context.fill();
 }
 
-function drawBullet(bullet) {
+function drawBullet(context, bullet) { // Changed to accept context
     const bx = bullet.x;
     const by = bullet.y;
     const bw = bullet.width;
     const bh = bullet.height;
 
-    // Missile body
-    ctx.fillStyle = '#FFD700'; // Gold
-    ctx.beginPath();
-    ctx.moveTo(bx, by - bh / 2); // Top back
-    ctx.lineTo(bx + bw, by); // Front tip
-    ctx.lineTo(bx, by + bh / 2); // Bottom back
-    ctx.closePath();
-    ctx.fill();
+    context.fillStyle = '#FFD700';
+    context.beginPath();
+    context.moveTo(bx, by - bh / 2);
+    context.lineTo(bx + bw, by);
+    context.lineTo(bx, by + bh / 2);
+    context.closePath();
+    context.fill();
 
-    // Missile exhaust
     const flameSize = bw * 0.5 + Math.random() * (bw * 0.3);
-    ctx.fillStyle = `rgba(255, ${165 + Math.random() * 90}, 0, ${0.8 + Math.random() * 0.2})`; // Orange-yellow flickering
-    ctx.beginPath();
-    ctx.moveTo(bx, by); // Center back of missile
-    ctx.lineTo(bx - flameSize, by - flameSize / 2);
-    ctx.lineTo(bx - flameSize * 0.7, by);
-    ctx.lineTo(bx - flameSize, by + flameSize / 2);
-    ctx.closePath();
-    ctx.fill();
+    context.fillStyle = `rgba(255, ${165 + Math.random() * 90}, 0, ${0.8 + Math.random() * 0.2})`;
+    context.beginPath();
+    context.moveTo(bx, by);
+    context.lineTo(bx - flameSize, by - flameSize / 2);
+    context.lineTo(bx - flameSize * 0.7, by);
+    context.lineTo(bx - flameSize, by + flameSize / 2);
+    context.closePath();
+    context.fill();
 }
 
-function drawEnemyBullet(bullet) {
+function drawEnemyBullet(context, bullet) { // Changed to accept context
     const bx = bullet.x;
     const by = bullet.y;
     const bw = bullet.width;
     const bh = bullet.height;
 
-    // Missile body
-    ctx.fillStyle = '#FF0000'; // Red
-    ctx.beginPath();
-    ctx.moveTo(bx + bw, by - bh / 2); // Top back (relative to enemy direction)
-    ctx.lineTo(bx, by); // Front tip (relative to enemy direction)
-    ctx.lineTo(bx + bw, by + bh / 2); // Bottom back (relative to enemy direction)
-    ctx.closePath();
-    ctx.fill();
+    context.fillStyle = '#FF0000';
+    context.beginPath();
+    context.moveTo(bx + bw, by - bh / 2);
+    context.lineTo(bx, by);
+    context.lineTo(bx + bw, by + bh / 2);
+    context.closePath();
+    context.fill();
 
-    // Missile exhaust
     const flameSize = bw * 0.5 + Math.random() * (bw * 0.3);
-    ctx.fillStyle = `rgba(255, ${0 + Math.random() * 100}, 0, ${0.6 + Math.random() * 0.3})`; // Reddish flickering
-    ctx.beginPath();
-    ctx.moveTo(bx + bw, by); // Center back of missile
-    ctx.lineTo(bx + bw + flameSize, by - flameSize / 2);
-    ctx.lineTo(bx + bw + flameSize * 0.7, by);
-    ctx.lineTo(bx + bw + flameSize, by + flameSize / 2);
-    ctx.closePath();
-    ctx.fill();
+    context.fillStyle = `rgba(255, ${0 + Math.random() * 100}, 0, ${0.6 + Math.random() * 0.3})`;
+    context.beginPath();
+    context.moveTo(bx + bw, by);
+    context.lineTo(bx + bw + flameSize, by - flameSize / 2);
+    context.lineTo(bx + bw + flameSize * 0.7, by);
+    context.lineTo(bx + bw + flameSize, by + flameSize / 2);
+    context.closePath();
+    context.fill();
 }
 
-function drawStars() {
-    ctx.fillStyle = 'white';
+function drawStars(context) { // Changed to accept context
+    context.fillStyle = 'white';
     stars.forEach(star => {
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
-        ctx.fill();
+        context.beginPath();
+        context.arc(star.x, star.y, star.radius, 0, Math.PI * 2);
+        context.fill();
     });
 }
 
-function drawProgressBar(x, y, width, height, progress) {
-    // Background of the progress bar
-    ctx.fillStyle = '#333';
-    ctx.fillRect(x, y, width, height);
+function drawProgressBar(context, x, y, width, height, progress) { // Changed to accept context
+    context.fillStyle = '#333';
+    context.fillRect(x, y, width, height);
 
-    // Filled part of the progress bar
-    ctx.fillStyle = '#00FF00'; // Green
-    ctx.fillRect(x, y, width * progress, height);
+    context.fillStyle = '#00FF00';
+    context.fillRect(x, y, width * progress, height);
 
-    // Border of the progress bar
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, y, width, height);
+    context.strokeStyle = 'white';
+    context.lineWidth = 1;
+    context.strokeRect(x, y, width, height);
 
-    // Progress text
-    ctx.fillStyle = 'white';
-    ctx.font = `12px Arial`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`${Math.floor(progress * 100)}%`, x + width / 2, y + height / 2 + 4);
+    context.fillStyle = 'white';
+    context.font = `12px Arial`;
+    context.textAlign = 'center';
+    context.fillText(`${Math.floor(progress * 100)}%`, x + width / 2, y + height / 2 + 4);
 }
 
 function update(deltaTime) {
     if (gameOver) return;
 
-    // Update player position based on keyboard
-    if (!isTouching) {
-        if (keys.ArrowUp) player.y -= player.speed;
-        if (keys.ArrowDown) player.y += player.speed;
-        if (keys.ArrowLeft) player.x -= player.speed;
-        if (keys.ArrowRight) player.x += player.speed;
-    }
+    // Keyboard movement
+    if (keys.ArrowUp) player.y -= player.speed;
+    if (keys.ArrowDown) player.y += player.speed;
+    if (keys.ArrowLeft) player.x -= player.speed;
+    if (keys.ArrowRight) player.x += player.speed;
 
-    // Update player position based on touch (drag)
+    // Smoothed touch movement
     if (isTouching && touchX !== -1 && touchY !== -1) {
-        // Simple follow for now, can be refined for smoother drag
-        player.x = touchX - player.width / 2;
-        player.y = touchY - player.height / 2;
+        let targetX = touchX - player.width / 2;
+        let targetY = touchY - player.height / 2;
+        player.x += (targetX - player.x) * PLAYER_SMOOTHING;
+        player.y += (targetY - player.y) * PLAYER_SMOOTHING;
     }
 
-    // Keep player within bounds
     player.x = Math.max(0, Math.min(GAME_SIZE - player.width, player.x));
     player.y = Math.max(0, Math.min(GAME_SIZE - player.height, player.y));
 
-    // Player shooting
-    if (keys.Space && Date.now() - lastBulletTime > BULLET_COOLDOWN) {
+    // Shooting (Keyboard or Touch)
+    if ((keys.Space || isFiring) && Date.now() - lastBulletTime > BULLET_COOLDOWN) {
         bullets.push({
             x: player.x + player.width,
             y: player.y + player.height / 2 - BULLET_HEIGHT / 2,
@@ -564,11 +546,11 @@ function update(deltaTime) {
     }
 
     // Spawn enemies
-    if (enemies.length < (level * 2) && Date.now() - lastEnemySpawnTime > ENEMY_SPAWN_INTERVAL) { // Max enemies scales with level
+    if (enemies.length < (level * 2) && Date.now() - lastEnemySpawnTime > ENEMY_SPAWN_INTERVAL) {
         const enemyType = ENEMY_TYPES[Math.floor(Math.random() * ENEMY_TYPES.length)];
         const spawnX = GAME_SIZE;
         const terrainY = getTerrainHeightAt(spawnX);
-        const spawnY = Math.random() * (terrainY - enemyType.height - 50); // Ensure enemy spawns above terrain with some buffer
+        const spawnY = Math.random() * (terrainY - enemyType.height - 50);
 
         enemies.push({
             x: spawnX,
@@ -576,22 +558,21 @@ function update(deltaTime) {
             width: enemyType.width,
             height: enemyType.height,
             speed: enemyType.speedMin + Math.random() * (enemyType.speedMax - enemyType.speedMin),
-            type: enemyType, // Store the enemy type for drawing
-            lastFire: Date.now() + Math.random() * ENEMY_FIRE_COOLDOWN // Stagger initial fire
+            type: enemyType,
+            lastFire: Date.now() + Math.random() * ENEMY_FIRE_COOLDOWN
         });
         lastEnemySpawnTime = Date.now();
     }
 
     // Update enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
-        if (!enemies[i]) continue; // Fix for undefined enemy
+        if (!enemies[i]) continue;
         enemies[i].x -= enemies[i].speed;
         if (enemies[i].x + enemies[i].width < 0) {
             enemies.splice(i, 1);
         }
 
-        // Enemy firing (with a random chance)
-        if (Math.random() < 0.01 * level && Date.now() - enemies[i].lastFire > ENEMY_FIRE_COOLDOWN) { // Chance to fire increases with level
+        if (Math.random() < 0.01 * level && Date.now() - enemies[i].lastFire > ENEMY_FIRE_COOLDOWN) {
             enemyBullets.push({
                 x: enemies[i].x,
                 y: enemies[i].y + enemies[i].height / 2,
@@ -612,20 +593,18 @@ function update(deltaTime) {
     }
 
     // Collision detection
-    // Bullet-enemy collisions
     for (let i = bullets.length - 1; i >= 0; i--) {
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
                 bullets.splice(i, 1);
                 enemies.splice(j, 1);
                 score += 10;
-                currentEnemiesDefeated++; // Increment defeated count
-                break; // Bullet can only hit one enemy
+                currentEnemiesDefeated++;
+                break;
             }
         }
     }
 
-    // Player-enemy collisions
     for (let i = enemies.length - 1; i >= 0; i--) {
         if (enemies[i] && checkCollision(player, enemies[i])) {
             player.health--;
@@ -636,7 +615,6 @@ function update(deltaTime) {
         }
     }
 
-    // Player-enemy bullet collisions
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         if (enemyBullets[i] && checkCollision(player, enemyBullets[i])) {
             player.health--;
@@ -647,16 +625,13 @@ function update(deltaTime) {
         }
     }
 
-    // Player-terrain collision
     if (checkTerrainCollision(player)) {
-        player.health = 0; // Instant death on terrain collision
+        player.health = 0;
         gameOver = true;
     }
 
-    // Update terrain
     updateTerrain();
 
-    // Update stars
     for (let i = 0; i < stars.length; i++) {
         stars[i].x -= stars[i].speed;
         if (stars[i].x < 0) {
@@ -665,92 +640,80 @@ function update(deltaTime) {
         }
     }
 
-    // Level progression
     if (currentEnemiesDefeated >= enemiesToDefeat) {
         level++;
         currentEnemiesDefeated = 0;
-        enemiesToDefeat = 5 + (level * 2); // More gradual increase
-        ENEMY_SPAWN_INTERVAL = Math.max(200, ENEMY_SPAWN_INTERVAL - 100); // Don't go below 200ms
-        ENEMY_FIRE_COOLDOWN = Math.max(500, ENEMY_FIRE_COOLDOWN - 200); // Don't go below 500ms
-        levelMessage = `LEVEL ${level-1} COMPLETE!`; // Display previous level as complete
-        levelMessageAlpha = 1; // Make message fully visible
+        enemiesToDefeat = 5 + (level * 2);
+        ENEMY_SPAWN_INTERVAL = Math.max(200, ENEMY_SPAWN_INTERVAL - 100);
+        ENEMY_FIRE_COOLDOWN = Math.max(500, ENEMY_FIRE_COOLDOWN - 200);
+        levelMessage = `LEVEL ${level-1} COMPLETE!`;
+        levelMessageAlpha = 1;
     }
 
-    // Fade out level complete message
     if (levelMessageAlpha > 0) {
-        levelMessageAlpha -= 0.01; // Adjust fade speed
+        levelMessageAlpha -= 0.01;
     }
 }
 
-function draw(scaleX, scaleY) {
-    ctx.clearRect(0, 0, GAME_SIZE, GAME_SIZE);
+function draw() {
+    // --- Start drawing to the offscreen canvas ---
+    offscreenCtx.clearRect(0, 0, GAME_SIZE, GAME_SIZE);
 
-    // Draw stars background
-    drawStars();
+    drawStars(offscreenCtx);
+    drawTerrain(offscreenCtx);
+    drawPlayer(offscreenCtx);
 
-    // Draw terrain first
-    drawTerrain();
+    bullets.forEach(bullet => drawBullet(offscreenCtx, bullet));
+    enemyBullets.forEach(bullet => drawEnemyBullet(offscreenCtx, bullet));
+    enemies.forEach(enemy => drawEnemy(offscreenCtx, enemy));
 
-    // Draw player
-    drawPlayer();
+    offscreenCtx.fillStyle = 'white';
+    offscreenCtx.font = `20px Arial`;
+    offscreenCtx.textAlign = 'left';
+    let statusText = `⭐ ${score}  ❤️ ${player.health}  ${level}`;
+    offscreenCtx.fillText(statusText, 10, 30);
 
-    // Draw bullets
-    bullets.forEach(bullet => {
-        drawBullet(bullet);
-    });
-
-    // Draw enemy bullets
-    enemyBullets.forEach(bullet => {
-        drawEnemyBullet(bullet);
-    });
-
-    // Draw enemies
-    enemies.forEach(enemy => {
-        drawEnemy(enemy);
-    });
-
-    // Draw combined status line
-    ctx.fillStyle = 'white';
-    ctx.font = `20px Arial`;
-    ctx.textAlign = 'left';
-    let statusText = `⭐ ${score}  ❤️ ${player.health}  ${level}`; // Removed "Level"
-    ctx.fillText(statusText, 10, 30);
-
-    // Draw progress bar on the same line
-    const progressBarX = ctx.measureText(statusText).width + 20; // Position after status text
-    const progressBarY = 15; // Align with text
+    const progressBarX = offscreenCtx.measureText(statusText).width + 20;
+    const progressBarY = 15;
     const progressBarWidth = 150;
     const progressBarHeight = 15;
     const progress = currentEnemiesDefeated / enemiesToDefeat;
+    drawProgressBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress);
 
-    drawProgressBar(progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress);
-
-    // Level Complete message
     if (levelMessageAlpha > 0) {
-        ctx.save();
-        ctx.globalAlpha = levelMessageAlpha;
-        ctx.fillStyle = 'white';
-        ctx.font = `40px Arial`;
-        ctx.textAlign = 'center';
-        ctx.fillText(levelMessage, GAME_SIZE / 2, GAME_SIZE / 2);
-        ctx.restore();
+        offscreenCtx.save();
+        offscreenCtx.globalAlpha = levelMessageAlpha;
+        offscreenCtx.fillStyle = 'white';
+        offscreenCtx.font = `40px Arial`;
+        offscreenCtx.textAlign = 'center';
+        offscreenCtx.fillText(levelMessage, GAME_SIZE / 2, GAME_SIZE / 2);
+        offscreenCtx.restore();
     }
 
-    // Draw Game Over screen
     if (gameOver) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
-        ctx.fillStyle = 'white';
-        ctx.font = `40px Arial`;
-        ctx.textAlign = 'center';
-        ctx.fillText('GAME OVER', GAME_SIZE / 2, GAME_SIZE / 2 - 20);
-        ctx.font = `20px Arial`;
-        ctx.fillText('Press F5 to Restart', GAME_SIZE / 2, GAME_SIZE / 2 + 20);
+        offscreenCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        offscreenCtx.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
+        offscreenCtx.fillStyle = 'white';
+        offscreenCtx.font = `40px Arial`;
+        offscreenCtx.textAlign = 'center';
+        offscreenCtx.fillText('GAME OVER', GAME_SIZE / 2, GAME_SIZE / 2 - 20);
+        offscreenCtx.font = `20px Arial`;
+        offscreenCtx.fillText('Tap or Press Space to Restart', GAME_SIZE / 2, GAME_SIZE / 2 + 20);
     }
+    // --- End drawing to the offscreen canvas ---
+
+    // --- Copy the offscreen canvas to the visible canvas ---
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(offscreenCanvas, 0, 0, canvas.width, canvas.height);
 }
+
 
 // Event Listeners for Keyboard
 document.addEventListener('keydown', (e) => {
+    if (gameOver && e.code === 'Space') {
+        initGame();
+        return;
+    }
     if (e.code in keys) {
         keys[e.code] = true;
     }
@@ -762,28 +725,33 @@ document.addEventListener('keyup', (e) => {
     }
 });
 
-// Event Listeners for Touch (Mobile Drag Controls)
+// Event Listeners for Touch
 canvas.addEventListener('touchstart', (e) => {
-    e.preventDefault(); // Prevent scrolling
+    if (gameOver) {
+        initGame();
+        return;
+    }
+    e.preventDefault();
     isTouching = true;
+    isFiring = true; // Start firing on touch
     const rect = canvas.getBoundingClientRect();
-    touchX = (e.touches[0].clientX - rect.left) * (GAME_SIZE / rect.width); // Scale touch to GAME_SIZE
-    touchY = (e.touches[0].clientY - rect.top) * (GAME_SIZE / rect.height); // Scale touch to GAME_SIZE
+    touchX = (e.touches[0].clientX - rect.left) * (GAME_SIZE / rect.width);
+    touchY = (e.touches[0].clientY - rect.top) * (GAME_SIZE / rect.height);
 });
 
 canvas.addEventListener('touchmove', (e) => {
     e.preventDefault();
     if (isTouching) {
         const rect = canvas.getBoundingClientRect();
-        touchX = (e.touches[0].clientX - rect.left) * (GAME_SIZE / rect.width); // Scale touch to GAME_SIZE
-        touchY = (e.touches[0].clientY - rect.top) * (GAME_SIZE / rect.height); // Scale touch to GAME_SIZE
+        touchX = (e.touches[0].clientX - rect.left) * (GAME_SIZE / rect.width);
+        touchY = (e.touches[0].clientY - rect.top) * (GAME_SIZE / rect.height);
     }
 });
 
 canvas.addEventListener('touchend', () => {
     isTouching = false;
-    touchX = -1;
-    touchY = -1;
+    isFiring = false; // Stop firing on touch end
+    // We don't reset touchX/Y here to let the ship smoothly glide to the last point
 });
 
 // Game Loop
