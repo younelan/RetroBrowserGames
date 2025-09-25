@@ -21,6 +21,7 @@ let level = 1;
 let enemiesToDefeat = 5; // Start with fewer enemies to defeat
 let currentEnemiesDefeated = 0; // Track enemies defeated in current level
 let isHelpScreenVisible = false;
+let screenFlashAlpha = 0;
 
 let levelMessage = '';
 let levelMessageAlpha = 0;
@@ -56,9 +57,6 @@ const BASE_HEALTH = 3;
 let BASE_SPAWN_INTERVAL = 5000; // ms
 let lastBaseSpawnTime = 0;
 const BASE_FIRE_COOLDOWN = 2000; // ms
-
-// Collectible properties
-const POWERUP_DURATION = 10000; // 10 seconds
 
 // Help icon
 const helpIcon = { x: GAME_SIZE - 40, y: GAME_SIZE - 40, width: 30, height: 30 };
@@ -252,8 +250,7 @@ function initGame() {
         height: PLAYER_HEIGHT,
         speed: PLAYER_SPEED,
         health: 3,
-        powerup: 'none',
-        powerupTimer: 0
+        powerup: 'none'
     };
     bullets = [];
     enemies = [];
@@ -271,6 +268,7 @@ function initGame() {
     currentEnemiesDefeated = 0;
     levelMessage = '';
     levelMessageAlpha = 0;
+    screenFlashAlpha = 0;
 
     ENEMY_SPAWN_INTERVAL = 1500;
     ENEMY_FIRE_COOLDOWN = 3000;
@@ -577,35 +575,37 @@ function drawHelpScreen(context) {
     context.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
 
     context.fillStyle = 'white';
-    context.font = `30px Arial`;
+    context.font = '30px Arial';
     context.textAlign = 'center';
     context.fillText('HELP', GAME_SIZE / 2, 50);
 
-    context.font = `16px Arial`;
+    context.font = '16px Arial';
     context.textAlign = 'left';
     let y = 100;
-    const text = [
-        'Controls:',
-        '- Desktop: Arrow keys to move, Space to shoot.',
-        '- Mobile: Drag to move, auto-fire is on.',
-        ' ',
-        'Objective:',
-        '- Survive as long as possible.',
-        '- Destroy enemies and bases for points.',
-        ' ',
-        'Collectibles:',
-        '(D) Double Weapon: Fire two bullets for a short time.',
-        '(+) Extra Life: Gain one health point.',
-        '(E) EMP Pulse: Destroys all enemies on screen.',
-        ' ',
-        'Tap screen to close help.'
-    ];
 
-    text.forEach(line => {
-        context.fillText(line, 50, y);
-        y += 25;
-    });
+    context.fillText('Controls:', 50, y); y += 25;
+    context.fillText('- Desktop: Arrow keys to move, Space to shoot.', 50, y); y += 25;
+    context.fillText('- Mobile: Drag to move, auto-fire is on.', 50, y); y += 50;
+
+    context.fillText('Objective:', 50, y); y += 25;
+    context.fillText('- Survive as long as possible.', 50, y); y += 25;
+    context.fillText('- Destroy enemies and bases for points.', 50, y); y += 50;
+
+    context.fillText('Collectibles:', 50, y); y += 35;
+
+    drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'double-weapon' });
+    context.fillText('Double Weapon: Active until you lose a life.', 80, y); y += 35;
+
+    drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'extra-life' });
+    context.fillText('Extra Life: Gain one health point.', 80, y); y += 35;
+
+    drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'emp-pulse' });
+    context.fillText('EMP Pulse: Destroys all enemies on screen.', 80, y); y += 50;
+
+    context.textAlign = 'center';
+    context.fillText('Tap screen to close help.', GAME_SIZE / 2, y);
 }
+
 
 function drawStars(context) { // Changed to accept context
     context.fillStyle = 'white';
@@ -636,11 +636,8 @@ function drawProgressBar(context, x, y, width, height, progress) { // Changed to
 function update(deltaTime) {
     if (gameOver) return;
 
-    // Update player powerup timer
-    if (player.powerupTimer > 0) {
-        player.powerupTimer -= deltaTime;
-    } else {
-        player.powerup = 'none';
+    if (screenFlashAlpha > 0) {
+        screenFlashAlpha -= 0.05;
     }
 
     // Keyboard movement
@@ -832,6 +829,8 @@ function update(deltaTime) {
     for (let i = enemies.length - 1; i >= 0; i--) {
         if (enemies[i] && checkCollision(player, enemies[i])) {
             player.health--;
+            player.powerup = 'none';
+            screenFlashAlpha = 1;
             enemies.splice(i, 1);
             if (player.health <= 0) {
                 gameOver = true;
@@ -846,7 +845,6 @@ function update(deltaTime) {
             switch (collectible.type) {
                 case 'double-weapon':
                     player.powerup = 'double-weapon';
-                    player.powerupTimer = POWERUP_DURATION;
                     break;
                 case 'extra-life':
                     player.health++;
@@ -865,6 +863,8 @@ function update(deltaTime) {
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         if (enemyBullets[i] && checkCollision(player, enemyBullets[i])) {
             player.health--;
+            player.powerup = 'none';
+            screenFlashAlpha = 1;
             enemyBullets.splice(i, 1);
             if (player.health <= 0) {
                 gameOver = true;
@@ -876,6 +876,8 @@ function update(deltaTime) {
     for (let i = baseBullets.length - 1; i >= 0; i--) {
         if (baseBullets[i] && checkCollision(player, baseBullets[i])) {
             player.health--;
+            player.powerup = 'none';
+            screenFlashAlpha = 1;
             baseBullets.splice(i, 1);
             if (player.health <= 0) {
                 gameOver = true;
@@ -884,8 +886,14 @@ function update(deltaTime) {
     }
 
     if (checkTerrainCollision(player)) {
-        player.health = 0;
-        gameOver = true;
+        player.health--;
+        player.powerup = 'none';
+        screenFlashAlpha = 1;
+        player.x = GAME_SIZE / 4;
+        player.y = GAME_SIZE / 2 - PLAYER_HEIGHT / 2;
+        if (player.health <= 0) {
+            gameOver = true;
+        }
     }
 
     updateTerrain();
@@ -927,6 +935,11 @@ function draw() {
     enemyBullets.forEach(bullet => drawEnemyBullet(offscreenCtx, bullet));
     baseBullets.forEach(bullet => drawBaseBullet(offscreenCtx, bullet));
     enemies.forEach(enemy => drawEnemy(offscreenCtx, enemy));
+
+    if (screenFlashAlpha > 0) {
+        offscreenCtx.fillStyle = `rgba(255, 0, 0, ${screenFlashAlpha})`;
+        offscreenCtx.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
+    }
 
     offscreenCtx.fillStyle = 'white';
     offscreenCtx.font = `20px Arial`;
@@ -1006,29 +1019,28 @@ canvas.addEventListener('touchstart', (e) => {
         initGame();
         return;
     }
+    e.preventDefault();
 
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
-    const touchX = (touch.clientX - rect.left) * (GAME_SIZE / rect.width);
-    const touchY = (touch.clientY - rect.top) * (GAME_SIZE / rect.height);
+    const localTouchX = (touch.clientX - rect.left) * (GAME_SIZE / rect.width);
+    const localTouchY = (touch.clientY - rect.top) * (GAME_SIZE / rect.height);
 
     if (isHelpScreenVisible) {
         isHelpScreenVisible = false;
         return;
     }
 
-    if (isClickInsideRect(touchX, touchY, helpIcon)) {
+    if (isClickInsideRect(localTouchX, localTouchY, helpIcon)) {
         isHelpScreenVisible = true;
         return;
     }
 
-    e.preventDefault();
     isTouching = true;
     isFiring = true; // Start firing on touch
     
-    // Update touchX and touchY for movement
-    this.touchX = touchX;
-    this.touchY = touchY;
+    touchX = localTouchX;
+    touchY = localTouchY;
 });
 
 canvas.addEventListener('touchmove', (e) => {
