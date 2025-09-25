@@ -41,6 +41,7 @@ const BULLET_WIDTH = 20;
 const BULLET_HEIGHT = 8;
 const BULLET_SPEED = 15;
 const BULLET_COOLDOWN = 150; // milliseconds
+const BULLET_SPREAD_SPACING = 10; // Vertical spacing between bullets
 let lastBulletTime = 0;
 
 // Enemy properties
@@ -250,7 +251,7 @@ function initGame() {
         height: PLAYER_HEIGHT,
         speed: PLAYER_SPEED,
         health: 3,
-        powerup: 'none'
+        weaponLevel: 1
     };
     bullets = [];
     enemies = [];
@@ -527,7 +528,7 @@ function drawCollectible(context, collectible) {
 
     context.save();
     switch (collectible.type) {
-        case 'double-weapon':
+        case 'weapon-upgrade':
             context.fillStyle = '#FFD700';
             context.fillRect(x + width / 4, y, width / 2, height);
             context.fillRect(x, y + height / 4, width, height / 2);
@@ -593,8 +594,8 @@ function drawHelpScreen(context) {
 
     context.fillText('Collectibles:', 50, y); y += 35;
 
-    drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'double-weapon' });
-    context.fillText('Double Weapon: Active until you lose a life.', 80, y); y += 35;
+    drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'weapon-upgrade' });
+    context.fillText('Weapon Upgrade: Increases bullet count.', 80, y); y += 35;
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'extra-life' });
     context.fillText('Extra Life: Gain one health point.', 80, y); y += 35;
@@ -659,25 +660,13 @@ function update(deltaTime) {
 
     // Shooting (Keyboard or Touch)
     if ((keys.Space || isFiring) && Date.now() - lastBulletTime > BULLET_COOLDOWN) {
-        if (player.powerup === 'double-weapon') {
+        const numBullets = player.weaponLevel;
+        const SPREAD_SPACING = 10;
+        for (let i = 0; i < numBullets; i++) {
+            const yOffset = (numBullets > 1) ? (i - (numBullets - 1) / 2) * SPREAD_SPACING : 0;
             bullets.push({
                 x: player.x + player.width,
-                y: player.y + player.height / 4 - BULLET_HEIGHT / 2,
-                width: BULLET_WIDTH,
-                height: BULLET_HEIGHT,
-                speed: BULLET_SPEED
-            });
-            bullets.push({
-                x: player.x + player.width,
-                y: player.y + (player.height * 3/4) - BULLET_HEIGHT / 2,
-                width: BULLET_WIDTH,
-                height: BULLET_HEIGHT,
-                speed: BULLET_SPEED
-            });
-        } else {
-            bullets.push({
-                x: player.x + player.width,
-                y: player.y + player.height / 2 - BULLET_HEIGHT / 2,
+                y: player.y + player.height / 2 + yOffset - BULLET_HEIGHT / 2,
                 width: BULLET_WIDTH,
                 height: BULLET_HEIGHT,
                 speed: BULLET_SPEED
@@ -797,7 +786,7 @@ function update(deltaTime) {
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
                 if (Math.random() < 0.2) { // 20% chance to drop
-                    const collectibleTypes = ['double-weapon', 'extra-life', 'emp-pulse'];
+                    const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse'];
                     const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
                     collectibles.push({ x: enemies[j].x, y: enemies[j].y, width: 20, height: 20, type: type });
                 }
@@ -829,7 +818,7 @@ function update(deltaTime) {
     for (let i = enemies.length - 1; i >= 0; i--) {
         if (enemies[i] && checkCollision(player, enemies[i])) {
             player.health--;
-            player.powerup = 'none';
+            player.weaponLevel = 1;
             screenFlashAlpha = 1;
             enemies.splice(i, 1);
             if (player.health <= 0) {
@@ -843,8 +832,12 @@ function update(deltaTime) {
         if (checkCollision(player, collectibles[i])) {
             const collectible = collectibles[i];
             switch (collectible.type) {
-                case 'double-weapon':
-                    player.powerup = 'double-weapon';
+                case 'weapon-upgrade':
+                    if (player.weaponLevel === 1) {
+                        player.weaponLevel = 2;
+                    } else if (player.weaponLevel < 8) {
+                        player.weaponLevel += 2;
+                    }
                     break;
                 case 'extra-life':
                     player.health++;
@@ -863,7 +856,7 @@ function update(deltaTime) {
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
         if (enemyBullets[i] && checkCollision(player, enemyBullets[i])) {
             player.health--;
-            player.powerup = 'none';
+            player.weaponLevel = 1;
             screenFlashAlpha = 1;
             enemyBullets.splice(i, 1);
             if (player.health <= 0) {
@@ -876,7 +869,7 @@ function update(deltaTime) {
     for (let i = baseBullets.length - 1; i >= 0; i--) {
         if (baseBullets[i] && checkCollision(player, baseBullets[i])) {
             player.health--;
-            player.powerup = 'none';
+            player.weaponLevel = 1;
             screenFlashAlpha = 1;
             baseBullets.splice(i, 1);
             if (player.health <= 0) {
@@ -887,7 +880,7 @@ function update(deltaTime) {
 
     if (checkTerrainCollision(player)) {
         player.health--;
-        player.powerup = 'none';
+        player.weaponLevel = 1;
         screenFlashAlpha = 1;
         player.x = GAME_SIZE / 4;
         player.y = GAME_SIZE / 2 - PLAYER_HEIGHT / 2;
@@ -947,9 +940,9 @@ function draw() {
     let statusText = `⭐ ${score}  ❤️ ${player.health}  ${level}`;
     offscreenCtx.fillText(statusText, 10, 30);
 
-    if (player.powerup !== 'none') {
+    if (player.weaponLevel > 1) {
         offscreenCtx.fillStyle = '#FFD700';
-        offscreenCtx.fillText(player.powerup.replace('-', ' ').toUpperCase(), 10, 60);
+        offscreenCtx.fillText(`WEAPON LVL: ${player.weaponLevel}`, 10, 60);
     }
 
     const progressBarX = offscreenCtx.measureText(statusText).width + 20;
