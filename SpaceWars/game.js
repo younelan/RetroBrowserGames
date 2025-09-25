@@ -576,32 +576,70 @@ function drawBoss(context) {
 
     const { x, y, width, height, parts } = boss;
 
-    // Main body
-    const gradient = context.createLinearGradient(x, y, x, y + height);
-    gradient.addColorStop(0, '#301934');
-    gradient.addColorStop(1, '#4B0082');
-    context.fillStyle = gradient;
+    context.save();
+
+    // Layer 1: Main Hull (Darkest)
+    context.fillStyle = '#2c3e50'; // Dark Slate Grey
     context.beginPath();
-    context.moveTo(x + width * 0.2, y);
-    context.lineTo(x + width * 0.8, y);
-    context.lineTo(x + width, y + height * 0.4);
-    context.lineTo(x + width, y + height * 0.6);
-    context.lineTo(x + width * 0.8, y + height);
-    context.lineTo(x + width * 0.2, y + height);
-    context.lineTo(x, y + height * 0.6);
-    context.lineTo(x, y + height * 0.4);
+    context.moveTo(x, y + height * 0.2); // Back top
+    context.lineTo(x + width * 0.7, y); // Front top point
+    context.lineTo(x + width, y + height * 0.5); // Nose
+    context.lineTo(x + width * 0.7, y + height); // Front bottom point
+    context.lineTo(x, y + height * 0.8); // Back bottom
     context.closePath();
     context.fill();
 
-    // Cockpit
-    context.fillStyle = '#FF00FF';
+    // Layer 2: Superstructure (Lighter)
+    const grad = context.createLinearGradient(x, y, x + width, y);
+    grad.addColorStop(0, '#34495e'); // Darker
+    grad.addColorStop(1, '#566573'); // Lighter
+    context.fillStyle = grad;
     context.beginPath();
-    context.arc(x + width / 2, y + height / 2, 25, 0, Math.PI * 2);
+    context.moveTo(x + width * 0.1, y + height * 0.2);
+    context.lineTo(x + width * 0.65, y + height * 0.15);
+    context.lineTo(x + width * 0.85, y + height * 0.5);
+    context.lineTo(x + width * 0.65, y + height * 0.85);
+    context.lineTo(x + width * 0.1, y + height * 0.8);
+    context.closePath();
     context.fill();
-    context.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    context.beginPath();
-    context.arc(x + width / 2, y + height / 2, 20, 0, Math.PI * 2);
-    context.fill();
+
+    // Layer 3: Greebles and Details
+    context.fillStyle = 'rgba(0, 0, 0, 0.2)';
+    context.fillRect(x + 20, y + 35, 100, 10); // Panel line
+    context.fillRect(x + 20, y + height - 45, 100, 10); // Panel line
+    context.fillRect(x + 150, y + 20, 50, 5); // Small vent
+    context.fillRect(x + 150, y + height - 25, 50, 5); // Small vent
+
+    // Command Bridge
+    context.fillStyle = '#2c3e50';
+    context.fillRect(x + width * 0.6, y + height * 0.4, 80, 40);
+    context.fillStyle = '#3498db'; // Glowing blue windows
+    context.fillRect(x + width * 0.6 + 10, y + height * 0.4 + 10, 15, 20);
+    context.fillRect(x + width * 0.6 + 35, y + height * 0.4 + 10, 15, 20);
+    context.fillRect(x + width * 0.6 + 60, y + height * 0.4 + 10, 15, 20);
+
+    // Engines
+    const engineX = x + 10;
+    const engineY1 = y + height * 0.2 + 10;
+    const engineY2 = y + height * 0.8 - 30;
+    context.fillStyle = '#2c3e50';
+    context.fillRect(engineX, engineY1, 20, 20);
+    context.fillRect(engineX, engineY2, 20, 20);
+
+    // Engine Glow
+    const engineGlow = context.createRadialGradient(engineX, engineY1 + 10, 2, engineX, engineY1 + 10, 15);
+    engineGlow.addColorStop(0, 'white');
+    engineGlow.addColorStop(0.4, 'rgba(255, 165, 0, 0.8)');
+    engineGlow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    context.fillStyle = engineGlow;
+    context.fillRect(engineX - 20, engineY1 - 5, 40, 30);
+
+    const engineGlow2 = context.createRadialGradient(engineX, engineY2 + 10, 2, engineX, engineY2 + 10, 15);
+    engineGlow2.addColorStop(0, 'white');
+    engineGlow2.addColorStop(0.4, 'rgba(255, 165, 0, 0.8)');
+    engineGlow2.addColorStop(1, 'rgba(255, 0, 0, 0)');
+    context.fillStyle = engineGlow2;
+    context.fillRect(engineX - 20, engineY2 - 5, 40, 30);
 
     // Turrets
     parts.forEach(part => {
@@ -609,13 +647,19 @@ function drawBoss(context) {
             context.save();
             context.translate(part.x + part.width / 2, part.y + part.height / 2);
             context.rotate(part.angle);
-            context.fillStyle = '#800080';
-            context.fillRect(-part.width / 2, -part.height / 2, part.width, part.height);
-            context.fillStyle = '#4B0082';
-            context.fillRect(-part.width / 2 + 5, -part.height / 2 + 5, part.width - 10, part.height - 10);
+            // Base
+            context.fillStyle = '#566573';
+            context.beginPath();
+            context.arc(0, 0, part.width / 1.5, 0, Math.PI * 2);
+            context.fill();
+            // Barrel
+            context.fillStyle = '#34495e';
+            context.fillRect(0, -part.height / 4, part.width * 1.2, part.height / 2);
             context.restore();
         }
     });
+
+    context.restore();
 }
 
 function drawBossBullet(context, bullet) {
@@ -793,15 +837,15 @@ function spawnBoss() {
     baseBullets = [];
     boss = {
         x: GAME_SIZE,
-        y: GAME_SIZE / 2 - 100,
-        width: 200,
-        height: 200,
+        y: GAME_SIZE / 2 - 90,
+        width: 350,
+        height: 180,
         speed: 1,
-        health: 100,
-        maxHealth: 100,
+        health: 150,
+        maxHealth: 150,
         parts: [
-            { x: GAME_SIZE + 50, y: GAME_SIZE / 2 - 75, width: 30, height: 30, health: 20, lastFire: 0, angle: 0 },
-            { x: GAME_SIZE + 50, y: GAME_SIZE / 2 + 45, width: 30, height: 30, health: 20, lastFire: 0, angle: 0 }
+            { x: GAME_SIZE + 200, y: GAME_SIZE / 2 - 60, width: 30, height: 30, health: 25, lastFire: 0, angle: 0 },
+            { x: GAME_SIZE + 200, y: GAME_SIZE / 2 + 30, width: 30, height: 30, health: 25, lastFire: 0, angle: 0 }
         ],
         lastMainFire: 0
     };
@@ -813,20 +857,20 @@ function updateBoss(deltaTime) {
     if (!boss) return;
 
     // Boss movement
-    if (boss.x > GAME_SIZE - 250) {
+    if (boss.x > GAME_SIZE - 400) {
         boss.x -= boss.speed;
         boss.parts.forEach(part => part.x -= boss.speed);
     } else {
-        boss.y += Math.sin(Date.now() / 1000) * 2;
-        boss.parts.forEach(part => part.y += Math.sin(Date.now() / 1000) * 2);
+        boss.y += Math.sin(Date.now() / 1000) * 0.5;
+        boss.parts.forEach(part => part.y += Math.sin(Date.now() / 1000) * 0.5);
     }
 
     // Turret aiming and firing
     boss.parts.forEach(part => {
         if (part.health > 0) {
             part.angle = Math.atan2(player.y - part.y, player.x - part.x);
-            if (Date.now() - part.lastFire > 2000) {
-                const speed = -7;
+            if (Date.now() - part.lastFire > 1500) {
+                const speed = 7;
                 bossBullets.push({
                     x: part.x + part.width / 2,
                     y: part.y + part.height / 2,
@@ -841,15 +885,15 @@ function updateBoss(deltaTime) {
     });
 
     // Main weapon firing
-    if (Date.now() - boss.lastMainFire > 3000) {
-        for (let i = 0; i < 5; i++) {
+    if (Date.now() - boss.lastMainFire > 2500) {
+        for (let i = 0; i < 8; i++) {
             bossBullets.push({
-                x: boss.x + boss.width / 2,
+                x: boss.x + boss.width * 0.8,
                 y: boss.y + boss.height / 2,
                 width: 20,
                 height: 20,
-                vx: -5,
-                vy: (i - 2) * 1.5
+                vx: -6,
+                vy: (i - 3.5) * 0.5
             });
         }
         boss.lastMainFire = Date.now();
@@ -895,7 +939,7 @@ function updateBoss(deltaTime) {
 
     // Boss defeated
     if (boss.health <= 0) {
-        createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, 100, '#FF00FF');
+        createExplosion(boss.x + boss.width / 2, boss.y + boss.height / 2, 200, '#FF00FF');
         score += 1000;
         isBossFight = false;
         boss = null;
