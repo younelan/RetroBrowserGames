@@ -22,7 +22,7 @@ let isBossFight = false;
 let score = 0;
 let highScore = 0;
 let gameOver = false;
-let level = 1;
+let level = 1; // Changed from const to let
 let enemiesToDefeat = 5; // Start with fewer enemies to defeat
 let currentEnemiesDefeated = 0; // Track enemies defeated in current level
 let isHelpScreenVisible = false;
@@ -235,6 +235,87 @@ const ENEMY_TYPES = [
                 context.fill();
             }
         }
+    },
+    {
+        name: 'Assault',
+        width: 100,
+        height: 60,
+        speedMin: 1.5,
+        speedMax: 3,
+        color: '#696969', // DimGray
+        draw: function(context, enemy) {
+            const ex = enemy.x;
+            const ey = enemy.y;
+            const ew = enemy.width;
+            const eh = enemy.height;
+
+            // Main body - bulky, angular
+            let mainBodyGradient = context.createLinearGradient(ex, ey, ex + ew, ey + eh);
+            mainBodyGradient.addColorStop(0, '#696969'); // DimGray
+            mainBodyGradient.addColorStop(0.5, '#A9A9A9'); // DarkGray
+            mainBodyGradient.addColorStop(1, '#696969'); // DimGray
+            context.fillStyle = mainBodyGradient;
+
+            context.beginPath();
+            context.moveTo(ex, ey + eh / 2); // Front tip
+            context.lineTo(ex + ew * 0.7, ey); // Top back
+            context.lineTo(ex + ew, ey + eh * 0.2); // Rear top
+            context.lineTo(ex + ew, ey + eh * 0.8); // Rear bottom
+            context.lineTo(ex + ew * 0.7, ey + eh); // Bottom back
+            context.closePath();
+            context.fill();
+
+            // Cockpit
+            context.fillStyle = '#B0C4DE'; // LightSteelBlue
+            context.beginPath();
+            context.ellipse(ex + ew * 0.5, ey + eh / 2, ew * 0.1, eh * 0.2, 0, 0, Math.PI * 2);
+            context.fill();
+
+            // Cannons
+            context.fillStyle = '#36454F'; // Charcoal
+            context.fillRect(ex + ew * 0.8, ey + eh * 0.1, ew * 0.2, eh * 0.15);
+            context.fillRect(ex + ew * 0.8, ey + eh * 0.75, ew * 0.2, eh * 0.15);
+        }
+    },
+    {
+        name: 'Stealth',
+        width: 80,
+        height: 40,
+        speedMin: 4,
+        speedMax: 6,
+        color: '#1A1A1A', // Very Dark Gray
+        draw: function(context, enemy) {
+            const ex = enemy.x;
+            const ey = enemy.y;
+            const ew = enemy.width;
+            const eh = enemy.height;
+
+            context.save();
+            context.globalAlpha = enemy.alpha || 1; // Apply transparency
+
+            // Main body - sleek, triangular
+            let mainBodyGradient = context.createLinearGradient(ex, ey, ex + ew, ey + eh);
+            mainBodyGradient.addColorStop(0, '#1A1A1A'); // Very Dark Gray
+            mainBodyGradient.addColorStop(0.5, '#36454F'); // Charcoal
+            mainBodyGradient.addColorStop(1, '#1A1A1A'); // Very Dark Gray
+            context.fillStyle = mainBodyGradient;
+
+            context.beginPath();
+            context.moveTo(ex, ey + eh / 2); // Front tip
+            context.lineTo(ex + ew, ey); // Top back
+            context.lineTo(ex + ew * 0.8, ey + eh / 2); // Mid-body back
+            context.lineTo(ex + ew, ey + eh); // Bottom back
+            context.closePath();
+            context.fill();
+
+            // Cockpit/Sensor array
+            context.fillStyle = '#00FFFF'; // Cyan
+            context.beginPath();
+            context.arc(ex + ew * 0.3, ey + eh / 2, eh * 0.1, 0, Math.PI * 2);
+            context.fill();
+
+            context.restore();
+        }
     }
 ];
 
@@ -307,7 +388,7 @@ function initGame() {
     lastBulletTime = 0;
     lastEnemySpawnTime = 0;
     lastBaseSpawnTime = 0;
-    level = 1;
+    level = 1; // This is line 401
     enemiesToDefeat = 5;
     currentEnemiesDefeated = 0;
     levelMessage = '';
@@ -535,23 +616,32 @@ function drawEnemyBullet(context, bullet) { // Changed to accept context
     const bw = bullet.width;
     const bh = bullet.height;
 
-    context.fillStyle = '#FF0000';
-    context.beginPath();
-    context.moveTo(bx + bw, by - bh / 2);
-    context.lineTo(bx, by);
-    context.lineTo(bx + bw, by + bh / 2);
-    context.closePath();
-    context.fill();
+    if (bullet.isBomb) {
+        context.fillStyle = '#8B0000'; // Dark Red for bomb
+        context.beginPath();
+        context.arc(bx + bw / 2, by + bh / 2, bw / 2, 0, Math.PI * 2);
+        context.fill();
+        context.fillStyle = '#FFD700'; // Fuse
+        context.fillRect(bx + bw / 2 - 1, by - 5, 2, 5);
+    } else {
+        context.fillStyle = '#FF0000';
+        context.beginPath();
+        context.moveTo(bx + bw, by - bh / 2);
+        context.lineTo(bx, by);
+        context.lineTo(bx + bw, by + bh / 2);
+        context.closePath();
+        context.fill();
 
-    const flameSize = bw * 0.5 + Math.random() * (bw * 0.3);
-    context.fillStyle = `rgba(255, ${0 + Math.random() * 100}, 0, ${0.6 + Math.random() * 0.3})`;
-    context.beginPath();
-    context.moveTo(bx + bw, by);
-    context.lineTo(bx + bw + flameSize, by - flameSize / 2);
-    context.lineTo(bx + bw + flameSize * 0.7, by);
-    context.lineTo(bx + bw + flameSize, by + flameSize / 2);
-    context.closePath();
-    context.fill();
+        const flameSize = bw * 0.5 + Math.random() * (bw * 0.3);
+        context.fillStyle = `rgba(255, ${0 + Math.random() * 100}, 0, ${0.6 + Math.random() * 0.3})`;
+        context.beginPath();
+        context.moveTo(bx + bw, by);
+        context.lineTo(bx + bw + flameSize, by - flameSize / 2);
+        context.lineTo(bx + bw + flameSize * 0.7, by);
+        context.lineTo(bx + bw + flameSize, by + flameSize / 2);
+        context.closePath();
+        context.fill();
+    }
 }
 
 function drawBase(context, base) {
@@ -1091,7 +1181,11 @@ function update(deltaTime) {
         if (enemies.length < (level * 2) && Date.now() - lastEnemySpawnTime > ENEMY_SPAWN_INTERVAL) {
             let availableEnemies = ENEMY_TYPES;
             if (level < 5) {
-                availableEnemies = ENEMY_TYPES.filter(type => type.name !== 'Serpent');
+                availableEnemies = ENEMY_TYPES.filter(type => type.name !== 'Serpent' && type.name !== 'Assault' && type.name !== 'Stealth');
+            } else if (level < 8) { // Serpent starts at level 5
+                availableEnemies = ENEMY_TYPES.filter(type => type.name !== 'Assault' && type.name !== 'Stealth');
+            } else if (level < 12) { // Assault starts at level 8
+                availableEnemies = ENEMY_TYPES.filter(type => type.name !== 'Stealth');
             }
             const enemyType = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
 
@@ -1106,7 +1200,8 @@ function update(deltaTime) {
                 height: enemyType.height,
                 speed: enemyType.speedMin + Math.random() * (enemyType.speedMax - enemyType.speedMin),
                 type: enemyType,
-                lastFire: Date.now() + Math.random() * ENEMY_FIRE_COOLDOWN
+                lastFire: Date.now() + Math.random() * ENEMY_FIRE_COOLDOWN,
+                alpha: 1 // For stealth enemy
             };
 
             if (enemyType.name === 'Serpent') {
@@ -1142,6 +1237,11 @@ function update(deltaTime) {
 
             if (enemy.type.name === 'Serpent') {
                 enemy.y = enemy.startY + Math.sin(enemy.x / enemy.frequency) * enemy.amplitude;
+            } else if (enemy.type.name === 'Stealth') {
+                // Stealth behavior: toggle alpha
+                if (Math.random() < 0.01) {
+                    enemy.alpha = enemy.alpha === 1 ? 0.3 : 1;
+                }
             }
 
             if (enemy.x + enemy.width < 0) {
@@ -1150,14 +1250,40 @@ function update(deltaTime) {
             }
 
             if (Math.random() < 0.01 * level && Date.now() - enemy.lastFire > ENEMY_FIRE_COOLDOWN) {
-                enemyBullets.push({
-                    x: enemy.x,
-                    y: enemy.y + enemy.height / 2,
-                    width: 15,
-                    height: 5,
-                    vx: -5,
-                    vy: 0
-                });
+                if (enemy.type.name === 'Assault') {
+                    // Fires 3 bullets in a spread
+                    for (let angleOffset = -1; angleOffset <= 1; angleOffset++) {
+                        enemyBullets.push({
+                            x: enemy.x,
+                            y: enemy.y + enemy.height / 2,
+                            width: 15,
+                            height: 5,
+                            vx: -5,
+                            vy: angleOffset * 1 // Slight vertical spread
+                        });
+                    }
+                } else if (enemy.type.name === 'Stealth') {
+                    // Drops a bomb
+                    enemyBullets.push({
+                        x: enemy.x + enemy.width / 2,
+                        y: enemy.y + enemy.height,
+                        width: 20,
+                        height: 20,
+                        vx: -1, // Slower horizontal drift
+                        vy: 3, // Falls downwards
+                        isBomb: true // Flag for special handling
+                    });
+                } else {
+                    // Default single bullet fire
+                    enemyBullets.push({
+                        x: enemy.x,
+                        y: enemy.y + enemy.height / 2,
+                        width: 15,
+                        height: 5,
+                        vx: -5,
+                        vy: 0
+                    });
+                }
                 enemy.lastFire = Date.now();
             }
         }
@@ -1193,7 +1319,7 @@ function update(deltaTime) {
 
             bullet.x += bullet.vx;
             bullet.y += bullet.vy;
-            if (bullet.x < 0) {
+            if (bullet.x < 0 || bullet.y > GAME_SIZE) { // Bombs can go off screen downwards
                 enemyBullets.splice(i, 1);
                 continue;
             }
