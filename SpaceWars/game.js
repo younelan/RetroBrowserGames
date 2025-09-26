@@ -1592,17 +1592,17 @@ function draw() {
     drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, bottomUIY, 300, 15, playerEnergyProgress, 'PLAYER ENERGY');
     bottomUIY -= 25; // Move up for next element
 
-    // Shield Bar (only during boss fight, above player energy)
-    if (isBossFight && player.isShielded) {
-        const shieldProgress = player.shieldTimer / SHIELD_DURATION;
-        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, bottomUIY, 300, 10, shieldProgress, 'SHIELD');
-        bottomUIY -= 20; // Move up for next element
-    }
-
-    // Boss Health Bar (only during boss fight, above shield/player energy)
+    // Boss Health Bar (only during boss fight, above player energy)
     if (isBossFight && boss) {
         const bossHealthProgress = boss.health / boss.maxHealth;
         drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, bottomUIY, 300, 20, bossHealthProgress, 'BOSS HEALTH');
+        bottomUIY -= 25; // Move up for next element
+    }
+
+    // Shield Bar (only during boss fight, above boss health/player energy)
+    if (isBossFight && player.isShielded) {
+        const shieldProgress = player.shieldTimer / SHIELD_DURATION;
+        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, bottomUIY, 300, 20, shieldProgress, 'SHIELD');
     }
 
     drawHelpIcon(offscreenCtx);
