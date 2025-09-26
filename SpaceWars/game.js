@@ -1135,65 +1135,80 @@ function update(deltaTime) {
 
         // Update enemies
         for (let i = enemies.length - 1; i >= 0; i--) {
-            if (!enemies[i]) continue;
-            enemies[i].x -= enemies[i].speed;
+            const enemy = enemies[i]; // Get reference to avoid undefined after splice
+            if (!enemy) continue;
 
-            if (enemies[i].type.name === 'Serpent') {
-                enemies[i].y = enemies[i].startY + Math.sin(enemies[i].x / enemies[i].frequency) * enemies[i].amplitude;
+            enemy.x -= enemy.speed;
+
+            if (enemy.type.name === 'Serpent') {
+                enemy.y = enemy.startY + Math.sin(enemy.x / enemy.frequency) * enemy.amplitude;
             }
 
-            if (enemies[i].x + enemies[i].width < 0) {
+            if (enemy.x + enemy.width < 0) {
                 enemies.splice(i, 1);
+                continue;
             }
 
-            if (Math.random() < 0.01 * level && Date.now() - enemies[i].lastFire > ENEMY_FIRE_COOLDOWN) {
+            if (Math.random() < 0.01 * level && Date.now() - enemy.lastFire > ENEMY_FIRE_COOLDOWN) {
                 enemyBullets.push({
-                    x: enemies[i].x,
-                    y: enemies[i].y + enemies[i].height / 2,
+                    x: enemy.x,
+                    y: enemy.y + enemy.height / 2,
                     width: 15,
                     height: 5,
                     vx: -5,
                     vy: 0
                 });
-                enemies[i].lastFire = Date.now();
+                enemy.lastFire = Date.now();
             }
         }
 
         // Update bases
         for (let i = bases.length - 1; i >= 0; i--) {
-            bases[i].x -= ENEMY_SPEED_MIN; // Scroll with terrain
-            if (bases[i].x + bases[i].width < 0) {
+            const base = bases[i]; // Get reference to avoid undefined after splice
+            if (!base) continue;
+
+            base.x -= ENEMY_SPEED_MIN; // Scroll with terrain
+            if (base.x + base.width < 0) {
                 bases.splice(i, 1);
+                continue;
             }
 
-            if (Date.now() - bases[i].lastFire > BASE_FIRE_COOLDOWN) {
+            if (Date.now() - base.lastFire > BASE_FIRE_COOLDOWN) {
                 baseBullets.push({
-                    x: bases[i].x + bases[i].width / 2 - 2.5,
-                    y: bases[i].y - 10,
+                    x: base.x + base.width / 2 - 2.5,
+                    y: base.y - 10,
                     width: 5,
                     height: 10,
                     vx: 0,
                     vy: -5
                 });
-                bases[i].lastFire = Date.now();
+                base.lastFire = Date.now();
             }
         }
 
         // Update enemy bullets
         for (let i = enemyBullets.length - 1; i >= 0; i--) {
-            enemyBullets[i].x += enemyBullets[i].vx;
-            enemyBullets[i].y += enemyBullets[i].vy;
-            if (enemyBullets[i].x < 0) {
+            const bullet = enemyBullets[i]; // Get reference
+            if (!bullet) continue;
+
+            bullet.x += bullet.vx;
+            bullet.y += bullet.vy;
+            if (bullet.x < 0) {
                 enemyBullets.splice(i, 1);
+                continue;
             }
         }
 
         // Update base bullets
         for (let i = baseBullets.length - 1; i >= 0; i--) {
-            baseBullets[i].x += baseBullets[i].vx;
-            baseBullets[i].y += baseBullets[i].vy;
-            if (baseBullets[i].y + baseBullets[i].height < 0) {
+            const bullet = baseBullets[i]; // Get reference
+            if (!bullet) continue;
+
+            bullet.x += bullet.vx;
+            bullet.y += bullet.vy;
+            if (bullet.y + bullet.height < 0) {
                 baseBullets.splice(i, 1);
+                continue;
             }
         }
 
@@ -1380,45 +1395,60 @@ function draw() {
     offscreenCtx.restore();
 
     // UI on top of everything
-    // Score and Lives are always visible
+    // Score, Lives, Level are always visible at top-left
     offscreenCtx.fillStyle = 'white';
     offscreenCtx.font = `20px Arial`;
     offscreenCtx.textAlign = 'left';
     let statusText = `⭐ ${score}  ❤️ ${player.lives}  ${level}`;
     offscreenCtx.fillText(statusText, 10, 30);
 
-    let powerupY = 60;
+    let currentUIY = 60; // Starting Y for dynamic UI elements at top-left
+
+    // Weapon Level (always visible if > 1)
     if (player.weaponLevel > 1) {
         offscreenCtx.fillStyle = '#FFD700';
         offscreenCtx.textAlign = 'left';
-        offscreenCtx.fillText(`WEAPON LVL: ${player.weaponLevel}`, 10, powerupY);
-        powerupY += 30;
+        offscreenCtx.fillText(`WEAPON LVL: ${player.weaponLevel}`, 10, currentUIY);
+        currentUIY += 30;
     }
-    if (player.isShielded && !isBossFight) { // Only show shield timer in regular gameplay
+
+    // Shield Timer (always visible if active)
+    if (player.isShielded) {
         offscreenCtx.fillStyle = '#00BFFF';
         offscreenCtx.textAlign = 'left';
-        offscreenCtx.fillText(`SHIELD: ${Math.ceil(player.shieldTimer / 1000)}s`, 10, powerupY);
+        offscreenCtx.fillText(`SHIELD: ${Math.ceil(player.shieldTimer / 1000)}s`, 10, currentUIY);
+        currentUIY += 30;
     }
 
-    if (isBossFight) {
-        const bossHealthProgress = boss ? boss.health / boss.maxHealth : 0;
-        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 40, 300, 20, bossHealthProgress, 'BOSS HEALTH');
-        
-        const playerEnergyProgress = player.energy / MAX_PLAYER_ENERGY;
-        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 70, 300, 15, playerEnergyProgress, 'PLAYER ENERGY');
-
-        if (player.isShielded) {
-            const shieldProgress = player.shieldTimer / SHIELD_DURATION;
-            drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 95, 300, 10, shieldProgress, 'SHIELD');
-        }
-    } else {
-        // Regular level progress bar
+    // Regular level progress bar (only when not boss fight)
+    if (!isBossFight) {
         const progressBarX = offscreenCtx.measureText(statusText).width + 20;
         const progressBarY = 15;
         const progressBarWidth = 150;
         const progressBarHeight = 15;
         const progress = enemiesToDefeat > 0 ? currentEnemiesDefeated / enemiesToDefeat : 0;
         drawDynamicBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress, `${Math.floor(progress * 100)}%`);
+    }
+
+    // UI elements at the bottom (Player Energy, Boss Health, Shield)
+    let bottomUIY = GAME_SIZE - 40; // Starting Y for bottom UI elements
+
+    // Player Energy Bar (always visible at bottom)
+    const playerEnergyProgress = player.energy / MAX_PLAYER_ENERGY;
+    drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, bottomUIY, 300, 15, playerEnergyProgress, 'PLAYER ENERGY');
+    bottomUIY -= 25; // Move up for next element
+
+    // Shield Bar (only during boss fight, above player energy)
+    if (isBossFight && player.isShielded) {
+        const shieldProgress = player.shieldTimer / SHIELD_DURATION;
+        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, bottomUIY, 300, 10, shieldProgress, 'SHIELD');
+        bottomUIY -= 20; // Move up for next element
+    }
+
+    // Boss Health Bar (only during boss fight, above shield/player energy)
+    if (isBossFight && boss) {
+        const bossHealthProgress = boss.health / boss.maxHealth;
+        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, bottomUIY, 300, 20, bossHealthProgress, 'BOSS HEALTH');
     }
 
     drawHelpIcon(offscreenCtx);
@@ -1462,7 +1492,10 @@ function draw() {
 }
 
 function isClickInsideRect(x, y, rect) {
-    return x > rect.x && x < rect.x + rect.width && y > rect.y && y < rect.y + rect.height;
+    return rect.x < rect.x + rect.width &&
+           rect.x + rect.width > rect.x &&
+           rect.y < rect.y + rect.height &&
+           rect.y + rect.height > rect.y;
 }
 
 // Event Listeners for Keyboard
