@@ -41,7 +41,9 @@ const PLAYER_WIDTH = 50;
 const PLAYER_HEIGHT = 30;
 const PLAYER_SPEED = 5;
 const PLAYER_SMOOTHING = 0.1; // Smoothing factor for touch movement
-const MAX_PLAYER_HEALTH = 3;
+const MAX_PLAYER_LIVES = 3;
+const MAX_PLAYER_ENERGY = 200; // Increased for more hits per life
+const DAMAGE_PER_HIT = 10; // 10% energy per hit
 
 // Bullet properties
 const BULLET_WIDTH = 20;
@@ -284,7 +286,8 @@ function initGame() {
         width: PLAYER_WIDTH,
         height: PLAYER_HEIGHT,
         speed: PLAYER_SPEED,
-        health: MAX_PLAYER_HEALTH,
+        lives: MAX_PLAYER_LIVES,
+        energy: MAX_PLAYER_ENERGY,
         weaponLevel: 1,
         isShielded: false,
         shieldTimer: 0
@@ -663,10 +666,17 @@ function drawBoss(context) {
 }
 
 function drawBossBullet(context, bullet) {
-    context.fillStyle = '#FF00FF';
+    context.save();
+    const gradient = context.createRadialGradient(bullet.x, bullet.y, 2, bullet.x, bullet.y, 10);
+    gradient.addColorStop(0, 'white');
+    gradient.addColorStop(0.4, '#FF00FF'); // Magenta
+    gradient.addColorStop(1, 'rgba(255, 0, 255, 0)');
+    
+    context.fillStyle = gradient;
     context.beginPath();
-    context.arc(bullet.x, bullet.y, 10, 0, Math.PI * 2);
+    context.arc(bullet.x, bullet.y, 12, 0, Math.PI * 2);
     context.fill();
+    context.restore();
 }
 
 function drawDynamicBar(context, x, y, width, height, progress, label) {
@@ -829,6 +839,32 @@ function drawExplosions(context) {
     });
 }
 
+function restartLevel() {
+    // Reset all game elements to their state at the beginning of the current level
+    enemies = [];
+    enemyBullets = [];
+    bases = [];
+    baseBullets = [];
+    collectibles = [];
+    explosions = [];
+    boss = null;
+    bossBullets = [];
+    isBossFight = false;
+    
+    player.x = GAME_SIZE / 4;
+    player.y = GAME_SIZE / 2 - PLAYER_HEIGHT / 2;
+    player.energy = MAX_PLAYER_ENERGY; // Refill energy
+    player.weaponLevel = 1; // Reset power-ups
+    player.isShielded = false; // Clear shield
+    player.shieldTimer = 0;
+
+    currentEnemiesDefeated = 0; // Reset progress for the current level
+    levelMessage = '';
+    levelMessageAlpha = 0;
+    screenFlashAlpha = 0;
+    screenShake = 0;
+}
+
 function spawnBoss() {
     isBossFight = true;
     enemies = [];
@@ -844,8 +880,8 @@ function spawnBoss() {
         health: 150,
         maxHealth: 150,
         parts: [
-            { x: GAME_SIZE + 200, y: GAME_SIZE / 2 - 60, width: 30, height: 30, health: 25, lastFire: 0, angle: 0 },
-            { x: GAME_SIZE + 200, y: GAME_SIZE / 2 + 30, width: 30, height: 30, health: 25, lastFire: 0, angle: 0 }
+            { x: GAME_SIZE + 200, y: GAME_SIZE / 2 - 60, width: 40, height: 40, health: 25, lastFire: 0, angle: 0 },
+            { x: GAME_SIZE + 200, y: GAME_SIZE / 2 + 20, width: 40, height: 40, health: 25, lastFire: 0, angle: 0 }
         ],
         lastMainFire: 0
     };
@@ -875,7 +911,7 @@ function updateBoss(deltaTime) {
                     x: part.x + part.width / 2,
                     y: part.y + part.height / 2,
                     width: 15,
-                    height: 5,
+                    height: 15,
                     vx: Math.cos(part.angle) * speed,
                     vy: Math.sin(part.angle) * speed
                 });
@@ -954,14 +990,21 @@ function updateBoss(deltaTime) {
 function applyPlayerDamage(damage) {
     if (player.isShielded) return;
 
-    player.health -= damage;
-    player.weaponLevel = 1;
+    player.energy -= damage;
     screenShake = 15;
     screenFlashAlpha = 1;
     createExplosion(player.x + player.width / 2, player.y + player.height / 2, 20);
 
-    if (player.health <= 0) {
-        gameOver = true;
+    if (player.energy <= 0) {
+        player.lives--;
+        player.weaponLevel = 1; // Power-ups reset on losing a life
+
+        if (player.lives <= 0) {
+            gameOver = true;
+        } else {
+            // Player lost a life but not game over
+            restartLevel(); // Restart the current level
+        }
     }
 }
 
@@ -1021,7 +1064,8 @@ function update(deltaTime) {
 
     // Update bullets
     for (let i = bullets.length - 1; i >= 0; i--) {
-        bullets[i].x += bullets[i].speed;
+        bullets[i].x += bullets[i].vx || bullets[i].speed;
+        bullets[i].y += bullets[i].vy || 0;
         if (bullets[i].x > GAME_SIZE) {
             bullets.splice(i, 1);
         }
@@ -1108,7 +1152,8 @@ function update(deltaTime) {
                     y: enemies[i].y + enemies[i].height / 2,
                     width: 15,
                     height: 5,
-                    speed: -5
+                    vx: -5,
+                    vy: 0
                 });
                 enemies[i].lastFire = Date.now();
             }
@@ -1127,7 +1172,8 @@ function update(deltaTime) {
                     y: bases[i].y - 10,
                     width: 5,
                     height: 10,
-                    speed: -5
+                    vx: 0,
+                    vy: -5
                 });
                 bases[i].lastFire = Date.now();
             }
@@ -1135,7 +1181,8 @@ function update(deltaTime) {
 
         // Update enemy bullets
         for (let i = enemyBullets.length - 1; i >= 0; i--) {
-            enemyBullets[i].x += enemyBullets[i].speed;
+            enemyBullets[i].x += enemyBullets[i].vx;
+            enemyBullets[i].y += enemyBullets[i].vy;
             if (enemyBullets[i].x < 0) {
                 enemyBullets.splice(i, 1);
             }
@@ -1143,13 +1190,14 @@ function update(deltaTime) {
 
         // Update base bullets
         for (let i = baseBullets.length - 1; i >= 0; i--) {
-            baseBullets[i].y += baseBullets[i].speed;
+            baseBullets[i].x += baseBullets[i].vx;
+            baseBullets[i].y += baseBullets[i].vy;
             if (baseBullets[i].y + baseBullets[i].height < 0) {
                 baseBullets.splice(i, 1);
             }
         }
 
-        // Collision detection
+        // Collision detection for regular gameplay
         for (let i = bullets.length - 1; i >= 0; i--) {
             for (let j = enemies.length - 1; j >= 0; j--) {
                 if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
@@ -1184,27 +1232,6 @@ function update(deltaTime) {
             }
         }
 
-        for (let i = enemies.length - 1; i >= 0; i--) {
-            if (enemies[i] && checkCollision(player, enemies[i])) {
-                applyPlayerDamage(1);
-                enemies.splice(i, 1);
-            }
-        }
-
-        for (let i = enemyBullets.length - 1; i >= 0; i--) {
-            if (enemyBullets[i] && checkCollision(player, enemyBullets[i])) {
-                applyPlayerDamage(1);
-                enemyBullets.splice(i, 1);
-            }
-        }
-
-        for (let i = baseBullets.length - 1; i >= 0; i--) {
-            if (baseBullets[i] && checkCollision(player, baseBullets[i])) {
-                applyPlayerDamage(1);
-                baseBullets.splice(i, 1);
-            }
-        }
-
         if (currentEnemiesDefeated >= enemiesToDefeat) {
             if (level > 0 && level % 3 === 0) {
                 spawnBoss();
@@ -1233,7 +1260,7 @@ function update(deltaTime) {
                     }
                     break;
                 case 'extra-life':
-                    player.health++;
+                    player.lives++;
                     break;
                 case 'emp-pulse':
                     score += enemies.length * 10;
@@ -1250,10 +1277,55 @@ function update(deltaTime) {
         }
     }
 
-    if (checkTerrainCollision(player)) {
-        applyPlayerDamage(1);
-        player.x = GAME_SIZE / 4;
-        player.y = GAME_SIZE / 2 - PLAYER_HEIGHT / 2;
+    // UNIFIED PLAYER DAMAGE APPLICATION
+    if (!player.isShielded) {
+        // Player vs enemies (only in regular gameplay)
+        if (!isBossFight) {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                if (enemies[i] && checkCollision(player, enemies[i])) {
+                    applyPlayerDamage(DAMAGE_PER_HIT);
+                    enemies.splice(i, 1);
+                }
+            }
+
+            // Player vs enemy bullets (only in regular gameplay)
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                if (enemyBullets[i] && checkCollision(player, enemyBullets[i])) {
+                    applyPlayerDamage(DAMAGE_PER_HIT);
+                    enemyBullets.splice(i, 1);
+                }
+            }
+
+            // Player vs base bullets (only in regular gameplay)
+            for (let i = baseBullets.length - 1; i >= 0; i--) {
+                if (baseBullets[i] && checkCollision(player, baseBullets[i])) {
+                    applyPlayerDamage(DAMAGE_PER_HIT);
+                    baseBullets.splice(i, 1);
+                }
+            }
+        }
+
+        // Player vs boss bullets (only in boss fight)
+        if (isBossFight && boss) {
+            for (let i = bossBullets.length - 1; i >= 0; i--) {
+                if (bossBullets[i] && checkCollision(player, bossBullets[i])) {
+                    applyPlayerDamage(DAMAGE_PER_HIT);
+                    bossBullets.splice(i, 1);
+                }
+            }
+
+            // Player vs boss body (only in boss fight)
+            if (boss !== null && checkCollision(player, boss)) {
+                applyPlayerDamage(DAMAGE_PER_HIT); // Apply 1 damage instead of instant kill
+            }
+        }
+
+        // Player vs terrain (runs in both modes)
+        if (checkTerrainCollision(player)) {
+            applyPlayerDamage(DAMAGE_PER_HIT);
+            player.x = GAME_SIZE / 4;
+            player.y = GAME_SIZE / 2 - PLAYER_HEIGHT / 2;
+        }
     }
 
     updateTerrain();
@@ -1308,31 +1380,12 @@ function draw() {
     offscreenCtx.restore();
 
     // UI on top of everything
-    if (isBossFight) {
-        const bossHealthProgress = boss ? boss.health / boss.maxHealth : 0;
-        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 40, 300, 20, bossHealthProgress, 'BOSS HEALTH');
-        
-        const playerHealthProgress = player.health / MAX_PLAYER_HEALTH;
-        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 70, 300, 15, playerHealthProgress, 'PLAYER HEALTH');
-
-        if (player.isShielded) {
-            const shieldProgress = player.shieldTimer / SHIELD_DURATION;
-            drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 95, 300, 10, shieldProgress, 'SHIELD');
-        }
-    } else {
-        offscreenCtx.fillStyle = 'white';
-        offscreenCtx.font = `20px Arial`;
-        offscreenCtx.textAlign = 'left';
-        let statusText = `⭐ ${score}  ❤️ ${player.health}  ${level}`;
-        offscreenCtx.fillText(statusText, 10, 30);
-
-        const progressBarX = offscreenCtx.measureText(statusText).width + 20;
-        const progressBarY = 15;
-        const progressBarWidth = 150;
-        const progressBarHeight = 15;
-        const progress = enemiesToDefeat > 0 ? currentEnemiesDefeated / enemiesToDefeat : 0;
-        drawDynamicBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress, `${Math.floor(progress * 100)}%`);
-    }
+    // Score and Lives are always visible
+    offscreenCtx.fillStyle = 'white';
+    offscreenCtx.font = `20px Arial`;
+    offscreenCtx.textAlign = 'left';
+    let statusText = `⭐ ${score}  ❤️ ${player.lives}  ${level}`;
+    offscreenCtx.fillText(statusText, 10, 30);
 
     let powerupY = 60;
     if (player.weaponLevel > 1) {
@@ -1341,10 +1394,31 @@ function draw() {
         offscreenCtx.fillText(`WEAPON LVL: ${player.weaponLevel}`, 10, powerupY);
         powerupY += 30;
     }
-    if (player.isShielded && !isBossFight) {
+    if (player.isShielded && !isBossFight) { // Only show shield timer in regular gameplay
         offscreenCtx.fillStyle = '#00BFFF';
         offscreenCtx.textAlign = 'left';
         offscreenCtx.fillText(`SHIELD: ${Math.ceil(player.shieldTimer / 1000)}s`, 10, powerupY);
+    }
+
+    if (isBossFight) {
+        const bossHealthProgress = boss ? boss.health / boss.maxHealth : 0;
+        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 40, 300, 20, bossHealthProgress, 'BOSS HEALTH');
+        
+        const playerEnergyProgress = player.energy / MAX_PLAYER_ENERGY;
+        drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 70, 300, 15, playerEnergyProgress, 'PLAYER ENERGY');
+
+        if (player.isShielded) {
+            const shieldProgress = player.shieldTimer / SHIELD_DURATION;
+            drawDynamicBar(offscreenCtx, GAME_SIZE / 2 - 150, GAME_SIZE - 95, 300, 10, shieldProgress, 'SHIELD');
+        }
+    } else {
+        // Regular level progress bar
+        const progressBarX = offscreenCtx.measureText(statusText).width + 20;
+        const progressBarY = 15;
+        const progressBarWidth = 150;
+        const progressBarHeight = 15;
+        const progress = enemiesToDefeat > 0 ? currentEnemiesDefeated / enemiesToDefeat : 0;
+        drawDynamicBar(offscreenCtx, progressBarX, progressBarY, progressBarWidth, progressBarHeight, progress, `${Math.floor(progress * 100)}%`);
     }
 
     drawHelpIcon(offscreenCtx);
