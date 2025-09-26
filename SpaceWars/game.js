@@ -334,6 +334,8 @@ const keys = {
     Space: false
 };
 
+const mouse = { x: -1, y: -1 };
+
 let touchX = -1;
 let touchY = -1;
 let isTouching = false;
@@ -856,45 +858,47 @@ function drawHelpIcon(context) {
 }
 
 function drawHelpScreen(context) {
-    context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    context.fillStyle = 'rgba(0, 0, 0, 0.9)';
     context.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
 
-    context.fillStyle = 'white';
-    context.font = '30px Arial';
+    context.fillStyle = '#00FFFF'; // Cyan
+    context.font = 'bold 40px \'Lucida Console\', monospace';
     context.textAlign = 'center';
-    context.fillText('HELP', GAME_SIZE / 2, 50);
+    context.fillText('HELP', GAME_SIZE / 2, 80);
 
-    context.font = '16px Arial';
+    context.fillStyle = 'white';
+    context.font = '20px \'Lucida Console\', monospace';
     context.textAlign = 'left';
-    let y = 100;
+    let y = 150;
 
-    context.fillText('Controls:', 50, y); y += 25;
-    context.fillText('- Desktop: Arrow keys to move, Space to shoot.', 50, y); y += 25;
-    context.fillText('- Mobile: Drag to move, auto-fire is on.', 50, y); y += 50;
+    context.fillText('CONTROLS:', 50, y); y += 30;
+    context.fillText('- DESKTOP: ARROW KEYS TO MOVE, SPACE TO SHOOT.', 50, y); y += 30;
+    context.fillText('- MOBILE: DRAG TO MOVE, AUTO-FIRE IS ON.', 50, y); y += 50;
 
-    context.fillText('Objective:', 50, y); y += 25;
-    context.fillText('- Survive as long as possible.', 50, y); y += 25;
-    context.fillText('- Destroy enemies and bases for points.', 50, y); y += 50;
+    context.fillText('OBJECTIVE:', 50, y); y += 30;
+    context.fillText('- SURVIVE AS LONG AS POSSIBLE.', 50, y); y += 30;
+    context.fillText('- DESTROY ENEMIES AND BASES FOR POINTS.', 50, y); y += 50;
 
-    context.fillText('Collectibles:', 50, y); y += 35;
+    context.fillText('COLLECTIBLES:', 50, y); y += 40;
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'weapon-upgrade' });
-    context.fillText('Weapon Upgrade: Increases bullet count.', 80, y); y += 35;
+    context.fillText('WEAPON UPGRADE: INCREASES BULLET COUNT.', 80, y); y += 40;
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'extra-life' });
-    context.fillText('Extra Life: Gain one health point.', 80, y); y += 35;
+    context.fillText('EXTRA LIFE: GAIN ONE HEALTH POINT.', 80, y); y += 40;
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'energy-power-up' });
-    context.fillText('Energy Power-up: Refills player energy.', 80, y); y += 35;
+    context.fillText('ENERGY POWER-UP: REFILLS PLAYER ENERGY.', 80, y); y += 40;
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'emp-pulse' });
-    context.fillText('EMP Pulse: Destroys all enemies on screen.', 80, y); y += 35;
+    context.fillText('EMP PULSE: DESTROYS ALL ENEMIES ON SCREEN.', 80, y); y += 40;
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'shield' });
-    context.fillText('Shield: 20 seconds of invincibility.', 80, y); y += 50;
+    context.fillText('SHIELD: 20 SECONDS OF INVINCIBILITY.', 80, y); y += 60;
 
     context.textAlign = 'center';
-    context.fillText('Tap screen to close help.', GAME_SIZE / 2, y);
+    context.fillStyle = '#FFD700'; // Gold
+    context.fillText('TAP/CLICK ANYWHERE TO CLOSE', GAME_SIZE / 2, y);
 }
 
 
@@ -1090,22 +1094,30 @@ function updateBoss(deltaTime) {
     }
 }
 
-function applyPlayerDamage(damage) {
+function applyPlayerDamage(damage, isFatal = false) {
     if (player.isShielded) return;
 
-    player.energy -= damage;
+    if (isFatal) {
+        player.lives--;
+        player.energy = MAX_PLAYER_ENERGY; // Refill energy on losing a life
+        player.weaponLevel = 1; // Power-ups reset on losing a life
+    } else {
+        player.energy -= damage;
+    }
+    
     screenShake = 15;
     screenFlashAlpha = 1;
     createExplosion(player.x + player.width / 2, player.y + player.height / 2, 20);
 
-    if (player.energy <= 0) {
+    if (player.lives <= 0) {
+        gameOver = true;
+    } else if (player.energy <= 0) {
+        // If energy runs out, lose a life and restart level
         player.lives--;
         player.weaponLevel = 1; // Power-ups reset on losing a life
-
         if (player.lives <= 0) {
             gameOver = true;
         } else {
-            // Player lost a life but not game over
             restartLevel(); // Restart the current level
         }
     }
@@ -1440,7 +1452,7 @@ function update(deltaTime) {
         if (!isBossFight) {
             for (let i = enemies.length - 1; i >= 0; i--) {
                 if (enemies[i] && checkCollision(player, enemies[i])) {
-                    applyPlayerDamage(DAMAGE_PER_HIT);
+                    applyPlayerDamage(0, true);
                     enemies.splice(i, 1);
                 }
             }
@@ -1473,13 +1485,13 @@ function update(deltaTime) {
 
             // Player vs boss body (only in boss fight)
             if (boss !== null && checkCollision(player, boss)) {
-                applyPlayerDamage(DAMAGE_PER_HIT); // Apply 1 damage instead of instant kill
+                applyPlayerDamage(0, true); // Apply 1 damage instead of instant kill
             }
         }
 
         // Player vs terrain (runs in both modes)
         if (checkTerrainCollision(player)) {
-            applyPlayerDamage(DAMAGE_PER_HIT);
+            applyPlayerDamage(0, true);
             player.x = GAME_SIZE / 4;
             player.y = GAME_SIZE / 2 - PLAYER_HEIGHT / 2;
         }
@@ -1610,17 +1622,96 @@ function draw() {
     }
 
     if (gameOver) {
-        offscreenCtx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+        // Dark overlay
+        offscreenCtx.fillStyle = 'rgba(0, 0, 0, 0.9)';
         offscreenCtx.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
-        offscreenCtx.fillStyle = 'white';
-        offscreenCtx.font = `40px Arial`;
+
+        // Animated Stars (re-use existing drawStars, but maybe make them faster/more)
+        offscreenCtx.save();
+        offscreenCtx.translate(0, (Date.now() / 50) % GAME_SIZE); // Scroll stars
+        drawStars(offscreenCtx);
+        offscreenCtx.translate(0, -GAME_SIZE); // Draw a second set for seamless loop
+        drawStars(offscreenCtx);
+        offscreenCtx.restore();
+
+        // Animated Nebula/Galaxy effect
+        const time = Date.now() / 1000;
+        const nebulaX = GAME_SIZE / 2 + Math.sin(time * 0.5) * 100;
+        const nebulaY = GAME_SIZE / 2 + Math.cos(time * 0.7) * 100;
+        const nebulaRadius = GAME_SIZE * 0.4 + Math.sin(time * 1.2) * 50;
+
+        const nebulaGradient = offscreenCtx.createRadialGradient(
+            nebulaX, nebulaY, nebulaRadius * 0.1,
+            nebulaX, nebulaY, nebulaRadius
+        );
+        nebulaGradient.addColorStop(0, 'rgba(100, 0, 150, 0.3)'); // Deep Purple
+        nebulaGradient.addColorStop(0.5, 'rgba(0, 100, 150, 0.2)'); // Deep Blue
+        nebulaGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        offscreenCtx.fillStyle = nebulaGradient;
+        offscreenCtx.beginPath();
+        offscreenCtx.arc(nebulaX, nebulaY, nebulaRadius, 0, Math.PI * 2);
+        offscreenCtx.fill();
+
+        // Debris field (simple animated particles)
+        for (let i = 0; i < 20; i++) {
+            const debrisX = (i * 50 + Date.now() / 10) % (GAME_SIZE + 100) - 50;
+            const debrisY = (i * 70 + Date.now() / 15) % (GAME_SIZE + 100) - 50;
+            offscreenCtx.fillStyle = 'rgba(100, 100, 100, 0.5)';
+            offscreenCtx.fillRect(debrisX, debrisY, 2, 2);
+        }
+
+        // GAME OVER title with advanced animation
+        offscreenCtx.save();
+        const titleScale = 1 + Math.sin(time * 2) * 0.08; // More pronounced pulsating
+        const titleAlpha = 0.8 + Math.sin(time * 3) * 0.2; // Fading effect
+        offscreenCtx.translate(GAME_SIZE / 2, GAME_SIZE / 2 - 150);
+        offscreenCtx.scale(titleScale, titleScale);
+        offscreenCtx.globalAlpha = titleAlpha;
+
+        offscreenCtx.fillStyle = '#FFD700'; // Gold
+        offscreenCtx.font = `bold 80px 'Lucida Console', monospace`;
         offscreenCtx.textAlign = 'center';
-        offscreenCtx.fillText('GAME OVER', GAME_SIZE / 2, GAME_SIZE / 2 - 40);
-        offscreenCtx.font = `24px Arial`;
-        offscreenCtx.fillText(`Score: ${score}`, GAME_SIZE / 2, GAME_SIZE / 2);
-        offscreenCtx.fillText(`High Score: ${highScore}`, GAME_SIZE / 2, GAME_SIZE / 2 + 30);
-        offscreenCtx.font = `20px Arial`;
-        offscreenCtx.fillText('Tap or Press Space to Restart', GAME_SIZE / 2, GAME_SIZE / 2 + 70);
+        offscreenCtx.shadowColor = 'rgba(255, 215, 0, 0.8)'; // Gold glow
+        offscreenCtx.shadowBlur = 20;
+        offscreenCtx.fillText('GAME OVER', 0, 0);
+        offscreenCtx.restore();
+
+        // Reset shadow and alpha
+        offscreenCtx.shadowColor = 'transparent';
+        offscreenCtx.shadowBlur = 0;
+        offscreenCtx.globalAlpha = 1;
+
+        // Score display with subtle animation
+        offscreenCtx.fillStyle = '#00FFFF'; // Cyan
+        offscreenCtx.font = `40px 'Lucida Console', monospace`;
+        offscreenCtx.fillText(`SCORE: ${score}`, GAME_SIZE / 2, GAME_SIZE / 2 + 20);
+
+        offscreenCtx.fillStyle = '#ADFF2F'; // GreenYellow
+        offscreenCtx.font = `32px 'Lucida Console', monospace`;
+        offscreenCtx.fillText(`HIGH SCORE: ${highScore}`, GAME_SIZE / 2, GAME_SIZE / 2 + 80);
+
+        // Restart button with enhanced hover and animation
+        const button = { x: GAME_SIZE / 2 - 150, y: GAME_SIZE / 2 + 150, width: 300, height: 70 };
+        const isHovering = mouse.x > button.x && mouse.x < button.x + button.width && mouse.y > button.y && mouse.y < button.y + button.height;
+
+        offscreenCtx.save();
+        offscreenCtx.translate(button.x + button.width / 2, button.y + button.height / 2);
+        if (isHovering) {
+            const hoverScale = 1.05 + Math.sin(time * 5) * 0.02;
+            offscreenCtx.scale(hoverScale, hoverScale);
+            offscreenCtx.shadowColor = 'rgba(0, 255, 255, 0.7)';
+            offscreenCtx.shadowBlur = 15;
+        }
+
+        offscreenCtx.fillStyle = isHovering ? '#00BFFF' : '#1E90FF'; // DeepSkyBlue / DodgerBlue
+        offscreenCtx.fillRect(-button.width / 2, -button.height / 2, button.width, button.height);
+        offscreenCtx.strokeStyle = 'white';
+        offscreenCtx.lineWidth = 4;
+        offscreenCtx.strokeRect(-button.width / 2, -button.height / 2, button.width, button.height);
+        offscreenCtx.fillStyle = 'white';
+        offscreenCtx.font = `bold 32px 'Lucida Console', monospace`;
+        offscreenCtx.fillText('RESTART', 0, 10); // Adjust Y for vertical centering
+        offscreenCtx.restore();
     }
 
     if (isHelpScreenVisible) {
@@ -1634,10 +1725,7 @@ function draw() {
 }
 
 function isClickInsideRect(x, y, rect) {
-    return rect.x < rect.x + rect.width &&
-           rect.x + rect.width > rect.x &&
-           rect.y < rect.y + rect.height &&
-           rect.y + rect.height > rect.y;
+    return x > rect.x && x < rect.x + rect.width && y > rect.y && y < rect.y + rect.height;
 }
 
 // Event Listeners for Keyboard
@@ -1659,16 +1747,19 @@ document.addEventListener('keyup', (e) => {
 
 // Event Listeners for Touch
 canvas.addEventListener('touchstart', (e) => {
-    if (gameOver) {
-        initGame();
-        return;
-    }
     e.preventDefault();
-
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
     const localTouchX = (touch.clientX - rect.left) * (GAME_SIZE / rect.width);
     const localTouchY = (touch.clientY - rect.top) * (GAME_SIZE / rect.height);
+
+    if (gameOver) {
+        const button = { x: GAME_SIZE / 2 - 150, y: GAME_SIZE / 2 + 150, width: 300, height: 70 };
+        if (isClickInsideRect(localTouchX, localTouchY, button)) {
+            initGame();
+        }
+        return;
+    }
 
     if (isHelpScreenVisible) {
         isHelpScreenVisible = false;
@@ -1680,6 +1771,7 @@ canvas.addEventListener('touchstart', (e) => {
         return;
     }
 
+    // If none of the UI elements were touched, assume it's for player movement
     isTouching = true;
     isFiring = true; // Start firing on touch
     
@@ -1693,6 +1785,36 @@ canvas.addEventListener('touchmove', (e) => {
         const rect = canvas.getBoundingClientRect();
         touchX = (e.touches[0].clientX - rect.left) * (GAME_SIZE / rect.width);
         touchY = (e.touches[0].clientY - rect.top) * (GAME_SIZE / rect.height);
+    }
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    mouse.x = (e.clientX - rect.left) * (GAME_SIZE / rect.width);
+    mouse.y = (e.clientY - rect.top) * (GAME_SIZE / rect.height);
+});
+
+canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = (e.clientX - rect.left) * (GAME_SIZE / rect.width);
+    const clickY = (e.clientY - rect.top) * (GAME_SIZE / rect.height);
+
+    if (gameOver) {
+        const button = { x: GAME_SIZE / 2 - 150, y: GAME_SIZE / 2 + 150, width: 300, height: 70 };
+        if (isClickInsideRect(clickX, clickY, button)) {
+            initGame();
+        }
+        return;
+    }
+
+    if (isHelpScreenVisible) {
+        isHelpScreenVisible = false;
+        return;
+    }
+
+    if (isClickInsideRect(clickX, clickY, helpIcon)) {
+        isHelpScreenVisible = true;
+        return;
     }
 });
 
