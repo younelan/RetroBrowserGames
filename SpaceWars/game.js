@@ -811,6 +811,16 @@ function drawCollectible(context, collectible) {
             context.closePath();
             context.fill();
             break;
+        case 'energy-power-up':
+            context.fillStyle = '#0000FF'; // Blue color for energy
+            context.beginPath();
+            context.moveTo(x, y + height / 2);
+            context.lineTo(x + width / 2, y);
+            context.lineTo(x + width, y + height / 2);
+            context.lineTo(x + width / 2, y + height);
+            context.closePath();
+            context.fill();
+            break;
         case 'emp-pulse':
             context.fillStyle = '#00FFFF';
             context.beginPath();
@@ -873,6 +883,9 @@ function drawHelpScreen(context) {
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'extra-life' });
     context.fillText('Extra Life: Gain one health point.', 80, y); y += 35;
+
+    drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'energy-power-up' });
+    context.fillText('Energy Power-up: Refills player energy.', 80, y); y += 35;
 
     drawCollectible(context, { x: 50, y: y - 15, width: 20, height: 20, type: 'emp-pulse' });
     context.fillText('EMP Pulse: Destroys all enemies on screen.', 80, y); y += 35;
@@ -1344,7 +1357,7 @@ function update(deltaTime) {
                 if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
                     createExplosion(enemies[j].x + enemies[j].width / 2, enemies[j].y + enemies[j].height / 2, 10);
                     if (Math.random() < 0.2) { // 20% chance to drop
-                        const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse', 'shield'];
+                        const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse', 'shield', 'energy-power-up'];
                         const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
                         collectibles.push({ x: enemies[j].x, y: enemies[j].y, width: 20, height: 20, type: type });
                     }
@@ -1402,6 +1415,9 @@ function update(deltaTime) {
                     break;
                 case 'extra-life':
                     player.lives++;
+                    break;
+                case 'energy-power-up':
+                    player.energy = MAX_PLAYER_ENERGY;
                     break;
                 case 'emp-pulse':
                     score += enemies.length * 10;
