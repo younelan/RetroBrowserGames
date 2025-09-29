@@ -2,6 +2,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 const GAME_SIZE = 800; // Logical game size
+const CANVAS_BACKGROUND_COLOR = '#000'; // Default canvas background color
 
 // Create an offscreen canvas for double buffering
 const offscreenCanvas = document.createElement('canvas');
@@ -83,6 +84,8 @@ const ENEMY_TYPES = [
         speedMin: 3,
         speedMax: 5,
         color: '#8B0000', // Dark Red
+        startLevel: 1,
+        numberHit: 1,
         draw: function(context, enemy) { // Changed to accept context
             const ex = enemy.x;
             const ey = enemy.y;
@@ -134,6 +137,8 @@ const ENEMY_TYPES = [
         speedMin: 2,
         speedMax: 4,
         color: '#4B0082', // Indigo
+        startLevel: 1,
+        numberHit: 1,
         draw: function(context, enemy) { // Changed to accept context
             const ex = enemy.x;
             const ey = enemy.y;
@@ -176,6 +181,8 @@ const ENEMY_TYPES = [
         speedMin: 1,
         speedMax: 3,
         color: '#2F4F4F', // DarkSlateGray
+        startLevel: 5,
+        numberHit: 2,
         draw: function(context, enemy) { // Changed to accept context
             const ex = enemy.x;
             const ey = enemy.y;
@@ -219,6 +226,8 @@ const ENEMY_TYPES = [
         speedMin: 3,
         speedMax: 5,
         color: '#006400', // Dark Green
+        startLevel: 9,
+        numberHit: 1,
         draw: function(context, enemy) {
             const ex = enemy.x;
             const ey = enemy.y;
@@ -243,6 +252,8 @@ const ENEMY_TYPES = [
         speedMin: 1.5,
         speedMax: 3,
         color: '#696969', // DimGray
+        startLevel: 15,
+        numberHit: 2,
         draw: function(context, enemy) {
             const ex = enemy.x;
             const ey = enemy.y;
@@ -284,6 +295,8 @@ const ENEMY_TYPES = [
         speedMin: 4,
         speedMax: 6,
         color: '#1A1A1A', // Very Dark Gray
+        startLevel: 20,
+        numberHit: 2,
         draw: function(context, enemy) {
             const ex = enemy.x;
             const ey = enemy.y;
@@ -315,6 +328,158 @@ const ENEMY_TYPES = [
             context.fill();
 
             context.restore();
+        }
+    },
+    {
+        name: 'Dreadnought',
+        width: 150,
+        height: 80,
+        speedMin: 0.8,
+        speedMax: 1.5,
+        color: '#4A0000', // Very Dark Red
+        startLevel: 25,
+        numberHit: 3,
+        draw: function(context, enemy) {
+            const ex = enemy.x;
+            const ey = enemy.y;
+            const ew = enemy.width;
+            const eh = enemy.height;
+
+            // Main body - massive, blocky
+            let mainBodyGradient = context.createLinearGradient(ex, ey, ex + ew, ey + eh);
+            mainBodyGradient.addColorStop(0, '#4A0000'); // Very Dark Red
+            mainBodyGradient.addColorStop(0.5, '#800000'); // Maroon
+            mainBodyGradient.addColorStop(1, '#4A0000'); // Very Dark Red
+            context.fillStyle = mainBodyGradient;
+
+            context.beginPath();
+            context.moveTo(ex, ey + eh * 0.2);
+            context.lineTo(ex + ew * 0.8, ey);
+            context.lineTo(ex + ew, ey + eh * 0.5);
+            context.lineTo(ex + ew * 0.8, ey + eh);
+            context.lineTo(ex, ey + eh * 0.8);
+            context.closePath();
+            context.fill();
+
+            // Command Bridge / Core
+            context.fillStyle = '#B22222'; // FireBrick
+            context.beginPath();
+            context.ellipse(ex + ew * 0.6, ey + eh / 2, ew * 0.15, eh * 0.3, 0, 0, Math.PI * 2);
+            context.fill();
+
+            // Heavy Cannons (multiple)
+            context.fillStyle = '#36454F'; // Charcoal
+            context.fillRect(ex + ew * 0.7, ey + eh * 0.1, ew * 0.3, eh * 0.1);
+            context.fillRect(ex + ew * 0.7, ey + eh * 0.8, ew * 0.3, eh * 0.1);
+            context.fillRect(ex + ew * 0.9, ey + eh * 0.45, ew * 0.1, eh * 0.1);
+
+            // Engine Exhausts
+            context.fillStyle = '#FF8C00'; // DarkOrange
+            context.fillRect(ex, ey + eh * 0.25, 10, eh * 0.1);
+            context.fillRect(ex, ey + eh * 0.65, 10, eh * 0.1);
+        }
+    },
+    {
+        name: 'Titan',
+        width: 200,
+        height: 100,
+        speedMin: 0.5,
+        speedMax: 1,
+        startLevel: 30,
+        numberHit: 4,
+        health: 200, // Very high health
+        color: '#5C0000', // Darker Red
+        draw: function(context, enemy) {
+            const ex = enemy.x;
+            const ey = enemy.y;
+            const ew = enemy.width;
+            const eh = enemy.height;
+
+            // Main body - colossal, imposing
+            let mainBodyGradient = context.createLinearGradient(ex, ey, ex + ew, ey + eh);
+            mainBodyGradient.addColorStop(0, '#5C0000'); // Darker Red
+            mainBodyGradient.addColorStop(0.5, '#A00000'); // Dark Red
+            mainBodyGradient.addColorStop(1, '#5C0000'); // Darker Red
+            context.fillStyle = mainBodyGradient;
+
+            context.beginPath();
+            context.moveTo(ex, ey + eh * 0.3);
+            context.lineTo(ex + ew * 0.7, ey);
+            context.lineTo(ex + ew, ey + eh * 0.4);
+            context.lineTo(ex + ew, ey + eh * 0.6);
+            context.lineTo(ex + ew * 0.7, ey + eh);
+            context.lineTo(ex, ey + eh * 0.7);
+            context.closePath();
+            context.fill();
+
+            // Central Core / Reactor
+            context.fillStyle = '#FFD700'; // Gold
+            context.beginPath();
+            context.arc(ex + ew * 0.5, ey + eh / 2, eh * 0.25, 0, Math.PI * 2);
+            context.fill();
+
+            // Heavy Turrets (multiple, large)
+            context.fillStyle = '#36454F'; // Charcoal
+            context.fillRect(ex + ew * 0.6, ey + eh * 0.1, ew * 0.3, eh * 0.15);
+            context.fillRect(ex + ew * 0.6, ey + eh * 0.75, ew * 0.3, eh * 0.15);
+            context.fillRect(ex + ew * 0.8, ey + eh * 0.45, ew * 0.2, eh * 0.1);
+
+            // Massive Engines
+            context.fillStyle = '#FF4500'; // OrangeRed
+            context.fillRect(ex, ey + eh * 0.1, 20, eh * 0.2);
+            context.fillRect(ex, ey + eh * 0.7, 20, eh * 0.2);
+        }
+    },
+    {
+        name: 'Vanguard',
+        width: 120,
+        height: 70,
+        speedMin: 1.5,
+        speedMax: 3,
+        color: '#6A5ACD', // SlateBlue
+        startLevel: 18,
+        numberHit: 5,
+        draw: function(context, enemy) {
+            const ex = enemy.x;
+            const ey = enemy.y;
+            const ew = enemy.width;
+            const eh = enemy.height;
+
+            // Main body - robust, angular
+            let mainBodyGradient = context.createLinearGradient(ex, ey, ex + ew, ey + eh);
+            mainBodyGradient.addColorStop(0, '#6A5ACD'); // SlateBlue
+            mainBodyGradient.addColorStop(0.5, '#7B68EE'); // MediumSlateBlue
+            mainBodyGradient.addColorStop(1, '#6A5ACD'); // SlateBlue
+            context.fillStyle = mainBodyGradient;
+
+            context.beginPath();
+            context.moveTo(ex, ey + eh / 2); // Front tip
+            context.lineTo(ex + ew * 0.8, ey); // Top back
+            context.lineTo(ex + ew, ey + eh * 0.2); // Rear top
+            context.lineTo(ex + ew, ey + eh * 0.8); // Rear bottom
+            context.lineTo(ex + ew * 0.8, ey + eh); // Bottom back
+            context.closePath();
+            context.fill();
+
+            // Reinforced Cockpit
+            context.fillStyle = '#B0C4DE'; // LightSteelBlue
+            context.beginPath();
+            context.ellipse(ex + ew * 0.6, ey + eh / 2, ew * 0.1, eh * 0.2, 0, 0, Math.PI * 2);
+            context.fill();
+
+            // Dual Cannons
+            context.fillStyle = '#36454F'; // Charcoal
+            context.fillRect(ex + ew * 0.85, ey + eh * 0.15, ew * 0.15, eh * 0.1);
+            context.fillRect(ex + ew * 0.85, ey + eh * 0.75, ew * 0.15, eh * 0.1);
+
+            // Shield Generators (small glowing points)
+            context.fillStyle = '#00FFFF'; // Cyan
+            context.beginPath();
+            context.arc(ex + ew * 0.2, ey + eh * 0.2, 3, 0, Math.PI * 2);
+            context.fill();
+            context.beginPath();
+            context.arc(ex + ew * 0.2, ey + eh * 0.8, 3, 0, Math.PI * 2);
+            context.fill();
         }
     }
 ];
@@ -390,7 +555,7 @@ function initGame() {
     lastBulletTime = 0;
     lastEnemySpawnTime = 0;
     lastBaseSpawnTime = 0;
-    level = 1; // This is line 401
+    level = 1; 
     enemiesToDefeat = 5;
     currentEnemiesDefeated = 0;
     levelMessage = '';
@@ -1204,39 +1369,35 @@ function update(deltaTime) {
 
         // Spawn enemies
         if (enemies.length < (level * 2) && Date.now() - lastEnemySpawnTime > ENEMY_SPAWN_INTERVAL) {
-            let availableEnemies = ENEMY_TYPES;
-            if (level < 5) {
-                availableEnemies = ENEMY_TYPES.filter(type => type.name !== 'Serpent' && type.name !== 'Assault' && type.name !== 'Stealth');
-            } else if (level < 8) { // Serpent starts at level 5
-                availableEnemies = ENEMY_TYPES.filter(type => type.name !== 'Assault' && type.name !== 'Stealth');
-            } else if (level < 12) { // Assault starts at level 8
-                availableEnemies = ENEMY_TYPES.filter(type => type.name !== 'Stealth');
+            const availableEnemies = ENEMY_TYPES.filter(type => level >= type.startLevel);
+            if (availableEnemies.length > 0) {
+                const enemyType = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
+
+                const spawnX = GAME_SIZE;
+                const terrainY = getTerrainHeightAt(spawnX);
+                const spawnY = Math.random() * (terrainY - enemyType.height - 50);
+
+                let newEnemy = {
+                    x: spawnX,
+                    y: spawnY,
+                    width: enemyType.width,
+                    height: enemyType.height,
+                    speed: enemyType.speedMin + Math.random() * (enemyType.speedMax - enemyType.speedMin),
+                    type: enemyType,
+                    health: enemyType.numberHit, // Use numberHit as initial health
+                    lastFire: Date.now() + Math.random() * ENEMY_FIRE_COOLDOWN,
+                    alpha: 1 // For stealth enemy
+                };
+
+                if (enemyType.name === 'Serpent') {
+                    newEnemy.startY = newEnemy.y;
+                    newEnemy.amplitude = 20 + Math.random() * 30;
+                    newEnemy.frequency = 50 + Math.random() * 50;
+                }
+
+                enemies.push(newEnemy);
+                lastEnemySpawnTime = Date.now();
             }
-            const enemyType = availableEnemies[Math.floor(Math.random() * availableEnemies.length)];
-
-            const spawnX = GAME_SIZE;
-            const terrainY = getTerrainHeightAt(spawnX);
-            const spawnY = Math.random() * (terrainY - enemyType.height - 50);
-
-            let newEnemy = {
-                x: spawnX,
-                y: spawnY,
-                width: enemyType.width,
-                height: enemyType.height,
-                speed: enemyType.speedMin + Math.random() * (enemyType.speedMax - enemyType.speedMin),
-                type: enemyType,
-                lastFire: Date.now() + Math.random() * ENEMY_FIRE_COOLDOWN,
-                alpha: 1 // For stealth enemy
-            };
-
-            if (enemyType.name === 'Serpent') {
-                newEnemy.startY = newEnemy.y;
-                newEnemy.amplitude = 20 + Math.random() * 30;
-                newEnemy.frequency = 50 + Math.random() * 50;
-            }
-
-            enemies.push(newEnemy);
-            lastEnemySpawnTime = Date.now();
         }
         // Spawn bases
         if (level >= 3 && Date.now() - lastBaseSpawnTime > BASE_SPAWN_INTERVAL) {
@@ -1298,6 +1459,33 @@ function update(deltaTime) {
                         vy: 3, // Falls downwards
                         isBomb: true // Flag for special handling
                     });
+                } else if (enemy.type.name === 'Titan') {
+                    // Fires a powerful, slow projectile or a wide spread
+                    for (let angleOffset = -2; angleOffset <= 2; angleOffset++) {
+                        enemyBullets.push({
+                            x: enemy.x,
+                            y: enemy.y + enemy.height / 2,
+                            width: 25,
+                            height: 10,
+                            vx: -3,
+                            vy: angleOffset * 0.7,
+                            color: '#FF0000' // Red for powerful shots
+                        });
+                    }
+                } else if (enemy.type.name === 'Vanguard') {
+                    // Fires a quick burst of 3 bullets
+                    for (let k = 0; k < 3; k++) {
+                        setTimeout(() => {
+                            enemyBullets.push({
+                                x: enemy.x,
+                                y: enemy.y + enemy.height / 2,
+                                width: 15,
+                                height: 5,
+                                vx: -7,
+                                vy: (Math.random() - 0.5) * 0.5 // Slight random spread
+                            });
+                        }, k * 100); // 100ms delay between shots
+                    }
                 } else {
                     // Default single bullet fire
                     enemyBullets.push({
@@ -1367,16 +1555,20 @@ function update(deltaTime) {
         for (let i = bullets.length - 1; i >= 0; i--) {
             for (let j = enemies.length - 1; j >= 0; j--) {
                 if (bullets[i] && enemies[j] && checkCollision(bullets[i], enemies[j])) {
-                    createExplosion(enemies[j].x + enemies[j].width / 2, enemies[j].y + enemies[j].height / 2, 10);
-                    if (Math.random() < 0.2) { // 20% chance to drop
-                        const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse', 'shield', 'energy-power-up'];
-                        const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
-                        collectibles.push({ x: enemies[j].x, y: enemies[j].y, width: 20, height: 20, type: type });
-                    }
+                    enemies[j].health--; // Decrement enemy health
+                    createExplosion(bullets[i].x, bullets[i].y, 5, '#FFD700');
                     bullets.splice(i, 1);
-                    enemies.splice(j, 1);
-                    score += 10;
-                    currentEnemiesDefeated++;
+                    if (enemies[j].health <= 0) {
+                        createExplosion(enemies[j].x + enemies[j].width / 2, enemies[j].y + enemies[j].height / 2, 10);
+                        if (Math.random() < 0.2) { // 20% chance to drop
+                            const collectibleTypes = ['weapon-upgrade', 'extra-life', 'emp-pulse', 'shield', 'energy-power-up'];
+                            const type = collectibleTypes[Math.floor(Math.random() * collectibleTypes.length)];
+                            collectibles.push({ x: enemies[j].x, y: enemies[j].y, width: 20, height: 20, type: type });
+                        }
+                        enemies.splice(j, 1);
+                        score += 10;
+                        currentEnemiesDefeated++;
+                    }
                     break;
                 }
             }
@@ -1521,6 +1713,10 @@ function draw() {
         offscreenCtx.translate(shakeX, shakeY);
     }
     offscreenCtx.clearRect(0, 0, GAME_SIZE, GAME_SIZE);
+
+    // Explicitly set the background color to black
+    offscreenCtx.fillStyle = CANVAS_BACKGROUND_COLOR;
+    offscreenCtx.fillRect(0, 0, GAME_SIZE, GAME_SIZE);
 
     drawStars(offscreenCtx);
     drawTerrain(offscreenCtx);
@@ -1736,6 +1932,9 @@ document.addEventListener('keydown', (e) => {
     }
     if (e.code in keys) {
         keys[e.code] = true;
+        if (e.code.startsWith('Arrow')) { // Prevent default scrolling for arrow keys
+            e.preventDefault();
+        }
     }
 });
 
