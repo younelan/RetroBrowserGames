@@ -172,14 +172,19 @@ gameLoop() {
     this.collectibleSpawnTimer = 0;
   }
 
-  // Update and draw collectibles
-  this.collectibles.forEach((collectible, index) => {
+  // Update and draw collectibles with expiration
+  this.collectibles = this.collectibles.filter((collectible, index) => {
     collectible.update();
+    if (collectible.expired) {
+      return false;
+    }
     collectible.draw(this.ctx);
-
+    
     if (this.isColliding(this.player, collectible)) {
       this.collectCollectible(index);
+      return false;
     }
+    return true;
   });
 
   this.animationFrame = requestAnimationFrame(() => this.gameLoop());
@@ -187,40 +192,35 @@ gameLoop() {
 
 
 handleLevelCompletion() {
-  if (this.bubbles.length > 0) {
-    requestAnimationFrame(() => this.handleLevelCompletion());
-    return;
-  }
-
-  let frameCount = 0;
-  const maxFrames = 120; // 2 seconds at 60fps
-
-  const showLevelComplete = () => {
-    this.ctx.fillStyle = "black";
-    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-    const fontSize = Math.min(this.canvas.width, this.canvas.height) * 0.08;
-    this.ctx.font = `${fontSize}px Arial`;
-    this.ctx.fillStyle = "white";
-    const text = "Level Complete!";
-    const metrics = this.ctx.measureText(text);
-    this.ctx.fillText(text, (this.canvas.width - metrics.width) / 2, this.canvas.height / 2);
-
-    frameCount++;
-    if (frameCount < maxFrames) {
-      requestAnimationFrame(showLevelComplete);
-    } else {
-      this.levelIndex++;
-      if (this.levelIndex >= levels.length) {
-        this.showWinScreen();
-      } else {
-        this.loadNextLevel();
-        requestAnimationFrame(() => this.gameLoop());
-      }
-    }
+  // Clear any remaining bubbles
+  this.bubbles = [];
+  
+  // Clear any remaining collectibles
+  this.collectibles = [];
+  
+  // Reset touch data
+  this.touchData = {
+    startTime: 0,
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    isDragging: false,
+    dragThreshold: 10,
+    tapThreshold: 150,
+    jumpTriggered: false,
+    moveThreshold: 3
   };
 
-  requestAnimationFrame(showLevelComplete);
+  this.levelIndex++;
+  if (this.levelIndex >= levels.length) {
+    cancelAnimationFrame(this.animationFrame);
+    this.showWinScreen();
+  } else {
+    this.loadNextLevel();
+    // Explicitly start the game loop again
+    this.animationFrame = requestAnimationFrame(() => this.gameLoop());
+  }
 }
 
 updateBubbles() {
@@ -251,6 +251,7 @@ loadNextLevel() {
   this.player = null;
   this.monsters = [];
   this.bubbles = [];
+  this.collectibles = [];
   this.initialize();
 }
 

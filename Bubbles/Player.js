@@ -66,16 +66,15 @@ export class Player {
   }
 
   isWallCollision(levelGrid, gridSize, speed) {
-    const col = Math.floor((this.x + (speed > 0 ? this.width : 0) + speed) / gridSize); // Adjust for width on the right
+    const col = Math.floor((this.x + (speed > 0 ? this.width : 0) + speed) / gridSize);
     const row = Math.floor(this.y / gridSize);
-    return levelGrid[row] && levelGrid[row][col] === 'B';
+    return levelGrid[row] && levelGrid[row][col] && levelGrid[row][col] !== ' ' && levelGrid[row][col] !== '1' && levelGrid[row][col] !== '+';
   }
 
-
   checkPlatformBelow(levelGrid, gridSize) {
-    const col = Math.floor((this.x + this.width/2) / gridSize); // Check middle of player
+    const col = Math.floor((this.x + this.width/2) / gridSize);
     const row = Math.floor((this.y + this.height) / gridSize);
-    if (levelGrid[row] && levelGrid[row][col] === 'B') {
+    if (levelGrid[row] && levelGrid[row][col] && levelGrid[row][col] !== ' ' && levelGrid[row][col] !== '1' && levelGrid[row][col] !== '+') {
       return { x: col * gridSize, y: row * gridSize };
     }
     return null;

@@ -6,16 +6,28 @@ export class Collectible {
     this.height = width;
     this.type = type;
     this.scale = width / 60;
-    // Remove bounce animation
+    this.timeLeft = 600; // 10 seconds at 60fps
+    this.expired = false;
   }
 
   update() {
-    // Remove bouncing
+    this.timeLeft--;
+    if (this.timeLeft <= 0) {
+      this.expired = true;
+    }
   }
 
   draw(ctx) {
+    // Only draw if not expired
+    if (this.expired) return;
+    
     ctx.save();
     ctx.translate(this.x, this.y);
+    
+    // Make it blink when about to expire
+    if (this.timeLeft < 60 && this.timeLeft % 10 < 5) {
+      ctx.globalAlpha = 0.5;
+    }
 
     switch(this.type) {
       case 'cherry':

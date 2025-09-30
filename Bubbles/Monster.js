@@ -28,14 +28,16 @@ export class Monster {
     const rightCell = levelGrid[gridY][gridX + 1];
     const belowCell = levelGrid[gridY + 1] ? levelGrid[gridY + 1][gridX] : null;
 
-    if (this.direction === 1 && rightCell === 'B') {
-        this.direction = -1;
-    } else if (this.direction === -1 && leftCell === 'B') {
-        this.direction = 1;
+    const isWall = (cell) => cell && cell !== ' ' && cell !== '1' && cell !== '+';
+
+    if (this.direction === 1 && isWall(rightCell)) {
+      this.direction = -1;
+    } else if (this.direction === -1 && isWall(leftCell)) {
+      this.direction = 1;
     }
 
-    if (belowCell !== 'B') {
-        this.y += this.speed * 1.5; // Faster falling
+    if (!isWall(belowCell)) {
+      this.y += this.speed * 1.5; // Faster falling
     }
 
     this.x += this.direction * this.speed * 1.2; // Slightly faster horizontal movement
