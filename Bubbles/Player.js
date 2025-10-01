@@ -13,7 +13,7 @@ export class Player {
     this.maxVelocity = 15; // Add max velocity limit
   }
 
-  update(keys, levelGrid, gridSize, jumpHeight) {
+  update(keys, levelGrid, gridSize, jumpHeight, deltaTime) {
     // Check if the cell below is empty
     const platformBelow = this.checkPlatformBelow(levelGrid, gridSize);
     
@@ -21,8 +21,8 @@ export class Player {
     this.velocity = Math.min(Math.max(this.velocity, -this.maxVelocity), this.maxVelocity);
     
     if (!this.isJumping && !platformBelow) {
-      this.velocity += this.gravity; // Use class gravity
-      this.y += this.velocity;
+      this.velocity += this.gravity * deltaTime; // Use class gravity
+      this.y += this.velocity * deltaTime;
 
       // Ensure the player stops falling when hitting a platform
       const newPlatformBelow = this.checkPlatformBelow(levelGrid, gridSize);
@@ -31,8 +31,8 @@ export class Player {
         this.velocity = 0;
       }
     } else if (this.isJumping) {
-      this.velocity += this.gravity; // Use class gravity
-      this.y += this.velocity;
+      this.velocity += this.gravity * deltaTime; // Use class gravity
+      this.y += this.velocity * deltaTime;
 
       if (this.velocity > 0 && platformBelow) {
         this.y = platformBelow.y - this.height;
@@ -43,12 +43,12 @@ export class Player {
 
     // Horizontal movement - make it more responsive
     if (keys['ArrowLeft'] && !this.isWallCollision(levelGrid, gridSize, -this.speed)) {
-      this.x -= this.speed * 1.2; // Slightly faster keyboard movement
+      this.x -= this.speed * 1.2 * deltaTime; // Slightly faster keyboard movement
       this.direction = -1;
     }
 
     if (keys['ArrowRight'] && !this.isWallCollision(levelGrid, gridSize, this.speed)) {
-      this.x += this.speed * 1.2; // Slightly faster keyboard movement
+      this.x += this.speed * 1.2 * deltaTime; // Slightly faster keyboard movement
       this.direction = 1;
     }
 

@@ -56,6 +56,8 @@ export class Game {
     this.collectibleSpawnInterval = 300; // Spawn every 5 seconds
 
     this.isGameOver = false;
+    this.playerBaseSpeed = 5;
+    this.lastTime = 0;
   }
 
   start() {
@@ -65,12 +67,14 @@ export class Game {
     }
     this.initialize();
     this.handleInput();
-    this.gameLoop();
+    requestAnimationFrame(this.gameLoop.bind(this));
   }
 
   initialize() {
     // Initialize player and monsters
     const currentLevel = levels[this.levelIndex];
+    const speedMultiplier = currentLevel.speedMultiplier || 1;
+    const levelSpeed = this.playerBaseSpeed * speedMultiplier;
     const levelGrid = this.level.grid;
 
     levelGrid.forEach((row, rowIndex) => {
@@ -79,7 +83,7 @@ export class Game {
         const y = rowIndex * this.gridSize;
 
         if (cell === '1') {
-          this.player = new Player(x, y, this.gridSize, this.gridSize, 5);
+          this.player = new Player(x, y, this.gridSize, this.gridSize, levelSpeed);
         } else if (cell === '+') {
           this.monsters.push(new Monster(x, y, this.gridSize, this.gridSize, 2));
         }
@@ -119,8 +123,15 @@ handleInput() {
     this.bubbles.push(bubble);
 }
 
-gameLoop() {
+gameLoop(timestamp) {
   if (this.isGameOver) return;
+
+  if (!this.lastTime) {
+    this.lastTime = timestamp;
+  }
+  const deltaTime = (timestamp - this.lastTime) / (1000 / 60); // Normalize to 60 FPS
+  this.lastTime = timestamp;
+
 
   this.ctx.fillStyle = "black";
   this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
@@ -138,9 +149,16 @@ gameLoop() {
     this.invincibleTime--;
   }
 
+  // Update keys from touch controls
+  this.keys['ArrowLeft'] = (this.dragDirection === 'left');
+  this.keys['ArrowRight'] = (this.dragDirection === 'right');
+
   // Update and draw player
-  this.player.update(this.keys, this.level.grid, this.gridSize, this.jumpHeight);
+  this.player.update(this.keys, this.level.grid, this.gridSize, this.jumpHeight, deltaTime);
   
+  // Reset one-time keys
+  this.keys['ArrowUp'] = false;
+
   // Only draw player every other frame when invincible (blinking effect)
   if (this.invincibleTime === 0 || this.invincibleTime % 2) {
     this.player.draw(this.ctx);
@@ -187,7 +205,7 @@ gameLoop() {
     return true;
   });
 
-  this.animationFrame = requestAnimationFrame(() => this.gameLoop());
+  this.animationFrame = requestAnimationFrame(this.gameLoop.bind(this));
 }
 
 
@@ -219,7 +237,7 @@ handleLevelCompletion() {
   } else {
     this.loadNextLevel();
     // Explicitly start the game loop again
-    this.animationFrame = requestAnimationFrame(() => this.gameLoop());
+    this.animationFrame = requestAnimationFrame(this.gameLoop.bind(this));
   }
 }
 
@@ -372,7 +390,6 @@ isColliding(obj1, obj2) {
       this.player.y *= scaleFactor;
       this.player.width = newGridSize;
       this.player.height = newGridSize;
-      this.player.speed = (5 * newGridSize) / this.baseGridSize;
     }
 
     this.monsters.forEach(monster => {
@@ -432,6 +449,7 @@ isColliding(obj1, obj2) {
         this.touchData.lastY = point.clientY;
         this.touchData.isDragging = false;
         this.touchData.jumpTriggered = false;
+        this.dragDirection = null;
       }
     };
 
@@ -440,27 +458,20 @@ isColliding(obj1, obj2) {
       if (!this.touchData.startTime) return;
 
       const point = e.touches ? e.touches[0] : e;
-      const deltaX = point.clientX - this.touchData.lastX;
+      const deltaX = point.clientX - this.touchData.startX;
       const totalDeltaY = point.clientY - this.touchData.startY;
       
-      // Continuous movement with acceleration
-      if (Math.abs(deltaX) > this.touchData.moveThreshold) {
-        const speedFactor = this.gridSize / this.baseGridSize;
-        const baseMovement = deltaX * this.dragSensitivity * this.moveSpeed;
-        const acceleratedMovement = baseMovement * speedFactor * 1.2; // Added acceleration
-        this.player.x += acceleratedMovement;
-        this.player.direction = deltaX > 0 ? 1 : -1;
-
-        // Update last position more gradually for smoother movement
-        this.touchData.lastX = point.clientX * 0.8 + this.touchData.lastX * 0.2;
+      if (Math.abs(deltaX) > this.touchData.dragThreshold) {
+        this.touchData.isDragging = true;
+        this.dragDirection = deltaX > 0 ? 'right' : 'left';
+      } else {
+        this.dragDirection = null;
       }
 
       // Improved jump handling
-      if (totalDeltaY < -this.touchData.dragThreshold && !this.touchData.jumpTriggered && !this.player.isJumping) {
+      if (this.touchData.isDragging && totalDeltaY < -this.touchData.dragThreshold && !this.touchData.jumpTriggered && !this.player.isJumping) {
         this.touchData.jumpTriggered = true;
-        const jumpScale = Math.sqrt(this.gridSize / 60);
-        this.player.velocity = this.player.baseJumpVelocity * jumpScale * (this.jumpHeight * 1.2);
-        this.player.isJumping = true;
+        this.keys['ArrowUp'] = true;
       }
 
       this.touchData.lastX = point.clientX;
@@ -480,6 +491,7 @@ isColliding(obj1, obj2) {
       this.touchData.startTime = 0;
       this.touchData.isDragging = false;
       this.keys['ArrowUp'] = false;
+      this.dragDirection = null;
     };
 
     // Add event listeners
