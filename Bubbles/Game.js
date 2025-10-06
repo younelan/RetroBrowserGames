@@ -12,11 +12,13 @@ export class Game {
     this.baseGridSize = 60; // Original grid size
     this.gridSize = this.baseGridSize; // Current grid size (will be adjusted)
     this.levelIndex = 0;
-    this.level = new Level(levels[this.levelIndex].grid);
+  // pass the whole level spec object so Level can read color1/color2 and other properties
+  this.level = new Level(levels[this.levelIndex]);
     this.player = null;
     this.monsters = [];
     this.bubbles = [];
     this.keys = {};
+  this._keyboardPressed = new Set();
     this.jumpHeight = levels[this.levelIndex].jumpHeight || 1;
     this.score = 0;
     this.lives = 3;
@@ -94,16 +96,85 @@ export class Game {
   }
 handleInput() {
     document.addEventListener('keydown', (e) => {
-        this.keys[e.key] = true;
+        // Normalize and prevent default for arrow keys to avoid page scroll
+        const key = e.key;
+        const code = e.code;
+        const keyCode = e.keyCode;
 
-        if (e.key === ' ' || e.key === 'Space') {
-            console.log("Bubble thrown!"); // Debugging
-            this.throwBubble();
+        if (key === 'ArrowLeft' || key === 'Left' || code === 'ArrowLeft' || keyCode === 37) {
+          e.preventDefault();
+          this.keys['ArrowLeft'] = true;
+          this._keyboardPressed.add('ArrowLeft');
+          return;
         }
+        if (key === 'ArrowRight' || key === 'Right' || code === 'ArrowRight' || keyCode === 39) {
+          e.preventDefault();
+          this.keys['ArrowRight'] = true;
+          this._keyboardPressed.add('ArrowRight');
+          return;
+        }
+        if (key === 'ArrowUp' || key === 'Up' || code === 'ArrowUp' || keyCode === 38) {
+          e.preventDefault();
+          this.keys['ArrowUp'] = true;
+          this._keyboardPressed.add('ArrowUp');
+          return;
+        }
+
+        // WASD / AD fallback for desktop
+        if (key === 'a' || key === 'A' || code === 'KeyA') {
+          this.keys['ArrowLeft'] = true;
+          this._keyboardPressed.add('ArrowLeft');
+          return;
+        }
+        if (key === 'd' || key === 'D' || code === 'KeyD') {
+          this.keys['ArrowRight'] = true;
+          this._keyboardPressed.add('ArrowRight');
+          return;
+        }
+
+        // Space (some browsers report ' ' or 'Spacebar'/'Space')
+        if (key === ' ' || key === 'Space' || key === 'Spacebar' || code === 'Space' || keyCode === 32) {
+            e.preventDefault();
+            this.throwBubble();
+            return;
+        }
+
+        // Default: store key as-is for any other usage
+        this.keys[key] = true;
     });
 
     document.addEventListener('keyup', (e) => {
-        this.keys[e.key] = false;
+        const key = e.key;
+        const code = e.code;
+        const keyCode = e.keyCode;
+        if (key === 'ArrowLeft' || key === 'Left' || key === 'a' || key === 'A' || code === 'ArrowLeft' || code === 'KeyA' || keyCode === 37) {
+          this.keys['ArrowLeft'] = false;
+          this._keyboardPressed.delete('ArrowLeft');
+          return;
+        }
+        if (key === 'ArrowRight' || key === 'Right' || key === 'd' || key === 'D' || code === 'ArrowRight' || code === 'KeyD' || keyCode === 39) {
+          this.keys['ArrowRight'] = false;
+          this._keyboardPressed.delete('ArrowRight');
+          return;
+        }
+        if (key === 'ArrowUp' || key === 'Up' || code === 'ArrowUp' || keyCode === 38) {
+          this.keys['ArrowUp'] = false;
+          this._keyboardPressed.delete('ArrowUp');
+          return;
+        }
+
+        // Space
+        if (key === ' ' || key === 'Space' || key === 'Spacebar' || code === 'Space' || keyCode === 32) {
+            // nothing to store, bubble is instantaneous on keydown
+            return;
+        }
+
+        this.keys[key] = false;
+    });
+
+    // Clear keys on window blur to avoid stuck keys
+    window.addEventListener('blur', () => {
+      this.keys = {};
     });
 }
 
@@ -149,14 +220,21 @@ gameLoop(timestamp) {
     this.invincibleTime--;
   }
 
-  // Update keys from touch controls
-  this.keys['ArrowLeft'] = (this.dragDirection === 'left');
-  this.keys['ArrowRight'] = (this.dragDirection === 'right');
+  // Compute effective keys per-frame so touch input doesn't permanently overwrite keyboard state
+  const effectiveKeys = Object.assign({}, this.keys);
+  if (this.touchData.startTime || this.touchData.isDragging) {
+    const keyboardBlocking = this._keyboardPressed.has('ArrowLeft') || this._keyboardPressed.has('ArrowRight');
+    if (!keyboardBlocking) {
+      effectiveKeys['ArrowLeft'] = (this.dragDirection === 'left');
+      effectiveKeys['ArrowRight'] = (this.dragDirection === 'right');
+    }
+    // Jump (one-time) may be triggered by touchMove earlier; effectiveKeys will reflect this.keys['ArrowUp']
+  }
 
-  // Update and draw player
-  this.player.update(this.keys, this.level.grid, this.gridSize, this.jumpHeight, deltaTime);
-  
-  // Reset one-time keys
+  // Update and draw player using effective keys
+  this.player.update(effectiveKeys, this.level.grid, this.gridSize, this.jumpHeight, deltaTime);
+
+  // Reset one-time keys (jump) in the main keys store so space/up must be pressed again
   this.keys['ArrowUp'] = false;
 
   // Only draw player every other frame when invincible (blinking effect)
@@ -265,7 +343,7 @@ updateBubbles() {
 }
 
 loadNextLevel() {
-  this.level = new Level(levels[this.levelIndex].grid);
+  this.level = new Level(levels[this.levelIndex]);
   this.player = null;
   this.monsters = [];
   this.bubbles = [];
@@ -434,7 +512,8 @@ isColliding(obj1, obj2) {
 
   setupTouchControls() {
     const touchStart = (e) => {
-      e.preventDefault();
+      // Prevent default only for touch events (not mouse), so desktop clicks aren't blocked
+      if (e.touches) e.preventDefault();
       const point = e.touches ? e.touches[0] : e;
       const rect = this.canvas.getBoundingClientRect();
       const x = point.clientX - rect.left;
@@ -450,11 +529,12 @@ isColliding(obj1, obj2) {
         this.touchData.isDragging = false;
         this.touchData.jumpTriggered = false;
         this.dragDirection = null;
+          // keep this.keys intact; we'll compute effective keys per-frame so touch doesn't mutate keyboard state
       }
     };
 
     const touchMove = (e) => {
-      e.preventDefault();
+      if (e.touches) e.preventDefault();
       if (!this.touchData.startTime) return;
 
       const point = e.touches ? e.touches[0] : e;
@@ -479,7 +559,7 @@ isColliding(obj1, obj2) {
     };
 
     const touchEnd = (e) => {
-      e.preventDefault();
+      if (e.changedTouches) e.preventDefault();
       const touchDuration = Date.now() - this.touchData.startTime;
       
       // Throw bubble if it was a quick tap without much movement
@@ -492,6 +572,7 @@ isColliding(obj1, obj2) {
       this.touchData.isDragging = false;
       this.keys['ArrowUp'] = false;
       this.dragDirection = null;
+      // keep this.keys intact; horizontal touch input will be ignored now that touch ended
     };
 
     // Add event listeners
