@@ -2,6 +2,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const playerCanvas = document.getElementById('playerBoard');
     const computerCanvas = document.getElementById('computerBoard');
+    const playerContainer = document.getElementById('playerContainer');
+    const computerContainer = document.getElementById('computerContainer');
     const playerCtx = playerCanvas.getContext('2d');
     const computerCtx = computerCanvas.getContext('2d');
     const startGameButton = document.getElementById('startGameButton'); // Get the button
@@ -103,18 +105,45 @@ document.addEventListener('DOMContentLoaded', () => {
             placeShipOnBoard(playerBoard, ship, ship.startRow, ship.startCol, proposedIsVertical);
         } else {
             // If invalid, revert ship's state to original and place it back
-            console.log("Cannot rotate ship here, reverting.");
             placeShipOnBoard(playerBoard, ship, originalShipState.row, originalShipState.col, originalShipState.isVertical);
+            // show a small feedback on the player canvas
+            // Position rotation feedback using canvas-local cell size and header offset
+            {
+                const cs = playerCanvas.width / gridSize;
+                const headerPx = cs;
+                addFloatingText(playerCanvas, 'Can\'t rotate here', '220,120,120', { center: false, x: (ship.startCol+0.5)*cs, y: headerPx + (ship.startRow+0.3)*cs, duration: 60 });
+            }
         }
         renderPlayerBoards();
     }
 
     // Initialize canvas dimensions and calculate cellSize
     function initializeCanvas(canvas, ctx) {
-        const displayWidth = canvas.clientWidth;
+        let displayWidth = canvas.clientWidth;
+
+        // Account for header row inside canvas: we'll add one extra 'cell' height to the canvas height.
+        // So the total canvas height = displayWidth + (displayWidth / gridSize)
+        // On narrow screens (mobile), make sure canvases fit vertically when stacked by limiting displayWidth accordingly.
+        if (window.innerWidth <= 768) {
+            const bothVisible = computerContainer && !computerContainer.classList.contains('hidden');
+            if (bothVisible) {
+                // availableHeight per canvas (roughly half the viewport minus UI chrome)
+                const availableHeight = Math.max(140, Math.floor((window.innerHeight - 140) / 2));
+                // We need displayWidth + displayWidth/gridSize <= availableHeight
+                const maxDisplay = Math.floor(availableHeight / (1 + 1 / gridSize));
+                displayWidth = Math.min(displayWidth, maxDisplay);
+            } else {
+                const availableHeight = Math.max(140, Math.floor(window.innerHeight - 160));
+                const maxDisplay = Math.floor(availableHeight / (1 + 1 / gridSize));
+                displayWidth = Math.min(displayWidth, maxDisplay);
+            }
+        }
+
+        // set canvas dimensions: width is displayWidth, height reserves one extra cell for header
+        const cellSizeLocal = displayWidth / gridSize;
         canvas.width = displayWidth;
-        canvas.height = displayWidth; // Make it square
-        return displayWidth / gridSize;
+        canvas.height = Math.ceil(displayWidth + cellSizeLocal);
+        return cellSizeLocal;
     }
     
     // Function to handle window resizing
@@ -127,23 +156,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Draw the grid
-    function drawGrid(ctx) {
+    function drawGrid(ctx, headerHeight) {
         ctx.strokeStyle = '#bbb'; // Grid line color
-        for (let i = 0; i <= gridSize; i++) {
-            ctx.beginPath();
-            ctx.moveTo(i * cellSize, 0);
-            ctx.lineTo(i * cellSize, gridSize * cellSize);
-            ctx.stroke();
 
+        // draw header background
+        ctx.fillStyle = 'rgba(20,30,40,0.85)';
+        ctx.fillRect(0, 0, ctx.canvas.width, headerHeight);
+
+        // vertical lines
+        for (let i = 0; i <= gridSize; i++) {
+            const x = i * cellSize;
             ctx.beginPath();
-            ctx.moveTo(0, i * cellSize);
-            ctx.lineTo(gridSize * cellSize, i * cellSize);
+            ctx.moveTo(x, headerHeight);
+            ctx.lineTo(x, headerHeight + gridSize * cellSize);
+            ctx.stroke();
+        }
+
+        // horizontal lines (shifted by headerHeight)
+        for (let i = 0; i <= gridSize; i++) {
+            const y = headerHeight + i * cellSize;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(gridSize * cellSize, y);
             ctx.stroke();
         }
     }
 
     // Draw all ships on a specific context
-    function drawAllShips(ctx, ships, isPlayerBoard) {
+    function drawAllShips(ctx, ships, isPlayerBoard, headerHeight) {
         for (const ship of ships) {
             // Determine ship fill color based on player/computer, sunk status
             let fillColor = '';
@@ -172,8 +212,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 let r = ship.isVertical ? ship.startRow + i : ship.startRow;
                 let c = ship.isVertical ? ship.startCol : ship.startCol + i;
 
+                const x = c * cellSize + 1;
+                const y = headerHeight + r * cellSize + 1;
                 ctx.beginPath();
-                ctx.rect(c * cellSize + 1, r * cellSize + 1, cellSize - 2, cellSize - 2);
+                ctx.rect(x, y, cellSize - 2, cellSize - 2);
 
                 // Draw fill for unhit segments (or for sunk ships)
                 if (ship.sunk || !ship.hits[i]) {
@@ -292,10 +334,101 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Floating text (Hit / Miss / Sunk) that rises and fades
+    function addFloatingText(canvas, text, colorRGB = '255,255,255', options = {}) {
+        const cx = options.center ? canvas.width / 2 : (options.x || canvas.width / 2);
+        const cy = options.center ? canvas.height / 2 : (options.y || canvas.height / 2);
+        const duration = options.duration || 50;
+        const size = options.size || Math.floor(canvas.width * (options.center ? 0.06 : 0.04));
+
+        animations.push({
+            canvas: canvas,
+            row: options.row ?? null,
+            col: options.col ?? null,
+            type: 'floatingText',
+            text: text,
+            x: cx,
+            y: cy,
+            color: colorRGB,
+            life: duration,
+            maxLife: duration,
+            size: size,
+            frame: 0,
+            duration: duration,
+            draw: function(ctx) {
+                const t = 1 - (this.life / this.maxLife);
+                const opacity = Math.max(0, this.life / this.maxLife);
+                ctx.save();
+                ctx.globalAlpha = opacity;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = `rgba(${this.color},${Math.min(1, opacity + 0.15)})`;
+                ctx.font = `bold ${this.size}px sans-serif`;
+                // slight upward movement
+                const y = this.y - t * (this.size * 1.4);
+                // shadow/glow
+                ctx.shadowColor = `rgba(0,0,0,${Math.min(0.6, opacity)})`;
+                ctx.shadowBlur = 8;
+                ctx.fillText(this.text, this.x, y);
+                ctx.restore();
+
+                this.life--;
+                if (this.life <= 0) this.duration = 0;
+            }
+        });
+    }
+
+    // Confetti particle for celebratory effect
+    class Confetti {
+        constructor(x, y, color, size, vx, vy, life, rot) {
+            this.x = x; this.y = y; this.color = color; this.size = size;
+            this.vx = vx; this.vy = vy; this.life = life; this.maxLife = life; this.rot = rot;
+        }
+        update() { this.x += this.vx; this.y += this.vy; this.vy += 0.08; this.rot += 0.12; this.life--; }
+        draw(ctx) {
+            const opacity = Math.max(0, this.life / this.maxLife);
+            ctx.save(); ctx.translate(this.x, this.y); ctx.rotate(this.rot);
+            ctx.fillStyle = `rgba(${this.color}, ${opacity})`;
+            ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size*0.6);
+            ctx.restore();
+        }
+    }
+
+    function addConfetti(canvas, count = 24) {
+        const cx = canvas.width / 2; const cy = canvas.height / 3;
+        const conf = [];
+        const colors = ['255,82,82','255,184,77','102,187,106','66,165,245','171,71,188'];
+        for (let i=0;i<count;i++) {
+            const angle = (Math.random() - 0.5) * Math.PI;
+            const speed = Math.random() * 4 + 1.5;
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed - 2;
+            const size = Math.random() * 8 + 6;
+            const life = Math.floor(Math.random() * 60) + 40;
+            const color = colors[Math.floor(Math.random()*colors.length)];
+            conf.push(new Confetti(cx, cy, color, size, vx, vy, life, Math.random()*Math.PI));
+        }
+
+        animations.push({
+            canvas: canvas,
+            type: 'confetti',
+            particles: conf,
+            frame: 0,
+            duration: 120,
+            draw: function(ctx) {
+                this.particles.forEach(p => { p.draw(ctx); p.update(); });
+                this.particles = this.particles.filter(p => p.life>0);
+                if (this.particles.length === 0) this.duration = 0;
+            }
+        });
+    }
+
     // Add explosion animation to the list
     function addExplosionAnimation(canvas, row, col) {
-        const x = col * cellSize + cellSize / 2;
-        const y = row * cellSize + cellSize / 2;
+        const cs = canvas.width / gridSize;
+        const x = col * cs + cs / 2;
+        // include header row offset
+        const y = cs + row * cs + cs / 2;
         const particles = [];
         const shardParticles = [];
         const particleCount = 26;
@@ -303,10 +436,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // core fire/flash particles
         for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * (cellSize * 0.12) + (cellSize * 0.03);
+            const speed = Math.random() * (cs * 0.12) + (cs * 0.03);
             const vx = Math.cos(angle) * speed;
             const vy = Math.sin(angle) * speed - Math.random() * 0.5;
-            const size = Math.random() * (cellSize * 0.12) + 2.5;
+            const size = Math.random() * (cs * 0.12) + 2.5;
             const life = Math.floor(Math.random() * 24) + 14; // Frames
             const colors = ['255,180,60', '255,90,30', '255,220,120'];
             const color = colors[Math.floor(Math.random() * colors.length)];
@@ -316,8 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // shards (metal/wood debris)
         for (let i = 0; i < 10; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const length = Math.random() * (cellSize * 0.45) + (cellSize * 0.1);
-            const speed = Math.random() * (cellSize * 0.14) + (cellSize * 0.04);
+            const length = Math.random() * (cs * 0.45) + (cs * 0.1);
+            const speed = Math.random() * (cs * 0.14) + (cs * 0.04);
             const life = Math.floor(Math.random() * 30) + 18;
             const colors = ['200,60,30', '120,90,60', '80,80,80'];
             const color = colors[Math.floor(Math.random() * colors.length)];
@@ -325,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // shockwave
-        const shockwave = new Shockwave(x, y, cellSize * 1.6, 26);
+        const shockwave = new Shockwave(x, y, cs * 1.6, 26);
 
         animations.push({
             canvas: canvas,
@@ -399,18 +532,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add splash animation to the list
     function addSplashAnimation(canvas, row, col) {
-        const x = col * cellSize + cellSize / 2;
-        const y = row * cellSize + cellSize / 2;
+        const cs = canvas.width / gridSize;
+        const x = col * cs + cs / 2;
+        // include header row offset
+        const y = cs + row * cs + cs / 2;
         const particles = [];
         const particleCount = 15; // Fewer particles than explosion
 
         // Add "droplets"
         for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * (cellSize * 0.08) + (cellSize * 0.01);
+            const speed = Math.random() * (cs * 0.08) + (cs * 0.01);
             const velocityX = Math.cos(angle) * speed;
             const velocityY = Math.sin(angle) * speed;
-            const size = Math.random() * (cellSize * 0.08) + 1;
+            const size = Math.random() * (cs * 0.08) + 1;
             const life = Math.floor(Math.random() * 20) + 15; // Longer life for droplets
 
             const colors = ['173,216,230', '255,255,255', '135,206,250']; // Light blue, white, light sky blue
@@ -424,7 +559,7 @@ document.addEventListener('DOMContentLoaded', () => {
         for (let i = 0; i < 3; i++) {
             ripples.push({
                 x: x, y: y, size: 0, life: 24 + i * 8, maxLife: 24 + i * 8,
-                update: function() { this.size += cellSize * (0.04 + i * 0.01); this.life--; },
+                update: function() { this.size += cs * (0.04 + i * 0.01); this.life--; },
                 draw: function(ctx) {
                     const opacity = Math.max(0, this.life / this.maxLife) * 0.9;
                     ctx.strokeStyle = `rgba(173, 216, 230, ${opacity})`;
@@ -439,10 +574,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // small upward droplets
         for (let i = 0; i < particleCount; i++) {
             const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.1;
-            const speed = Math.random() * (cellSize * 0.06) + (cellSize * 0.02);
+            const speed = Math.random() * (cs * 0.06) + (cs * 0.02);
             const velocityX = Math.cos(angle) * speed;
             const velocityY = Math.sin(angle) * speed - Math.random() * 0.4;
-            const size = Math.random() * (cellSize * 0.06) + 1;
+            const size = Math.random() * (cs * 0.06) + 1;
             const life = Math.floor(Math.random() * 20) + 12;
             const colors = ['173,216,230', '200,230,255', '150,200,255'];
             const color = colors[Math.floor(Math.random() * colors.length)];
@@ -471,10 +606,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+        // show a small 'Miss' floating text at the cell
+        // Position floating text using canvas-local cell size and header offset
+        const textCs = canvas.width / gridSize;
+        const textHeader = textCs;
+        addFloatingText(canvas, 'Miss', '140,200,230', { x: col * textCs + textCs/2, y: textHeader + row * textCs + textCs/2, row: row, col: col, duration: 42 });
     }
 
     // Draw shots (hits and misses)
-    function drawShots(ctx, shotsBoard) {
+    function drawShots(ctx, shotsBoard, headerHeight) {
         for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
                 // If there is an active animation for this cell on this canvas, skip the static marker
@@ -483,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (shotsBoard[r][c] === 2) { // Miss
                     // Draw a nicer droplet + small sheen for miss
                     const cx = c * cellSize + cellSize / 2;
-                    const cy = r * cellSize + cellSize / 2;
+                    const cy = headerHeight + r * cellSize + cellSize / 2;
                     const dropRadius = cellSize * 0.18;
                     // body
                     const grad = ctx.createRadialGradient(cx - dropRadius * 0.3, cy - dropRadius * 0.5, 1, cx, cy, dropRadius);
@@ -506,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else if (shotsBoard[r][c] === 3) { // Hit
                     // Draw a burn/crater mark for hit
                     const cx = c * cellSize + cellSize / 2;
-                    const cy = r * cellSize + cellSize / 2;
+                    const cy = headerHeight + r * cellSize + cellSize / 2;
                     const outer = cellSize * 0.36;
                     // dark scorched circle
                     ctx.beginPath();
@@ -567,9 +707,58 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderBoard(ctx, board, ships, shotsBoard, isPlayerBoard) {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        drawGrid(ctx);
-        drawAllShips(ctx, ships, isPlayerBoard);
-        drawShots(ctx, shotsBoard);
+        const headerHeight = cellSize; // reserve one row height for status
+        drawGrid(ctx, headerHeight);
+        drawAllShips(ctx, ships, isPlayerBoard, headerHeight);
+        drawShots(ctx, shotsBoard, headerHeight);
+        // Determine whether this board is currently 'active' (highlighted)
+        let isActive = false;
+        if (gameState === 'placement') {
+            isActive = isPlayerBoard; // while placing, player's board is active
+        } else if (gameState === 'playing') {
+            // When playing: computer board is active when it's player's turn (they attack it).
+            // Player board is active when it's computer's turn (they attack player).
+            isActive = isPlayerBoard ? !playerTurn : playerTurn;
+        }
+
+        // draw status text in header
+        ctx.save();
+        // if active, tint the header/background slightly and add a subtle highlight over the grid
+        if (isActive) {
+            // header tint
+            ctx.fillStyle = 'rgba(255, 240, 200, 0.08)';
+            ctx.fillRect(0, 0, ctx.canvas.width, headerHeight);
+            // grid tint
+            ctx.fillStyle = 'rgba(255, 240, 200, 0.03)';
+            ctx.fillRect(0, headerHeight, ctx.canvas.width, gridSize * cellSize);
+        }
+
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = `bold ${Math.floor(cellSize * 0.45)}px sans-serif`;
+        const title = isPlayerBoard ? 'Your Boats' : "Computer's Boats";
+        ctx.fillText(title, ctx.canvas.width / 2, headerHeight / 2);
+
+        // draw turn indicator circle on the right of the status line
+        const circleRadius = Math.max(4, Math.floor(cellSize * 0.15));
+        const circlePadding = Math.floor(cellSize * 0.15);
+        const circleX = ctx.canvas.width - circlePadding - circleRadius;
+        const circleY = headerHeight / 2;
+        if (isActive) {
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+            ctx.lineWidth = Math.max(1, Math.floor(cellSize * 0.06));
+            ctx.beginPath();
+            ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
+        ctx.restore();
     }
 
     // Check if a ship can be placed at a given position and orientation without overlapping other ships
@@ -640,17 +829,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper to get mouse position in grid coordinates
     function getMousePos(canvas, event) {
         const rect = canvas.getBoundingClientRect();
-        return {
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
-        };
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const cellSizeLocal = rect.width / gridSize;
+        return { x, y, cellSize: cellSizeLocal };
     }
 
     // Get ship at mouse position
     function getShipAtMousePos(e) {
         const mousePos = getMousePos(playerCanvas, e);
-        const col = Math.floor(mousePos.x / cellSize);
-        const row = Math.floor(mousePos.y / cellSize);
+        const col = Math.floor(mousePos.x / mousePos.cellSize);
+        // Account for header row reserved at top of canvas
+        const headerPx = mousePos.cellSize;
+        const row = Math.floor((mousePos.y - headerPx) / mousePos.cellSize);
 
         if (row < 0 || row >= gridSize || col < 0 || col >= gridSize) {
             return null;
@@ -660,10 +851,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Main render functions
     function renderPlayerBoards() {
+        // Use local cell size for player canvas when rendering
+        cellSize = playerCanvas.width / gridSize;
         renderBoard(playerCtx, playerBoard, playerShips, computerShots, true);
     }
 
     function renderComputerBoards() {
+        // Use local cell size for computer canvas when rendering
+        cellSize = computerCanvas.width / gridSize;
         renderBoard(computerCtx, computerBoard, computerShips, playerShots, false);
     }
 
@@ -676,9 +871,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const target = board[row][col];
                 if (target !== 0) { // It's a ship
                     shotsBoard[row][col] = 3; // Mark as hit
-                    // Trigger explosion animation
-                    const canvas = (board === playerBoard) ? playerCanvas : computerCanvas;
-                    addExplosionAnimation(canvas, row, col);
+                            // Trigger explosion animation
+                            const canvas = (board === playerBoard) ? playerCanvas : computerCanvas;
+                            addExplosionAnimation(canvas, row, col);
+                            // floating 'Hit' text (position using canvas-local cell size + header)
+                            {
+                                const cs = canvas.width / gridSize;
+                                const headerPx = cs;
+                                addFloatingText(canvas, 'Hit!', '255,200,80', { x: col * cs + cs/2, y: headerPx + row * cs + cs/2, row: row, col: col, duration: 36 });
+                            }
                     const ship = target;
             
             // Find the index of the hit part within the ship
@@ -693,7 +894,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (ship.isSunk()) {
                 ship.sunk = true;
-                console.log(`${ship.name} sunk!`);
+                // show sunk text on the same canvas
+                {
+                    const cs = canvas.width / gridSize;
+                    const headerPx = cs;
+                    addFloatingText(canvas, `${ship.name} sunk!`, '255,100,50', { x: col * cs + cs/2, y: headerPx + row * cs + cs/2, row: row, col: col, center: false, duration: 70 });
+                }
+                // add small confetti when a ship sinks
+                addConfetti(canvas, 14);
                 if (shipsArray.every(s => s.sunk)) {
                     return { hit: true, sunk: ship, gameOver: true, alreadyShot: false };
                 }
@@ -716,7 +924,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.gameOver) {
             gameState = 'gameOver';
             gameOverWinner = 'player';
-            // Let the animation loop draw the canvas-based win screen
+            // celebratory effects
+            addConfetti(computerCanvas, 36);
+            addConfetti(playerCanvas, 26);
+            // show centered win text on computer canvas
+            addFloatingText(computerCanvas, 'You Win!', '255,230,120', { center: true, duration: 140 });
             return;
         }
 
@@ -743,6 +955,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.gameOver) {
             gameState = 'gameOver';
             gameOverWinner = 'computer';
+            addConfetti(playerCanvas, 36);
+            addConfetti(computerCanvas, 26);
+            addFloatingText(playerCanvas, 'You Lose', '220,200,255', { center: true, duration: 140 });
             return;
         }
 
@@ -805,12 +1020,12 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(animate);
     }
 
-    // Event Listeners for Player Canvas (Drag & Drop, Rotation)
-    playerCanvas.addEventListener('mousedown', (e) => {
+    // Event listeners for player canvas (mouse + touch unified)
+    function handlePointerDown(e) {
         if (gameState === 'placement') {
             const ship = getShipAtMousePos(e);
-            if (ship && ship !== 0) { // If a ship is clicked
-                maybeDragging = true; // Set flag for potential drag
+            if (ship && ship !== 0) {
+                maybeDragging = true; // potential drag
                 startMouseX = e.clientX;
                 startMouseY = e.clientY;
                 draggedShip = ship;
@@ -822,72 +1037,59 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 const mousePos = getMousePos(playerCanvas, e);
-
-                // Calculate offset from the top-left of the ship's start cell to the mouse click, in grid units
-
-                dragOffsetX = (mousePos.x / cellSize) - ship.startCol;
-
-                dragOffsetY = (mousePos.y / cellSize) - ship.startRow;
+                // Use the local cell size for correct offsets
+                dragOffsetX = (mousePos.x / mousePos.cellSize) - ship.startCol;
+                dragOffsetY = (mousePos.y / mousePos.cellSize) - ship.startRow;
             }
         }
-    });
+    }
 
-    playerCanvas.addEventListener('mousemove', (e) => {
+    function handlePointerMove(e) {
         if (gameState === 'placement' && draggedShip) {
-            if (maybeDragging) { // Check if we might be dragging
+            if (maybeDragging) {
                 const dx = e.clientX - startMouseX;
                 const dy = e.clientY - startMouseY;
                 if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
-                    isDragging = true; // Confirmed as a drag
-                    maybeDragging = false; // No longer just "maybe"
+                    isDragging = true;
+                    maybeDragging = false;
                 }
             }
 
             if (isDragging) {
                 const mousePos = getMousePos(playerCanvas, e);
-                // Calculate new position using the drag offset
-                let newCol = Math.floor((mousePos.x / cellSize) - dragOffsetX);
-                let newRow = Math.floor((mousePos.y / cellSize) - dragOffsetY);
+                const localCell = mousePos.cellSize;
+                let newCol = Math.floor((mousePos.x / localCell) - dragOffsetX);
+                let newRow = Math.floor((mousePos.y / localCell) - dragOffsetY);
 
-                // Ensure newCol and newRow are within bounds
                 newCol = Math.max(0, Math.min(gridSize - 1, newCol));
                 newRow = Math.max(0, Math.min(gridSize - 1, newRow));
 
-                // Store the original position of the ship before attempting to move it
                 const currentShipOriginalState = {
                     row: draggedShip.startRow,
                     col: draggedShip.startCol,
                     isVertical: draggedShip.isVertical
                 };
 
-                // Temporarily remove the ship from the board for collision detection
-                // This is done by placing it at the new potential position, effectively moving it in memory
-                // but we still need to check for collision with other ships after this.
-                // Before this, clear the cells the ship currently occupies
                 for (const pos of draggedShip.positions) {
                     playerBoard[pos.row][pos.col] = 0;
                 }
-                // Now, conceptually move the ship to the new position
+
                 draggedShip.startRow = newRow;
                 draggedShip.startCol = newCol;
 
-                // Check if the new position is valid
                 if (canPlaceShip(playerBoard, draggedShip, newRow, newCol, draggedShip.isVertical, draggedShip)) {
-                    // If valid, apply the new position permanently
                     placeShipOnBoard(playerBoard, draggedShip, newRow, newCol, draggedShip.isVertical);
                 } else {
-                    // If invalid, revert the ship's position to its original state
                     placeShipOnBoard(playerBoard, draggedShip, currentShipOriginalState.row, currentShipOriginalState.col, currentShipOriginalState.isVertical);
                 }
                 renderPlayerBoards();
             }
         }
-    });
+    }
 
-    playerCanvas.addEventListener('mouseup', () => {
-        if (gameState === 'placement' && draggedShip) { // Check draggedShip, not necessarily isDragging
-            if (isDragging) { // If it was a confirmed drag
-                // Check one last time if the final position is valid. If not, revert to original.
+    function handlePointerUp(e) {
+        if (gameState === 'placement' && draggedShip) {
+            if (isDragging) {
                 const tempBoard = createEmptyBoard();
                 for (let r = 0; r < gridSize; r++) {
                     for (let c = 0; c < gridSize; c++) {
@@ -901,19 +1103,40 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderPlayerBoards();
                 }
             }
-            // Reset all drag related flags and variables
+
             isDragging = false;
             maybeDragging = false;
             draggedShip = null;
         }
-    });
+    }
+
+    // Mouse events
+    playerCanvas.addEventListener('mousedown', handlePointerDown);
+    playerCanvas.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+
+    // Touch events (map first touch to pointer handlers)
+    playerCanvas.addEventListener('touchstart', (ev) => {
+        ev.preventDefault();
+        if (ev.touches && ev.touches[0]) handlePointerDown(ev.touches[0]);
+    }, { passive: false });
+    playerCanvas.addEventListener('touchmove', (ev) => {
+        ev.preventDefault();
+        if (ev.touches && ev.touches[0]) handlePointerMove(ev.touches[0]);
+    }, { passive: false });
+    // Allow touchend to propagate so click events (e.g. Start button) still fire.
+    window.addEventListener('touchend', (ev) => {
+        if (ev.changedTouches && ev.changedTouches[0]) handlePointerUp(ev.changedTouches[0]);
+    }, { passive: true });
 
     // Event Listener for Computer Canvas (Player attacking computer)
     computerCanvas.addEventListener('click', (e) => {
         if (gameState === 'playing' && playerTurn) {
             const mousePos = getMousePos(computerCanvas, e);
-            const col = Math.floor(mousePos.x / cellSize);
-            const row = Math.floor(mousePos.y / cellSize);
+            const col = Math.floor(mousePos.x / mousePos.cellSize);
+            // adjust for header row inside canvas
+            const headerPx = mousePos.cellSize;
+            const row = Math.floor((mousePos.y - headerPx) / mousePos.cellSize);
 
             if (row >= 0 && row < gridSize && col >= 0 && col < gridSize) {
                 playerMakeShot(row, col);
@@ -926,7 +1149,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gameState === 'placement') {
             gameState = 'playing';
             startGameButton.disabled = true;
-            console.log('Game Started!');
+            // Reveal and reorder boards: show computer first, then player
+            if (computerContainer) {
+                computerContainer.classList.remove('hidden');
+                const parent = computerContainer.parentNode;
+                if (parent && playerContainer) parent.insertBefore(computerContainer, playerContainer);
+            }
+            // reinitialize canvas sizes now that computer container is visible
+            onResize();
+            // ensure boards are rendered with correct sizes
+            renderComputerBoards();
+            renderPlayerBoards();
+            // show a small start flash on the computer canvas
+            addFloatingText(computerCanvas, 'Battle Start', '200,240,255', { center: true, duration: 60 });
             playerTurn = true; // Player starts
             // No need to remove listeners, as they are now conditional on gameState
         }

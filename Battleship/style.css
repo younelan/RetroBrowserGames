@@ -82,3 +82,6 @@ button {
 }
 
 /* Canvas is used for win/lose messaging now; no DOM overlay styles required. */
+
+/* helper to hide computer during placement */
+.hidden { display: none !important; }
