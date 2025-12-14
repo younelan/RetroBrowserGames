@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battleship</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <h1>Battleship</h1>
+        <div id="game-boards">
+            <div class="board-container" id="computer-board-main-container">
+                <h2>Computer's Board</h2>
+                <div id="computer-board" class="grid"></div>
+            </div>
+            <div class="board-container">
+                <h2>Your Board</h2>
+                <div id="player-board" class="grid"></div>
+            </div>
+        </div>
+        <div id="ship-placement-container">
+            <h2>Place Your Ships</h2>
+            <div id="ship-options">
+                <!-- Draggable ship previews will be dynamically added here -->
+            </div>
+            <div id="controls">
+                <label class="toggle-switch">
+                    <input type="checkbox" id="orientation-toggle">
+                    <span class="slider"></span>
+                </label>
+                <label for="orientation-toggle">Horizontal</label>
+                <button id="start-button">Start Game</button>
+                <button id="delete-button" class="hidden">Delete Ship</button>
+            </div>
+        </div>
+        <div id="info-container">
+            <p id="info"></p>
+            <p id="turn-info"></p>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
