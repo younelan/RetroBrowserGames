@@ -75,11 +75,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let draggedShip = null;
     let isDragging = false;
     let maybeDragging = false;
+    let selectedShip = null; // currently selected ship (tap)
     let startMouseX = 0;
     let startMouseY = 0;
     let dragOffsetX = 0;
     let dragOffsetY = 0;
     let originalShipState = null;
+
+    // Double-tap detection state for touch devices
+    let lastTap = { time: 0, x: 0, y: 0 };
+    let longPressTimer = null;
+    let longPressFired = false;
 
     const DRAG_THRESHOLD = 5; // Pixels to move before it's considered a drag
 
@@ -217,14 +223,74 @@ document.addEventListener('DOMContentLoaded', () => {
                 ctx.beginPath();
                 ctx.rect(x, y, cellSize - 2, cellSize - 2);
 
-                // Draw fill for unhit segments (or for sunk ships)
-                if (ship.sunk || !ship.hits[i]) {
-                    ctx.fillStyle = fillColor;
+                // If this ship is selected, draw with a highlighted tint
+                if (selectedShip === ship && isPlayerBoard && !ship.sunk) {
+                    ctx.fillStyle = 'rgba(80, 180, 255, 0.85)';
                     ctx.fill();
+                } else {
+                    // Draw fill for unhit segments (or for sunk ships)
+                    if (ship.sunk || !ship.hits[i]) {
+                        ctx.fillStyle = fillColor;
+                        ctx.fill();
+                    }
                 }
                 ctx.stroke(); // Always draw outline for visibility
             }
+
+            // If selected, draw rotate button near the ship (player only)
+            if (selectedShip === ship && isPlayerBoard && !ship.sunk) {
+                // compute bounding box of the ship in canvas pixels
+                const cs = cellSize;
+                const headerPx = headerHeight;
+                const left = ship.startCol * cs;
+                const top = headerPx + ship.startRow * cs;
+                const width = ship.isVertical ? cs : ship.length * cs;
+                const height = ship.isVertical ? ship.length * cs : cs;
+                const pad = Math.max(4, Math.floor(cs * 0.06));
+                const r = Math.max(8, Math.floor(cs * 0.12));
+
+                // Place button inside the ship area: top-right corner inset
+                const bx = left + Math.min(width - r - pad, Math.max(r + pad, width - r - pad));
+                const by = top + r + pad;
+
+                // ensure button stays within canvas bounds
+                const bxClamped = Math.min(Math.max(bx, r + 2), ctx.canvas.width - (r + 2));
+                const byClamped = Math.min(Math.max(by, headerPx + r + 2), headerPx + gridSize * cs - (r + 2));
+
+                // draw circular button
+                ctx.save();
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(bxClamped, byClamped, r, 0, Math.PI * 2);
+                ctx.fill();
+                // draw rotate icon (simple curved arrow)
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = Math.max(1, Math.floor(cs * 0.05));
+                ctx.beginPath();
+                ctx.arc(bxClamped - r * 0.12, byClamped - r * 0.05, r * 0.48, 0.2 * Math.PI, 1.6 * Math.PI);
+                ctx.moveTo(bxClamped + r * 0.45, byClamped - r * 0.25);
+                ctx.lineTo(bxClamped + r * 0.15, byClamped - r * 0.15);
+                ctx.stroke();
+                ctx.restore();
+            }
         }
+    }
+
+    // Return rotate button bounds for a player ship (in canvas pixel coords)
+    function getRotateButtonBoundsForShip(ship, canvas) {
+        const cs = canvas.width / gridSize;
+        const headerPx = cs;
+        const left = ship.startCol * cs;
+        const top = headerPx + ship.startRow * cs;
+        const width = ship.isVertical ? cs : ship.length * cs;
+        const height = ship.isVertical ? ship.length * cs : cs;
+        const pad = Math.max(4, Math.floor(cs * 0.06));
+        const r = Math.max(8, Math.floor(cs * 0.12));
+        const bx = left + Math.min(width - r - pad, Math.max(r + pad, width - r - pad));
+        const by = top + r + pad;
+        const bxClamped = Math.min(Math.max(bx, r + 2), canvas.width - (r + 2));
+        const byClamped = Math.min(Math.max(by, headerPx + r + 2), headerPx + gridSize * cs - (r + 2));
+        return { x: bxClamped, y: byClamped, r: r };
     }
 
     // Explosion Particle Class
@@ -737,7 +803,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.font = `bold ${Math.floor(cellSize * 0.45)}px sans-serif`;
-        const title = isPlayerBoard ? 'Your Boats' : "Computer's Boats";
+        let title;
+        if (gameState === 'placement' && isPlayerBoard) {
+            title = 'Position your boats';
+        } else {
+            title = isPlayerBoard ? 'Your Boats' : "Computer's Boats";
+        }
         ctx.fillText(title, ctx.canvas.width / 2, headerHeight / 2);
 
         // draw turn indicator circle on the right of the status line
@@ -1088,19 +1159,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handlePointerUp(e) {
-        if (gameState === 'placement' && draggedShip) {
-            if (isDragging) {
-                const tempBoard = createEmptyBoard();
-                for (let r = 0; r < gridSize; r++) {
-                    for (let c = 0; c < gridSize; c++) {
-                        if (playerBoard[r][c] !== draggedShip) {
-                            tempBoard[r][c] = playerBoard[r][c];
+        if (gameState === 'placement') {
+            if (draggedShip) {
+                if (isDragging) {
+                    const tempBoard = createEmptyBoard();
+                    for (let r = 0; r < gridSize; r++) {
+                        for (let c = 0; c < gridSize; c++) {
+                            if (playerBoard[r][c] !== draggedShip) {
+                                tempBoard[r][c] = playerBoard[r][c];
+                            }
                         }
                     }
-                }
-                if (!canPlaceShip(tempBoard, draggedShip, draggedShip.startRow, draggedShip.startCol, draggedShip.isVertical, draggedShip)) {
-                    placeShipOnBoard(playerBoard, draggedShip, originalShipState.row, originalShipState.col, originalShipState.isVertical);
+                    if (!canPlaceShip(tempBoard, draggedShip, draggedShip.startRow, draggedShip.startCol, draggedShip.isVertical, draggedShip)) {
+                        placeShipOnBoard(playerBoard, draggedShip, originalShipState.row, originalShipState.col, originalShipState.isVertical);
+                    }
+                    // after a real drag-drop, deselect
+                    selectedShip = null;
                     renderPlayerBoards();
+                } else {
+                    // short tap on a ship -> selection or rotate-button click
+                    const mousePos = getMousePos(playerCanvas, e);
+                    const px = mousePos.x;
+                    const py = mousePos.y;
+
+                    // Check rotate buttons first (allow immediate rotate without prior select)
+                    let rotated = false;
+                    for (const s of playerShips) {
+                        if (s.sunk) continue;
+                        const b = getRotateButtonBoundsForShip(s, playerCanvas);
+                        const dx = px - b.x;
+                        const dy = py - b.y;
+                        if ((dx * dx + dy * dy) <= (b.r * b.r)) {
+                            rotateShip(s);
+                            rotated = true;
+                            break;
+                        }
+                    }
+                    if (!rotated) {
+                        // select the tapped ship (or deselect if empty)
+                        const tapped = getShipAtMousePos(e);
+                        if (tapped && tapped !== 0) selectedShip = tapped; else selectedShip = null;
+                        renderPlayerBoards();
+                    }
                 }
             }
 
@@ -1118,14 +1218,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // Touch events (map first touch to pointer handlers)
     playerCanvas.addEventListener('touchstart', (ev) => {
         ev.preventDefault();
-        if (ev.touches && ev.touches[0]) handlePointerDown(ev.touches[0]);
+        if (!ev.touches || !ev.touches[0]) return;
+        const t = ev.touches[0];
+        // start pointer logic
+        handlePointerDown(t);
+
+        // prepare long-press detection (rotate on long-press)
+        longPressFired = false;
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+        const rect = playerCanvas.getBoundingClientRect();
+        const startX = t.clientX - rect.left;
+        const startY = t.clientY - rect.top;
+        longPressTimer = setTimeout(() => {
+            // only trigger if not dragging and still in placement
+            if (gameState === 'placement' && !isDragging && !maybeDragging) {
+                const fakeEvent = { clientX: t.clientX, clientY: t.clientY };
+                const ship = getShipAtMousePos(fakeEvent);
+                if (ship && ship !== 0) {
+                    rotateShip(ship);
+                    if (navigator.vibrate) navigator.vibrate(20);
+                    longPressFired = true;
+                }
+            }
+            longPressTimer = null;
+        }, 520); // long-press threshold
     }, { passive: false });
+
     playerCanvas.addEventListener('touchmove', (ev) => {
         ev.preventDefault();
-        if (ev.touches && ev.touches[0]) handlePointerMove(ev.touches[0]);
+        if (ev.touches && ev.touches[0]) {
+            const t = ev.touches[0];
+            // cancel long-press if movement exceeds threshold
+            if (longPressTimer) {
+                // if moved more than DRAG_THRESHOLD pixels from the original touch, cancel long-press
+                if (typeof startMouseX === 'number' && typeof startMouseY === 'number' && Math.hypot(t.clientX - startMouseX, t.clientY - startMouseY) > DRAG_THRESHOLD) {
+                    clearTimeout(longPressTimer);
+                    longPressTimer = null;
+                }
+            }
+            handlePointerMove(t);
+        }
     }, { passive: false });
+
     // Allow touchend to propagate so click events (e.g. Start button) still fire.
     window.addEventListener('touchend', (ev) => {
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
         if (ev.changedTouches && ev.changedTouches[0]) handlePointerUp(ev.changedTouches[0]);
     }, { passive: true });
 
@@ -1176,4 +1316,84 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // Touch: detect double-tap to rotate on mobile
+    playerCanvas.addEventListener('touchend', (ev) => {
+        if (gameState !== 'placement') return;
+        if (!ev.changedTouches || ev.changedTouches.length === 0) return;
+        const t = ev.changedTouches[0];
+        const rect = playerCanvas.getBoundingClientRect();
+        const x = t.clientX - rect.left;
+        const y = t.clientY - rect.top;
+        const now = Date.now();
+
+        // Consider it a tap only if we aren't dragging
+        if (isDragging || maybeDragging) {
+            // reset maybeDragging state so subsequent taps work
+            maybeDragging = false;
+            return;
+        }
+
+        const dt = now - lastTap.time;
+        const dx = x - lastTap.x;
+        const dy = y - lastTap.y;
+        const dist = Math.hypot(dx, dy);
+
+        const DOUBLE_TAP_MAX_DELAY = 350; // ms
+        const DOUBLE_TAP_MAX_DIST = 36; // px
+
+        if (lastTap.time > 0 && dt > 0 && dt <= DOUBLE_TAP_MAX_DELAY && dist <= DOUBLE_TAP_MAX_DIST) {
+            // Detected a double-tap
+            const fakeEvent = { clientX: t.clientX, clientY: t.clientY };
+            const ship = getShipAtMousePos(fakeEvent);
+            if (ship && ship !== 0) {
+                rotateShip(ship);
+            }
+            // reset lastTap to avoid triple-tap
+            lastTap.time = 0;
+        } else {
+            // store this tap for potential double-tap
+            lastTap.time = now;
+            lastTap.x = x;
+            lastTap.y = y;
+        }
+    }, { passive: true });
+
+    // Also listen on touchstart for a snappier double-tap detection on mobile
+    playerCanvas.addEventListener('touchstart', (ev) => {
+        if (gameState !== 'placement') return;
+        if (!ev.touches || ev.touches.length !== 1) return;
+        const t = ev.touches[0];
+        const rect = playerCanvas.getBoundingClientRect();
+        const x = t.clientX - rect.left;
+        const y = t.clientY - rect.top;
+        const now = Date.now();
+
+        // Ignore if a drag is in progress or was just happening
+        if (isDragging || maybeDragging) return;
+
+        const dt = now - lastTap.time;
+        const dx = x - lastTap.x;
+        const dy = y - lastTap.y;
+        const dist = Math.hypot(dx, dy);
+
+        const DOUBLE_TAP_MAX_DELAY = 400; // ms (slightly more forgiving on touchstart)
+        const DOUBLE_TAP_MAX_DIST = 40; // px
+
+        if (lastTap.time > 0 && dt > 0 && dt <= DOUBLE_TAP_MAX_DELAY && dist <= DOUBLE_TAP_MAX_DIST) {
+            // Detected a double-tap
+            const fakeEvent = { clientX: t.clientX, clientY: t.clientY };
+            const ship = getShipAtMousePos(fakeEvent);
+            if (ship && ship !== 0) {
+                rotateShip(ship);
+                // optional haptic feedback if available
+                if (navigator.vibrate) navigator.vibrate(20);
+            }
+            lastTap.time = 0;
+        } else {
+            lastTap.time = now;
+            lastTap.x = x;
+            lastTap.y = y;
+        }
+    }, { passive: true });
 });
