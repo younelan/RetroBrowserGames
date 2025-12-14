@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const playerCtx = playerCanvas.getContext('2d');
     const computerCtx = computerCanvas.getContext('2d');
     const startGameButton = document.getElementById('startGameButton'); // Get the button
+    const randomizeButton = document.getElementById('randomizeButton'); // Shuffle player's ships
 
     const gridSize = 10; // 10x10 grid
     let cellSize; // Will be calculated dynamically
@@ -1306,6 +1307,21 @@ document.addEventListener('DOMContentLoaded', () => {
             // No need to remove listeners, as they are now conditional on gameState
         }
     });
+
+    // Randomize player's ships while in placement
+    if (randomizeButton) {
+        randomizeButton.addEventListener('click', () => {
+            if (gameState !== 'placement') return;
+            // Place player's ships randomly and clear any selection/drag
+            placeAllShipsRandomly(playerBoard, playerShips);
+            selectedShip = null;
+            draggedShip = null;
+            isDragging = false;
+            maybeDragging = false;
+            renderPlayerBoards();
+            addFloatingText(playerCanvas, 'Shuffled', '200,240,255', { center: false, duration: 40 });
+        });
+    }
 
     // Double-click to rotate ship
     playerCanvas.addEventListener('dblclick', (e) => {
