@@ -85,3 +85,10 @@ button {
 
 /* helper to hide computer during placement */
 .hidden { display: none !important; }
+
+/* Controls styling */
+.controls { margin-top: 12px; display: flex; gap: 8px; align-items: center; }
+.controls button { padding: 8px 12px; border: none; background: #222; color: #fff; border-radius: 6px; cursor: pointer; }
+.controls button#randomizeButton { background: #2c9f4a; }
+.controls button#restartButton { background: #c94b4b; }
+.controls button:disabled { opacity: 0.5; cursor: not-allowed; }

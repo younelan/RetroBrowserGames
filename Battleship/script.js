@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const computerCtx = computerCanvas.getContext('2d');
     const startGameButton = document.getElementById('startGameButton'); // Get the button
     const randomizeButton = document.getElementById('randomizeButton'); // Shuffle player's ships
+    const restartButton = document.getElementById('restartButton');
+    const gameOverButtonBounds = {}; // map canvas.id -> {x,y,w,h}
 
     const gridSize = 10; // 10x10 grid
     let cellSize; // Will be calculated dynamically
@@ -769,6 +771,33 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.font = `${Math.floor(w * 0.035)}px sans-serif`;
         ctx.fillText(subtitle, w / 2, h / 2 + (w * 0.05));
 
+        // Draw a centered Restart button on the game-over overlay
+        const btnW = Math.floor(w * 0.28);
+        const btnH = Math.max(28, Math.floor(w * 0.06));
+        const btnX = Math.floor((w - btnW) / 2);
+        const btnY = Math.floor(h / 2 + (w * 0.09));
+        // rounded rect background
+        ctx.fillStyle = '#ff6b6b';
+        const radius = 8;
+        ctx.beginPath();
+        ctx.moveTo(btnX + radius, btnY);
+        ctx.lineTo(btnX + btnW - radius, btnY);
+        ctx.quadraticCurveTo(btnX + btnW, btnY, btnX + btnW, btnY + radius);
+        ctx.lineTo(btnX + btnW, btnY + btnH - radius);
+        ctx.quadraticCurveTo(btnX + btnW, btnY + btnH, btnX + btnW - radius, btnY + btnH);
+        ctx.lineTo(btnX + radius, btnY + btnH);
+        ctx.quadraticCurveTo(btnX, btnY + btnH, btnX, btnY + btnH - radius);
+        ctx.lineTo(btnX, btnY + radius);
+        ctx.quadraticCurveTo(btnX, btnY, btnX + radius, btnY);
+        ctx.closePath();
+        ctx.fill();
+        // button text
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.floor(btnH * 0.5)}px sans-serif`;
+        ctx.fillText('Restart', btnX + btnW / 2, btnY + btnH / 2);
+        // Store bounds for click detection
+        gameOverButtonBounds[ctx.canvas.id] = { x: btnX, y: btnY, w: btnW, h: btnH };
+
         ctx.restore();
     }
 
@@ -1001,6 +1030,10 @@ document.addEventListener('DOMContentLoaded', () => {
             addConfetti(playerCanvas, 26);
             // show centered win text on computer canvas
             addFloatingText(computerCanvas, 'You Win!', '255,230,120', { center: true, duration: 140 });
+            // show Restart control and hide placement controls
+            if (randomizeButton) randomizeButton.style.display = 'none';
+            if (startGameButton) startGameButton.style.display = 'none';
+            if (restartButton) restartButton.style.display = 'inline-block';
             return;
         }
 
@@ -1030,6 +1063,9 @@ document.addEventListener('DOMContentLoaded', () => {
             addConfetti(playerCanvas, 36);
             addConfetti(computerCanvas, 26);
             addFloatingText(playerCanvas, 'You Lose', '220,200,255', { center: true, duration: 140 });
+            if (randomizeButton) randomizeButton.style.display = 'none';
+            if (startGameButton) startGameButton.style.display = 'none';
+            if (restartButton) restartButton.style.display = 'inline-block';
             return;
         }
 
@@ -1285,11 +1321,51 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Click handler for game-over Restart button on canvases
+    function handleCanvasClickForRestart(e) {
+        if (gameState !== 'gameOver') return;
+        const canvas = e.currentTarget;
+        // get event position (support mouse/touch)
+        let ex, ey;
+        if (e.changedTouches && e.changedTouches[0]) {
+            const t = e.changedTouches[0];
+            const rect = canvas.getBoundingClientRect();
+            ex = t.clientX - rect.left;
+            ey = t.clientY - rect.top;
+        } else {
+            const mousePos = getMousePos(canvas, e);
+            ex = mousePos.x;
+            ey = mousePos.y;
+        }
+
+        // Recompute button bounds consistently with drawGameOverOnCanvas
+        const w = canvas.width;
+        const h = canvas.height;
+        const btnW = Math.floor(w * 0.28);
+        const btnH = Math.max(28, Math.floor(w * 0.06));
+        const btnX = Math.floor((w - btnW) / 2);
+        const btnY = Math.floor(h / 2 + (w * 0.09));
+
+        if (ex >= btnX && ex <= btnX + btnW && ey >= btnY && ey <= btnY + btnH) {
+            restartGame();
+        }
+    }
+
+    playerCanvas.addEventListener('click', handleCanvasClickForRestart);
+    computerCanvas.addEventListener('click', handleCanvasClickForRestart);
+    // also handle touchend directly on canvases for mobile (click may be prevented)
+    playerCanvas.addEventListener('touchend', (ev) => handleCanvasClickForRestart(ev), { passive: true });
+    computerCanvas.addEventListener('touchend', (ev) => handleCanvasClickForRestart(ev), { passive: true });
+
     // Start Game Button Logic
     startGameButton.addEventListener('click', () => {
         if (gameState === 'placement') {
             gameState = 'playing';
             startGameButton.disabled = true;
+            // hide placement controls and show restart button
+            if (randomizeButton) randomizeButton.style.display = 'none';
+            if (startGameButton) startGameButton.style.display = 'none';
+            if (restartButton) restartButton.style.display = 'inline-block';
             // Reveal and reorder boards: show computer first, then player
             if (computerContainer) {
                 computerContainer.classList.remove('hidden');
@@ -1320,6 +1396,46 @@ document.addEventListener('DOMContentLoaded', () => {
             maybeDragging = false;
             renderPlayerBoards();
             addFloatingText(playerCanvas, 'Shuffled', '200,240,255', { center: false, duration: 40 });
+        });
+    }
+
+    // Restart logic (button)
+    function restartGame() {
+        // reset boards and state to placement
+        gameState = 'placement';
+        gameOverWinner = null;
+        playerTurn = true;
+        // reset boards and shots
+        playerBoard = createEmptyBoard();
+        computerBoard = createEmptyBoard();
+        playerShots = createEmptyBoard();
+        computerShots = createEmptyBoard();
+        playerShips.length = 0;
+        computerShips.length = 0;
+        animations.length = 0;
+        // place ships randomly for both
+        placeAllShipsRandomly(playerBoard, playerShips);
+        placeAllShipsRandomly(computerBoard, computerShips);
+        // reset selection/drag state
+        selectedShip = null;
+        draggedShip = null;
+        isDragging = false;
+        maybeDragging = false;
+        // show placement controls
+        if (randomizeButton) randomizeButton.style.display = 'inline-block';
+        if (startGameButton) { startGameButton.style.display = 'inline-block'; startGameButton.disabled = false; }
+        if (restartButton) restartButton.style.display = 'none';
+        // clear any gameOver button bounds
+        gameOverButtonBounds[playerCanvas.id] = null;
+        gameOverButtonBounds[computerCanvas.id] = null;
+        // reinitialize canvases sizes and render
+        onResize();
+        addFloatingText(playerCanvas, 'Restarted', '200,240,255', { center: false, duration: 40 });
+    }
+
+    if (restartButton) {
+        restartButton.addEventListener('click', () => {
+            restartGame();
         });
     }
 
