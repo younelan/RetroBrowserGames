@@ -205,11 +205,82 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         draw(ctx) {
-            const opacity = this.life / this.maxLife;
-            ctx.fillStyle = `rgba(${this.color}, ${opacity})`;
+            const t = 1 - (this.life / this.maxLife); // 0 -> 1 progress
+            const opacity = Math.max(0, this.life / this.maxLife);
+
+            // radial gradient for richer particles
+            const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, Math.max(1, this.size * (1 + t)));
+            grad.addColorStop(0, `rgba(255,255,255,${Math.min(0.9, opacity)})`);
+            grad.addColorStop(0.2, `rgba(${this.color},${Math.min(0.9, opacity)})`);
+            grad.addColorStop(1, `rgba(${this.color},${opacity * 0.05})`);
+
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.fillStyle = grad;
             ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size * opacity, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, this.size * (1.2 - 0.8 * t), 0, Math.PI * 2);
             ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // Shard particle for explosion debris (thin elongated pieces)
+    class ShardParticle {
+        constructor(x, y, color, length, angle, speed, life) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.length = length;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.angle = angle;
+            this.life = life;
+            this.maxLife = life;
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.04; // gravity pull
+            this.life--;
+        }
+
+        draw(ctx) {
+            const opacity = Math.max(0, this.life / this.maxLife);
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.angle);
+            ctx.fillStyle = `rgba(${this.color}, ${opacity})`;
+            ctx.fillRect(0, -1.0, this.length, 2.2);
+            ctx.restore();
+        }
+    }
+
+    // Shockwave/ring for explosion
+    class Shockwave {
+        constructor(x, y, maxRadius, life) {
+            this.x = x;
+            this.y = y;
+            this.maxRadius = maxRadius;
+            this.life = life;
+            this.maxLife = life;
+        }
+
+        update() {
+            this.life--;
+        }
+
+        draw(ctx) {
+            const t = 1 - (this.life / this.maxLife);
+            const radius = this.maxRadius * t;
+            const opacity = Math.max(0, 0.9 * (1 - t));
+            ctx.save();
+            ctx.beginPath();
+            ctx.lineWidth = Math.max(1, 6 * (1 - t));
+            ctx.strokeStyle = `rgba(255,220,130,${opacity * 0.9})`;
+            ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
         }
     }
 
@@ -226,21 +297,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const x = col * cellSize + cellSize / 2;
         const y = row * cellSize + cellSize / 2;
         const particles = [];
-        const particleCount = 20;
+        const shardParticles = [];
+        const particleCount = 26;
 
+        // core fire/flash particles
         for (let i = 0; i < particleCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = Math.random() * (cellSize * 0.1) + (cellSize * 0.02);
-            const velocityX = Math.cos(angle) * speed;
-            const velocityY = Math.sin(angle) * speed;
-            const size = Math.random() * (cellSize * 0.1) + 2;
-            const life = Math.floor(Math.random() * 20) + 10; // Frames
-
-            const colors = ['255,165,0', '255,255,0', '255,69,0']; // Orange, Yellow, Red
+            const speed = Math.random() * (cellSize * 0.12) + (cellSize * 0.03);
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed - Math.random() * 0.5;
+            const size = Math.random() * (cellSize * 0.12) + 2.5;
+            const life = Math.floor(Math.random() * 24) + 14; // Frames
+            const colors = ['255,180,60', '255,90,30', '255,220,120'];
             const color = colors[Math.floor(Math.random() * colors.length)];
-
-            particles.push(new ExplosionParticle(x, y, color, size, velocityX, velocityY, life));
+            particles.push(new ExplosionParticle(x + vx * 0.5, y + vy * 0.5, color, size, vx, vy, life));
         }
+
+        // shards (metal/wood debris)
+        for (let i = 0; i < 10; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const length = Math.random() * (cellSize * 0.45) + (cellSize * 0.1);
+            const speed = Math.random() * (cellSize * 0.14) + (cellSize * 0.04);
+            const life = Math.floor(Math.random() * 30) + 18;
+            const colors = ['200,60,30', '120,90,60', '80,80,80'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            shardParticles.push(new ShardParticle(x, y, color, length, angle, speed, life));
+        }
+
+        // shockwave
+        const shockwave = new Shockwave(x, y, cellSize * 1.6, 26);
 
         animations.push({
             canvas: canvas,
@@ -248,13 +333,27 @@ document.addEventListener('DOMContentLoaded', () => {
             col: col,
             type: 'hit',
             particles: particles,
+            shards: shardParticles,
+            shockwave: shockwave,
             frame: 0,
-            duration: particles[0].maxLife, // Duration based on particle life
+            duration: Math.max(30, ...particles.map(p => p.maxLife)),
             draw: function(ctx, currentFrame) {
+                // draw shockwave first (so particles overlay)
+                if (this.shockwave && this.shockwave.life > 0) {
+                    this.shockwave.draw(ctx);
+                    this.shockwave.update();
+                }
+
+                // draw shards
+                this.shards.forEach(s => { s.draw(ctx); s.update(); });
+                this.shards = this.shards.filter(s => s.life > 0);
+
+                // draw main fire particles
                 drawExplosion(ctx, this.particles);
                 this.particles = this.particles.filter(p => p.life > 0);
-                if (this.particles.length === 0) {
-                    this.duration = currentFrame; // Mark as finished for animate loop to remove
+
+                if (this.particles.length === 0 && this.shards.length === 0) {
+                    this.duration = currentFrame; // mark finished
                 }
             }
         });
@@ -320,20 +419,35 @@ document.addEventListener('DOMContentLoaded', () => {
             particles.push(new SplashParticle(x, y, color, size, velocityX, velocityY, life));
         }
 
-        // Add an expanding ripple effect (as a single "particle" with special drawing)
-        particles.push({
-            x: x, y: y, size: 0, life: 30, maxLife: 30,
-            update: function() { this.size += cellSize * 0.03; this.life--; },
-            draw: function(ctx) {
-                const opacity = this.life / this.maxLife;
-                ctx.strokeStyle = `rgba(173, 216, 230, ${opacity})`;
-                ctx.lineWidth = 2 * opacity;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.stroke();
-            }
-        });
+        // Add multiple ripple effects for nicer water
+        const ripples = [];
+        for (let i = 0; i < 3; i++) {
+            ripples.push({
+                x: x, y: y, size: 0, life: 24 + i * 8, maxLife: 24 + i * 8,
+                update: function() { this.size += cellSize * (0.04 + i * 0.01); this.life--; },
+                draw: function(ctx) {
+                    const opacity = Math.max(0, this.life / this.maxLife) * 0.9;
+                    ctx.strokeStyle = `rgba(173, 216, 230, ${opacity})`;
+                    ctx.lineWidth = 2 * opacity;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+            });
+        }
 
+        // small upward droplets
+        for (let i = 0; i < particleCount; i++) {
+            const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.1;
+            const speed = Math.random() * (cellSize * 0.06) + (cellSize * 0.02);
+            const velocityX = Math.cos(angle) * speed;
+            const velocityY = Math.sin(angle) * speed - Math.random() * 0.4;
+            const size = Math.random() * (cellSize * 0.06) + 1;
+            const life = Math.floor(Math.random() * 20) + 12;
+            const colors = ['173,216,230', '200,230,255', '150,200,255'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            particles.push(new SplashParticle(x + velocityX * 0.4, y + velocityY * 0.4, color, size, velocityX, velocityY, life));
+        }
 
         animations.push({
             canvas: canvas,
@@ -341,13 +455,19 @@ document.addEventListener('DOMContentLoaded', () => {
             col: col,
             type: 'miss',
             particles: particles,
+            ripples: ripples,
             frame: 0,
-            duration: 30, // Duration based on longest particle life
+            duration: 40,
             draw: function(ctx, currentFrame) {
+                // draw ripples
+                this.ripples.forEach(r => { r.draw(ctx); r.update(); });
+                this.ripples = this.ripples.filter(r => r.life > 0);
+
                 drawSplash(ctx, this.particles);
                 this.particles = this.particles.filter(p => p.life > 0);
-                if (this.particles.length === 0) {
-                    this.duration = currentFrame; // Mark as finished for animate loop to remove
+
+                if (this.particles.length === 0 && this.ripples.length === 0) {
+                    this.duration = currentFrame;
                 }
             }
         });
@@ -361,28 +481,58 @@ document.addEventListener('DOMContentLoaded', () => {
                 const hasAnim = animations.some(anim => anim.canvas === ctx.canvas && anim.row === r && anim.col === c);
                 if (hasAnim) continue;
                 if (shotsBoard[r][c] === 2) { // Miss
-                    ctx.beginPath();
-                    ctx.arc(c * cellSize + cellSize / 2, r * cellSize + cellSize / 2, cellSize / 4, 0, 2 * Math.PI);
-                    ctx.fillStyle = 'rgba(173, 216, 230, 0.7)'; // Lighter, more watery blue
-                    ctx.fill();
-                    ctx.lineWidth = 1.5; // Slightly thicker outline
-                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // White outline
-                    ctx.stroke();
-                } else if (shotsBoard[r][c] === 3) { // Hit
-                    // Draw a subtle pulsing hit marker if no particle animation is present
+                    // Draw a nicer droplet + small sheen for miss
                     const cx = c * cellSize + cellSize / 2;
                     const cy = r * cellSize + cellSize / 2;
-                    ctx.save();
-                    ctx.strokeStyle = 'rgba(200, 0, 0, 1)';
-                    ctx.lineWidth = Math.max(2, cellSize * 0.06);
-                    const size = cellSize * 0.28;
+                    const dropRadius = cellSize * 0.18;
+                    // body
+                    const grad = ctx.createRadialGradient(cx - dropRadius * 0.3, cy - dropRadius * 0.5, 1, cx, cy, dropRadius);
+                    grad.addColorStop(0, 'rgba(255,255,255,0.9)');
+                    grad.addColorStop(0.2, 'rgba(200,230,255,0.9)');
+                    grad.addColorStop(1, 'rgba(140,200,230,0.6)');
                     ctx.beginPath();
-                    ctx.moveTo(cx - size, cy - size);
-                    ctx.lineTo(cx + size, cy + size);
-                    ctx.moveTo(cx + size, cy - size);
-                    ctx.lineTo(cx - size, cy + size);
+                    ctx.arc(cx, cy, dropRadius, 0, Math.PI * 2);
+                    ctx.fillStyle = grad;
+                    ctx.fill();
+                    // small highlight
+                    ctx.beginPath();
+                    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+                    ctx.ellipse(cx - dropRadius * 0.3, cy - dropRadius * 0.4, dropRadius * 0.45, dropRadius * 0.25, -0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                    // subtle outline
+                    ctx.lineWidth = 1;
+                    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
                     ctx.stroke();
-                    ctx.restore();
+                } else if (shotsBoard[r][c] === 3) { // Hit
+                    // Draw a burn/crater mark for hit
+                    const cx = c * cellSize + cellSize / 2;
+                    const cy = r * cellSize + cellSize / 2;
+                    const outer = cellSize * 0.36;
+                    // dark scorched circle
+                    ctx.beginPath();
+                    const g = ctx.createRadialGradient(cx, cy, 1, cx, cy, outer);
+                    g.addColorStop(0, 'rgba(255,120,80,0.95)');
+                    g.addColorStop(0.25, 'rgba(200,40,30,0.9)');
+                    g.addColorStop(0.6, 'rgba(80,30,30,0.4)');
+                    g.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g;
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, outer, 0, Math.PI * 2);
+                    ctx.fill();
+                    // small inner highlight
+                    ctx.beginPath();
+                    ctx.fillStyle = 'rgba(255,200,160,0.75)';
+                    ctx.arc(cx, cy, outer * 0.28, 0, Math.PI * 2);
+                    ctx.fill();
+                    // faint cracked lines
+                    ctx.strokeStyle = 'rgba(40,20,20,0.55)';
+                    ctx.lineWidth = Math.max(1, cellSize * 0.03);
+                    ctx.beginPath();
+                    ctx.moveTo(cx - outer * 0.5, cy - outer * 0.15);
+                    ctx.lineTo(cx + outer * 0.25, cy + outer * 0.45);
+                    ctx.moveTo(cx + outer * 0.45, cy - outer * 0.4);
+                    ctx.lineTo(cx - outer * 0.35, cy + outer * 0.25);
+                    ctx.stroke();
                 }
             }
         }
