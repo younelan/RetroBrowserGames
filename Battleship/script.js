@@ -675,20 +675,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
-        // show a small 'Miss' floating text at the cell
-        // Position floating text using canvas-local cell size and header offset
+        // immediate small placeholder, then a larger, longer 'Miss' flash (so animation shows first but user sees a placeholder instantly)
         const textCs = canvas.width / gridSize;
         const textHeader = textCs;
-        addFloatingText(canvas, 'Miss', '140,200,230', { x: col * textCs + textCs/2, y: textHeader + row * textCs + textCs/2, row: row, col: col, duration: 42 });
+        const tx = col * textCs + textCs/2;
+        const ty = textHeader + row * textCs + textCs/2;
+        // small subtle placeholder dot so the player gets instant feedback
+        addFloatingText(canvas, '•', '200,220,255', { x: tx, y: ty, row: row, col: col, duration: 18, size: Math.floor(canvas.width * 0.04) });
+        // larger, longer flash matching the 'Battle Start' size/duration
+        setTimeout(() => addFloatingText(canvas, 'Miss', '140,200,230', { x: tx, y: ty, row: row, col: col, duration: 60, size: Math.floor(canvas.width * 0.12) }), 80);
     }
 
     // Draw shots (hits and misses)
     function drawShots(ctx, shotsBoard, headerHeight) {
         for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
-                // If there is an active animation for this cell on this canvas, skip the static marker
-                const hasAnim = animations.some(anim => anim.canvas === ctx.canvas && anim.row === r && anim.col === c);
-                if (hasAnim) continue;
+                // Always draw a static marker (placeholder) immediately so the cell isn't empty while particle
+                // animations run. Animations are drawn after board render, so they will overlay this marker.
                 if (shotsBoard[r][c] === 2) { // Miss
                     // Draw a nicer droplet + small sheen for miss
                     const cx = c * cellSize + cellSize / 2;
@@ -980,12 +983,17 @@ document.addEventListener('DOMContentLoaded', () => {
                             // Trigger explosion animation
                             const canvas = (board === playerBoard) ? playerCanvas : computerCanvas;
                             addExplosionAnimation(canvas, row, col);
-                            // floating 'Hit' text (position using canvas-local cell size + header)
-                            {
+                            // floating 'Hit' text: immediate placeholder then larger/longer flash (so player sees instant feedback)
+                            (function() {
                                 const cs = canvas.width / gridSize;
                                 const headerPx = cs;
-                                addFloatingText(canvas, 'Hit!', '255,200,80', { x: col * cs + cs/2, y: headerPx + row * cs + cs/2, row: row, col: col, duration: 36 });
-                            }
+                                const x = col * cs + cs/2;
+                                const y = headerPx + row * cs + cs/2;
+                                // immediate subtle placeholder
+                                addFloatingText(canvas, '•', '255,200,80', { x: x, y: y, row: row, col: col, duration: 18, size: Math.floor(canvas.width * 0.04) });
+                                // small timeout so animation visuals start first, then larger flash matching 'Battle Start'
+                                setTimeout(() => addFloatingText(canvas, 'Hit!', '255,200,80', { x: x, y: y, row: row, col: col, duration: 60, size: Math.floor(canvas.width * 0.12) }), 80);
+                            })();
                     const ship = target;
             
             // Find the index of the hit part within the ship
@@ -1000,12 +1008,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (ship.isSunk()) {
                 ship.sunk = true;
-                // show sunk text on the same canvas
-                {
+                // show sunk text on the same canvas (delay slightly so explosion plays first)
+                (function(){
                     const cs = canvas.width / gridSize;
                     const headerPx = cs;
-                    addFloatingText(canvas, `${ship.name} sunk!`, '255,100,50', { x: col * cs + cs/2, y: headerPx + row * cs + cs/2, row: row, col: col, center: false, duration: 70 });
-                }
+                    const x = col * cs + cs/2;
+                    const y = headerPx + row * cs + cs/2;
+                    // immediate subtle placeholder
+                    addFloatingText(canvas, '•', '255,140,90', { x: x, y: y, row: row, col: col, duration: 18, size: Math.floor(canvas.width * 0.04) });
+                    // larger/longer sunk message
+                    setTimeout(() => addFloatingText(canvas, `${ship.name} sunk!`, '255,100,50', { x: x, y: y, row: row, col: col, center: false, duration: 60, size: Math.floor(canvas.width * 0.12) }), 80);
+                })();
                 // add small confetti when a ship sinks
                 addConfetti(canvas, 14);
                 if (shipsArray.every(s => s.sunk)) {
