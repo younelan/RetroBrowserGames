@@ -885,8 +885,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Place a ship object on the board and update its properties
     function placeShipOnBoard(board, ship, startRow, startCol, isVertical) {
         // Clear old positions of the ship on the board if it was already placed
+        // Only clear cells that currently reference this ship to avoid erasing other ships
         for (const pos of ship.positions) {
-            board[pos.row][pos.col] = 0;
+            if (pos && pos.row >= 0 && pos.row < gridSize && pos.col >= 0 && pos.col < gridSize) {
+                if (board[pos.row][pos.col] === ship) {
+                    board[pos.row][pos.col] = 0;
+                }
+            }
         }
 
         ship.startRow = startRow;
