@@ -7,38 +7,18 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
-        <h1>Battleship</h1>
-        <div id="game-boards">
-            <div class="board-container" id="computer-board-main-container">
-                <h2>Computer's Board</h2>
-                <div id="computer-board" class="grid"></div>
-            </div>
-            <div class="board-container">
-                <h2>Your Board</h2>
-                <div id="player-board" class="grid"></div>
-            </div>
+    <h1>Battleship</h1>
+    <div class="game-container">
+        <div class="player-board-container">
+            <h2>Player Board</h2>
+            <canvas id="playerBoard"></canvas>
         </div>
-        <div id="ship-placement-container">
-            <h2>Place Your Ships</h2>
-            <div id="ship-options">
-                <!-- Draggable ship previews will be dynamically added here -->
-            </div>
-            <div id="controls">
-                <label class="toggle-switch">
-                    <input type="checkbox" id="orientation-toggle">
-                    <span class="slider"></span>
-                </label>
-                <label for="orientation-toggle">Horizontal</label>
-                <button id="start-button">Start Game</button>
-                <button id="delete-button" class="hidden">Delete Ship</button>
-            </div>
-        </div>
-        <div id="info-container">
-            <p id="info"></p>
-            <p id="turn-info"></p>
+        <div class="computer-board-container">
+            <h2>Computer Board</h2>
+            <canvas id="computerBoard"></canvas>
         </div>
     </div>
-    <script src="app.js"></script>
+    <button id="startGameButton">Start Game</button>
+    <script src="script.js"></script>
 </body>
 </html>

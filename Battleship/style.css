@@ -1,332 +1,82 @@
-:root {
-    --board-size: 320px;
-    --primary-color: #2c3e50;
-    --secondary-color: #34495e;
-    --accent-color: #e74c3c;
-    --water-color: #3498db;
-    --ship-color: #95a5a6;
-    --hit-color: #c0392b;
-    --miss-color: #2980b9;
-    --font-color: #ecf0f1;
-}
-
-* {
-    box-sizing: border-box;
-}
-
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    text-align: center;
-    background-color: var(--primary-color);
-    color: var(--font-color);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-}
-
-#game-container {
+    font-family: sans-serif;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
+    margin: 10px; /* Reduced margin for smaller screens */
+    background-color: #f0f0f0;
+    min-height: 100vh; /* Ensure body takes full viewport height */
 }
 
-#game-boards {
+h1 {
+    color: #333;
+    font-size: 2em; /* Default font size */
+    margin-bottom: 15px;
+}
+
+.game-container {
     display: flex;
-    flex-wrap: wrap; /* Allows boards to wrap on smaller screens */
-    justify-content: center;
-    gap: 2rem;
+    flex-wrap: wrap; /* Allow boards to wrap on smaller screens */
+    gap: 20px; /* Reduced gap for smaller screens */
+    margin-top: 15px;
+    justify-content: center; /* Center items when wrapped */
+    width: 100%; /* Take full width */
+    max-width: 900px; /* Max width for larger screens */
 }
 
-.board-container {
-    display: flex;
-    flex-direction: column;
+canvas {
+    border: 2px solid #333;
+    background: linear-gradient(-45deg, #a7d9ed, #62b9d1, #a7d9ed, #62b9d1); /* More complex gradient */
+    background-size: 400% 400%; /* Make background larger than canvas for animation */
+    animation: waterFlow 15s ease infinite; /* Apply animation */
+    display: block;
+    width: calc(50% - 10px); /* Roughly half width, accounting for gap */
+    max-width: 400px; /* Max width for individual canvas */
+    height: auto; /* Maintain aspect ratio */
 }
 
-#computer-board-main-container.hidden {
-    display: none;
-}
-
-#computer-board-main-container {
-    margin-bottom: 20px; /* Add some space below computer board */
-}
-
-@media (min-width: 768px) {
-    #game-boards {
-        flex-direction: row;
-        justify-content: space-around;
+@keyframes waterFlow {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
     }
 }
 
-
-.grid {
-    display: grid;
-    width: var(--board-size);
-    height: var(--board-size);
-    grid-template-columns: repeat(10, 1fr);
-    grid-template-rows: repeat(10, 1fr);
-    border: 2px solid var(--secondary-color);
-    background-color: var(--water-color);
+.player-board-container, .computer-board-container {
+    text-align: center;
+    flex: 1 1 45%; /* Allow containers to grow and shrink, with a base of 45% for two columns */
+    min-width: 250px; /* Minimum width before stacking */
 }
 
-.cell {
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    cursor: pointer;
-    transition: background-color 0.3s;
-}
+/* Media query for smaller screens */
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.5em;
+    }
 
-.cell:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-}
+    .game-container {
+        flex-direction: column; /* Stack boards vertically */
+        gap: 20px;
+    }
 
-.ship {
-    background-color: var(--ship-color);
-}
+    canvas {
+        width: 90vw; /* Take up most of the viewport width */
+        max-width: 350px; /* Even smaller max-width */
+    }
 
-.hit {
-    background-color: var(--hit-color);
-}
-
-.miss {
-    background-color: var(--miss-color);
-}
-
-#ship-placement-container {
-    background-color: var(--secondary-color);
-    padding: 1rem;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-#ship-options {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.ship-option {
-    display: flex;
-    align-items: center;
-    justify-content: center; 
-    width: fit-content; 
-    background-color: var(--primary-color);
-    border: 2px solid transparent;
-    border-radius: 4px;
-    cursor: grab;
-    transition: border-color 0.3s, background-color 0.3s;
-    height: 32px;
-}
-
-.ship-option:hover {
-    background-color: #3e5771;
-}
-
-.ship-option.selected {
-    border-color: var(--accent-color);
-}
-
-.ship-preview {
-    display: flex;
-    flex-direction: row;
-}
-
-.ship-preview.vertical {
-    flex-direction: column;
-}
-
-.ship-segment {
-    width: 30px;
-    height: 30px;
-    background-color: var(--ship-color);
-    border: 1px solid var(--secondary-color);
-}
-
-.ship.vertical {
-    display: flex;
-    flex-direction: column;
-}
-
-
-.ship.selected-ship {
-    background-color: #f1c40f;
-}
-
-#controls {
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-    align-items: center;
+    .player-board-container, .computer-board-container {
+        flex: 1 1 100%; /* Take full width */
+    }
 }
 
 button {
-    padding: 0.75rem 1.5rem;
-    font-size: 1rem;
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 1.2em;
     cursor: pointer;
-    border: none;
-    border-radius: 4px;
-    background-color: var(--accent-color);
-    color: var(--font-color);
-    transition: background-color 0.3s;
-}
-
-button:hover {
-    background-color: #d63031;
-}
-
-.toggle-switch {
-    position: relative;
-    display: inline-block;
-    width: 60px;
-    height: 34px;
-}
-
-.toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: .4s;
-    border-radius: 34px;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 26px;
-    width: 26px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-}
-
-input:checked + .slider {
-    background-color: var(--accent-color);
-}
-
-input:checked + .slider:before {
-    transform: translateX(26px);
-}
-
-.hidden {
-    display: none;
-}
-
-/* Water Drop Animation */
-@keyframes water-drop {
-    0% {
-        transform: scale(0);
-        opacity: 1;
-        background-color: var(--miss-color);
-    }
-    100% {
-        transform: scale(1.5);
-        opacity: 0;
-        background-color: transparent;
-    }
-}
-
-.cell.water-animation {
-    position: relative;
-    overflow: hidden;
-}
-
-.cell.water-animation::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    animation: water-drop 0.7s ease-out forwards;
-    transform: translate(-50%, -50%);
-    background-color: var(--miss-color);
-    opacity: 0;
-}
-
-/* Explosion Animation */
-@keyframes explosion {
-    0% {
-        transform: scale(0.5);
-        opacity: 1;
-        background-color: var(--hit-color);
-        box-shadow: 0 0 0 0px var(--hit-color);
-    }
-    50% {
-        transform: scale(1.2);
-        opacity: 0.8;
-        box-shadow: 0 0 10px 5px var(--hit-color);
-    }
-    100% {
-        transform: scale(1.5);
-        opacity: 0;
-        box-shadow: 0 0 20px 10px var(--hit-color);
-    }
-}
-
-.cell.explosion-animation {
-    position: relative;
-    overflow: hidden;
-}
-
-.cell.explosion-animation::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    animation: explosion 0.7s ease-out forwards;
-    transform: translate(-50%, -50%);
-    background-color: var(--hit-color);
-    opacity: 0;
-}
-
-
-@media (max-width: 768px) {
-    #game-boards {
-        flex-direction: column;
-        align-items: center;
-    }
-
-    :root {
-        --board-size: 90vw;
-    }
-    
-    .ship-segment {
-        width: 8vw;
-        height: 8vw;
-    }
-
-    #ship-options {
-        gap: 0.5rem;
-    }
-
-    h1 {
-        font-size: 1.5rem;
-    }
-
-    h2 {
-        font-size: 1.2rem;
-    }
-
-    #controls {
-        flex-direction: column;
-    }
 }
