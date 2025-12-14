@@ -407,8 +407,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function addFloatingText(canvas, text, colorRGB = '255,255,255', options = {}) {
         const cx = options.center ? canvas.width / 2 : (options.x || canvas.width / 2);
         const cy = options.center ? canvas.height / 2 : (options.y || canvas.height / 2);
-        const duration = options.duration || 50;
-        const size = options.size || Math.floor(canvas.width * (options.center ? 0.06 : 0.04));
+        const duration = (options.duration || 50) * 2; // make floating text stay longer
+        const size = options.size || Math.floor(canvas.width * (options.center ? 0.12 : 0.08));
 
         animations.push({
             canvas: canvas,
@@ -763,12 +763,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
-        // Title
-        ctx.font = `bold ${Math.floor(w * 0.08)}px sans-serif`;
+        // Title (larger)
+        ctx.font = `bold ${Math.floor(w * 0.16)}px sans-serif`;
         ctx.fillText(title, w / 2, h / 2 - (w * 0.05));
 
-        // Subtitle
-        ctx.font = `${Math.floor(w * 0.035)}px sans-serif`;
+        // Subtitle (larger)
+        ctx.font = `${Math.floor(w * 0.07)}px sans-serif`;
         ctx.fillText(subtitle, w / 2, h / 2 + (w * 0.05));
 
         // Draw a centered Restart button on the game-over overlay
@@ -1197,47 +1197,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handlePointerUp(e) {
         if (gameState === 'placement') {
-            if (draggedShip) {
-                if (isDragging) {
-                    const tempBoard = createEmptyBoard();
-                    for (let r = 0; r < gridSize; r++) {
-                        for (let c = 0; c < gridSize; c++) {
-                            if (playerBoard[r][c] !== draggedShip) {
-                                tempBoard[r][c] = playerBoard[r][c];
-                            }
+            if (isDragging && draggedShip) {
+                const tempBoard = createEmptyBoard();
+                for (let r = 0; r < gridSize; r++) {
+                    for (let c = 0; c < gridSize; c++) {
+                        if (playerBoard[r][c] !== draggedShip) {
+                            tempBoard[r][c] = playerBoard[r][c];
                         }
                     }
-                    if (!canPlaceShip(tempBoard, draggedShip, draggedShip.startRow, draggedShip.startCol, draggedShip.isVertical, draggedShip)) {
-                        placeShipOnBoard(playerBoard, draggedShip, originalShipState.row, originalShipState.col, originalShipState.isVertical);
-                    }
-                    // after a real drag-drop, deselect
-                    selectedShip = null;
-                    renderPlayerBoards();
-                } else {
-                    // short tap on a ship -> selection or rotate-button click
-                    const mousePos = getMousePos(playerCanvas, e);
-                    const px = mousePos.x;
-                    const py = mousePos.y;
+                }
+                if (!canPlaceShip(tempBoard, draggedShip, draggedShip.startRow, draggedShip.startCol, draggedShip.isVertical, draggedShip)) {
+                    placeShipOnBoard(playerBoard, draggedShip, originalShipState.row, originalShipState.col, originalShipState.isVertical);
+                }
+                // after a real drag-drop, deselect
+                selectedShip = null;
+                renderPlayerBoards();
+            } else {
+                // short tap (or tap when no ship was being dragged): treat as selection or rotate-button click
+                const mousePos = getMousePos(playerCanvas, e);
+                const px = mousePos.x;
+                const py = mousePos.y;
 
-                    // Check rotate buttons first (allow immediate rotate without prior select)
-                    let rotated = false;
-                    for (const s of playerShips) {
-                        if (s.sunk) continue;
-                        const b = getRotateButtonBoundsForShip(s, playerCanvas);
-                        const dx = px - b.x;
-                        const dy = py - b.y;
-                        if ((dx * dx + dy * dy) <= (b.r * b.r)) {
-                            rotateShip(s);
-                            rotated = true;
-                            break;
-                        }
+                // Check rotate buttons first (allow immediate rotate without prior select)
+                let rotated = false;
+                for (const s of playerShips) {
+                    if (s.sunk) continue;
+                    const b = getRotateButtonBoundsForShip(s, playerCanvas);
+                    const dx = px - b.x;
+                    const dy = py - b.y;
+                    if ((dx * dx + dy * dy) <= (b.r * b.r)) {
+                        rotateShip(s);
+                        rotated = true;
+                        break;
                     }
-                    if (!rotated) {
-                        // select the tapped ship (or deselect if empty)
-                        const tapped = getShipAtMousePos(e);
-                        if (tapped && tapped !== 0) selectedShip = tapped; else selectedShip = null;
-                        renderPlayerBoards();
-                    }
+                }
+                if (!rotated) {
+                    // select the tapped ship (or deselect if empty water)
+                    const tapped = getShipAtMousePos(e);
+                    if (tapped && tapped !== 0) selectedShip = tapped; else selectedShip = null;
+                    renderPlayerBoards();
                 }
             }
 
@@ -1353,15 +1351,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     playerCanvas.addEventListener('click', handleCanvasClickForRestart);
     computerCanvas.addEventListener('click', handleCanvasClickForRestart);
-    // also handle touchend directly on canvases for mobile (click may be prevented)
+    // also handle touchend and pointerup directly on canvases for mobile (click may be prevented)
     playerCanvas.addEventListener('touchend', (ev) => handleCanvasClickForRestart(ev), { passive: true });
     computerCanvas.addEventListener('touchend', (ev) => handleCanvasClickForRestart(ev), { passive: true });
+    // pointerup covers many input types reliably on modern browsers
+    playerCanvas.addEventListener('pointerup', (ev) => handleCanvasClickForRestart(ev));
+    computerCanvas.addEventListener('pointerup', (ev) => handleCanvasClickForRestart(ev));
 
     // Start Game Button Logic
     startGameButton.addEventListener('click', () => {
         if (gameState === 'placement') {
             gameState = 'playing';
             startGameButton.disabled = true;
+            // clear any selected ship when game starts
+            selectedShip = null;
             // hide placement controls and show restart button
             if (randomizeButton) randomizeButton.style.display = 'none';
             if (startGameButton) startGameButton.style.display = 'none';
