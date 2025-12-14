@@ -1425,6 +1425,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (randomizeButton) randomizeButton.style.display = 'inline-block';
         if (startGameButton) { startGameButton.style.display = 'inline-block'; startGameButton.disabled = false; }
         if (restartButton) restartButton.style.display = 'none';
+        // hide the computer board until the game is started again
+        if (computerContainer) {
+            computerContainer.classList.add('hidden');
+            // place computer container after player container to restore original order
+            const parent = playerContainer.parentNode;
+            if (parent && computerContainer) parent.insertBefore(computerContainer, playerContainer.nextSibling);
+        }
         // clear any gameOver button bounds
         gameOverButtonBounds[playerCanvas.id] = null;
         gameOverButtonBounds[computerCanvas.id] = null;
