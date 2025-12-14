@@ -80,3 +80,5 @@ button {
     font-size: 1.2em;
     cursor: pointer;
 }
+
+/* Canvas is used for win/lose messaging now; no DOM overlay styles required. */

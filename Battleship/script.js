@@ -17,6 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let gameState = 'placement'; // 'placement', 'playing', 'gameOver'
     let currentPlayer = 'player'; // 'player' or 'computer'
     let playerTurn = true;
+    let gameOverWinner = null; // 'player' or 'computer'
 
     // Ship types: name, length
     const shipConfigs = [
@@ -64,6 +65,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Stores 'miss' (2), 'hit' (3) or 0 (unknown) for shots on the boards
     let playerShots = createEmptyBoard(); // Shots taken by player on computer's board
     let computerShots = createEmptyBoard(); // Shots taken by computer on player's board
+
+    // Animation queue (particles, ripples, etc.). Declared early so render functions can reference it.
+    const animations = [];
+
+    // Drag / placement interaction state
+    let draggedShip = null;
+    let isDragging = false;
+    let maybeDragging = false;
+    let startMouseX = 0;
+    let startMouseY = 0;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let originalShipState = null;
 
     const DRAG_THRESHOLD = 5; // Pixels to move before it's considered a drag
 
@@ -230,6 +244,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         animations.push({
             canvas: canvas,
+            row: row,
+            col: col,
+            type: 'hit',
             particles: particles,
             frame: 0,
             duration: particles[0].maxLife, // Duration based on particle life
@@ -320,6 +337,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         animations.push({
             canvas: canvas,
+            row: row,
+            col: col,
+            type: 'miss',
             particles: particles,
             frame: 0,
             duration: 30, // Duration based on longest particle life
@@ -337,6 +357,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function drawShots(ctx, shotsBoard) {
         for (let r = 0; r < gridSize; r++) {
             for (let c = 0; c < gridSize; c++) {
+                // If there is an active animation for this cell on this canvas, skip the static marker
+                const hasAnim = animations.some(anim => anim.canvas === ctx.canvas && anim.row === r && anim.col === c);
+                if (hasAnim) continue;
                 if (shotsBoard[r][c] === 2) { // Miss
                     ctx.beginPath();
                     ctx.arc(c * cellSize + cellSize / 2, r * cellSize + cellSize / 2, cellSize / 4, 0, 2 * Math.PI);
@@ -346,17 +369,50 @@ document.addEventListener('DOMContentLoaded', () => {
                     ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'; // White outline
                     ctx.stroke();
                 } else if (shotsBoard[r][c] === 3) { // Hit
+                    // Draw a subtle pulsing hit marker if no particle animation is present
+                    const cx = c * cellSize + cellSize / 2;
+                    const cy = r * cellSize + cellSize / 2;
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(200, 0, 0, 1)';
+                    ctx.lineWidth = Math.max(2, cellSize * 0.06);
+                    const size = cellSize * 0.28;
                     ctx.beginPath();
-                    ctx.moveTo(c * cellSize + cellSize * 0.2, r * cellSize + cellSize * 0.2);
-                    ctx.lineTo(c * cellSize + cellSize * 0.8, r * cellSize + cellSize * 0.8);
-                    ctx.moveTo(c * cellSize + cellSize * 0.8, r * cellSize + cellSize * 0.2);
-                    ctx.lineTo(c * cellSize + cellSize * 0.2, r * cellSize + cellSize * 0.8);
-                    ctx.lineWidth = 3; // Bolder 'X'
-                    ctx.strokeStyle = 'rgba(200, 0, 0, 1)'; // Darker red
+                    ctx.moveTo(cx - size, cy - size);
+                    ctx.lineTo(cx + size, cy + size);
+                    ctx.moveTo(cx + size, cy - size);
+                    ctx.lineTo(cx - size, cy + size);
                     ctx.stroke();
+                    ctx.restore();
                 }
             }
         }
+    }
+
+    // Draw a game-over message onto a canvas context
+    function drawGameOverOnCanvas(ctx) {
+        if (gameState !== 'gameOver' || !gameOverWinner) return;
+        const w = ctx.canvas.width;
+        const h = ctx.canvas.height;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.45)';
+        ctx.fillRect(0, 0, w, h);
+
+        const title = (gameOverWinner === 'player') ? 'You Win!' : 'Computer Wins!';
+        const subtitle = (gameOverWinner === 'player') ? 'All enemy ships sunk.' : 'Your fleet has been destroyed.';
+
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        // Title
+        ctx.font = `bold ${Math.floor(w * 0.08)}px sans-serif`;
+        ctx.fillText(title, w / 2, h / 2 - (w * 0.05));
+
+        // Subtitle
+        ctx.font = `${Math.floor(w * 0.035)}px sans-serif`;
+        ctx.fillText(subtitle, w / 2, h / 2 + (w * 0.05));
+
+        ctx.restore();
     }
 
     function renderBoard(ctx, board, ships, shotsBoard, isPlayerBoard) {
@@ -509,7 +565,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (result.gameOver) {
             gameState = 'gameOver';
-            alert('Player Wins!');
+            gameOverWinner = 'player';
+            // Let the animation loop draw the canvas-based win screen
             return;
         }
 
@@ -535,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (result.gameOver) {
             gameState = 'gameOver';
-            alert('Computer Wins!');
+            gameOverWinner = 'computer';
             return;
         }
 
@@ -566,8 +623,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attach resize event listener
     window.addEventListener('resize', onResize);
 
+    // Start the animation loop (handles particle effects and game-over drawing)
+    requestAnimationFrame(animate);
+
     // Game animation management
-    const animations = [];
 
     function animate() {
         // Redraw boards first to clear previous animation frames
@@ -586,6 +645,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 i--;
             }
         }
+
+        // If game over, draw canvas-based messages on both boards
+        if (gameState === 'gameOver') {
+            drawGameOverOnCanvas(playerCtx);
+            drawGameOverOnCanvas(computerCtx);
+        }
+
         requestAnimationFrame(animate);
     }
 
