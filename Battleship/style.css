@@ -19,7 +19,7 @@ h1 {
     flex-wrap: wrap; /* Allow boards to wrap on smaller screens */
     gap: 20px; /* Reduced gap for smaller screens */
     margin-top: 15px;
-    justify-content: center; /* Center items when wrapped */
+    justify-content: flex-start; /* Left-align boards on desktop */
     width: 100%; /* Take full width */
     max-width: 900px; /* Max width for larger screens */
 }
@@ -30,7 +30,7 @@ canvas {
     background-size: 400% 400%; /* Make background larger than canvas for animation */
     animation: waterFlow 15s ease infinite; /* Apply animation */
     display: block;
-    width: calc(50% - 10px); /* Roughly half width, accounting for gap */
+    width: 100%; /* Fill container width so container controls sizing */
     max-width: 400px; /* Max width for individual canvas */
     height: auto; /* Maintain aspect ratio */
 }
@@ -48,7 +48,7 @@ canvas {
 }
 
 .player-board-container, .computer-board-container {
-    text-align: center;
+    text-align: left; /* Left-align content so canvases sit flush to the left */
     flex: 1 1 45%; /* Allow containers to grow and shrink, with a base of 45% for two columns */
     min-width: 250px; /* Minimum width before stacking */
 }
@@ -65,8 +65,12 @@ canvas {
     }
 
     canvas {
-        width: 90vw; /* Take up most of the viewport width */
+        width: 100%; /* Fill container width on small screens */
         max-width: 350px; /* Even smaller max-width */
+    }
+
+    .player-board-container, .computer-board-container {
+        text-align: center; /* keep previous centered behavior on mobile */
     }
 
     .player-board-container, .computer-board-container {
