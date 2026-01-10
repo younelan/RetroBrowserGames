@@ -1,0 +1,80 @@
+:root {
+    --bg-color: #0b0e14;
+    --canvas-bg: #000;
+    --border-color: #4a4a4a;
+    --accent-color: #39ff14;
+    /* Neon Green */
+    --ui-brown: #4e2b0c;
+    --ui-light-brown: #8b5a2b;
+    --text-color: #ffffff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    overflow: hidden;
+    background-image:
+        radial-gradient(circle at 50% 50%, rgba(20, 30, 48, 0.5) 0%, rgba(0, 0, 0, 0.8) 100%),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M54.627 0l.83.83L40 15.458V24h8.542l14.628-14.628-.83-.83L48 23.172V14.542L54.627 0zM40 24h8.542l-8.542 8.542V24z' fill='%231a222f' fill-opacity='0.1' fill-rule='evenodd' /%3E%3C/svg%3E");
+}
+
+h1 {
+    margin-bottom: 1rem;
+    font-size: 2.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5rem;
+    color: var(--accent-color);
+    text-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+    filter: drop-shadow(2px 2px 2px rgba(0, 0, 0, 0.5));
+}
+
+.game-viewport {
+    position: relative;
+    max-width: 95vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+}
+
+.game-container {
+    position: relative;
+    border: 4px solid var(--border-color);
+    background-color: var(--canvas-bg);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+canvas {
+    display: block;
+    width: 800px;
+    height: 400px;
+    max-width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+
+canvas {
+    display: block;
+    width: 640px;
+    height: 740px;
+    max-width: 100%;
+    height: auto;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
