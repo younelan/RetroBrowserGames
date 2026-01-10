@@ -1,0 +1,452 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.container {
+    max-width: 600px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+    color: white;
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.topbar h1 {
+    text-align: left;
+    margin: 0;
+    font-size: 1.9rem;
+}
+
+.title-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.small-btn {
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    border-radius: 8px;
+    border: none;
+    background: #ff7a59; /* distinct accent color */
+    color: white;
+    cursor: pointer;
+}
+
+.icon-btn {
+    background: #17a2a6; /* teal accent for help (distinct from New button) */
+    border: none;
+    font-size: 1.1rem;
+    color: white; /* white icon on accent background for visibility */
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+}
+
+.icon-btn:hover { transform: translateY(-2px); background: #138f86; }
+.small-btn:hover { transform: translateY(-2px); }
+
+/* segmented toggle buttons */
+.segmented {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    width: 100%;
+}
+
+.segmented .toggle-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    background: white;
+    color: #333;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.segmented .toggle-btn.active {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+}
+
+.game-info {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.player-turn {
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 15px;
+}
+
+.scores {
+    display: flex;
+    justify-content: space-around;
+    gap: 20px;
+}
+
+.score {
+    flex: 1;
+    text-align: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.score.active {
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    color: white;
+    box-shadow: 0 8px 24px rgba(102,126,234,0.25);
+    transform: translateY(-4px);
+}
+
+.score.active .player-label { color: rgba(255,255,255,0.9); }
+.score.active .player-score { color: white; }
+
+.player-label {
+    display: block;
+    font-size: 1rem;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.player-score {
+    display: block;
+    font-size: 2rem;
+    font-weight: bold;
+    color: #333;
+}
+
+#game-container {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#game-board {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    touch-action: none;
+}
+
+.controls {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+}
+
+button {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: white;
+    background: #667eea;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+}
+
+button:hover {
+    background: #764ba2;
+    transform: translateY(-2px);
+    box-shadow: 0 7px 20px rgba(0, 0, 0, 0.4);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+.grid-size {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.grid-size label {
+    font-weight: bold;
+    color: #333;
+}
+
+select {
+    padding: 8px 15px;
+    font-size: 1rem;
+    border: 2px solid #667eea;
+    border-radius: 5px;
+    background: white;
+    cursor: pointer;
+    outline: none;
+}
+
+select:focus {
+    border-color: #764ba2;
+}
+
+.vs-computer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.12);
+}
+
+.vs-computer label {
+    font-weight: bold;
+    color: #333;
+}
+
+.player-names {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    box-shadow: 0 5px 10px rgba(0,0,0,0.08);
+}
+
+.player-names label {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.player-names input {
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    width: 90px;
+}
+
+/* Modal overrides */
+.modal-content button {
+    padding: 10px 18px;
+    background: #667eea;
+    color: white;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}
+
+.modal-content button#close-modal {
+    background: #e0e0e0;
+    color: #333;
+}
+
+/* New game modal tweaks */
+.modal .modal-content h2 {
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.modal .modal-content select,
+.modal .modal-content input[type="text"] {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    width: 100%;
+}
+
+.modal .modal-content .primary {
+    background: #667eea;
+}
+
+.modal .modal-content {
+    max-width: 420px;
+}
+
+/* SVG Styles */
+.dot {
+    fill: #333;
+    cursor: default;
+}
+
+.line {
+    stroke: #eee;
+    stroke-width: 3;
+    stroke-linecap: round;
+    cursor: pointer;
+    transition: stroke 0.2s ease;
+}
+
+.line:hover {
+    stroke: #ddd;
+    stroke-width: 4;
+}
+
+.line.active {
+    cursor: default;
+}
+
+.line.active.player1 {
+    stroke: #667eea;
+    stroke-width: 4;
+}
+
+.line.active.player2 {
+    stroke: #e74c3c;
+    stroke-width: 4;
+}
+
+.box-fill {
+    opacity: 0.7;
+}
+
+.box-fill.player1 {
+    fill: #667eea;
+}
+
+.box-fill.player2 {
+    fill: #e74c3c;
+}
+
+.box-text {
+    font-size: 24px;
+    font-weight: bold;
+    fill: white;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    pointer-events: none;
+    user-select: none;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+    h1 {
+        font-size: 2rem;
+    }
+
+    .player-turn {
+        font-size: 1.2rem;
+    }
+
+    .player-score {
+        font-size: 1.5rem;
+    }
+
+    button {
+        padding: 12px 24px;
+        font-size: 1rem;
+    }
+
+    .controls {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .grid-size {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Winner Modal */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.modal h2 {
+    font-size: 2.5rem;
+    color: #667eea;
+    margin-bottom: 20px;
+}
+
+.modal p {
+    font-size: 1.5rem;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+.modal button {
+    padding: 15px 40px;
+}

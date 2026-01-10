@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dots and Boxes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="topbar">
+            <h1>Dots & Boxes</h1>
+            <div class="title-actions">
+                <button id="top-new" class="small-btn">New</button>
+                <button id="help-btn" class="icon-btn" aria-label="Help">💡</button>
+            </div>
+        </header>
+        
+        <div class="game-info">
+                <div class="scores">
+                <div class="score">
+                    <span class="player-label">Player 1</span>
+                        <span class="player-score" id="score1">0</span>
+                </div>
+                <div class="score">
+                    <span class="player-label">Player 2</span>
+                        <span class="player-score" id="score2">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-container">
+            <svg id="game-board"></svg>
+        </div>
+
+        <div class="controls">
+            <!-- Bottom New Game removed; use header New button -->
+        </div>
+    </div>
+
+    <!-- End game modal -->
+    <div id="end-modal" class="modal" role="dialog" aria-hidden="true">
+        <div class="modal-content">
+            <h2 id="end-title">Game Over</h2>
+            <p id="end-message">Final score</p>
+            <div style="display:flex;gap:12px;justify-content:center">
+                <button id="restart-btn">New Game</button>
+                <button id="close-modal">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Game options modal -->
+    <div id="newgame-modal" class="modal" role="dialog" aria-hidden="true">
+        <div class="modal-content">
+            <h2>New Game</h2>
+            <div style="display:flex;flex-direction:column;gap:12px;min-width:260px">
+                <label>
+                    Grid Size:
+                    <div class="segmented" id="modal-grid-size-group">
+                        <button type="button" class="toggle-btn" data-value="4">4 x 4</button>
+                        <button type="button" class="toggle-btn" data-value="6">6 x 6</button>
+                        <button type="button" class="toggle-btn" data-value="8">8 x 8</button>
+                        <button type="button" class="toggle-btn" data-value="12">12 x 12</button>
+                    </div>
+                    <input type="hidden" id="modal-grid-size" value="4" />
+                </label>
+
+                <label>
+                    Who starts:
+                    <div class="segmented" id="modal-starter-group">
+                        <button type="button" class="toggle-btn" data-value="player">You</button>
+                        <button type="button" class="toggle-btn" data-value="computer">Computer</button>
+                        <button type="button" class="toggle-btn" data-value="random">Random</button>
+                    </div>
+                    <input type="hidden" id="modal-starter" value="player" />
+                </label>
+
+                <label style="display:flex;align-items:center;gap:8px">
+                    <input type="checkbox" id="modal-vs-computer" checked /> Play vs Computer
+                </label>
+
+                <label>
+                    Your name:
+                    <input id="modal-player-name" type="text" value="You" maxlength="12" />
+                </label>
+
+                <label>
+                    Opponent name:
+                    <input id="modal-opponent-name" type="text" value="Computer" maxlength="12" />
+                </label>
+
+                <div style="display:flex;gap:10px;justify-content:center;margin-top:6px">
+                    <button id="modal-start" class="primary">Start</button>
+                    <button id="modal-cancel">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help modal -->
+    <div id="help-modal" class="modal" role="dialog" aria-hidden="true">
+        <div class="modal-content">
+            <h2>How to Play</h2>
+            <div style="text-align:left;line-height:1.4">
+                <p>Click an edge between two dots to claim it. When you complete the fourth side of a square, the square is
+                filled with your initial and you get another turn. Chains of captures are claimed automatically.</p>
+                <p>Use the <strong>New</strong> button to start a new game with options (grid size, who starts, names, difficulty).</p>
+                <p>Play vs Computer toggles are available in the New Game dialog. Computer plays as the second player by default.</p>
+                <p>Smaller dots and a lighter grid make it easier to see claimed lines.</p>
+            </div>
+            <div style="display:flex;gap:12px;justify-content:center;margin-top:14px">
+                <button id="help-close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
