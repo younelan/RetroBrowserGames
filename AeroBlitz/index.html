@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Galactic Storm</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <canvas id="mini-map-canvas"></canvas>
+        <div id="ui-container">
+            <div id="score-display">Score: 0</div>
+            <div id="level-display">Level: 1</div>
+        </div>
+        <div id="start-screen">
+            <h1>Aero Blitz</h1>
+            <p>Touch/drag to move. Survive as long as you can.</p>
+            <button id="start-button">Start Game</button>
+        </div>
+        <div id="game-over-screen" style="display: none;">
+            <h1>Game Over</h1>
+            <p>Your score: <span id="final-score">0</span></p>
+            <button id="restart-button">Restart</button>
+        </div>
+    </div>
+    <script type="module" src="game.js"></script>
+</body>
+</html>
