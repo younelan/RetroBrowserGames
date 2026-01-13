@@ -1,0 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+:root {
+    --primary: #ffdd57;
+    --bg: #0a0a0a;
+    --glass: rgba(255, 255, 255, 0.1);
+    --glass-border: rgba(255, 255, 255, 0.2);
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg);
+    font-family: 'Orbitron', sans-serif;
+    color: #fff;
+}
+
+#game-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+#hud {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.hud-box {
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-transform: uppercase;
+}
+
+.hud-label {
+    font-size: 10px;
+    opacity: 0.7;
+    margin-bottom: 2px;
+}
+
+.hud-value {
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--primary);
+}
+
+#speedometer {
+    position: absolute;
+    bottom: 40px;
+    right: 40px;
+    width: 150px;
+    height: 150px;
+    background: var(--glass);
+    backdrop-filter: blur(15px);
+    border-radius: 50%;
+    border: 2px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 0 20px rgba(255, 221, 87, 0.2);
+}
+
+#overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+    transition: opacity 0.5s;
+}
+
+#overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+h1 {
+    font-size: 64px;
+    margin: 0;
+    background: linear-gradient(180deg, #fff 0%, var(--primary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(255, 221, 87, 0.5));
+}
+
+#start-btn {
+    margin-top: 30px;
+    padding: 15px 40px;
+    font-size: 20px;
+    font-weight: 700;
+    font-family: inherit;
+    background: var(--primary);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(255, 221, 87, 0.4);
+    transition: transform 0.2s, background 0.2s;
+}
+
+#start-btn:hover {
+    transform: scale(1.05);
+    background: #ffea7a;
+}
+
+.controls-hint {
+    margin-top: 20px;
+    opacity: 0.6;
+    font-size: 14px;
+}
+
+#countdown {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 120px;
+    font-weight: 900;
+    color: var(--primary);
+    text-shadow: 0 0 20px rgba(255, 221, 87, 0.8);
+    opacity: 0;
+    pointer-events: none;
+}

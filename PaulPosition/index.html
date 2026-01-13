@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paul Position</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+  <div id="game-container"></div>
+
+  <div id="ui">
+    <div id="hud">
+      <div class="hud-box">
+        <div class="hud-label">Time</div>
+        <div id="time" class="hud-value">0.00</div>
+      </div>
+      <div class="hud-box">
+        <div class="hud-label">Lap</div>
+        <div id="lap" class="hud-value">0 / 3</div>
+      </div>
+      <div class="hud-box">
+        <div class="hud-label">Position</div>
+        <div id="rank" class="hud-value">1st</div>
+      </div>
+    </div>
+
+    <div id="speedometer">
+      <div class="hud-label">Speed</div>
+      <div id="speed" class="hud-value">0</div>
+      <div class="hud-label">KM/H</div>
+    </div>
+
+    <div id="overlay">
+      <h1>PAUL POSITION</h1>
+      <button id="start-btn">QUALIFYING START</button>
+      <div class="controls-hint">W/A/S/D or Arrows to Drive</div>
+    </div>
+
+    <div id="countdown"></div>
+  </div>
+
+  <!-- Three.js from CDN -->
+  <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+  <script type="module" src="js/game.js"></script>
+</body>
+
+</html>
