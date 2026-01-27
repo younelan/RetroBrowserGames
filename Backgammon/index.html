@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Premium Backgammon</title>
+    <!-- Versioning added to bypass browser caching -->
+    <link rel="stylesheet" href="style.css?v=1.0.1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <header>
+            <h1>Backgammon</h1>
+            <div id="game-stats">
+                <div class="stat-item" id="player-white-info">
+                    <span class="player-dot white"></span>
+                    <span class="score" id="score-white">0</span>
+                </div>
+                <div class="stat-item" id="player-black-info">
+                    <span class="player-dot black"></span>
+                    <span class="score" id="score-black">0</span>
+                    <span class="ai-label">AI</span>
+                </div>
+                <div class="stat-item" id="moves-info">
+                    <span id="moves-count">0</span>
+                    <span class="stat-label">Moves</span>
+                </div>
+            </div>
+        </header>
+
+        <div id="board-outer">
+            <div id="board-inner">
+                <!-- Points 13-24 (Top) -->
+                <div class="points-row top">
+                    <div class="point" data-id="12"></div>
+                    <div class="point" data-id="13"></div>
+                    <div class="point" data-id="14"></div>
+                    <div class="point" data-id="15"></div>
+                    <div class="point" data-id="16"></div>
+                    <div class="point" data-id="17"></div>
+                    <div class="center-divider"></div>
+                    <div class="point" data-id="18"></div>
+                    <div class="point" data-id="19"></div>
+                    <div class="point" data-id="20"></div>
+                    <div class="point" data-id="21"></div>
+                    <div class="point" data-id="22"></div>
+                    <div class="point" data-id="23"></div>
+                </div>
+
+                <!-- Points 1-12 (Bottom) -->
+                <div class="points-row bottom">
+                    <div class="point" data-id="11"></div>
+                    <div class="point" data-id="10"></div>
+                    <div class="point" data-id="9"></div>
+                    <div class="point" data-id="8"></div>
+                    <div class="point" data-id="7"></div>
+                    <div class="point" data-id="6"></div>
+                    <div class="center-divider"></div>
+                    <div class="point" data-id="5"></div>
+                    <div class="point" data-id="4"></div>
+                    <div class="point" data-id="3"></div>
+                    <div class="point" data-id="2"></div>
+                    <div class="point" data-id="1"></div>
+                    <div class="point" data-id="0"></div>
+                </div>
+
+                <div id="vertical-bar">
+                    <div id="bar-white" class="bar-zone"></div>
+                    <div id="bar-black" class="bar-zone"></div>
+                </div>
+            </div>
+
+            <div id="bearing-off">
+                <div id="off-white" class="off-zone" data-player="white"></div>
+                <div id="off-black" class="off-zone" data-player="black"></div>
+            </div>
+        </div>
+
+        <div id="status-msg">White's turn to roll</div>
+
+        <footer>
+            <div id="dice-container">
+                <div class="die" id="die-1">?</div>
+                <div class="die" id="die-2">?</div>
+            </div>
+            <div id="controls">
+                <button id="undo-btn" class="secondary-btn">Undo</button>
+                <button id="finish-btn">Finish Turn</button>
+                <button id="theme-btn" class="secondary-btn">Theme</button>
+                <button id="reset-btn" class="secondary-btn">New Game</button>
+            </div>
+        </footer>
+    </div>
+    <script src="game.js?v=1.0.1"></script>
+</body>
+
+</html>
