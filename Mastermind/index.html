@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mastermind</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>Mastermind</h1>
+      <p class="subtitle">4 pegs · 10 attempts · Mobile-first</p>
+      <div class="legend">
+        <span><span class="legend-dot correct"></span> Exact</span>
+        <span><span class="legend-dot near"></span> Wrong place</span>
+        <span><span class="legend-dot wrong"></span> No match</span>
+      </div>
+    </header>
+
+    <section id="board" class="board" aria-label="Guess board"></section>
+
+    <div id="picker" class="picker hidden" role="listbox" aria-hidden="true"></div>
+
+    <section class="controls">
+      <div id="palette" class="palette" aria-label="Color palette"></div>
+      <div class="actions">
+        <button id="restartBtn" class="btn">Restart</button>
+      </div>
+    </section>
+
+    <div id="status" class="status" aria-live="polite"></div>
+
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <h2 id="modalTitle"></h2>
+        <p id="modalMsg"></p>
+        <button id="modalRestart" class="btn primary">Play again</button>
+      </div>
+    </div>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>
