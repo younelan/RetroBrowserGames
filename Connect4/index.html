@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Connect 4</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body class="app">
+    <header>
+      <div class="toolbar">
+        <h1>Connect 4</h1>
+        <div id="status" class="status" aria-live="polite">Ready</div>
+        <div><button id="restartBtn" class="btn primary">Restart</button></div>
+      </div>
+    </header>
+
+    <div class="canvas-wrap">
+      <canvas id="c4" role="application" aria-label="Connect 4 canvas"></canvas>
+    </div>
+
+    <footer class="foot">You are <span class="p1">Red</span>. AI is <span class="p2">Yellow</span>.</footer>
+
+    <div id="endModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <h2 id="endTitle">Game Over</h2>
+        <p id="endMsg">Result</p>
+        <div class="modal-actions">
+          <button id="endRestart" class="btn primary">Restart</button>
+          <button id="endClose" class="btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>

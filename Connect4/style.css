@@ -1,0 +1,58 @@
+/* Scoped variables so we don't style the page root when embedded */
+.app{--bg-card:linear-gradient(180deg,#071021,#04101a);--card:#0b1220;--muted:#9aa6b2;--p1:#ef4444;--p2:#facc15}
+/* only affect box-sizing inside the app container */
+.app, .app *{box-sizing:border-box}
+/* All styles scoped to the .app container so the game can be embedded */
+.app{max-width:560px;width:100%;margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:10px;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;color:var(--white)}
+header{display:flex;flex-direction:column;gap:6px;align-items:center}
+h1{margin:0;font-size:1.25rem}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:6px 0}
+.toolbar h1{margin:0;font-size:1.05rem}
+.status{padding:6px 10px;text-align:center;background:rgba(255,255,255,0.02);border-radius:10px;color:var(--muted);min-width:88px}
+.board{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;padding:8px;background:rgba(255,255,255,0.02);border-radius:12px}
+.column{display:flex;flex-direction:column-reverse;gap:8px;padding:4px}
+.cell{width:100%;aspect-ratio:1/1;border-radius:10px;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.token{width:78%;height:78%;border-radius:50%;background:transparent;box-shadow:inset 0 -6px 12px rgba(0,0,0,0.6);transition:transform 160ms ease, background 120ms}
+.board{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;padding:12px}
+.column{display:flex;flex-direction:column-reverse;gap:8px;padding:6px}
+
+/* canvas wrap */
+#canvas-wrap{ }
+#canvas-wrap{ }
+.canvas-wrap{width:100%;max-width:100%;aspect-ratio:1/1;margin:0 auto;overflow:visible}
+#c4{width:100%;height:100%;display:block;max-width:100%;max-height:100%}
+
+/* ensure the canvas container doesn't overflow short viewports */
+@media(max-height:520px){
+  .canvas-wrap{max-height:calc(100vh - 120px);aspect-ratio:1/1}
+}
+
+/* tokens via canvas; keep small controls below */
+.controls{display:none}
+
+/* end modal */
+.modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);z-index:1200}
+.modal.hidden{display:none}
+.modal-content{background:linear-gradient(180deg,#08314a,#041826);padding:18px;border-radius:12px;color:var(--white);text-align:center;min-width:260px;box-shadow:0 18px 40px rgba(2,6,23,0.6)}
+.modal-actions{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.modal h2{margin:0 0 6px 0}
+.modal p{margin:0;color:var(--muted)}
+
+.drop-bounce{transform:translateY(0);} 
+.controls{display:flex;justify-content:center}
+.btn{padding:10px 14px;border-radius:10px;border:none;background:#22313f;color:#fff;font-weight:700}
+.btn.primary{background:var(--p1);color:#041018}
+.foot{color:var(--muted);text-align:center;font-size:0.9rem}
+.p1{color:var(--p1);font-weight:700}
+.p2{color:var(--p2);font-weight:700}
+
+@media(min-width:520px){
+  .app{padding:18px}
+  .cell{border-radius:14px}
+}
+
+/* small screens tweak */
+@media(max-width:360px){
+  .app{padding:8px}
+  .board{gap:6px}
+}
