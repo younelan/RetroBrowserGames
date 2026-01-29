@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Othello Royale - Luxury Strategy</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="theme-luxury">
+    <div id="game-container">
+        <header id="stats-panel">
+            <div class="score-card player-black active" id="score-black-panel">
+                <span class="marble-preview black"></span>
+                <div class="player-info">
+                    <span class="player-label" id="label-black">YOU</span>
+                    <span class="player-name">OBSIDIAN</span>
+                    <span class="player-score" id="score-black">2</span>
+                </div>
+            </div>
+
+            <div id="turn-indicator">
+                <span class="indicator-glow"></span>
+                <span id="turn-text">BLACK'S TURN</span>
+            </div>
+
+            <div class="score-card player-white" id="score-white-panel">
+                <div class="player-info text-right">
+                    <span class="player-label" id="label-white">AI</span>
+                    <span class="player-name">MARBLE</span>
+                    <span class="player-score" id="score-white">2</span>
+                </div>
+                <span class="marble-preview white"></span>
+            </div>
+        </header>
+
+        <main id="board-viewport">
+            <div id="othello-board">
+                <!-- 64 cells will be injected here -->
+            </div>
+        </main>
+
+        <footer id="controls-panel">
+            <div id="status-bar">
+                <span id="status-msg">Welcome to Othello Royale</span>
+            </div>
+            <div id="button-group">
+                <button id="hint-btn" class="secondary-btn" title="Get a hint">HINT</button>
+                <button id="switch-btn" class="secondary-btn" title="Play as the other color">SWITCH SIDES</button>
+                <button id="undo-btn" class="secondary-btn" title="Undo last move">UNDO</button>
+                <button id="reset-btn" class="secondary-btn">NEW GAME</button>
+            </div>
+        </footer>
+
+        <!-- Game Over Overlay -->
+        <div id="game-over-overlay" class="hidden">
+            <div class="overlay-content">
+                <h2 id="winner-text">BLACK WINS!</h2>
+                <div class="final-score">
+                    <span id="final-score-black">32</span> : <span id="final-score-white">32</span>
+                </div>
+                <button id="play-again-btn">PLAY AGAIN</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+
+</html>
