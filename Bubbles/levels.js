@@ -1,64 +1,76 @@
 export const levels = [
 
 
+
+
   { //level 1
   grid: `
-  BBBBBBBBBBBBBBBBBBBBBBBBBBB
-  BB                       BB
-  BB                       BB
-  BB      +                BB
-  BB                       BB
-  BB        +              BB
-  BB           +           BB
-  BB                       BB
-  BBBB  BBBBBBBBBBBBBBB  BBBB
-  BB                       BB
-  BB                       BB
-  BB                       BB
-  BBBB  BBBBBBBBBBBBBBB  BBBB
-  BB                       BB
-  BB                       BB
-  BB                       BB
-  BBBB  BBBBBBBBBBBBBBB  BBBB
-  BB                       BB
-  BB                       BB
-  BB1                      BB
-  BBBBBBBBBBBBBBBBBBBBBBBBBBB
+  CCCCCCCCCCCCCCCCCCCCCCCCCCC
+  CC                       CC
+  CC                       CC
+  CC      +                CC
+  CC                       CC
+  CC        +              CC
+  CC           +           CC
+  CC                       CC
+  CCCC    CCCCCCCCCCC    CCCC
+  CC                       CC
+  CC                       CC
+  CC                       CC
+  CCCC    CCCCCCCCCCC    CCCC
+  CC                       CC
+  CC                       CC
+  CC                       CC
+  CCCC  CCCCCCCCCCCCCC   CCCC
+  CC                       CC
+  CC                       CC
+  CC1                      CC
+  CCCCCCCCCCCCCCCCCCCCCCCCCCC
   `,
-  jumpHeight: 2,
+  jumpHeight: 1.5,
   bubbleSpeed: 16,  // Faster bubbles
   bubbleDelay: 120, // Longer delay before moving
+  speedMultiplier: 1.2,
+  color1: '#ed3e09ff', // define generic block colors for this level
+  color2: '#feffffff',
+
+  // define generic block colors for this level
+
     },
     { //level2
-      jumpHeight: 2,
+      jumpHeight: 1.5,
+  color1: '#ed3e09ff', // define generic block colors for this level
+  color2: '#feffffff',
+
       grid: `
-  BBBBBBBBBBBBBBBBBBBBBBBBBBB
-  BB                       BB
-  BB                       BB
-  BB     +                 BB
-  BB    +                  BB
-  BB      + BBBB           BB
-  BB                       BB
-  BB                       BB
-  BB                       BB
-  BB       BBB BBB         BB
-  BB                       BB
-  BB                       BB
-  BB                       BB
-  BB     BBBBBBBBBBB       BB
-  BB                       BB
-  BB                       BB
-  BB                       BB
-  BB  BBBB  BBBBBB  BBBB   BB
-  BB                       BB
-  BB                       BB
-  BB1                      BB
-  BBBBBBBBBBBBBBBBBBBBBBBBBBB
+  RRRRRRRRRRRRRRRRRRRRRRRRRRR
+  RR                       RR
+  RR                       RR
+  RR     +                 RR
+  RR    +                  RR
+  RR      + RRRR           RR
+  RR                       RR
+  RR                       RR
+  RR                       RR
+  RR       RRR RRR         RR
+  RR                       RR
+  RR                       RR
+  RR                       RR
+  RR     RRRRRRRRRRR       RR
+  RR                       RR
+  RR                       RR
+  RR                       RR
+  RR  RRRR  RRRRRR  RRRR   RR
+  RR                       RR
+  RR                       RR
+  RR1                      RR
+  RRRRRRRRRRRRRRRRRRRRRRRRRRR
   `
-    },
-  
+    },  
     { //level3
-      jumpHeight: 2,
+      jumpHeight: 1.5,
+      color1: '#3498db', // define generic block colors for this level
+      color2: '#2980b9',
       grid: `
   BBBBBB    BBBBBBBB    BBBBB
   BB                       BB
@@ -85,7 +97,7 @@ export const levels = [
   `
     },
     { //level4
-      jumpHeight: 2,
+      jumpHeight: 1.5,
       grid: `
   BBBBBB    BBBBBBBB    BBBBB
   BB   B                B  BB
