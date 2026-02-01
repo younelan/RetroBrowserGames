@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Retro Civ - Empire Builder</title>
+    <link rel="stylesheet" href="main.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+
+        <div id="ui-layer">
+            <!-- Top Status Bar -->
+            <div id="hud" class="glass-panel">
+                <div class="civ-info">
+                    <span id="civ-name">PRIME EMPIRE</span>
+                    <span id="game-year">4000 BC</span>
+                </div>
+                <div class="stats-group">
+                    <div class="stat" title="Gold"><span class="icon">💰</span> <span id="stat-gold">0</span> <span
+                            class="rate">(+0)</span></div>
+                    <div class="stat" title="Science"><span class="icon">🔬</span> <span id="stat-science">0</span>
+                        <span class="rate">(+0)</span>
+                    </div>
+                    <div class="stat" title="Happiness"><span class="icon">😊</span> <span id="stat-happiness">10</span>
+                    </div>
+                    <div class="stat" title="Strategic Resources"><span class="icon">⚔️</span> <span
+                            id="stat-resources">0</span></div>
+                </div>
+                <div class="turn-group">
+                    <button id="help-btn" class="premium-btn">HELP</button>
+                    <div class="stat"><span class="icon">📅</span> <span id="stat-turn">Turn 1</span></div>
+                    <button id="end-turn-btn" class="premium-btn primary">END TURN</button>
+                </div>
+            </div>
+
+            <!-- Bottom Left: Unit/City Selection Detail -->
+            <div id="selection-pane" class="glass-panel hidden">
+                <div class="pane-header">
+                    <div id="selection-icon">👤</div>
+                    <div class="pane-title-group">
+                        <div id="selection-header">Unit Name</div>
+                        <div id="selection-sub">Player One</div>
+                    </div>
+                </div>
+                <div id="selection-stats" class="stats-grid">
+                    <!-- Stats like HP, Strength, Move -->
+                </div>
+                <div id="selection-actions" class="actions-grid">
+                    <!-- Buttons for Settle, Fortify, etc. -->
+                </div>
+            </div>
+
+            <!-- Notifications -->
+            <div id="notifications"></div>
+
+            <!-- Cities Side Panel -->
+            <div id="cities-panel" class="glass-panel">
+                <div class="panel-header">CITIES</div>
+                <div id="city-list"></div>
+            </div>
+
+            <!-- Research Tracker Overlay -->
+            <div id="research-tracker" class="glass-panel">
+                <div class="tracker-header">RESEARCHING: <span id="current-tech-name">None</span></div>
+                <div class="progress-bar-container">
+                    <div id="tech-progress-bar" class="progress-bar"></div>
+                </div>
+            </div>
+
+            <!-- Mini-map -->
+            <div id="minimap-container" class="glass-panel">
+                <canvas id="minimap-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Overlays -->
+        <div id="modal-overlay" class="hidden">
+            <div id="tech-tree-modal" class="glass-panel modal">
+                <header>
+                    <h2>Technology Tree</h2>
+                    <button class="close-modal">×</button>
+                </header>
+                <div class="modal-content">
+                    <div id="modal-content-body">
+                        <!-- Content injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="main.js"></script>
+</body>
+
+</html>
