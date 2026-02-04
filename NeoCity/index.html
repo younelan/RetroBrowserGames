@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeoCity - Premier Urban Simulator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="theme-dark">
+    <div id="game-container" class="square-container">
+        <!-- Floating HUD -->
+        <header id="hud-top">
+            <div class="hud-left">
+                <h1 class="city-name">NEO CITY</h1>
+                <div class="date-stat">
+                    <span id="game-date">JAN, YEAR 1</span>
+                </div>
+            </div>
+
+            <div id="game-stats">
+                <div class="stat-item" id="money-info">
+                    <span class="stat-icon">💰</span>
+                    <span id="money-value">$100,000</span>
+                </div>
+                <div class="stat-item" id="population-info">
+                    <span class="stat-icon">👥</span>
+                    <span id="population-value">0</span>
+                </div>
+                <div class="stat-item" id="demand-info">
+                    <div class="demand-bar residential" title="Residential Demand"></div>
+                    <div class="demand-bar commercial" title="Commercial Demand"></div>
+                    <div class="demand-bar industrial" title="Industrial Demand"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Viewport Target -->
+        <main id="viewport">
+            <!-- Three.js renderer will be injected here -->
+            
+            <!-- Contextual Tooltip -->
+            <div id="tooltip" class="hidden"></div>
+        </main>
+
+        <!-- Tool Selection Bar -->
+        <footer id="hud-bottom">
+            <div id="toolbar">
+                <button class="tool-btn active" data-tool="select" title="Selection Tool">
+                    <span class="btn-icon">🖱️</span>
+                    <span class="btn-label">Select</span>
+                </button>
+                <div class="tool-divider"></div>
+                <button class="tool-btn" data-tool="road" title="Build Road ($50)">
+                    <span class="btn-icon">🛣️</span>
+                    <span class="btn-label">Road</span>
+                </button>
+                <button class="tool-btn" data-tool="residential" title="Zone Residential ($100)">
+                    <span class="btn-icon">🏠</span>
+                    <span class="btn-label">Res</span>
+                </button>
+                <button class="tool-btn" data-tool="commercial" title="Zone Commercial ($150)">
+                    <span class="btn-icon">🏢</span>
+                    <span class="btn-label">Com</span>
+                </button>
+                <button class="tool-btn" data-tool="industrial" title="Zone Industrial ($200)">
+                    <span class="btn-icon">🏭</span>
+                    <span class="btn-label">Ind</span>
+                </button>
+                <button class="tool-btn" data-tool="park" title="Build Park ($120)">
+                    <span class="btn-icon">🌳</span>
+                    <span class="btn-label">Park</span>
+                </button>
+                <div class="tool-divider"></div>
+                <button class="tool-btn danger" data-tool="bulldozer" title="Bulldoze ($20)">
+                    <span class="btn-icon">🚜</span>
+                    <span class="btn-label">Wreck</span>
+                </button>
+            </div>
+        </footer>
+
+        <!-- Event Notifications -->
+        <div id="notification-area"></div>
+    </div>
+
+    <script type="module" src="game.js"></script>
+</body>
+
+</html>
