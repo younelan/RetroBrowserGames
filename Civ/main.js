@@ -58,6 +58,7 @@ class Game {
 
         this.currentPlayerIndex = 0;
         this.isAiTurn = false;
+        this.autoPlayEnabled = false;
         this.wondersBuilt = new Set();
         this.victoryReached = false;
 
@@ -138,34 +139,38 @@ class Game {
             }
 
             if (startTile) {
+                // Ensure start tile is not water
+                if (startTile.terrain.water || startTile.terrain.name === 'Ocean' || startTile.terrain.name === 'Coast') {
+                    const tiles = Array.from(this.worldMap.tiles.values());
+                    startTile = tiles.find(t =>
+                        !t.terrain.water &&
+                        !t.terrain.impassable &&
+                        t.terrain.name !== 'Ocean' &&
+                        t.terrain.name !== 'Coast'
+                    ) || startTile;
+                }
+
                 new Unit(UnitType.SETTLER, startTile.q, startTile.r, player);
                 const neighbors = this.worldMap.getNeighbors(startTile.q, startTile.r);
-                const safe = neighbors.filter(n => 
-                    !n.terrain.impassable && 
-                    n.terrain.name !== 'Ocean' && 
+                const safe = neighbors.filter(n =>
+                    !n.terrain.impassable &&
+                    !n.terrain.water &&
+                    n.terrain.name !== 'Ocean' &&
                     n.terrain.name !== 'Coast'
                 );
-                
-                // Place warrior on first safe neighbor
-                if (safe.length > 0) {
-                    new Unit(UnitType.WARRIOR, safe[0].q, safe[0].r, player);
-                } else {
-                    new Unit(UnitType.WARRIOR, startTile.q, startTile.r, player);
-                }
-                
-                // Place scout on second safe neighbor, or same as warrior if only one available
-                if (safe.length > 1) {
-                    new Unit(UnitType.SCOUT, safe[1].q, safe[1].r, player);
-                } else if (safe.length > 0) {
-                    new Unit(UnitType.SCOUT, safe[0].q, safe[0].r, player);
-                } else {
-                    new Unit(UnitType.SCOUT, startTile.q, startTile.r, player);
-                }
-                
+
+                // Place warrior on first safe neighbor, fallback to start tile
+                const warriorPos = safe.length > 0 ? safe[0] : startTile;
+                new Unit(UnitType.WARRIOR, warriorPos.q, warriorPos.r, player);
+
+                // Place scout on second safe neighbor, fallback to same as warrior
+                const scoutPos = safe.length > 1 ? safe[1] : warriorPos;
+                new Unit(UnitType.SCOUT, scoutPos.q, scoutPos.r, player);
+
                 player.updateDiscovery(startTile.q, startTile.r, 5);
             }
         });
-        
+
         // Recreate features after units are spawned to exclude unit positions
         this.renderer.createFeatures();
         this.renderer.createResources();
@@ -183,7 +188,7 @@ class Game {
         if (occupied || isWater) {
             const neighbors = this.worldMap.getNeighbors(q, r);
             const empty = neighbors.find(n =>
-                !allUnits.some(u => u.q === n.q && u.r === n.r) && 
+                !allUnits.some(u => u.q === n.q && u.r === n.r) &&
                 !n.terrain.impassable &&
                 n.terrain.name !== 'Ocean' &&
                 n.terrain.name !== 'Coast'
@@ -202,9 +207,14 @@ class Game {
     }
 
     resize() {
-        const size = Math.min(window.innerWidth, window.innerHeight);
+        const area = document.getElementById('playable-area');
+        if (!area) return;
+
+        // Match canvas resolution to its responsive display size
+        const size = area.clientWidth;
         this.canvas.width = size;
         this.canvas.height = size;
+
         this.camera.resize(this.canvas.width, this.canvas.height);
         this.renderer.resize(this.canvas.width, this.canvas.height);
     }
@@ -269,11 +279,65 @@ class Game {
                 const rect = mm.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-                const r = (y / mm.height) * this.worldMap.height;
-                const q = (x / mm.width) * this.worldMap.width - Math.floor(r / 2);
-                this.camera.centerOn(Math.round(q), Math.round(r));
+
+                // Account for centering in minimap
+                const w = this.worldMap.width;
+                const h = this.worldMap.height;
+                const pSizeX = mm.width / w;
+                const pSizeY = mm.height / h;
+                const pSize = Math.min(pSizeX, pSizeY);
+
+                const mapWidth = w * pSize;
+                const mapHeight = h * pSize;
+                const offsetX = (mm.width - mapWidth) / 2;
+                const offsetY = (mm.height - mapHeight) / 2;
+
+                const adjustedX = x - offsetX;
+                const adjustedY = y - offsetY;
+
+                if (adjustedX >= 0 && adjustedX <= mapWidth && adjustedY >= 0 && adjustedY <= mapHeight) {
+                    const r = (adjustedY / pSize);
+                    const q = (adjustedX / pSize) - Math.floor(r / 2);
+                    this.camera.centerOn(Math.round(q), Math.round(r));
+                }
             });
         }
+    }
+
+    screenToMinimap(screenX, screenY) {
+        // Convert 3D camera viewport to minimap coordinates
+        const mm = this.renderer.minimapCanvas;
+        if (!mm) return { x: 0, y: 0 };
+
+        const w = this.worldMap.width;
+        const h = this.worldMap.height;
+        const pSizeX = mm.width / w;
+        const pSizeY = mm.height / h;
+        const pSize = Math.min(pSizeX, pSizeY);
+
+        // Get camera frustum bounds (approximate)
+        const fov = this.camera.camera.fov;
+        const aspect = this.canvas.width / this.canvas.height;
+        const distance = this.camera.camera.position.length();
+
+        // Estimate visible hex range based on camera position
+        const camTarget = this.camera.target;
+        const visibleRadius = distance * 0.15; // Rough approximation
+
+        // Convert to minimap space (without centering offset)
+        const centerQ = camTarget.q || 0;
+        const centerR = camTarget.r || 0;
+
+        const mmCenterX = (centerQ + (centerR / 2)) * pSize;
+        const mmCenterY = centerR * pSize;
+
+        const mmRadius = visibleRadius * pSize;
+
+        // Return approximate bounds
+        return {
+            x: mmCenterX - mmRadius,
+            y: mmCenterY - mmRadius
+        };
     }
 
     getHexAtScreen(screenX, screenY) {
@@ -317,7 +381,7 @@ class Game {
     handleHexClick(q, r) {
         // Block all interactions during AI turns
         if (this.isAiTurn) return;
-        
+
         const tile = this.worldMap.getTile(q, r);
         if (!tile) return;
 
@@ -426,12 +490,12 @@ class Game {
 
     handleAction(entity, action) {
         const isHumanPlayer = entity.owner === this.players[0];
-        
+
         if (action === 'Settle' && entity instanceof Unit) {
             const cityName = entity.owner.getNextCityName();
             const city = new City(cityName, entity.q, entity.r, entity.owner);
             entity.owner.units = entity.owner.units.filter(u => u !== entity);
-            
+
             // Only update UI for human player
             if (isHumanPlayer) {
                 this.selectedEntity = city;
@@ -439,7 +503,7 @@ class Game {
                 this.ui.notify(`Established the city of ${cityName}!`, 'production');
                 this.ui.updateHUD(entity.owner);
             }
-            
+
             entity.owner.updateDiscovery(entity.q, entity.r, 3);
             entity.owner.updateVisibility();
             // Remove trees around the new city and refresh resources
@@ -614,13 +678,24 @@ class Game {
 
     autoMove(unit) {
         const neighbors = this.worldMap.getNeighbors(unit.q, unit.r);
-        const undiscovered = neighbors.filter(n =>
-            !unit.owner.discoveredTiles.has(`${n.q},${n.r}`) && !n.terrain.impassable && n.terrain.name !== 'Ocean'
+
+        // Filter for valid tiles based on unit type
+        const validNeighbors = neighbors.filter(n => {
+            if (unit.type.naval) {
+                return n.terrain.water && !(n.terrain.deepWater && !unit.type.oceanCapable);
+            } else {
+                return !n.terrain.impassable && !n.terrain.water && n.terrain.name !== 'Ocean' && n.terrain.name !== 'Coast';
+            }
+        });
+
+        // Prefer undiscovered tiles
+        const undiscovered = validNeighbors.filter(n =>
+            !unit.owner.discoveredTiles.has(`${n.q},${n.r}`)
         );
 
         const target = undiscovered.length > 0
             ? undiscovered[Math.floor(Math.random() * undiscovered.length)]
-            : neighbors.find(n => !n.terrain.impassable && n.terrain.name !== 'Ocean');
+            : (validNeighbors.length > 0 ? validNeighbors[Math.floor(Math.random() * validNeighbors.length)] : null);
 
         if (target) {
             unit.move(target.q, target.r, 1);
@@ -693,7 +768,7 @@ class Game {
 
         // Only show notifications if human player is involved
         const isHumanInvolved = attacker.owner === this.players[0] || defender.owner === this.players[0];
-        
+
         const defName = defender.isCity ? defender.name : defender.type.name;
         if (isHumanInvolved) {
             this.ui.notify(`Combat! ${attacker.type.name} vs ${defName} (-${result.defenderDamage} / -${result.attackerDamage})`, 'combat');
@@ -765,16 +840,16 @@ class Game {
         player.updateVisibility();
         player.updateYields();
 
-            // Auto-explore: units with task 'Explore' move one tile automatically on end-turn
-            try {
-                for (const u of [...player.units]) {
-                    if (u.task === 'Explore' && u.movementPoints > 0) {
-                        this.autoMove(u);
-                    }
+        // Auto-explore: units with task 'Explore' move one tile automatically on end-turn
+        try {
+            for (const u of [...player.units]) {
+                if (u.task === 'Explore' && u.movementPoints > 0) {
+                    this.autoMove(u);
                 }
-            } catch (e) {
-                // ignore errors during auto-move
             }
+        } catch (e) {
+            // ignore errors during auto-move
+        }
 
         // Clear selection when ending turn to prevent viewing/controlling other civs' entities
         this.selectedEntity = null;
@@ -786,7 +861,7 @@ class Game {
             do {
                 this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
             } while (this.players[this.currentPlayerIndex].isBarbarian);
-            
+
             const nextPlayer = this.getCurrentPlayer();
 
             if (nextPlayer instanceof AIPlayer) {
@@ -817,7 +892,7 @@ class Game {
                     nextPlayer.currentEra = newEra;
                     this.ui.showEraNotification(newEra);
                 }
-                
+
                 break; // Exit the loop - human's turn now
             }
         }
@@ -911,7 +986,7 @@ class Game {
     selectNextUnit() {
         // Never allow this during AI turns
         if (this.isAiTurn) return;
-        
+
         const next = this.getNextUnit();
         if (next) {
             this.selectedEntity = next;

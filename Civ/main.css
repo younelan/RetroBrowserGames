@@ -16,40 +16,39 @@
     --border-color: rgba(255, 255, 255, 0.08);
 }
 
-* {
+#playable-area {
+    position: relative;
+    margin: 0 auto;
+    width: 100vmin;
+    height: 100vmin;
+    max-width: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
+    z-index: 10;
+    user-select: none;
+    color: var(--text-main);
+    font-family: 'Outfit', sans-serif;
+}
+
+#playable-area * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     font-family: 'Outfit', sans-serif;
 }
 
-body {
-    background: var(--bg-color);
-    color: var(--text-main);
-    overflow: hidden;
-    user-select: none;
-    width: 100vw;
-    height: 100vh;
-}
-
-#game-container {
-    position: relative;
-    width: 100%;
-    height: 100%;
-}
-
 #game-canvas {
     display: block;
     cursor: grab;
-    margin: 0 auto;
     position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-}
-
-#game-canvas:active {
-    cursor: grabbing;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
 }
 
 #ui-layer {
@@ -59,10 +58,10 @@ body {
     width: 100%;
     height: 100%;
     pointer-events: none;
-    z-index: 10;
+    z-index: 20;
 }
 
-#ui-layer > * {
+#ui-layer>* {
     pointer-events: auto;
 }
 
@@ -71,26 +70,23 @@ body {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
-/* ================================================================
-   TOP HUD BAR
-   ================================================================ */
-
+/* --- HUD (Top) --- */
 #hud {
     position: absolute;
-    top: 12px;
-    left: 12px;
-    right: 12px;
-    height: 68px;
+    top: 2%;
+    left: 2%;
+    right: 2%;
+    height: 8%;
+    min-height: 40px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 1.5rem;
-    z-index: 1000;
-    animation: slideDown 0.5s ease-out;
+    padding: 0 2%;
+    z-index: 100;
     border-bottom: 2px solid rgba(88, 166, 255, 0.3);
 }
 
@@ -102,292 +98,323 @@ body {
 #civ-name {
     font-weight: 800;
     color: var(--accent-color);
-    letter-spacing: 2px;
-    font-size: 1.05rem;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
 }
 
 #game-year {
-    font-size: 0.85rem;
+    font-size: 0.7rem;
     color: var(--text-dim);
 }
 
 .stats-group {
     display: flex;
-    gap: 2rem;
+    gap: 1rem;
+    align-items: center;
 }
 
 .stat {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.3rem;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.75rem;
 }
 
 .rate {
-    font-size: 0.7rem;
+    font-size: 0.6rem;
     color: var(--text-dim);
     font-weight: normal;
 }
 
-#stat-gold { color: var(--gold); }
-#stat-science { color: var(--science); }
-#stat-happiness { color: #7ee787; }
-#stat-culture { color: var(--culture); }
+#stat-gold {
+    color: var(--gold);
+}
+
+#stat-science {
+    color: var(--science);
+}
+
+#stat-happiness {
+    color: #7ee787;
+}
+
+#stat-culture {
+    color: var(--culture);
+}
 
 .turn-group {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.5rem;
 }
 
 .premium-btn {
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--glass-border);
     color: var(--text-main);
-    padding: 0.5rem 1.2rem;
-    border-radius: 8px;
+    padding: 4px 12px;
+    border-radius: 6px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.75rem;
-    letter-spacing: 0.5px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    font-size: 0.7rem;
     text-transform: uppercase;
 }
 
 .premium-btn.primary {
-    background: linear-gradient(135deg, rgba(88, 166, 255, 0.15), rgba(88, 166, 255, 0.35));
-    border: 1px solid rgba(88, 166, 255, 0.5);
-    box-shadow: 0 0 12px rgba(88, 166, 255, 0.15);
+    background: linear-gradient(135deg, rgba(88, 166, 255, 0.2), rgba(88, 166, 255, 0.4));
+    border: 1px solid var(--accent-color);
 }
 
-.premium-btn:hover {
-    background: rgba(255, 255, 255, 0.12);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.premium-btn:active {
-    transform: translateY(0);
-}
-
-/* ================================================================
-   SELECTION PANE (Bottom Left)
-   ================================================================ */
-
+/* --- SELECTION (Bottom Left) --- */
 #selection-pane {
     position: absolute;
-    bottom: 16px;
-    left: 16px;
-    width: 420px;
-    max-height: calc(100vh - 110px);
+    bottom: 4%;
+    left: 2%;
+    width: 45%;
+    max-width: 400px;
+    height: auto;
+    max-height: 42%;
+    padding: 1.5%;
     overflow-y: auto;
-    padding: 1.25rem;
-    animation: slideUp 0.3s ease-out;
     border-left: 3px solid var(--accent-color);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+}
+
+#selection-pane.city-view {
+    height: 42%;
 }
 
 .pane-header {
     display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 0.6rem;
+    margin-bottom: 0.6rem;
+    align-items: center;
 }
 
 #selection-icon {
-    font-size: 2.6rem;
+    font-size: 1.5rem;
     background: rgba(255, 255, 255, 0.05);
-    padding: 8px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
 }
 
 .pane-title-group {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    overflow: hidden;
 }
 
 #selection-header {
-    font-size: 1.25rem;
+    font-size: 0.85rem;
     font-weight: 800;
     text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #selection-sub {
-    font-size: 0.9rem;
+    font-size: 0.65rem;
     color: var(--text-dim);
 }
 
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.4rem;
-    margin-bottom: 1rem;
-    font-size: 0.78rem;
+    gap: 0.3rem;
+    font-size: 0.65rem;
 }
 
 .actions-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 0.4rem;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
 }
 
-/* ================================================================
-   RESEARCH TRACKER
-   ================================================================ */
+#selection-pane .premium-btn {
+    padding: 6px 4px !important;
+    font-size: 0.65rem !important;
+    min-height: 32px !important;
+    line-height: 1.2;
+}
 
+.action-btn {
+    padding: 4px !important;
+    font-size: 0.6rem !important;
+    min-height: 26px !important;
+}
+
+#minimap-container {
+    position: absolute;
+    bottom: 2%;
+    right: 2%;
+    width: 35%;
+    max-width: 250px;
+    height: 32%;
+    /* Increased slightly to fit top buttons */
+    padding: 0;
+    /* Remove padding to allow absolute controls to stick to edges */
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid var(--accent-color);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.minimap-top-controls {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 10;
+}
+
+.help-icon-btn {
+    min-width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem !important;
+    border-radius: 50% !important;
+}
+
+.end-turn-btn {
+    flex: 1;
+    font-size: 0.6rem !important;
+    padding: 0 4px !important;
+    min-height: 24px !important;
+    letter-spacing: 0.5px;
+}
+
+#minimap-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated;
+    background: #000;
+}
+
+.auto-play-controls {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    z-index: 10;
+}
+
+.auto-play-label {
+    font-size: 0.65rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* --- OTHERS --- */
 #research-tracker {
     position: absolute;
-    top: 80px;
-    right: 16px;
-    width: 210px;
-    padding: 0.9rem;
-    z-index: 20;
+    top: 12%;
+    right: 2%;
+    width: 30%;
+    max-width: 180px;
+    padding: 1.5%;
 }
 
 .tracker-header {
-    font-size: 0.68rem;
+    font-size: 0.6rem;
     font-weight: 800;
-    margin-bottom: 0.6rem;
-    color: var(--science);
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    display: flex;
-    justify-content: space-between;
+    color: var(---science);
+    margin-bottom: 4px;
 }
 
 .progress-bar-container {
-    height: 5px;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 3px;
+    height: 4px;
+    background: #000;
     overflow: hidden;
 }
 
 .progress-bar {
     height: 100%;
     background: var(--science);
-    width: 0%;
     transition: width 0.3s;
-    border-radius: 3px;
 }
-
-/* ================================================================
-   NOTIFICATIONS
-   ================================================================ */
 
 #notifications {
     position: absolute;
-    bottom: 200px;
-    left: 50%;
-    transform: translateX(-50%);
+    bottom: 32%;
+    left: 2%;
+    width: 50%;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    gap: 4px;
     pointer-events: none;
-    z-index: 50;
 }
-
-/* ================================================================
-   CITIES PANEL
-   ================================================================ */
 
 #cities-panel {
+    display: none;
+}
+
+/* Hide on small square view, or sim*/
+#playable-area #tooltip {
     position: absolute;
-    top: 80px;
-    right: 16px;
-    width: 190px;
-    padding: 10px;
-    max-height: 200px;
-    overflow-y: auto;
-}
-
-#cities-panel .panel-header {
-    font-size: 0.65rem;
-    font-weight: 800;
-    margin-bottom: 8px;
-    color: var(--accent-color);
-    letter-spacing: 1.5px;
-}
-
-.city-item {
-    padding: 6px 8px;
-    background: rgba(255, 255, 255, 0.04);
-    margin-bottom: 4px;
+    z-index: 1000;
+    pointer-events: none;
+    padding: 0.5rem 0.8rem;
+    font-size: 0.75rem;
+    min-width: 140px;
+    max-width: 180px;
+    line-height: 1.4;
+    transition: none;
     border-radius: 4px;
-    font-size: 0.78rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    display: none;
+}
+
+#playable-area .city-item {
+    padding: 0.5rem;
+    margin-bottom: 0.4rem;
+    background: rgba(0, 0, 0, 0.95);
+    /* Added from original #tooltip */
+    border: 1px solid var(--accent-color);
+    /* Added from original #tooltip */
+    border-radius: 4px;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all 0.2s;
 }
 
-.city-item:hover {
-    background: rgba(255, 255, 255, 0.1);
+#playable-area .city-item:hover {
+    background: rgba(88, 166, 255, 0.1);
+    border-color: var(--accent-color);
 }
 
-.city-item-name {
-    font-weight: 700;
+#playable-area .city-item-name {
+    font-weight: 800;
+    font-size: 0.8rem;
+    color: #fff;
 }
 
-.city-item-stats {
+#playable-area .city-item-stats {
     font-size: 0.65rem;
     color: var(--text-dim);
+    margin-top: 0.1rem;
 }
-
-/* ================================================================
-   MINIMAP
-   ================================================================ */
-
-#minimap-container {
-    position: absolute;
-    bottom: 16px;
-    right: 16px;
-    width: 250px;
-    height: 190px;
-    padding: 5px;
-    overflow: hidden;
-    background: rgba(0, 0, 0, 0.85);
-    cursor: pointer;
-}
-
-#minimap-canvas {
-    width: 100%;
-    height: 100%;
-    border-radius: 6px;
-}
-
-/* ================================================================
-   TOOLTIP
-   ================================================================ */
-
-#tooltip {
-    position: fixed;
-    z-index: 5000;
-    pointer-events: none;
-    padding: 0.7rem 0.9rem;
-    font-size: 0.8rem;
-    max-width: 250px;
-    display: none;
-    line-height: 1.4;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-}
-
-#tooltip hr {
-    margin: 4px 0;
-    border: none;
-    border-top: 1px solid var(--glass-border);
-}
-
-#tooltip strong {
-    color: var(--accent-color);
-}
-
-/* ================================================================
-   MODAL OVERLAY
-   ================================================================ */
 
 #modal-overlay {
     position: absolute;
@@ -395,249 +422,75 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.85);
+    background: rgba(0, 0, 0, 0.8);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 100;
-    pointer-events: auto;
+    z-index: 1000;
 }
 
 .modal {
-    width: 95%;
-    height: 90%;
-    background: linear-gradient(135deg, #161b22, #0d1117);
+    width: 85%;
+    max-width: 600px;
+    height: 80%;
+    max-height: 80%;
+    background: #111;
     border: 1px solid var(--accent-color);
-    box-shadow: 0 0 60px rgba(0, 0, 0, 0.9);
-    border-radius: 12px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
 .modal header {
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid var(--accent-color);
+}
+
+.modal header h2 {
+    font-size: 0.9rem;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .modal-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px;
+    overflow-x: hidden;
+    padding: 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-color) transparent;
 }
 
-.close-modal {
-    background: none;
-    border: none;
-    color: white;
-    font-size: 2rem;
-    cursor: pointer;
-    opacity: 0.6;
-    transition: opacity 0.2s;
+.production-option-btn {
+    color: #fff !important;
 }
-
-.close-modal:hover {
-    opacity: 1;
-}
-
-/* Tech tree */
-.tech-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
-}
-
-.tech-node {
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.tech-node:hover {
-    border-color: var(--accent-color);
-    background: rgba(88, 166, 255, 0.08);
-}
-
-.tech-node.unlocked {
-    background: rgba(46, 160, 67, 0.15);
-    border-color: #2ea043;
-}
-
-.tech-node.researching {
-    background: rgba(88, 166, 255, 0.15);
-    border-color: var(--accent-color);
-    box-shadow: 0 0 8px var(--accent-color);
-}
-
-.tech-name {
-    font-weight: 700;
-    font-size: 0.85rem;
-    margin-bottom: 4px;
-}
-
-.tech-cost {
-    font-size: 0.65rem;
-    color: var(--text-dim);
-}
-
-.rename-input {
-    background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--accent-color);
-    color: white;
-    padding: 10px;
-    font-size: 1.1rem;
-    border-radius: 4px;
-    width: 100%;
-    margin-bottom: 16px;
-}
-
-/* ================================================================
-   UTILITY
-   ================================================================ */
 
 .hidden {
     display: none !important;
 }
 
-/* ================================================================
-   ANIMATIONS
-   ================================================================ */
-
-@keyframes slideDown {
-    from { transform: translateY(-80px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes slideUp {
-    from { transform: translateY(60px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes slideRight {
-    from { transform: translateX(-60px); opacity: 0; }
-    to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-#hud { animation: slideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-#selection-pane:not(.hidden) { animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
-#research-tracker { animation: slideRight 0.4s ease-out; }
-#minimap-container { animation: slideUp 0.5s ease-out; }
-.stat { animation: fadeIn 0.6s ease-out; }
-
-/* ================================================================
-   SCROLLBAR
-   ================================================================ */
-
-::-webkit-scrollbar {
-    width: 6px;
-}
-
-::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-}
-
-::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.25);
-}
-
-/* ================================================================
-   MOBILE RESPONSIVE
-   ================================================================ */
-
-@media (max-width: 768px) {
-    #hud {
-        height: auto;
-        min-height: 44px;
-        padding: 6px 10px;
-        flex-wrap: wrap;
-        gap: 4px;
-        top: 4px;
-        left: 4px;
-        right: 4px;
-    }
-
-    .civ-info {
-        display: none;
-    }
-
-    .stats-group {
-        gap: 0.6rem;
-        flex-wrap: wrap;
-    }
-
-    .stat {
-        font-size: 0.75rem;
-        gap: 0.2rem;
-    }
-
-    .rate {
-        font-size: 0.6rem;
-    }
-
-    .turn-group {
-        gap: 0.5rem;
-    }
-
-    .premium-btn {
-        padding: 6px 10px;
-        font-size: 0.7rem;
-        min-height: 36px;
-    }
-
+/* --- MOBILE SPECIFIC OVERRIDES --- */
+@media (max-width: 480px) {
     #selection-pane {
-        left: 4px;
-        right: 4px;
-        bottom: 4px;
-        width: auto;
-        max-height: 45vh;
-        overflow-y: auto;
+        width: 60%;
     }
 
     #minimap-container {
+        width: 35%;
+        height: 20%;
+    }
+
+    .stat .rate {
         display: none;
     }
 
-    #cities-panel {
-        display: none;
-    }
-
-    #research-tracker {
-        top: auto;
-        bottom: 4px;
-        left: 4px;
-        right: 4px;
-        width: auto;
-        font-size: 0.7rem;
-    }
-
-    .action-btn {
-        min-height: 44px;
-        font-size: 0.8rem;
-    }
-
-    #tooltip {
-        display: none;
-    }
-
-    .modal-content {
-        width: 95vw !important;
-        height: 90vh !important;
-        margin: 2vh auto;
+    #civ-name {
+        font-size: 0.75rem;
     }
 }

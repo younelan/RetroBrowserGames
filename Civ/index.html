@@ -5,8 +5,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Civilization - Empire Builder</title>
-    <link rel="stylesheet" href="main.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="main.css?v=2.2">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap"
+        rel="stylesheet">
 
     <!-- Three.js import map for ES modules -->
     <script type="importmap">
@@ -20,7 +22,7 @@
 </head>
 
 <body>
-    <div id="game-container">
+    <div id="playable-area">
         <canvas id="game-canvas"></canvas>
 
         <div id="ui-layer">
@@ -31,17 +33,20 @@
                     <span id="game-year">4000 BC</span>
                 </div>
                 <div class="stats-group">
-                    <div class="stat" title="Gold"><span class="icon">💰</span> <span id="stat-gold">0</span> <span class="rate">(+0)</span></div>
-                    <div class="stat" title="Science"><span class="icon">🔬</span> <span id="stat-science">0</span> <span class="rate">(+0)</span></div>
-                    <div class="stat" title="Happiness"><span class="icon">😊</span> <span id="stat-happiness">10</span></div>
-                    <div class="stat" title="Culture"><span class="icon">🎭</span> <span id="stat-culture">0</span></div>
-                    <div class="stat" title="Strategic Resources"><span class="icon">⚔️</span> <span id="stat-resources">0</span></div>
+                    <div class="stat" title="Gold"><span class="icon">💰</span> <span id="stat-gold">0</span> <span
+                            class="rate">(+0)</span></div>
+                    <div class="stat" title="Science"><span class="icon">🔬</span> <span id="stat-science">0</span>
+                        <span class="rate">(+0)</span>
+                    </div>
+                    <div class="stat" title="Happiness"><span class="icon">😊</span> <span id="stat-happiness">10</span>
+                    </div>
+                    <div class="stat" title="Culture"><span class="icon">🎭</span> <span id="stat-culture">0</span>
+                    </div>
+                    <div class="stat" title="Strategic Resources"><span class="icon">⚔️</span> <span
+                            id="stat-resources">0</span></div>
                 </div>
                 <div class="turn-group">
-                    <button id="help-btn" class="premium-btn">HELP</button>
                     <div class="stat"><span class="icon">📅</span> <span id="stat-turn">Turn 1</span></div>
-                    <button id="next-unit-btn" class="premium-btn">NEXT UNIT (N)</button>
-                    <button id="end-turn-btn" class="premium-btn primary">END TURN</button>
                 </div>
             </div>
 
@@ -53,6 +58,7 @@
                         <div id="selection-header">Unit Name</div>
                         <div id="selection-sub">Player One</div>
                     </div>
+                    <button id="next-unit-inline-btn" class="premium-btn" title="Next Unit (N)">▶ NEXT</button>
                 </div>
                 <div id="selection-stats" class="stats-grid"></div>
                 <div id="selection-actions" class="actions-grid"></div>
@@ -77,7 +83,17 @@
 
             <!-- Mini-map -->
             <div id="minimap-container" class="glass-panel">
+                <div class="minimap-top-controls">
+                    <button id="help-btn" class="premium-btn help-icon-btn">?</button>
+                    <button id="end-turn-btn" class="premium-btn primary end-turn-btn">END TURN</button>
+                </div>
                 <canvas id="minimap-canvas" width="240" height="180"></canvas>
+                <div class="auto-play-controls">
+                    <label class="auto-play-label">
+                        <input type="checkbox" id="auto-play-checkbox">
+                        <span>AUTO</span>
+                    </label>
+                </div>
             </div>
 
             <!-- Tooltip -->

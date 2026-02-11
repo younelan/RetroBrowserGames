@@ -8,47 +8,47 @@ export const UnitType = {
     GREAT_ENGINEER: { name: 'Great Engineer', cost: 0, move: 2, strength: 0, actions: ['Manufactory', 'Rush Wonder', 'Skip Turn'], icon: '🔧', category: 'great_person', era: 'ancient' },
 
     // Ancient Military
-    WARRIOR: { name: 'Warrior', cost: 40, move: 2, strength: 8, actions: ['Fortify', 'Skip Turn'], icon: '⚔️', category: 'military', era: 'ancient', class: 'melee', upgradeTo: 'SWORDSMAN' },
-    SCOUT: { name: 'Scout', cost: 25, move: 3, strength: 5, actions: ['Explore', 'Skip Turn'], icon: '🏃', category: 'military', era: 'ancient', class: 'recon' },
-    ARCHER: { name: 'Archer', cost: 40, move: 2, strength: 5, rangedStrength: 7, range: 2, actions: ['Fortify', 'Skip Turn'], icon: '🏹', category: 'military', era: 'ancient', class: 'ranged', upgradeTo: 'CROSSBOWMAN' },
-    SPEARMAN: { name: 'Spearman', cost: 56, move: 2, strength: 11, actions: ['Fortify', 'Skip Turn'], icon: '🔱', category: 'military', era: 'ancient', class: 'anti-cavalry',
+    WARRIOR: { name: 'Warrior', cost: 40, move: 2, strength: 8, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '⚔️', category: 'military', era: 'ancient', class: 'melee', upgradeTo: 'SWORDSMAN' },
+    SCOUT: { name: 'Scout', cost: 25, move: 3, strength: 5, actions: ['Explore', 'Fortify', 'Skip Turn'], icon: '🏃', category: 'military', era: 'ancient', class: 'recon' },
+    ARCHER: { name: 'Archer', cost: 40, move: 2, strength: 5, rangedStrength: 7, range: 2, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🏹', category: 'military', era: 'ancient', class: 'ranged', upgradeTo: 'CROSSBOWMAN' },
+    SPEARMAN: { name: 'Spearman', cost: 56, move: 2, strength: 11, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🔱', category: 'military', era: 'ancient', class: 'anti-cavalry',
         bonus: { vs: 'mounted', amount: 0.5 }, upgradeTo: 'PIKEMAN' },
 
     // Classical Military
-    SWORDSMAN: { name: 'Swordsman', cost: 75, move: 2, strength: 14, actions: ['Fortify', 'Skip Turn'], icon: '🗡️', category: 'military', era: 'classical', class: 'melee', resourceRequired: 'IRON', upgradeTo: 'LONGSWORDSMAN' },
-    CATAPULT: { name: 'Catapult', cost: 75, move: 2, strength: 7, rangedStrength: 12, range: 2, actions: ['Fortify', 'Skip Turn'], icon: '🪨', category: 'military', era: 'classical', class: 'siege',
+    SWORDSMAN: { name: 'Swordsman', cost: 75, move: 2, strength: 14, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🗡️', category: 'military', era: 'classical', class: 'melee', resourceRequired: 'IRON', upgradeTo: 'LONGSWORDSMAN' },
+    CATAPULT: { name: 'Catapult', cost: 75, move: 2, strength: 7, rangedStrength: 12, range: 2, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🪨', category: 'military', era: 'classical', class: 'siege',
         bonus: { vs: 'city', amount: 1.0 }, upgradeTo: 'TREBUCHET' },
     CHARIOT: { name: 'Chariot Archer', cost: 56, move: 4, strength: 6, rangedStrength: 8, range: 2, icon: '🐎', category: 'military', era: 'classical', class: 'mounted', resourceRequired: 'HORSES',
-        actions: ['Fortify', 'Skip Turn'], upgradeTo: 'KNIGHT' },
-    HORSEMAN: { name: 'Horseman', cost: 75, move: 4, strength: 12, actions: ['Fortify', 'Skip Turn'], icon: '🏇', category: 'military', era: 'classical', class: 'mounted', resourceRequired: 'HORSES', upgradeTo: 'KNIGHT' },
+        actions: ['Fortify', 'Explore', 'Skip Turn'], upgradeTo: 'KNIGHT' },
+    HORSEMAN: { name: 'Horseman', cost: 75, move: 4, strength: 12, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🏇', category: 'military', era: 'classical', class: 'mounted', resourceRequired: 'HORSES', upgradeTo: 'KNIGHT' },
 
     // Medieval Military
     KNIGHT: { name: 'Knight', cost: 120, move: 4, strength: 20, icon: '🐴', category: 'military', era: 'medieval', class: 'mounted', resourceRequired: 'HORSES',
-        actions: ['Fortify', 'Skip Turn'], upgradeTo: 'LANCER' },
+        actions: ['Fortify', 'Explore', 'Skip Turn'], upgradeTo: 'LANCER' },
     CROSSBOWMAN: { name: 'Crossbowman', cost: 90, move: 2, strength: 13, rangedStrength: 18, range: 2, icon: '🎯', category: 'military', era: 'medieval', class: 'ranged',
-        actions: ['Fortify', 'Skip Turn'] },
-    LONGSWORDSMAN: { name: 'Longswordsman', cost: 100, move: 2, strength: 21, actions: ['Fortify', 'Skip Turn'], icon: '⚔️', category: 'military', era: 'medieval', class: 'melee', resourceRequired: 'IRON', upgradeTo: 'MUSKETMAN' },
-    PIKEMAN: { name: 'Pikeman', cost: 90, move: 2, strength: 16, actions: ['Fortify', 'Skip Turn'], icon: '🔱', category: 'military', era: 'medieval', class: 'anti-cavalry',
+        actions: ['Fortify', 'Explore', 'Skip Turn'] },
+    LONGSWORDSMAN: { name: 'Longswordsman', cost: 100, move: 2, strength: 21, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '⚔️', category: 'military', era: 'medieval', class: 'melee', resourceRequired: 'IRON', upgradeTo: 'MUSKETMAN' },
+    PIKEMAN: { name: 'Pikeman', cost: 90, move: 2, strength: 16, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🔱', category: 'military', era: 'medieval', class: 'anti-cavalry',
         bonus: { vs: 'mounted', amount: 0.5 } },
-    TREBUCHET: { name: 'Trebuchet', cost: 120, move: 2, strength: 12, rangedStrength: 20, range: 2, actions: ['Fortify', 'Skip Turn'], icon: '🏗️', category: 'military', era: 'medieval', class: 'siege',
+    TREBUCHET: { name: 'Trebuchet', cost: 120, move: 2, strength: 12, rangedStrength: 20, range: 2, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🏗️', category: 'military', era: 'medieval', class: 'siege',
         bonus: { vs: 'city', amount: 1.0 }, upgradeTo: 'CANNON' },
 
     // Renaissance Military
-    MUSKETMAN: { name: 'Musketman', cost: 150, move: 2, strength: 28, actions: ['Fortify', 'Skip Turn'], icon: '🔫', category: 'military', era: 'renaissance', class: 'melee', techRequired: 'GUNPOWDER', upgradeTo: 'RIFLEMAN' },
-    CANNON: { name: 'Cannon', cost: 150, move: 2, strength: 14, rangedStrength: 26, range: 2, actions: ['Fortify', 'Skip Turn'], icon: '💣', category: 'military', era: 'renaissance', class: 'siege', techRequired: 'CHEMISTRY',
+    MUSKETMAN: { name: 'Musketman', cost: 150, move: 2, strength: 28, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🔫', category: 'military', era: 'renaissance', class: 'melee', techRequired: 'GUNPOWDER', upgradeTo: 'RIFLEMAN' },
+    CANNON: { name: 'Cannon', cost: 150, move: 2, strength: 14, rangedStrength: 26, range: 2, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '💣', category: 'military', era: 'renaissance', class: 'siege', techRequired: 'CHEMISTRY',
         bonus: { vs: 'city', amount: 1.0 }, upgradeTo: 'ARTILLERY' },
-    LANCER: { name: 'Lancer', cost: 140, move: 4, strength: 25, actions: ['Fortify', 'Skip Turn'], icon: '🏇', category: 'military', era: 'renaissance', class: 'mounted', resourceRequired: 'HORSES', techRequired: 'METALLURGY', upgradeTo: 'CAVALRY' },
+    LANCER: { name: 'Lancer', cost: 140, move: 4, strength: 25, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🏇', category: 'military', era: 'renaissance', class: 'mounted', resourceRequired: 'HORSES', techRequired: 'METALLURGY', upgradeTo: 'CAVALRY' },
 
     // Industrial Military
-    RIFLEMAN: { name: 'Rifleman', cost: 200, move: 2, strength: 35, actions: ['Fortify', 'Skip Turn'], icon: '🎖️', category: 'military', era: 'industrial', class: 'melee', techRequired: 'RIFLING' },
-    CAVALRY: { name: 'Cavalry', cost: 200, move: 5, strength: 34, actions: ['Fortify', 'Skip Turn'], icon: '🐎', category: 'military', era: 'industrial', class: 'mounted', resourceRequired: 'HORSES', techRequired: 'MILITARY_SCIENCE' },
-    ARTILLERY: { name: 'Artillery', cost: 200, move: 2, strength: 16, rangedStrength: 36, range: 3, actions: ['Fortify', 'Skip Turn'], icon: '🎯', category: 'military', era: 'industrial', class: 'siege', techRequired: 'DYNAMITE',
+    RIFLEMAN: { name: 'Rifleman', cost: 200, move: 2, strength: 35, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🎖️', category: 'military', era: 'industrial', class: 'melee', techRequired: 'RIFLING' },
+    CAVALRY: { name: 'Cavalry', cost: 200, move: 5, strength: 34, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🐎', category: 'military', era: 'industrial', class: 'mounted', resourceRequired: 'HORSES', techRequired: 'MILITARY_SCIENCE' },
+    ARTILLERY: { name: 'Artillery', cost: 200, move: 2, strength: 16, rangedStrength: 36, range: 3, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🎯', category: 'military', era: 'industrial', class: 'siege', techRequired: 'DYNAMITE',
         bonus: { vs: 'city', amount: 1.0 } },
 
     // Naval Units
-    GALLEY: { name: 'Galley', cost: 65, move: 3, strength: 8, actions: ['Fortify', 'Skip Turn'], icon: '⛵', category: 'military', era: 'ancient', class: 'naval', techRequired: 'SAILING', upgradeTo: 'CARAVEL', naval: true },
-    CARAVEL: { name: 'Caravel', cost: 120, move: 4, strength: 20, actions: ['Fortify', 'Skip Turn'], icon: '🚢', category: 'military', era: 'renaissance', class: 'naval', techRequired: 'NAVIGATION', upgradeTo: 'IRONCLAD', naval: true, oceanCapable: true },
-    IRONCLAD: { name: 'Ironclad', cost: 200, move: 4, strength: 45, actions: ['Fortify', 'Skip Turn'], icon: '🛳️', category: 'military', era: 'industrial', class: 'naval', techRequired: 'STEAM_POWER', naval: true, oceanCapable: true }
+    GALLEY: { name: 'Galley', cost: 65, move: 3, strength: 8, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '⛵', category: 'military', era: 'ancient', class: 'naval', techRequired: 'SAILING', upgradeTo: 'CARAVEL', naval: true },
+    CARAVEL: { name: 'Caravel', cost: 120, move: 4, strength: 20, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🚢', category: 'military', era: 'renaissance', class: 'naval', techRequired: 'NAVIGATION', upgradeTo: 'IRONCLAD', naval: true, oceanCapable: true },
+    IRONCLAD: { name: 'Ironclad', cost: 200, move: 4, strength: 45, actions: ['Fortify', 'Explore', 'Skip Turn'], icon: '🛳️', category: 'military', era: 'industrial', class: 'naval', techRequired: 'STEAM_POWER', naval: true, oceanCapable: true }
 };
 
 // Promotion tree
@@ -84,7 +84,6 @@ export class Unit {
         this.health = 100;
         this.movementPoints = type.move;
         this.isFortified = false;
-        this.isEmbarked = false;
         // Default task: scouts auto-explore, settlers remain ready
         this.task = (type.name === 'Scout') ? 'Explore' : 'Ready';
         this.workRemaining = 0;
@@ -221,16 +220,6 @@ export class Unit {
         this.movementPoints -= cost;
         this.isFortified = false;
         this.task = 'Ready';
-
-        // Handle embarkation for land units
-        if (!this.type.naval && window.game) {
-            const tile = window.game.worldMap.getTile(targetQ, targetR);
-            if (tile && tile.terrain.water) {
-                this.isEmbarked = true;
-            } else {
-                this.isEmbarked = false;
-            }
-        }
         return true;
     }
 

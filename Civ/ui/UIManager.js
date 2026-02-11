@@ -9,21 +9,21 @@ import { UnitType, PromotionType } from '../entities/Unit.js';
 // ============================================================================
 
 const NOTIFICATION_COLORS = {
-    combat:     '#ff7b72',
-    diplomacy:  '#79c0ff',
+    combat: '#ff7b72',
+    diplomacy: '#79c0ff',
     production: '#7ee787',
-    research:   '#bc8cff',
-    default:    '#58a6ff',
-    warning:    '#f2cc60',
-    error:      '#ff4444'
+    research: '#bc8cff',
+    default: '#58a6ff',
+    warning: '#f2cc60',
+    error: '#ff4444'
 };
 
 const ERA_COLORS = {
-    ancient:     '#c9a227',
-    classical:   '#8b6bbf',
-    medieval:    '#5a9e50',
+    ancient: '#c9a227',
+    classical: '#8b6bbf',
+    medieval: '#5a9e50',
     renaissance: '#c0763c',
-    industrial:  '#7088a8'
+    industrial: '#7088a8'
 };
 
 const SAVE_KEY = 'civ_save_game';
@@ -37,6 +37,7 @@ export class UIManager {
         this.lastEra = 'ancient';
         this.startScreenActive = false;
         this.selectedUnitIndex = 0;
+        this.autoPlayInterval = null;
 
         this.setupListeners();
         this.setupKeyboardShortcuts();
@@ -48,8 +49,8 @@ export class UIManager {
     // ========================================================================
 
     setupListeners() {
-        // Next Unit button
-        document.getElementById('next-unit-btn').addEventListener('click', () => {
+        // Next Unit button (inline in selection panel)
+        document.getElementById('next-unit-inline-btn').addEventListener('click', () => {
             if (this.startScreenActive) return;
             if (this.game.isAiTurn) return; // Block during AI turns
             this.game.selectNextUnit();
@@ -60,6 +61,16 @@ export class UIManager {
             if (this.startScreenActive) return;
             if (this.game.isAiTurn) return; // Block during AI turns
             this.handleEndTurnClick();
+        });
+
+        // Auto-play checkbox
+        document.getElementById('auto-play-checkbox').addEventListener('change', (e) => {
+            this.game.autoPlayEnabled = e.target.checked;
+            if (this.game.autoPlayEnabled) {
+                this.startAutoPlay();
+            } else {
+                this.stopAutoPlay();
+            }
         });
 
         document.getElementById('research-tracker').addEventListener('click', () => {
@@ -78,7 +89,7 @@ export class UIManager {
     setupKeyboardShortcuts() {
         window.addEventListener('keydown', (e) => {
             if (this.startScreenActive) return;
-            
+
             // BLOCK ALL INPUT DURING AI TURNS - UI is from human perspective only
             if (this.game.isAiTurn) return;
 
@@ -892,9 +903,9 @@ export class UIManager {
         document.body.appendChild(overlay);
 
         const mapSizes = {
-            small:    { w: 40, h: 40 },
+            small: { w: 40, h: 40 },
             standard: { w: 60, h: 60 },
-            large:    { w: 80, h: 80 }
+            large: { w: 80, h: 80 }
         };
 
         document.getElementById('start-game-btn').addEventListener('click', () => {
@@ -942,16 +953,16 @@ export class UIManager {
         if (!resEl) {
             resEl = document.createElement('div');
             resEl.id = 'hud-resources';
-            resEl.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:0.75rem';
+            resEl.style.cssText = 'display:flex;gap:0.4rem;align-items:center;font-size:0.85rem';
             statsGroup.appendChild(resEl);
         }
         resEl.innerHTML = '';
         const strategicRes = [
-            { label: 'Iron',   key: 'IRON',   icon: '\u2699' },
+            { label: 'Iron', key: 'IRON', icon: '\u2699' },
             { label: 'Horses', key: 'HORSES', icon: '\uD83D\uDC0E' },
-            { label: 'Coal',   key: 'COAL',   icon: '\u2668' },
-            { label: 'Oil',    key: 'OIL',    icon: '\uD83D\uDEE2' },
-            { label: 'Niter',  key: 'NITER',  icon: '\uD83D\uDCA5' }
+            { label: 'Coal', key: 'COAL', icon: '\u2668' },
+            { label: 'Oil', key: 'OIL', icon: '\uD83D\uDEE2' },
+            { label: 'Niter', key: 'NITER', icon: '\uD83D\uDCA5' }
         ];
         strategicRes.forEach(r => {
             const count = player.strategicResources[r.key] || 0;
@@ -1101,24 +1112,27 @@ export class UIManager {
         const stats = document.getElementById('selection-stats');
         const actions = document.getElementById('selection-actions');
 
-        pane.classList.remove('hidden');
+        pane.classList.remove('hidden', 'unit-view', 'city-view', 'tile-view');
         actions.innerHTML = '';
         stats.innerHTML = '';
 
         // --- Tile selection ---
         if (entity.type === 'tile') {
+            pane.classList.add('tile-view');
             this.renderTileSelection(entity.tile, icon, header, sub, stats);
             return;
         }
 
         // --- Unit selection ---
         if (entity.type && entity.type.name) {
+            pane.classList.add('unit-view');
             this.renderUnitSelection(entity, icon, header, sub, stats, actions);
             return;
         }
 
         // --- City selection ---
         if (entity.isCity) {
+            pane.classList.add('city-view');
             this.renderCitySelection(entity, icon, header, sub, stats, actions);
             return;
         }
@@ -1275,17 +1289,23 @@ export class UIManager {
         // Safety check: verify city belongs to current player
         const currentPlayer = this.game.getCurrentPlayer();
         const isOwnCity = city.owner === currentPlayer;
-        
+
         // Fix emoji rendering - use innerHTML instead of textContent
         icon.innerHTML = city.isCapital ? '⭐' : '🏛️';
         header.textContent = city.name.toUpperCase();
+        header.style.cursor = 'pointer';
+        header.title = 'Click to rename city';
+        header.onclick = (e) => {
+            e.stopPropagation();
+            this.showRenameModal(city);
+        };
         sub.textContent = `Population ${city.population}${!isOwnCity ? ` (${city.owner.name})` : ''}`;
 
         // If not our city, show limited info only
         if (!isOwnCity) {
             const warningDiv = document.createElement('div');
-            warningDiv.style.cssText = 'grid-column:1/span 2;background:rgba(255,123,114,0.25);padding:16px;border-radius:8px;border:2px solid #ff7b72;margin-bottom:16px;';
-            warningDiv.innerHTML = `<div style="font-weight:700;color:#ff7b72;font-size:0.95rem">⚠️ ENEMY CITY</div><div style="font-size:0.72rem;color:var(--text-dim);margin-top:6px">You cannot control this city</div>`;
+            warningDiv.style.cssText = 'grid-column:1/span 2;background:rgba(255,123,114,0.15);padding:8px;border-radius:6px;border:1px solid #ff7b72;margin-bottom:12px;';
+            warningDiv.innerHTML = `<div style="font-weight:700;color:#ff7b72;font-size:0.85rem">⚠️ ENEMY CITY</div><div style="font-size:0.65rem;color:var(--text-dim);margin-top:4px">You cannot control this city</div>`;
             stats.appendChild(warningDiv);
             return;
         }
@@ -1296,27 +1316,27 @@ export class UIManager {
         if (city.productionQueue.length > 0) {
             const current = city.productionQueue[0];
             const qDiv = document.createElement('div');
-            qDiv.style.cssText = 'grid-column:1/span 2;background:linear-gradient(135deg,rgba(88,166,255,0.25),rgba(255,123,114,0.2));padding:16px;border-radius:8px;border:2px solid var(--accent-color);margin-bottom:16px;';
-            let html = `<div style="font-size:0.65rem;color:var(--text-dim);font-weight:700;letter-spacing:1.5px;margin-bottom:6px">CURRENTLY BUILDING</div>`;
-            html += `<div style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:8px">${current.icon || '🏗️'} ${current.name.toUpperCase()}</div>`;
+            qDiv.style.cssText = 'grid-column:1/span 2;background:linear-gradient(135deg,rgba(88,166,255,0.2),rgba(255,123,114,0.15));padding:10px;border-radius:6px;border:1px solid var(--accent-color);margin-bottom:12px;';
+            let html = `<div style="font-size:0.55rem;color:var(--text-dim);font-weight:700;letter-spacing:1px;margin-bottom:4px">BUILDING</div>`;
+            html += `<div style="font-size:0.9rem;font-weight:700;color:#fff;margin-bottom:6px">${current.icon || '🏗️'} ${current.name.toUpperCase()}</div>`;
             if (current.cost > 0) {
                 const turnsLeft = Math.max(1, Math.ceil((current.cost - city.productionStored) / Math.max(1, yields.production)));
                 const pct = Math.min(100, (city.productionStored / current.cost) * 100);
-                html += `<div style="background:rgba(0,0,0,0.4);height:14px;border-radius:7px;overflow:hidden;margin-bottom:8px"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--production),#7ee787);transition:width 0.3s"></div></div>`;
-                html += `<div style="font-size:0.75rem;"><strong style="color:var(--production)">${turnsLeft} turn${turnsLeft > 1 ? 's' : ''} left</strong> • ${Math.floor(city.productionStored)}/${current.cost} hammers</div>`;
+                html += `<div style="background:rgba(0,0,0,0.4);height:8px;border-radius:4px;overflow:hidden;margin-bottom:6px"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--production),#7ee787);transition:width 0.3s"></div></div>`;
+                html += `<div style="font-size:0.68rem;"><strong style="color:var(--production)">${turnsLeft} turn${turnsLeft > 1 ? 's' : ''}</strong> • ${Math.floor(city.productionStored)}/${current.cost}</div>`;
             }
             qDiv.innerHTML = html;
             stats.appendChild(qDiv);
         } else {
             const qDiv = document.createElement('div');
-            qDiv.style.cssText = 'grid-column:1/span 2;background:rgba(255,123,114,0.25);padding:16px;border-radius:8px;border:2px solid #ff7b72;margin-bottom:16px;';
-            qDiv.innerHTML = `<div style="font-weight:700;color:#ff7b72;font-size:0.95rem">⚠️ CITY IS IDLE</div><div style="font-size:0.72rem;color:var(--text-dim);margin-top:6px">Choose what to build below</div>`;
+            qDiv.style.cssText = 'grid-column:1/span 2;background:rgba(255,123,114,0.15);padding:0 10px;border-radius:6px;border:1px solid #ff7b72;margin-bottom:12px;height:24px;display:flex;align-items:center;';
+            qDiv.innerHTML = `<div style="font-weight:700;color:#ff7b72;font-size:0.85rem">⚠️ IDLE</div>`;
             stats.appendChild(qDiv);
         }
 
         // Compact yields in single line
         const yieldDiv = document.createElement('div');
-        yieldDiv.style.cssText = 'grid-column:1/span 2;display:flex;gap:16px;flex-wrap:wrap;font-size:0.8rem;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.04);border-radius:6px;';
+        yieldDiv.style.cssText = 'grid-column:1/span 2;display:flex;gap:10px;flex-wrap:wrap;font-size:0.65rem;margin-bottom:6px;padding:4px;background:rgba(255,255,255,0.03);border-radius:4px;';
         yieldDiv.innerHTML = `
             <span title="Food">🍎 <strong style="color:var(--food)">${Math.floor(yields.food)}</strong></span>
             <span title="Production">⚙️ <strong style="color:var(--production)">${Math.floor(yields.production)}</strong></span>
@@ -1379,7 +1399,7 @@ export class UIManager {
             { key: 'scientist', label: 'Scientist', icon: '&#129514;', yield: '+3 Science', gpKey: 'scientist' },
             { key: 'merchant', label: 'Merchant', icon: '&#128188;', yield: '+3 Gold', gpKey: 'merchant' },
             { key: 'engineer', label: 'Engineer', icon: '&#128295;', yield: '+2 Production', gpKey: 'engineer' },
-            { key: 'artist',   label: 'Artist',   icon: '&#127912;', yield: '+3 Culture', gpKey: null }
+            { key: 'artist', label: 'Artist', icon: '&#127912;', yield: '+3 Culture', gpKey: null }
         ];
 
         specTypes.forEach(s => {
@@ -1515,15 +1535,15 @@ export class UIManager {
             return true;
         }).map(([, w]) => w);
 
-        let html = '<div style="max-height:70vh;overflow-y:auto;padding:1rem;">';
+        let html = '<div style="padding:1rem;">';
 
         // Units section
         if (availableUnits.length > 0) {
-            html += '<div style="margin-bottom:1.5rem;"><h3 style="color:var(--accent-color);font-size:0.85rem;margin-bottom:0.8rem;letter-spacing:1px;">UNITS</h3>';
-            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">';
+            html += '<div style="margin-bottom:1.2rem;"><h3 style="color:var(--accent-color);font-size:0.8rem;margin-bottom:0.6rem;letter-spacing:1px;">UNITS</h3>';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;">';
             availableUnits.forEach(u => {
-                html += `<button class="production-option-btn" data-name="${u.name}" style="padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.2s;">
-                    <div style="font-size:0.75rem;font-weight:700;">${u.icon || '⚔️'} ${u.name}</div>
+                html += `<button class="production-option-btn" data-name="${u.name}" style="padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.2s;color:#fff;">
+                    <div style="font-size:0.75rem;font-weight:700;color:#fff;">${u.icon || '⚔️'} ${u.name}</div>
                     <div style="font-size:0.65rem;color:var(--text-dim);">Cost: ${u.cost}</div>
                 </button>`;
             });
@@ -1532,11 +1552,11 @@ export class UIManager {
 
         // Buildings section
         if (availableBuildings.length > 0) {
-            html += '<div style="margin-bottom:1.5rem;"><h3 style="color:var(--accent-color);font-size:0.85rem;margin-bottom:0.8rem;letter-spacing:1px;">BUILDINGS</h3>';
-            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">';
+            html += '<div style="margin-bottom:1.2rem;"><h3 style="color:var(--accent-color);font-size:0.8rem;margin-bottom:0.6rem;letter-spacing:1px;">BUILDINGS</h3>';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;">';
             availableBuildings.forEach(b => {
-                html += `<button class="production-option-btn" data-name="${b.name}" style="padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.2s;">
-                    <div style="font-size:0.75rem;font-weight:700;">${b.icon || '🏛️'} ${b.name}</div>
+                html += `<button class="production-option-btn" data-name="${b.name}" style="padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.2s;color:#fff;">
+                    <div style="font-size:0.75rem;font-weight:700;color:#fff;">${b.icon || '🏛️'} ${b.name}</div>
                     <div style="font-size:0.65rem;color:var(--text-dim);">Cost: ${b.cost}</div>
                 </button>`;
             });
@@ -1545,8 +1565,8 @@ export class UIManager {
 
         // Wonders section
         if (availableWonders.length > 0) {
-            html += '<div style="margin-bottom:1.5rem;"><h3 style="color:var(--gold);font-size:0.85rem;margin-bottom:0.8rem;letter-spacing:1px;">WONDERS</h3>';
-            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">';
+            html += '<div style="margin-bottom:1.2rem;"><h3 style="color:var(--gold);font-size:0.8rem;margin-bottom:0.6rem;letter-spacing:1px;">WONDERS</h3>';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px;">';
             availableWonders.forEach(w => {
                 html += `<button class="production-option-btn" data-name="${w.name}" style="padding:10px;background:rgba(255,215,0,0.1);border:2px solid var(--gold);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.2s;">
                     <div style="font-size:0.75rem;font-weight:700;color:var(--gold);">${w.icon || '🌟'} ${w.name}</div>
@@ -1557,7 +1577,7 @@ export class UIManager {
         }
 
         html += '</div>';
-        this.openModalContent(html, 'ALL PRODUCTION OPTIONS');
+        this.openModalContent(html, 'PRODUCTION OPTIONS');
 
         // Bind click handlers
         document.querySelectorAll('.production-option-btn').forEach(btn => {
@@ -1598,17 +1618,17 @@ export class UIManager {
             const points = s.gpKey ? (gpPoints[s.gpKey] || 0) : 0;
             const currentCount = specs[s.key] || 0;
 
-            html += `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                    <div>
-                        <div style="font-weight:700;font-size:0.85rem;">${s.icon} ${s.label}</div>
-                        <div style="font-size:0.7rem;color:var(--text-dim);">${s.yield}</div>
-                        ${s.gpKey ? `<div style="font-size:0.65rem;color:var(--accent-color);margin-top:4px;">GP Progress: ${points}/${threshold}</div>` : ''}
+            html += `<div style="background:rgba(255,255,255,0.04);padding:8px 10px;border-radius:6px;margin-bottom:8px;border:1px solid rgba(255,255,255,0.05);">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <div style="flex:1;">
+                        <div style="font-weight:700;font-size:0.75rem;">${s.icon} ${s.label}</div>
+                        <div style="font-size:0.65rem;color:var(--text-dim);">${s.yield}</div>
+                        ${s.gpKey ? `<div style="font-size:0.6rem;color:var(--accent-color);margin-top:2px;">GP: ${points}/${threshold}</div>` : ''}
                     </div>
-                    <div style="display:flex;align-items:center;gap:8px;">
-                        <button class="spec-btn-minus" data-spec="${s.key}" style="width:32px;height:32px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;cursor:pointer;font-weight:700;">-</button>
-                        <span style="min-width:30px;text-align:center;font-weight:700;font-size:1.1rem;">${currentCount}</span>
-                        <button class="spec-btn-plus" data-spec="${s.key}" style="width:32px;height:32px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;cursor:pointer;font-weight:700;">+</button>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <button class="spec-btn-minus" data-spec="${s.key}" style="width:28px;height:28px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:4px;cursor:pointer;font-weight:700;color:#fff;">-</button>
+                        <span style="min-width:24px;text-align:center;font-weight:700;font-size:0.9rem;">${currentCount}</span>
+                        <button class="spec-btn-plus" data-spec="${s.key}" style="width:28px;height:28px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.1);border-radius:4px;cursor:pointer;font-weight:700;color:#fff;">+</button>
                     </div>
                 </div>
             </div>`;
@@ -1755,8 +1775,8 @@ export class UIManager {
                         <div class="tech-cost">${tech.cost} Science</div>
                         <div class="tech-unlocks">${tech.unlocks.join(', ')}</div>
                         ${tech.prerequisites.length > 0
-                            ? `<div style="font-size:0.58rem;color:var(--text-dim);margin-top:4px">Requires: ${tech.prerequisites.map(p => techData[p]?.name || p).join(', ')}</div>`
-                            : ''}
+                        ? `<div style="font-size:0.58rem;color:var(--text-dim);margin-top:4px">Requires: ${tech.prerequisites.map(p => techData[p]?.name || p).join(', ')}</div>`
+                        : ''}
                     </div>
                 `;
             });
@@ -1914,18 +1934,18 @@ export class UIManager {
 
                     <div class="diplo-actions" data-other-id="${other.id}">
                         ${rel.status === DiplomaticStatus.WAR
-                            ? `<button class="diplo-btn peace" data-action="peace" data-other="${other.id}">Propose Peace</button>`
-                            : `<button class="diplo-btn war" data-action="war" data-other="${other.id}">Declare War</button>`
-                        }
+                    ? `<button class="diplo-btn peace" data-action="peace" data-other="${other.id}">Propose Peace</button>`
+                    : `<button class="diplo-btn war" data-action="war" data-other="${other.id}">Declare War</button>`
+                }
                         ${rel.status !== DiplomaticStatus.WAR && !rel.openBorders
-                            ? `<button class="diplo-btn" data-action="open_borders" data-other="${other.id}">Open Borders</button>`
-                            : ''}
+                    ? `<button class="diplo-btn" data-action="open_borders" data-other="${other.id}">Open Borders</button>`
+                    : ''}
                         ${rel.status !== DiplomaticStatus.WAR
-                            ? `<button class="diplo-btn" data-action="trade_gold" data-other="${other.id}">Trade Gold</button>`
-                            : ''}
+                    ? `<button class="diplo-btn" data-action="trade_gold" data-other="${other.id}">Trade Gold</button>`
+                    : ''}
                         ${rel.status !== DiplomaticStatus.WAR && !rel.alliance
-                            ? `<button class="diplo-btn alliance" data-action="alliance" data-other="${other.id}">Propose Alliance</button>`
-                            : ''}
+                    ? `<button class="diplo-btn alliance" data-action="alliance" data-other="${other.id}">Propose Alliance</button>`
+                    : ''}
                     </div>
                 </div>
             `;
@@ -2070,17 +2090,17 @@ export class UIManager {
                         <div class="gov-card-desc">${g.description}</div>
                         <div style="font-size:0.65rem;color:var(--text-dim);margin-bottom:4px">Era: ${g.era} | Slots: ${g.slotCount}</div>
                         ${Object.keys(g.bonuses).length > 0
-                            ? `<div class="gov-card-bonuses">${Object.entries(g.bonuses).map(([k, v]) => {
-                                const f = typeof v === 'number' && Math.abs(v) < 1 ? `+${(v * 100).toFixed(0)}%` : `+${v}`;
-                                return `${f} ${this.formatBonusKey(k)}`;
-                            }).join(', ')}</div>`
-                            : ''}
+                        ? `<div class="gov-card-bonuses">${Object.entries(g.bonuses).map(([k, v]) => {
+                            const f = typeof v === 'number' && Math.abs(v) < 1 ? `+${(v * 100).toFixed(0)}%` : `+${v}`;
+                            return `${f} ${this.formatBonusKey(k)}`;
+                        }).join(', ')}</div>`
+                        : ''}
                         ${g.penalties && Object.keys(g.penalties).length > 0
-                            ? `<div class="gov-card-penalties">${Object.entries(g.penalties).map(([k, v]) => {
-                                const f = typeof v === 'number' && Math.abs(v) < 1 ? `${(v * 100).toFixed(0)}%` : `${v}`;
-                                return `${f} ${this.formatBonusKey(k)}`;
-                            }).join(', ')}</div>`
-                            : ''}
+                        ? `<div class="gov-card-penalties">${Object.entries(g.penalties).map(([k, v]) => {
+                            const f = typeof v === 'number' && Math.abs(v) < 1 ? `${(v * 100).toFixed(0)}%` : `${v}`;
+                            return `${f} ${this.formatBonusKey(k)}`;
+                        }).join(', ')}</div>`
+                        : ''}
                     </div>
                 `;
             });
@@ -2197,14 +2217,14 @@ export class UIManager {
 
         // Ranking categories
         const categories = [
-            { key: 'score',      label: 'Score',       icon: '&#127942;' },
-            { key: 'population', label: 'Population',  icon: '&#128100;' },
-            { key: 'military',   label: 'Military',    icon: '&#9876;' },
-            { key: 'science',    label: 'Science/Turn', icon: '&#128300;' },
-            { key: 'gold',       label: 'Treasury',    icon: '&#128176;' },
-            { key: 'culture',    label: 'Culture',     icon: '&#127912;' },
-            { key: 'cities',     label: 'Cities',      icon: '&#127984;' },
-            { key: 'techs',      label: 'Technologies', icon: '&#128218;' }
+            { key: 'score', label: 'Score', icon: '&#127942;' },
+            { key: 'population', label: 'Population', icon: '&#128100;' },
+            { key: 'military', label: 'Military', icon: '&#9876;' },
+            { key: 'science', label: 'Science/Turn', icon: '&#128300;' },
+            { key: 'gold', label: 'Treasury', icon: '&#128176;' },
+            { key: 'culture', label: 'Culture', icon: '&#127912;' },
+            { key: 'cities', label: 'Cities', icon: '&#127984;' },
+            { key: 'techs', label: 'Technologies', icon: '&#128218;' }
         ];
 
         let html = `<table class="demo-table">
@@ -2228,13 +2248,13 @@ export class UIManager {
                 <td><span class="demo-rank">#${idx + 1}</span></td>
                 <td style="color:${s.player.color};font-weight:700">${known ? s.player.name : '???'}</td>
                 ${categories.map(c => {
-                    const val = s[c.key];
-                    const display = known || isHuman ? val : '?';
-                    // Highlight leader in each category
-                    const max = Math.max(...stats.map(st => st[c.key]));
-                    const isLeader = val === max && val > 0;
-                    return `<td style="${isLeader ? 'color:var(--gold);font-weight:700' : ''}">${display}</td>`;
-                }).join('')}
+                const val = s[c.key];
+                const display = known || isHuman ? val : '?';
+                // Highlight leader in each category
+                const max = Math.max(...stats.map(st => st[c.key]));
+                const isLeader = val === max && val > 0;
+                return `<td style="${isLeader ? 'color:var(--gold);font-weight:700' : ''}">${display}</td>`;
+            }).join('')}
             </tr>`;
         });
 
@@ -2325,10 +2345,10 @@ export class UIManager {
 
     showVictoryModal(player, type) {
         const victoryNames = {
-            SCIENCE:    'Science Victory',
-            SCORE:      'Score Victory',
+            SCIENCE: 'Science Victory',
+            SCORE: 'Score Victory',
             DOMINATION: 'Domination Victory',
-            CULTURE:    'Cultural Victory'
+            CULTURE: 'Cultural Victory'
         };
 
         const players = this.game.players.map(p => ({
@@ -2433,23 +2453,42 @@ export class UIManager {
 
     showTooltip(content, x, y) {
         let el = document.getElementById('tooltip');
+        const area = document.getElementById('playable-area');
+        if (!area) return;
+
         if (!el) {
             el = document.createElement('div');
             el.id = 'tooltip';
             el.className = 'glass-panel';
-            document.body.appendChild(el);
+            area.appendChild(el);
         }
+
         el.style.display = 'block';
         el.innerHTML = content;
 
-        const width = 200;
-        const height = 120;
-        const offset = 18;
+        const areaRect = area.getBoundingClientRect();
 
-        let fx = x + offset;
-        let fy = y + offset;
-        if (fx + width > window.innerWidth) fx = x - width - offset;
-        if (fy + height > window.innerHeight) fy = y - height - offset;
+        // Convert global mouse coordinates to local container coordinates
+        let localX = x - areaRect.left;
+        let localY = y - areaRect.top;
+
+        const isMobile = area.clientWidth < 500;
+        const width = isMobile ? 150 : 180;
+        const height = el.offsetHeight || 100;
+        const offset = isMobile ? 8 : 12;
+
+        let fx = localX + offset;
+        let fy = localY + offset;
+
+        // Clip to container dimensions
+        if (fx + width > area.clientWidth) {
+            fx = isMobile ? (area.clientWidth - width - 10) : (localX - width - offset);
+        }
+        if (fy + height > area.clientHeight) fy = localY - height - offset;
+
+        // Ensure not negative and stays within bounds
+        fx = Math.max(isMobile ? 10 : 5, fx);
+        fy = Math.max(10, fy);
 
         el.style.left = `${fx}px`;
         el.style.top = `${fy}px`;
@@ -2519,7 +2558,7 @@ export class UIManager {
     selectNextUnitWithMoves() {
         // ALWAYS select human player's units, NEVER AI units. Ignore if AI turn.
         if (this.game.isAiTurn) return;
-        
+
         const player = this.game.players[0]; // ALWAYS human player
         const readyUnits = player.units.filter(u => u.movementPoints > 0 && u.task === 'Ready');
         if (readyUnits.length === 0) return;
@@ -2557,7 +2596,7 @@ export class UIManager {
     cycleUnits() {
         // Never allow during AI turns
         if (this.game.isAiTurn) return;
-        
+
         // ALWAYS cycle through human player's units
         const player = this.game.players[0];
         if (player.units.length === 0) return;
@@ -2574,7 +2613,7 @@ export class UIManager {
     shortcutFortify() {
         // Never allow during AI turns
         if (this.game.isAiTurn) return;
-        
+
         const entity = this.game.selectedEntity;
         if (entity && entity.type && entity.type.actions?.includes('Fortify')) {
             this.game.handleAction(entity, 'Fortify');
@@ -2584,7 +2623,7 @@ export class UIManager {
     shortcutSkipTurn() {
         // Never allow during AI turns
         if (this.game.isAiTurn) return;
-        
+
         const entity = this.game.selectedEntity;
         if (entity && entity.type && entity.type.actions?.includes('Skip Turn')) {
             this.game.handleAction(entity, 'Skip Turn');
@@ -2702,6 +2741,651 @@ export class UIManager {
                 this._lastAutoSaveTurn = this.game.turn;
                 this.saveGame(true);
             }
+        }
+    }
+
+    // ========================================================================
+    //  AUTO-PLAY
+    // ========================================================================
+
+    startAutoPlay() {
+        // Clear any existing interval
+        if (this.autoPlayInterval) {
+            clearInterval(this.autoPlayInterval);
+        }
+
+        // Auto-play loop: every 3 seconds, make a move for the human player
+        this.autoPlayInterval = setInterval(() => {
+            // Stop if auto-play was disabled
+            if (!this.game.autoPlayEnabled || this.game.isAiTurn) {
+                return;
+            }
+
+            const player = this.game.players[0]; // Human player
+
+            // Ensure research is set
+            if (!player.currentTech) {
+                this.game.autoAssignResearch(player);
+            }
+
+            // Manage city production with balanced logic
+            player.cities.forEach(city => {
+                if (city.productionQueue.length === 0) {
+                    const militaryCount = player.units.filter(u => u.type.category === 'military').length;
+                    const workerCount = player.units.filter(u => u.type.name === 'Worker').length;
+                    const settlerCount = player.units.filter(u => u.type.name === 'Settler').length;
+
+                    let queuedItem = null;
+
+                    // Workers first if we need them
+                    if (workerCount < player.cities.length && workerCount < 3) {
+                        queuedItem = this.game.UnitType.WORKER;
+                        city.addToQueue(queuedItem);
+                    }
+                    // Settlers if we have fewer than 4 cities
+                    else if (settlerCount === 0 && player.cities.length < 4) {
+                        queuedItem = this.game.UnitType.SETTLER;
+                        city.addToQueue(queuedItem);
+                    }
+                    // Try buildings (canBuild already checks if we have them)
+                    else if (city.canBuild('MONUMENT')) {
+                        queuedItem = this.game.BuildingType.MONUMENT;
+                        city.addToQueue(queuedItem);
+                    }
+                    else if (city.canBuild('GRANARY')) {
+                        queuedItem = this.game.BuildingType.GRANARY;
+                        city.addToQueue(queuedItem);
+                    }
+                    else if (city.canBuild('LIBRARY')) {
+                        queuedItem = this.game.BuildingType.LIBRARY;
+                        city.addToQueue(queuedItem);
+                    }
+                    else if (city.canBuild('WALLS')) {
+                        queuedItem = this.game.BuildingType.WALLS;
+                        city.addToQueue(queuedItem);
+                    }
+                    // Military units
+                    else if (militaryCount < player.cities.length * 3) {
+                        queuedItem = this.game.UnitType.WARRIOR;
+                        city.addToQueue(queuedItem);
+                    }
+                    // Default to wealth
+                    else {
+                        queuedItem = { name: 'Wealth', cost: 0, icon: '💰' };
+                        city.addToQueue(queuedItem);
+                    }
+
+                    // Show notification for production choice
+                    if (queuedItem) {
+                        this.notify(`${city.name}: Building ${queuedItem.icon || ''} ${queuedItem.name}`, 'production');
+                    }
+                }
+            });
+
+            const unitsWithMoves = player.units.filter(u => u.movementPoints > 0 && u.task === 'Ready');
+
+            if (unitsWithMoves.length > 0) {
+                // Select first unit with moves
+                const unit = unitsWithMoves[0];
+                this.game.selectedEntity = unit;
+                this.game.centerOn(unit);
+                const tile = this.game.worldMap.getTile(unit.q, unit.r);
+
+                import('../systems/Pathfinding.js').then(({ Pathfinding }) => {
+                    this.game.reachableTiles = Pathfinding.getReachableTiles(tile, this.game.worldMap, unit.movementPoints);
+                    this.showSelection(unit);
+
+                    // Make intelligent moves based on unit type
+                    setTimeout(() => {
+                        if (!this.game.autoPlayEnabled || this.game.selectedEntity !== unit) return;
+
+                        // Visual feedback: Show what action we're about to take
+                        let actionToTake = null;
+
+                        if (unit.type.name === 'Settler') {
+                            // Initialize settler tracking data
+                            if (!unit.settlerData) {
+                                const origin = player.cities.length > 0 ? player.cities[0] : { q: unit.q, r: unit.r };
+                                unit.settlerData = {
+                                    originQ: origin.q,
+                                    originR: origin.r,
+                                    turnsSearching: 0,
+                                    visitedTiles: new Set()
+                                };
+                            }
+
+                            unit.settlerData.turnsSearching++;
+                            unit.settlerData.visitedTiles.add(`${unit.q},${unit.r}`);
+
+                            // Calculate distance from origin
+                            const distanceFromOrigin = this.game.worldMap.getDistance(
+                                unit.q, unit.r,
+                                unit.settlerData.originQ, unit.settlerData.originR
+                            );
+
+                            // Evaluate current location
+                            if (!tile.city && !tile.terrain.water && tile.terrain.name !== 'Ocean' && tile.terrain.name !== 'Coast' && !tile.terrain.impassable) {
+                                const neighbors = this.game.worldMap.getNeighbors(unit.q, unit.r);
+                                let score = 0;
+                                neighbors.forEach(n => {
+                                    const y = n.getYield();
+                                    score += y.food * 2 + y.production * 1.5 + y.gold;
+                                    if (n.rivers && n.rivers.length > 0) score += 3;
+                                    if (n.resource.name !== 'None') score += 2;
+                                    if (n.resource.type === 'luxury') score += 3;
+                                });
+
+                                const nearbyCity = player.cities.some(c =>
+                                    this.game.worldMap.getDistance(c.q, c.r, unit.q, unit.r) < 5
+                                );
+
+                                // Progressive settling logic: lower threshold over time and distance
+                                let settleThreshold = 8;
+                                if (distanceFromOrigin >= 8 || unit.settlerData.turnsSearching >= 15) {
+                                    settleThreshold = 5; // Much more lenient after traveling far or long
+                                } else if (distanceFromOrigin >= 5 || unit.settlerData.turnsSearching >= 8) {
+                                    settleThreshold = 6.5; // More lenient
+                                }
+
+                                if (score >= settleThreshold && (!nearbyCity || player.cities.length === 0)) {
+                                    actionToTake = 'Settle';
+                                    this.highlightAction(actionToTake);
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled) {
+                                            this.game.handleAction(unit, actionToTake);
+                                        }
+                                    }, 500);
+                                    return;
+                                }
+                            }
+
+                            // Smart exploration: avoid backtracking
+                            const neighbors = this.game.worldMap.getNeighbors(unit.q, unit.r);
+                            const validNeighbors = neighbors.filter(n =>
+                                !n.terrain.impassable && !n.terrain.water &&
+                                n.terrain.name !== 'Ocean' && n.terrain.name !== 'Coast' && !n.city
+                            );
+
+                            if (validNeighbors.length > 0) {
+                                // Score each move: prefer unvisited tiles away from origin
+                                let bestMove = null;
+                                let bestScore = -Infinity;
+
+                                validNeighbors.forEach(n => {
+                                    let moveScore = 0;
+
+                                    // Heavily avoid recently visited tiles
+                                    if (!unit.settlerData.visitedTiles.has(`${n.q},${n.r}`)) {
+                                        moveScore += 50;
+                                    } else {
+                                        moveScore -= 100; // Strong penalty for backtracking
+                                    }
+
+                                    // Prefer moving away from origin if we haven't traveled far
+                                    if (distanceFromOrigin < 8) {
+                                        const newDist = this.game.worldMap.getDistance(
+                                            n.q, n.r,
+                                            unit.settlerData.originQ, unit.settlerData.originR
+                                        );
+                                        if (newDist > distanceFromOrigin) {
+                                            moveScore += 20; // Reward moving away
+                                        } else {
+                                            moveScore -= 10; // Penalize moving back
+                                        }
+                                    }
+
+                                    // Evaluate settle quality to move toward good spots
+                                    const evalNeighbors = this.game.worldMap.getNeighbors(n.q, n.r);
+                                    let tileValue = 0;
+                                    evalNeighbors.forEach(en => {
+                                        const y = en.getYield();
+                                        tileValue += y.food * 2 + y.production * 1.5 + y.gold;
+                                        if (en.rivers && en.rivers.length > 0) tileValue += 3;
+                                        if (en.resource.name !== 'None') tileValue += 2;
+                                    });
+                                    moveScore += tileValue * 0.5;
+
+                                    // Small randomness
+                                    moveScore += Math.random() * 5;
+
+                                    if (moveScore > bestScore) {
+                                        bestScore = moveScore;
+                                        bestMove = n;
+                                    }
+                                });
+
+                                if (bestMove) {
+                                    this.highlightAction('Explore');
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled) {
+                                            unit.move(bestMove.q, bestMove.r, 1);
+                                            player.updateDiscovery(bestMove.q, bestMove.r, 2);
+                                            player.updateVisibility();
+                                            unit.movementPoints = 0;
+                                        }
+                                    }, 500);
+                                } else {
+                                    actionToTake = 'Skip Turn';
+                                    this.highlightAction(actionToTake);
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled) {
+                                            this.game.handleAction(unit, actionToTake);
+                                        }
+                                    }, 500);
+                                }
+                            } else {
+                                actionToTake = 'Skip Turn';
+                                this.highlightAction(actionToTake);
+                                setTimeout(() => {
+                                    if (this.game.autoPlayEnabled) {
+                                        this.game.handleAction(unit, actionToTake);
+                                    }
+                                }, 500);
+                            }
+                        } else if (unit.type.name === 'Worker') {
+                            // If currently building, skip
+                            if (unit.workRemaining > 0) {
+                                actionToTake = 'Skip Turn';
+                                this.highlightAction(actionToTake);
+                                setTimeout(() => {
+                                    if (this.game.autoPlayEnabled) {
+                                        this.game.handleAction(unit, actionToTake);
+                                    }
+                                }, 500);
+                                return;
+                            }
+
+                            // Try to build improvements on current tile
+                            if (!tile.improvement && !tile.city && tile.owner === player) {
+                                if (tile.terrain.name === 'Hills' || tile.resource?.name === 'Iron' || tile.resource?.name === 'Coal') {
+                                    actionToTake = 'Build Mine';
+                                    this.highlightAction(actionToTake);
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled) {
+                                            this.game.handleAction(unit, actionToTake);
+                                        }
+                                    }, 500);
+                                    return;
+                                } else if (tile.resource?.type === 'luxury') {
+                                    actionToTake = 'Build Plantation';
+                                    this.highlightAction(actionToTake);
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled) {
+                                            this.game.handleAction(unit, actionToTake);
+                                        }
+                                    }, 500);
+                                    return;
+                                } else if (tile.terrain.name === 'Grassland' || tile.terrain.name === 'Plains') {
+                                    actionToTake = 'Build Farm';
+                                    this.highlightAction(actionToTake);
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled) {
+                                            this.game.handleAction(unit, actionToTake);
+                                        }
+                                    }, 500);
+                                    return;
+                                } else if (!tile.hasRoad && tile.owner === player) {
+                                    actionToTake = 'Build Road';
+                                    this.highlightAction(actionToTake);
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled) {
+                                            this.game.handleAction(unit, actionToTake);
+                                        }
+                                    }, 500);
+                                    return;
+                                }
+                            }
+
+                            // Look for nearby unimproved tiles in territory
+                            let foundWork = false;
+                            for (let dq = -3; dq <= 3 && !foundWork; dq++) {
+                                for (let dr = -3; dr <= 3 && !foundWork; dr++) {
+                                    const checkTile = this.game.worldMap.getTile(unit.q + dq, unit.r + dr);
+                                    if (checkTile && !checkTile.improvement && !checkTile.city &&
+                                        checkTile.owner === player && !checkTile.terrain.impassable) {
+                                        actionToTake = 'Explore';
+                                        foundWork = true;
+                                    }
+                                }
+                            }
+                            if (!foundWork) {
+                                actionToTake = 'Fortify';
+                            }
+                            if (actionToTake) {
+                                this.highlightAction(actionToTake);
+                                setTimeout(() => {
+                                    if (this.game.autoPlayEnabled) {
+                                        this.game.handleAction(unit, actionToTake);
+                                    }
+                                }, 500);
+                            }
+                        } else if (unit.type.name === 'Scout') {
+                            actionToTake = 'Explore';
+                            this.highlightAction(actionToTake);
+                            // Intelligent scout exploration toward fog of war
+                            const neighbors = this.game.worldMap.getNeighbors(unit.q, unit.r);
+                            const validNeighbors = neighbors.filter(n => !n.terrain.impassable && !n.terrain.water);
+
+                            // Score each neighbor for exploration value
+                            let bestMove = null;
+                            let bestScore = -Infinity;
+
+                            validNeighbors.forEach(n => {
+                                let score = 0;
+
+                                // Prefer undiscovered tiles
+                                if (!player.discoveredTiles.has(`${n.q},${n.r}`)) {
+                                    score += 100;
+                                }
+
+                                // Count nearby unexplored tiles (fog of war)
+                                const nearTiles = this.game.worldMap.getNeighbors(n.q, n.r);
+                                const unexploredCount = nearTiles.filter(t =>
+                                    !player.discoveredTiles.has(`${t.q},${t.r}`)
+                                ).length;
+                                score += unexploredCount * 10;
+
+                                // Prefer high ground (hills) for better vision
+                                if (n.terrain.name === 'Hills') score += 5;
+
+                                // Avoid backtracking to recently discovered areas
+                                const recentlyVisited = this.game.worldMap.getNeighbors(n.q, n.r)
+                                    .filter(t => player.visibleTiles.has(`${t.q},${t.r}`)).length;
+                                score -= recentlyVisited * 2;
+
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestMove = n;
+                                }
+                            });
+
+                            setTimeout(() => {
+                                if (!this.game.autoPlayEnabled) return;
+                                if (bestMove) {
+                                    unit.move(bestMove.q, bestMove.r, 1);
+                                    player.updateDiscovery(bestMove.q, bestMove.r, 2);
+                                    player.updateVisibility();
+                                    unit.movementPoints = 0;
+                                } else {
+                                    this.game.handleAction(unit, 'Skip Turn');
+                                }
+                            }, 500);
+                        } else if (unit.type.category === 'military') {
+                            // Smart military behavior
+                            const neighbors = this.game.worldMap.getNeighbors(unit.q, unit.r);
+                            const validNeighbors = neighbors.filter(n => !n.terrain.impassable && !n.terrain.water);
+
+                            // Check for nearby enemies
+                            let nearestEnemy = null;
+                            let enemyDist = Infinity;
+
+                            this.game.players.forEach(p => {
+                                if (p === player) return;
+                                p.units.forEach(enemyUnit => {
+                                    const dist = this.game.worldMap.getDistance(unit.q, unit.r, enemyUnit.q, enemyUnit.r);
+                                    if (dist < enemyDist && player.visibleTiles.has(`${enemyUnit.q},${enemyUnit.r}`)) {
+                                        enemyDist = dist;
+                                        nearestEnemy = enemyUnit;
+                                    }
+                                });
+                            });
+
+                            // Attack if enemy in range
+                            if (nearestEnemy && enemyDist <= (unit.type.range || 1)) {
+                                this.notify(`${unit.type.name} attacking enemy!`, 'combat');
+                                setTimeout(() => {
+                                    if (this.game.autoPlayEnabled) {
+                                        this.game.resolveCombat(unit, nearestEnemy);
+                                        unit.movementPoints = 0;
+                                    }
+                                }, 500);
+                                return;
+                            }
+
+                            // Move toward nearby enemy threat
+                            if (nearestEnemy && enemyDist <= 4) {
+                                this.notify(`${unit.type.name} moving toward enemy threat`, 'combat');
+                                const moveToward = validNeighbors.reduce((best, n) => {
+                                    const d = this.game.worldMap.getDistance(n.q, n.r, nearestEnemy.q, nearestEnemy.r);
+                                    const bestD = this.game.worldMap.getDistance(best.q, best.r, nearestEnemy.q, nearestEnemy.r);
+                                    return d < bestD ? n : best;
+                                });
+                                setTimeout(() => {
+                                    if (this.game.autoPlayEnabled && moveToward) {
+                                        unit.move(moveToward.q, moveToward.r, 1);
+                                        unit.movementPoints = 0;
+                                    }
+                                }, 500);
+                                return;
+                            }
+
+                            // Strategic positioning near cities
+                            const nearestCity = player.cities.reduce((closest, c) => {
+                                const d = this.game.worldMap.getDistance(unit.q, unit.r, c.q, c.r);
+                                const closestD = closest ? this.game.worldMap.getDistance(unit.q, unit.r, closest.q, closest.r) : Infinity;
+                                return d < closestD ? c : closest;
+                            }, null);
+
+                            if (nearestCity) {
+                                const distToCity = this.game.worldMap.getDistance(unit.q, unit.r, nearestCity.q, nearestCity.r);
+
+                                // If within 2 tiles of city, find best defensive position
+                                if (distToCity <= 2) {
+                                    let bestDefensePos = tile;
+                                    let bestDefenseScore = this.getDefensiveScore(tile, player);
+
+                                    validNeighbors.forEach(n => {
+                                        const score = this.getDefensiveScore(n, player);
+                                        if (score > bestDefenseScore) {
+                                            bestDefenseScore = score;
+                                            bestDefensePos = n;
+                                        }
+                                    });
+
+                                    if (bestDefensePos !== tile) {
+                                        this.highlightAction('Explore');
+                                        setTimeout(() => {
+                                            if (this.game.autoPlayEnabled) {
+                                                unit.move(bestDefensePos.q, bestDefensePos.r, 1);
+                                                unit.movementPoints = 0;
+                                            }
+                                        }, 500);
+                                    } else {
+                                        actionToTake = 'Fortify';
+                                        this.highlightAction(actionToTake);
+                                        setTimeout(() => {
+                                            if (this.game.autoPlayEnabled) {
+                                                this.game.handleAction(unit, actionToTake);
+                                            }
+                                        }, 500);
+                                    }
+                                }
+                                // If 3-5 tiles away, patrol borders
+                                else if (distToCity <= 5) {
+                                    // Find unexplored areas near borders
+                                    let bestPatrol = null;
+                                    let mostUnexplored = 0;
+
+                                    validNeighbors.forEach(n => {
+                                        const nearTiles = this.game.worldMap.getNeighbors(n.q, n.r);
+                                        const unexplored = nearTiles.filter(t =>
+                                            !player.discoveredTiles.has(`${t.q},${t.r}`)
+                                        ).length;
+
+                                        if (unexplored > mostUnexplored) {
+                                            mostUnexplored = unexplored;
+                                            bestPatrol = n;
+                                        }
+                                    });
+
+                                    if (bestPatrol && mostUnexplored > 0) {
+                                        this.highlightAction('Explore');
+                                        setTimeout(() => {
+                                            if (this.game.autoPlayEnabled) {
+                                                unit.move(bestPatrol.q, bestPatrol.r, 1);
+                                                player.updateDiscovery(bestPatrol.q, bestPatrol.r, 2);
+                                                player.updateVisibility();
+                                                unit.movementPoints = 0;
+                                            }
+                                        }, 500);
+                                    } else {
+                                        actionToTake = 'Fortify';
+                                        this.highlightAction(actionToTake);
+                                        setTimeout(() => {
+                                            if (this.game.autoPlayEnabled) {
+                                                this.game.handleAction(unit, actionToTake);
+                                            }
+                                        }, 500);
+                                    }
+                                }
+                                // If far from home, move closer
+                                else {
+                                    this.highlightAction('Explore');
+                                    const moveHome = validNeighbors.reduce((best, n) => {
+                                        const d = this.game.worldMap.getDistance(n.q, n.r, nearestCity.q, nearestCity.r);
+                                        const bestD = this.game.worldMap.getDistance(best.q, best.r, nearestCity.q, nearestCity.r);
+                                        return d < bestD ? n : best;
+                                    });
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled && moveHome) {
+                                            unit.move(moveHome.q, moveHome.r, 1);
+                                            unit.movementPoints = 0;
+                                        }
+                                    }, 500);
+                                }
+                            } else {
+                                // No cities, explore
+                                actionToTake = 'Explore';
+                                this.highlightAction(actionToTake);
+                                setTimeout(() => {
+                                    if (this.game.autoPlayEnabled) {
+                                        this.game.handleAction(unit, actionToTake);
+                                    }
+                                }, 500);
+                            }
+                        } else if (unit.type.category === 'great_person') {
+                            // Great people: move to capital and use ability
+                            if (player.cities.length > 0) {
+                                const capital = player.cities[0];
+                                if (unit.q === capital.q && unit.r === capital.r && unit.type.actions.length > 0) {
+                                    actionToTake = unit.type.actions[0];
+                                    this.highlightAction(actionToTake);
+                                    setTimeout(() => {
+                                        if (this.game.autoPlayEnabled) {
+                                            this.game.handleAction(unit, actionToTake);
+                                        }
+                                    }, 500);
+                                } else {
+                                    // Move toward capital
+                                    this.notify(`${unit.type.name} moving to capital`, 'production');
+                                    const neighbors = this.game.worldMap.getNeighbors(unit.q, unit.r);
+                                    const validNeighbors = neighbors.filter(n => !n.terrain.impassable && !n.terrain.water);
+                                    if (validNeighbors.length > 0) {
+                                        const closest = validNeighbors.reduce((best, n) => {
+                                            const d = this.game.worldMap.getDistance(n.q, n.r, capital.q, capital.r);
+                                            const bestD = this.game.worldMap.getDistance(best.q, best.r, capital.q, capital.r);
+                                            return d < bestD ? n : best;
+                                        });
+                                        setTimeout(() => {
+                                            if (this.game.autoPlayEnabled) {
+                                                unit.move(closest.q, closest.r, 1);
+                                                unit.movementPoints = 0;
+                                            }
+                                        }, 500);
+                                    } else {
+                                        actionToTake = 'Skip Turn';
+                                        this.highlightAction(actionToTake);
+                                        setTimeout(() => {
+                                            if (this.game.autoPlayEnabled) {
+                                                this.game.handleAction(unit, actionToTake);
+                                            }
+                                        }, 500);
+                                    }
+                                }
+                            } else {
+                                actionToTake = 'Skip Turn';
+                                this.highlightAction(actionToTake);
+                                setTimeout(() => {
+                                    if (this.game.autoPlayEnabled) {
+                                        this.game.handleAction(unit, actionToTake);
+                                    }
+                                }, 500);
+                            }
+                        } else if (unit.type.naval) {
+                            // Naval units explore
+                            actionToTake = 'Explore';
+                            this.highlightAction(actionToTake);
+                            setTimeout(() => {
+                                if (this.game.autoPlayEnabled) {
+                                    this.game.handleAction(unit, actionToTake);
+                                }
+                            }, 500);
+                        } else {
+                            // Default: fortify
+                            actionToTake = 'Fortify';
+                            this.highlightAction(actionToTake);
+                            setTimeout(() => {
+                                if (this.game.autoPlayEnabled) {
+                                    this.game.handleAction(unit, actionToTake);
+                                }
+                            }, 500);
+                        }
+                    }, 1000);
+                });
+            } else {
+                // No units with moves left, end turn
+                if (this.game.autoPlayEnabled) {
+                    this.game.endTurn();
+                }
+            }
+        }, 3000);
+    }
+
+    getDefensiveScore(tile, player) {
+        let score = 0;
+
+        // Hills provide defense bonus
+        if (tile.terrain.name === 'Hills') score += 10;
+
+        // Forest provides cover
+        if (tile.feature.name === 'Forest') score += 5;
+
+        // Near rivers
+        if (tile.rivers && tile.rivers.length > 0) score += 3;
+
+        // Prefer tiles in our territory
+        if (tile.owner === player) score += 5;
+
+        // Avoid exposed positions (prefer tiles with adjacent friendly units)
+        const neighbors = this.game.worldMap.getNeighbors(tile.q, tile.r);
+        const friendlyNearby = neighbors.filter(n => {
+            return player.units.some(u => u.q === n.q && u.r === n.r);
+        }).length;
+        score += friendlyNearby * 2;
+
+        return score;
+    }
+
+    highlightAction(actionName) {
+        // Highlight the selected action button briefly
+        const actions = document.getElementById('selection-actions');
+        if (!actions) return;
+
+        const buttons = actions.querySelectorAll('button');
+        buttons.forEach(btn => {
+            if (btn.textContent.toUpperCase().includes(actionName.toUpperCase())) {
+                btn.style.cssText = 'background:rgba(255,204,0,0.4);border-color:#ffc107;color:#ffc107;transform:scale(1.05);transition:all 0.2s;';
+                setTimeout(() => {
+                    btn.style.cssText = '';
+                }, 800);
+            }
+        });
+    }
+
+    stopAutoPlay() {
+        if (this.autoPlayInterval) {
+            clearInterval(this.autoPlayInterval);
+            this.autoPlayInterval = null;
         }
     }
 }

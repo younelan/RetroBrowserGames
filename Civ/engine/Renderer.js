@@ -2398,9 +2398,18 @@ export class Renderer {
         const mm = this.minimapCanvas;
         const ctx = this.minimapCtx;
 
-        if (mm.width !== 220) {
-            mm.width = 220;
-            mm.height = 160;
+        // Get actual displayed size (responsive)
+        const rect = mm.getBoundingClientRect();
+        const displayWidth = rect.width || 240;
+        const displayHeight = rect.height || 145;
+        
+        // Match canvas resolution to actual display size for crisp rendering
+        const containerWidth = Math.floor(displayWidth);
+        const containerHeight = Math.floor(displayHeight);
+        
+        if (mm.width !== containerWidth || mm.height !== containerHeight) {
+            mm.width = containerWidth;
+            mm.height = containerHeight;
         }
 
         ctx.fillStyle = '#0a0a12';
@@ -2408,8 +2417,20 @@ export class Renderer {
 
         const w = this.worldMap.width;
         const h = this.worldMap.height;
-        const pSize = mm.width / w;
-        const ySize = mm.height / h;
+        
+        // Calculate pixel size to fit entire map in minimap
+        const pSizeX = mm.width / w;
+        const pSizeY = mm.height / h;
+        
+        // Use the smaller scale to ensure entire map fits
+        const pSize = Math.min(pSizeX, pSizeY);
+        const ySize = pSize;
+        
+        // Calculate offsets to center the map
+        const mapWidth = w * pSize;
+        const mapHeight = h * ySize;
+        const offsetX = (mm.width - mapWidth) / 2;
+        const offsetY = (mm.height - mapHeight) / 2;
 
         // Always render from human player's perspective (independent of whose turn it is)
         const humanPlayer = window.game?.players?.[0];
@@ -2437,32 +2458,36 @@ export class Renderer {
                 }
             }
 
-            const px = (tile.q + (tile.r / 2)) * pSize;
-            const py = tile.r * ySize;
+            const px = offsetX + (tile.q + (tile.r / 2)) * pSize;
+            const py = offsetY + tile.r * ySize;
             ctx.fillRect(px, py, Math.ceil(pSize) + 0.5, Math.ceil(ySize) + 0.5);
         }
 
-        // City markers
+        // City markers - scale size based on minimap size
+        const markerSize = Math.max(2, Math.min(5, pSize * 2));
         if (window.game) {
             for (const p of window.game.players) {
                 for (const city of p.cities) {
                     if (humanPlayer && !humanPlayer.discoveredTiles.has(`${city.q},${city.r}`)) continue;
-                    const cx = (city.q + (city.r / 2)) * pSize;
-                    const cy = city.r * ySize;
+                    const cx = offsetX + (city.q + (city.r / 2)) * pSize;
+                    const cy = offsetY + city.r * ySize;
                     ctx.fillStyle = city.owner.color;
-                    ctx.fillRect(cx - 2, cy - 2, 5, 5);
+                    const half = markerSize / 2;
+                    ctx.fillRect(cx - half, cy - half, markerSize, markerSize);
                     ctx.strokeStyle = '#fff';
                     ctx.lineWidth = 0.5;
-                    ctx.strokeRect(cx - 2, cy - 2, 5, 5);
+                    ctx.strokeRect(cx - half, cy - half, markerSize, markerSize);
                 }
 
+                // Unit markers - smaller on mobile
+                const unitSize = Math.max(1, Math.min(1.5, pSize * 0.8));
                 for (const unit of p.units) {
                     const isVis = !humanPlayer || humanPlayer.visibleTiles.has(`${unit.q},${unit.r}`) || unit.owner === humanPlayer;
                     if (!isVis) continue;
-                    const ux = (unit.q + (unit.r / 2)) * pSize;
-                    const uy = unit.r * ySize;
+                    const ux = offsetX + (unit.q + (unit.r / 2)) * pSize;
+                    const uy = offsetY + unit.r * ySize;
                     ctx.beginPath();
-                    ctx.arc(ux, uy, 1.5, 0, Math.PI * 2);
+                    ctx.arc(ux, uy, unitSize, 0, Math.PI * 2);
                     ctx.fillStyle = unit.owner.color;
                     ctx.fill();
                 }
@@ -2471,13 +2496,29 @@ export class Renderer {
 
         // Viewport indicator
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = Math.max(1, Math.min(1.5, mm.width / 160));
         try {
-            const topLeft = window.game.screenToMinimap(0, 0);
-            const bottomRight = window.game.screenToMinimap(this.canvas.width, this.canvas.height);
-            const vw = bottomRight.x - topLeft.x;
-            const vh = bottomRight.y - topLeft.y;
-            ctx.strokeRect(topLeft.x, topLeft.y, vw, vh);
+            if (window.game && window.game.camera) {
+                const camTarget = window.game.camera.target;
+                const distance = window.game.camera.camera.position.length();
+                const visibleRadius = distance * 0.15;
+                
+                const centerQ = camTarget.q || 0;
+                const centerR = camTarget.r || 0;
+                
+                const mmCenterX = offsetX + (centerQ + (centerR / 2)) * pSize;
+                const mmCenterY = offsetY + centerR * ySize;
+                
+                const mmRadius = visibleRadius * pSize;
+                
+                // Draw viewport box
+                const vx = mmCenterX - mmRadius;
+                const vy = mmCenterY - mmRadius;
+                const vw = mmRadius * 2;
+                const vh = mmRadius * 2;
+                
+                ctx.strokeRect(vx, vy, vw, vh);
+            }
         } catch (e) {
             // Viewport calculation failed
         }
