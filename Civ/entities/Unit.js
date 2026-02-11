@@ -95,6 +95,7 @@ export class Unit {
         this.animX = null;
         this.animY = null;
         this.isMoving = false;
+        this.moveProgress = 0;
 
         owner.units.push(this);
     }

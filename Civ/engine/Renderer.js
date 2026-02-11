@@ -108,6 +108,7 @@ export class Renderer {
         this.createWater();
         this.createRivers();
         this.createFeatures();
+        this.createResources();
 
         // Initial camera sync (sun light follows camera)
         setTimeout(() => this._syncCamera(), 100);
@@ -559,16 +560,36 @@ export class Renderer {
         // Clean up old
         for (const inst of this.featureInstances) {
             this.scene.remove(inst);
-            inst.geometry.dispose();
-            if (inst.material.dispose) inst.material.dispose();
+            if (inst.geometry) inst.geometry.dispose();
+            if (inst.material && inst.material.dispose) inst.material.dispose();
         }
         this.featureInstances = [];
 
-        // Collect forest and jungle tiles
+        // Collect forest and jungle tiles, excluding cities, units, and nearby tiles
         const forestTiles = [];
         const jungleTiles = [];
+        
+        // Get all unit positions if game exists
+        const unitPositions = new Set();
+        if (window.game && window.game.players) {
+            for (const player of window.game.players) {
+                for (const unit of player.units) {
+                    unitPositions.add(`${unit.q},${unit.r}`);
+                }
+            }
+        }
 
         for (const [key, tile] of this.worldMap.tiles) {
+            // Skip tiles with cities or units
+            if (tile.city) continue;
+            if (unitPositions.has(key)) continue;
+            
+            // Check if any neighbor has a city or unit
+            const neighbors = this.worldMap.getNeighbors(tile.q, tile.r);
+            const hasNearbyCity = neighbors.some(n => n.city);
+            const hasNearbyUnit = neighbors.some(n => unitPositions.has(`${n.q},${n.r}`));
+            if (hasNearbyCity || hasNearbyUnit) continue;
+            
             if (tile.feature.name === 'Forest') forestTiles.push(tile);
             else if (tile.feature.name === 'Jungle') jungleTiles.push(tile);
         }
@@ -774,6 +795,77 @@ export class Renderer {
     }
 
     // ========================================================================
+    //  RESOURCES
+    // ========================================================================
+
+    createResources() {
+        // Render resource icons on tiles that have them
+        for (const [key, tile] of this.worldMap.tiles) {
+            if (!tile.resource || tile.resource.name === 'None') continue;
+
+            const worldPos = this.hexToWorld(tile.q, tile.r, tile.elevation);
+            const topY = Math.max(worldPos.y, this.heightScale * 0.35) + 2;
+
+            // Create resource indicator - small colored sphere with icon
+            const group = new THREE.Group();
+
+            // Base sphere for resource
+            const sphereGeo = new THREE.SphereGeometry(3, 16, 16);
+            let resourceColor;
+            if (tile.resource.type === 'strategic') {
+                resourceColor = 0x888888; // Gray for strategic
+            } else if (tile.resource.type === 'luxury') {
+                resourceColor = 0xffdd55; // Gold for luxury
+            } else {
+                resourceColor = 0x44dd44; // Green for bonus
+            }
+
+            const sphereMat = new THREE.MeshStandardMaterial({
+                color: resourceColor,
+                roughness: 0.4,
+                metalness: 0.6,
+                emissive: resourceColor,
+                emissiveIntensity: 0.3
+            });
+            const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+            sphere.position.set(0, 0, 0);
+            group.add(sphere);
+
+            // Icon sprite
+            const iconCanvas = document.createElement('canvas');
+            iconCanvas.width = 64;
+            iconCanvas.height = 64;
+            const ctx = iconCanvas.getContext('2d');
+            ctx.clearRect(0, 0, 64, 64);
+            ctx.font = '40px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            
+            // Outline
+            ctx.fillStyle = 'black';
+            const offs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (const o of offs) ctx.fillText(tile.resource.icon, 32 + o[0], 34 + o[1]);
+            
+            // Fill
+            ctx.fillStyle = 'white';
+            ctx.fillText(tile.resource.icon, 32, 34);
+
+            const iconTexture = new THREE.CanvasTexture(iconCanvas);
+            const iconSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: iconTexture,
+                transparent: true
+            }));
+            iconSprite.scale.set(8, 8, 1);
+            iconSprite.position.set(0, 6, 0);
+            group.add(iconSprite);
+
+            group.position.set(worldPos.x, topY, worldPos.z);
+            this.scene.add(group);
+            this.featureInstances.push(group);
+        }
+    }
+
+    // ========================================================================
     //  FOG OF WAR
     // ========================================================================
 
@@ -896,37 +988,152 @@ export class Renderer {
         if (!game) return;
 
         const player = game.getCurrentPlayer();
+        const currentUnits = new Set();
 
-        // Remove old unit sprites
-        for (const [, sprite] of this.unitSprites) {
-            this.scene.remove(sprite);
-            sprite.traverse(child => {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) {
-                    if (child.material.map) child.material.map.dispose();
-                    child.material.dispose();
-                }
-            });
-        }
-        this.unitSprites.clear();
-
-        // Create new unit sprites
+        // Update existing units and create new ones
         for (const p of game.players) {
             for (let i = 0; i < p.units.length; i++) {
                 const unit = p.units[i];
                 const unitKey = `${p.id}_${i}`;
+                currentUnits.add(unitKey);
 
                 // Visibility check
-                if (player && unit.owner !== player) {
-                    if (!player.visibleTiles.has(`${unit.q},${unit.r}`)) continue;
-                }
-                if (player && !player.discoveredTiles.has(`${unit.q},${unit.r}`)) continue;
+                const isVisible = (!player || unit.owner === player || player.visibleTiles.has(`${unit.q},${unit.r}`))
+                    && (!player || player.discoveredTiles.has(`${unit.q},${unit.r}`));
 
-                const group = this._createUnitSprite(unit);
-                this.unitSprites.set(unitKey, group);
-                this.scene.add(group);
+                if (!isVisible) {
+                    // Remove if exists but now invisible
+                    const existing = this.unitSprites.get(unitKey);
+                    if (existing) {
+                        this.scene.remove(existing);
+                        this._disposeUnitSprite(existing);
+                        this.unitSprites.delete(unitKey);
+                    }
+                    continue;
+                }
+
+                let group = this.unitSprites.get(unitKey);
+                
+                // Create sprite if it doesn't exist OR if fortification status changed
+                const wasFortified = group ? (group.userData.wasFortified === true) : false;
+                const isFortified = unit.isFortified === true;
+                const needsRecreate = !group || (wasFortified !== isFortified);
+                
+                if (needsRecreate) {
+                    // Remove old sprite if it exists
+                    if (group) {
+                        this.scene.remove(group);
+                        this._disposeUnitSprite(group);
+                    }
+                    
+                    // Create new sprite
+                    group = this._createUnitSprite(unit);
+                    this.unitSprites.set(unitKey, group);
+                    this.scene.add(group);
+                    group.userData.unit = unit;
+                    group.userData.wasFortified = isFortified;
+                }
+
+                // Animate unit position
+                this._animateUnit(unit, group);
             }
         }
+
+        // Remove sprites for units that no longer exist
+        for (const [key, sprite] of this.unitSprites) {
+            if (!currentUnits.has(key)) {
+                this.scene.remove(sprite);
+                this._disposeUnitSprite(sprite);
+                this.unitSprites.delete(key);
+            }
+        }
+    }
+
+    _disposeUnitSprite(sprite) {
+        sprite.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (child.material.map) child.material.map.dispose();
+                child.material.dispose();
+            }
+        });
+    }
+
+    _animateUnit(unit, group) {
+        const tile = this.worldMap.getTile(unit.q, unit.r);
+        const elevation = tile ? tile.elevation : 0.35;
+        const worldPos = this.hexToWorld(unit.q, unit.r, elevation);
+        const baseY = Math.max(worldPos.y, this.heightScale * 0.35) + 5;
+
+        const targetX = worldPos.x;
+        const targetZ = worldPos.z;
+        const targetY = baseY;
+
+        // Initialize animation position if needed
+        if (unit.animX === null || unit.animY === null) {
+            unit.animX = targetX;
+            unit.animY = targetZ;
+            unit.isMoving = false;
+            group.position.set(targetX, targetY, targetZ);
+            return;
+        }
+
+        // Check if unit has moved to a new tile
+        const distToTarget = Math.sqrt(
+            Math.pow(unit.animX - targetX, 2) + 
+            Math.pow(unit.animY - targetZ, 2)
+        );
+
+        if (distToTarget > 1) {
+            // Unit has moved - start movement animation
+            unit.isMoving = true;
+            unit.moveProgress = 0;
+        }
+
+        // Smooth movement interpolation
+        if (unit.isMoving) {
+            const moveSpeed = 0.08; // Animation speed
+            unit.moveProgress = Math.min(1, unit.moveProgress + moveSpeed);
+
+            // Ease out interpolation for smooth deceleration
+            const t = unit.moveProgress;
+            const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+
+            unit.animX = unit.animX + (targetX - unit.animX) * eased;
+            unit.animY = unit.animY + (targetZ - unit.animY) * eased;
+
+            if (unit.moveProgress >= 1) {
+                unit.isMoving = false;
+                unit.animX = targetX;
+                unit.animY = targetZ;
+            }
+        }
+
+        // Apply position with idle animations
+        const idleTime = this.time * 2;
+        const bobHeight = unit.isMoving ? 3 : 1.5; // Bob more when moving
+        const bobSpeed = unit.isMoving ? 8 : 2;
+        const bob = Math.sin(idleTime * bobSpeed) * bobHeight;
+
+        // Slight rotation when moving
+        if (unit.isMoving) {
+            const angle = Math.atan2(targetZ - unit.animY, targetX - unit.animX);
+            group.rotation.y = angle;
+            
+            // Add walking sway
+            const sway = Math.sin(idleTime * 12) * 0.1;
+            group.rotation.z = sway;
+        } else {
+            // Gentle rotation when idle
+            group.rotation.y = Math.sin(idleTime * 0.5) * 0.2;
+            group.rotation.z = 0;
+        }
+
+        group.position.set(
+            unit.animX,
+            targetY + bob,
+            unit.animY
+        );
     }
 
     _createUnitSprite(unit) {
@@ -937,9 +1144,8 @@ export class Renderer {
         const worldPos = this.hexToWorld(unit.q, unit.r, elevation);
         const baseY = Math.max(worldPos.y, this.heightScale * 0.35) + 5;
 
-        // Colored base disc
+        // Colored base disc - 50% transparent
         const discGeo = new THREE.CylinderGeometry(12, 12, 3, 16);
-        // Slightly darken the disc so light-colored civ colors remain visible
         const ownerCol = new THREE.Color(unit.owner.color);
         const discColor = ownerCol.clone().multiplyScalar(0.75);
         const discMat = new THREE.MeshStandardMaterial({
@@ -947,68 +1153,524 @@ export class Renderer {
             roughness: 0.45,
             metalness: 0.15,
             emissive: ownerCol.clone().multiplyScalar(0.15),
-            emissiveIntensity: 0.4
+            emissiveIntensity: 0.4,
+            transparent: true,
+            opacity: 0.5
         });
         const disc = new THREE.Mesh(discGeo, discMat);
         disc.position.set(0, 0, 0);
         disc.castShadow = true;
         group.add(disc);
 
-        // Billboard sprite with emoji
-        const spriteCanvas = document.createElement('canvas');
-        spriteCanvas.width = 128;
-        spriteCanvas.height = 128;
-        const sctx = spriteCanvas.getContext('2d');
+        // Check unit type for specific 3D models
+        if (unit.type.name === 'Settler') {
+            // Create 3D settler figure - person with supplies
+            const settlerGroup = new THREE.Group();
+            
+            // Legs
+            const legGeo = new THREE.CylinderGeometry(1, 1.2, 6, 8);
+            const legMat = new THREE.MeshStandardMaterial({
+                color: 0x4a3728,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            const leg1 = new THREE.Mesh(legGeo, legMat);
+            leg1.position.set(-1.5, 3, 0);
+            leg1.castShadow = true;
+            settlerGroup.add(leg1);
+            
+            const leg2 = new THREE.Mesh(legGeo, legMat);
+            leg2.position.set(1.5, 3, 0);
+            leg2.castShadow = true;
+            settlerGroup.add(leg2);
+            
+            // Body - broader settler torso
+            const bodyGeo = new THREE.CylinderGeometry(3.5, 4, 10, 8);
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: 0x8b6f47,
+                roughness: 0.7,
+                metalness: 0.1
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.set(0, 9, 0);
+            body.castShadow = true;
+            settlerGroup.add(body);
+            
+            // Arms carrying supplies
+            const armGeo = new THREE.CylinderGeometry(0.8, 0.8, 6, 6);
+            const armMat = new THREE.MeshStandardMaterial({
+                color: 0xffd4a3,
+                roughness: 0.6,
+                metalness: 0.0
+            });
+            const arm1 = new THREE.Mesh(armGeo, armMat);
+            arm1.position.set(-4, 10, 1);
+            arm1.rotation.z = Math.PI / 6;
+            arm1.castShadow = true;
+            settlerGroup.add(arm1);
+            
+            const arm2 = new THREE.Mesh(armGeo, armMat);
+            arm2.position.set(4, 10, 1);
+            arm2.rotation.z = -Math.PI / 6;
+            arm2.castShadow = true;
+            settlerGroup.add(arm2);
+            
+            // Head
+            const headGeo = new THREE.SphereGeometry(2.2, 12, 12);
+            const headMat = new THREE.MeshStandardMaterial({
+                color: 0xffd4a3,
+                roughness: 0.6,
+                metalness: 0.0
+            });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.set(0, 15.5, 0);
+            head.castShadow = true;
+            settlerGroup.add(head);
+            
+            // Wide-brim hat (settler characteristic)
+            const hatBrimGeo = new THREE.CylinderGeometry(4, 3.5, 0.8, 16);
+            const hatMat = new THREE.MeshStandardMaterial({
+                color: 0x6b5533,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            const hatBrim = new THREE.Mesh(hatBrimGeo, hatMat);
+            hatBrim.position.set(0, 17.5, 0);
+            hatBrim.castShadow = true;
+            settlerGroup.add(hatBrim);
+            
+            const hatTopGeo = new THREE.CylinderGeometry(2, 2, 2.5, 16);
+            const hatTop = new THREE.Mesh(hatTopGeo, hatMat);
+            hatTop.position.set(0, 18.8, 0);
+            hatTop.castShadow = true;
+            settlerGroup.add(hatTop);
+            
+            // Large backpack with supplies
+            const packGeo = new THREE.BoxGeometry(5, 6, 4);
+            const packMat = new THREE.MeshStandardMaterial({
+                color: 0x654321,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            const pack = new THREE.Mesh(packGeo, packMat);
+            pack.position.set(0, 10, -4);
+            pack.castShadow = true;
+            settlerGroup.add(pack);
+            
+            // Tool (shovel) sticking out of pack
+            const toolHandleGeo = new THREE.CylinderGeometry(0.3, 0.3, 8, 6);
+            const toolHandleMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 });
+            const toolHandle = new THREE.Mesh(toolHandleGeo, toolHandleMat);
+            toolHandle.position.set(2, 14, -5);
+            toolHandle.rotation.x = Math.PI / 6;
+            toolHandle.castShadow = true;
+            settlerGroup.add(toolHandle);
+            
+            const shovelGeo = new THREE.BoxGeometry(2, 0.3, 3);
+            const shovelMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.6 });
+            const shovel = new THREE.Mesh(shovelGeo, shovelMat);
+            shovel.position.set(2, 18, -6);
+            shovel.rotation.x = Math.PI / 6;
+            shovel.castShadow = true;
+            settlerGroup.add(shovel);
+            
+            settlerGroup.position.set(0, 0, 0);
+            group.add(settlerGroup);
+        } else if (unit.type.category === 'military' && (unit.type.name === 'Warrior' || unit.type.name === 'Swordsman' || unit.type.class === 'melee')) {
+            // Create 3D warrior/military figure
+            const warriorGroup = new THREE.Group();
+            
+            // Legs
+            const legGeo = new THREE.CylinderGeometry(1.2, 1.4, 7, 8);
+            const armorMat = new THREE.MeshStandardMaterial({
+                color: 0x555555,
+                roughness: 0.5,
+                metalness: 0.7
+            });
+            const leg1 = new THREE.Mesh(legGeo, armorMat);
+            leg1.position.set(-1.5, 3.5, 0);
+            leg1.castShadow = true;
+            warriorGroup.add(leg1);
+            
+            const leg2 = new THREE.Mesh(legGeo, armorMat);
+            leg2.position.set(1.5, 3.5, 0);
+            leg2.castShadow = true;
+            warriorGroup.add(leg2);
+            
+            // Body - armored torso
+            const bodyGeo = new THREE.CylinderGeometry(3, 3.8, 10, 8);
+            const body = new THREE.Mesh(bodyGeo, armorMat);
+            body.position.set(0, 10, 0);
+            body.castShadow = true;
+            warriorGroup.add(body);
+            
+            // Shoulder pads
+            const shoulderGeo = new THREE.SphereGeometry(2, 8, 8);
+            const shoulder1 = new THREE.Mesh(shoulderGeo, armorMat);
+            shoulder1.position.set(-3.5, 13, 0);
+            shoulder1.scale.set(1, 0.6, 1);
+            shoulder1.castShadow = true;
+            warriorGroup.add(shoulder1);
+            
+            const shoulder2 = new THREE.Mesh(shoulderGeo, armorMat);
+            shoulder2.position.set(3.5, 13, 0);
+            shoulder2.scale.set(1, 0.6, 1);
+            shoulder2.castShadow = true;
+            warriorGroup.add(shoulder2);
+            
+            // Arms
+            const armGeo = new THREE.CylinderGeometry(1, 1, 6, 6);
+            const skinMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.7,
+                metalness: 0.0
+            });
+            const arm1 = new THREE.Mesh(armGeo, skinMat);
+            arm1.position.set(-4.5, 9, 0.5);
+            arm1.rotation.z = Math.PI / 8;
+            arm1.castShadow = true;
+            warriorGroup.add(arm1);
+            
+            const arm2 = new THREE.Mesh(armGeo, skinMat);
+            arm2.position.set(4.5, 9, 0.5);
+            arm2.rotation.z = -Math.PI / 8;
+            arm2.castShadow = true;
+            warriorGroup.add(arm2);
+            
+            // Head
+            const headGeo = new THREE.SphereGeometry(2, 12, 12);
+            const headMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.6,
+                metalness: 0.0
+            });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.set(0, 16, 0);
+            head.castShadow = true;
+            warriorGroup.add(head);
+            
+            // Helmet
+            const helmetGeo = new THREE.SphereGeometry(2.3, 12, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+            const helmetMat = new THREE.MeshStandardMaterial({
+                color: ownerCol.clone().multiplyScalar(0.6),
+                roughness: 0.4,
+                metalness: 0.8
+            });
+            const helmet = new THREE.Mesh(helmetGeo, helmetMat);
+            helmet.position.set(0, 16.5, 0);
+            helmet.castShadow = true;
+            warriorGroup.add(helmet);
+            
+            // Weapon - sword
+            const swordHandleGeo = new THREE.CylinderGeometry(0.4, 0.4, 4, 6);
+            const swordHandleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.8 });
+            const swordHandle = new THREE.Mesh(swordHandleGeo, swordHandleMat);
+            swordHandle.position.set(5, 8, 1);
+            swordHandle.rotation.z = -Math.PI / 3;
+            swordHandle.castShadow = true;
+            warriorGroup.add(swordHandle);
+            
+            const swordBladeGeo = new THREE.BoxGeometry(1, 8, 0.3);
+            const swordBladeMat = new THREE.MeshStandardMaterial({ 
+                color: 0xcccccc, 
+                roughness: 0.2, 
+                metalness: 0.9,
+                emissive: 0x444444,
+                emissiveIntensity: 0.2
+            });
+            const swordBlade = new THREE.Mesh(swordBladeGeo, swordBladeMat);
+            swordBlade.position.set(6.5, 11, 1);
+            swordBlade.rotation.z = -Math.PI / 3;
+            swordBlade.castShadow = true;
+            warriorGroup.add(swordBlade);
+            
+            // Shield
+            const shieldGeo = new THREE.CylinderGeometry(3, 3, 0.5, 16);
+            const shieldMat = new THREE.MeshStandardMaterial({
+                color: ownerCol,
+                roughness: 0.5,
+                metalness: 0.6
+            });
+            const shield = new THREE.Mesh(shieldGeo, shieldMat);
+            shield.position.set(-4.5, 10, 1.5);
+            shield.rotation.x = Math.PI / 2;
+            shield.rotation.y = Math.PI / 6;
+            shield.castShadow = true;
+            warriorGroup.add(shield);
+            
+            warriorGroup.position.set(0, 0, 0);
+            group.add(warriorGroup);
+        } else if (unit.type.name === 'Scout') {
+            // Create 3D scout figure - light and quick looking
+            const scoutGroup = new THREE.Group();
+            
+            // Legs - thinner/lighter than warrior
+            const legGeo = new THREE.CylinderGeometry(0.9, 1, 7, 8);
+            const clothMat = new THREE.MeshStandardMaterial({
+                color: 0x6b5533,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            const leg1 = new THREE.Mesh(legGeo, clothMat);
+            leg1.position.set(-1.3, 3.5, 0);
+            leg1.castShadow = true;
+            scoutGroup.add(leg1);
+            
+            const leg2 = new THREE.Mesh(legGeo, clothMat);
+            leg2.position.set(1.3, 3.5, 0);
+            leg2.castShadow = true;
+            scoutGroup.add(leg2);
+            
+            // Body - lighter than warrior
+            const bodyGeo = new THREE.CylinderGeometry(2.5, 3, 9, 8);
+            const body = new THREE.Mesh(bodyGeo, clothMat);
+            body.position.set(0, 10, 0);
+            body.castShadow = true;
+            scoutGroup.add(body);
+            
+            // Cape/cloak
+            const capeGeo = new THREE.ConeGeometry(3.5, 8, 8);
+            const capeMat = new THREE.MeshStandardMaterial({
+                color: ownerCol.clone().multiplyScalar(0.5),
+                roughness: 0.9,
+                metalness: 0.0
+            });
+            const cape = new THREE.Mesh(capeGeo, capeMat);
+            cape.position.set(0, 10, -2);
+            cape.castShadow = true;
+            scoutGroup.add(cape);
+            
+            // Arms
+            const armGeo = new THREE.CylinderGeometry(0.8, 0.8, 6, 6);
+            const skinMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.7,
+                metalness: 0.0
+            });
+            const arm1 = new THREE.Mesh(armGeo, skinMat);
+            arm1.position.set(-3.5, 10, 0);
+            arm1.rotation.z = Math.PI / 12;
+            arm1.castShadow = true;
+            scoutGroup.add(arm1);
+            
+            const arm2 = new THREE.Mesh(armGeo, skinMat);
+            arm2.position.set(3.5, 10, 0);
+            arm2.rotation.z = -Math.PI / 12;
+            arm2.castShadow = true;
+            scoutGroup.add(arm2);
+            
+            // Head
+            const headGeo = new THREE.SphereGeometry(1.8, 12, 12);
+            const headMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.6,
+                metalness: 0.0
+            });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.set(0, 15, 0);
+            head.castShadow = true;
+            scoutGroup.add(head);
+            
+            // Hood
+            const hoodGeo = new THREE.ConeGeometry(2.5, 3, 8);
+            const hoodMat = new THREE.MeshStandardMaterial({
+                color: ownerCol.clone().multiplyScalar(0.6),
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            const hood = new THREE.Mesh(hoodGeo, hoodMat);
+            hood.position.set(0, 16.5, 0);
+            hood.castShadow = true;
+            scoutGroup.add(hood);
+            
+            // Bow - characteristic scout weapon
+            const bowArcPoints = [];
+            for (let i = 0; i <= 10; i++) {
+                const t = i / 10;
+                const angle = t * Math.PI;
+                bowArcPoints.push(new THREE.Vector3(
+                    Math.sin(angle) * 2.5,
+                    (t - 0.5) * 6,
+                    0
+                ));
+            }
+            const bowCurve = new THREE.CatmullRomCurve3(bowArcPoints);
+            const bowGeo = new THREE.TubeGeometry(bowCurve, 20, 0.2, 8, false);
+            const bowMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 });
+            const bow = new THREE.Mesh(bowGeo, bowMat);
+            bow.position.set(-3.5, 11, 1);
+            bow.rotation.y = Math.PI / 4;
+            bow.castShadow = true;
+            scoutGroup.add(bow);
+            
+            // Quiver with arrows on back
+            const quiverGeo = new THREE.CylinderGeometry(0.8, 1, 5, 6);
+            const quiverMat = new THREE.MeshStandardMaterial({ color: 0x654321, roughness: 0.9 });
+            const quiver = new THREE.Mesh(quiverGeo, quiverMat);
+            quiver.position.set(1.5, 12, -2.5);
+            quiver.rotation.x = Math.PI / 6;
+            quiver.castShadow = true;
+            scoutGroup.add(quiver);
+            
+            // Arrow sticks poking out
+            for (let i = 0; i < 3; i++) {
+                const arrowGeo = new THREE.CylinderGeometry(0.1, 0.1, 4, 4);
+                const arrowMat = new THREE.MeshStandardMaterial({ color: 0x8b7355, roughness: 0.9 });
+                const arrow = new THREE.Mesh(arrowGeo, arrowMat);
+                arrow.position.set(1.5 + (i - 1) * 0.4, 15, -2.5);
+                arrow.rotation.x = Math.PI / 6;
+                arrow.castShadow = true;
+                scoutGroup.add(arrow);
+            }
+            
+            scoutGroup.position.set(0, 0, 0);
+            group.add(scoutGroup);
+        } else if (unit.type.name === 'Worker') {
+            // Create 3D worker figure - laborer with tools
+            const workerGroup = new THREE.Group();
+            
+            // Legs
+            const legGeo = new THREE.CylinderGeometry(1, 1.2, 6, 8);
+            const workClothMat = new THREE.MeshStandardMaterial({
+                color: 0x7a6b4f,
+                roughness: 0.9,
+                metalness: 0.0
+            });
+            const leg1 = new THREE.Mesh(legGeo, workClothMat);
+            leg1.position.set(-1.5, 3, 0);
+            leg1.castShadow = true;
+            workerGroup.add(leg1);
+            
+            const leg2 = new THREE.Mesh(legGeo, workClothMat);
+            leg2.position.set(1.5, 3, 0);
+            leg2.castShadow = true;
+            workerGroup.add(leg2);
+            
+            // Body - working clothes
+            const bodyGeo = new THREE.CylinderGeometry(3, 3.5, 9, 8);
+            const body = new THREE.Mesh(bodyGeo, workClothMat);
+            body.position.set(0, 9, 0);
+            body.castShadow = true;
+            workerGroup.add(body);
+            
+            // Arms
+            const armGeo = new THREE.CylinderGeometry(0.9, 0.9, 6, 6);
+            const skinMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.8,
+                metalness: 0.0
+            });
+            const arm1 = new THREE.Mesh(armGeo, skinMat);
+            arm1.position.set(-4, 9, 1);
+            arm1.rotation.z = Math.PI / 5;
+            arm1.castShadow = true;
+            workerGroup.add(arm1);
+            
+            const arm2 = new THREE.Mesh(armGeo, skinMat);
+            arm2.position.set(4, 9, 1);
+            arm2.rotation.z = -Math.PI / 5;
+            arm2.castShadow = true;
+            workerGroup.add(arm2);
+            
+            // Head
+            const headGeo = new THREE.SphereGeometry(2, 12, 12);
+            const headMat = new THREE.MeshStandardMaterial({
+                color: 0xd4a574,
+                roughness: 0.6,
+                metalness: 0.0
+            });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.set(0, 14.5, 0);
+            head.castShadow = true;
+            workerGroup.add(head);
+            
+            // Cap/work hat
+            const capGeo = new THREE.CylinderGeometry(2.3, 2, 1, 12);
+            const capMat = new THREE.MeshStandardMaterial({
+                color: 0x5a4a3a,
+                roughness: 0.9,
+                metalness: 0.0
+            });
+            const cap = new THREE.Mesh(capGeo, capMat);
+            cap.position.set(0, 16, 0);
+            cap.castShadow = true;
+            workerGroup.add(cap);
+            
+            // Pickaxe in hand
+            const handleGeo = new THREE.CylinderGeometry(0.3, 0.3, 8, 6);
+            const handleMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9 });
+            const handle = new THREE.Mesh(handleGeo, handleMat);
+            handle.position.set(5.5, 9, 1);
+            handle.rotation.z = -Math.PI / 2.5;
+            handle.castShadow = true;
+            workerGroup.add(handle);
+            
+            const pickheadGeo = new THREE.BoxGeometry(4, 0.8, 0.8);
+            const pickheadMat = new THREE.MeshStandardMaterial({ 
+                color: 0x888888, 
+                roughness: 0.4, 
+                metalness: 0.8 
+            });
+            const pickhead = new THREE.Mesh(pickheadGeo, pickheadMat);
+            pickhead.position.set(8, 12, 1);
+            pickhead.rotation.z = -Math.PI / 2.5;
+            pickhead.castShadow = true;
+            workerGroup.add(pickhead);
+            
+            // Tool belt
+            const beltGeo = new THREE.TorusGeometry(3.2, 0.3, 8, 16);
+            const beltMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.9 });
+            const belt = new THREE.Mesh(beltGeo, beltMat);
+            belt.position.set(0, 6, 0);
+            belt.rotation.x = Math.PI / 2;
+            belt.castShadow = true;
+            workerGroup.add(belt);
+            
+            workerGroup.position.set(0, 0, 0);
+            group.add(workerGroup);
+        } else {
+            // Billboard sprite with emoji for other units
+            const spriteCanvas = document.createElement('canvas');
+            spriteCanvas.width = 128;
+            spriteCanvas.height = 128;
+            const sctx = spriteCanvas.getContext('2d');
 
-        // Background circle with shadow to improve contrast
-        sctx.clearRect(0, 0, 128, 128);
-        sctx.save();
-        sctx.shadowColor = 'rgba(0,0,0,0.6)';
-        sctx.shadowBlur = 8;
-        sctx.beginPath();
-        sctx.arc(64, 64, 58, 0, Math.PI * 2);
-        sctx.fillStyle = unit.owner.color;
-        sctx.fill();
-        sctx.restore();
+            // No background - transparent so terrain shows through
+            sctx.clearRect(0, 0, 128, 128);
 
-        // Outer white ring for separation
-        sctx.beginPath();
-        sctx.arc(64, 64, 58, 0, Math.PI * 2);
-        sctx.strokeStyle = '#ffffff';
-        sctx.lineWidth = 5;
-        sctx.stroke();
+            // Emoji icon with dark outline (multi-pass) then bright fill
+            const emojiY = 68;
+            sctx.font = '64px serif';
+            sctx.textAlign = 'center';
+            sctx.textBaseline = 'middle';
 
-        // Emoji icon with dark outline (multi-pass) then bright fill
-        const emojiY = 68;
-        sctx.font = '64px serif';
-        sctx.textAlign = 'center';
-        sctx.textBaseline = 'middle';
+            // Draw outline by drawing the emoji several times in black slight offsets
+            sctx.fillStyle = 'black';
+            const offs = [
+                [-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, -1], [-1, 1], [1, 1],
+                [-3, 0], [3, 0], [0, -3], [0, 3]
+            ];
+            for (const o of offs) sctx.fillText(unit.type.icon, 64 + o[0], emojiY + o[1]);
 
-        // Draw outline by drawing the emoji several times in black slight offsets
-        sctx.fillStyle = 'black';
-        const offs = [
-            [-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, -1], [-1, 1], [1, 1]
-        ];
-        for (const o of offs) sctx.fillText(unit.type.icon, 64 + o[0], emojiY + o[1]);
+            // Main white fill
+            sctx.fillStyle = '#ffffff';
+            sctx.fillText(unit.type.icon, 64, emojiY);
 
-        // Main white fill
-        sctx.fillStyle = '#ffffff';
-        sctx.fillText(unit.type.icon, 64, emojiY);
+            const texture = new THREE.CanvasTexture(spriteCanvas);
+            texture.needsUpdate = true;
+            texture.colorSpace = THREE.SRGBColorSpace;
 
-        const texture = new THREE.CanvasTexture(spriteCanvas);
-        texture.needsUpdate = true;
-        texture.encoding = THREE.sRGBEncoding;
-
-        const spriteMat = new THREE.SpriteMaterial({
-            map: texture,
-            transparent: true,
-            depthTest: true,
-            sizeAttenuation: true
-        });
-        const sprite = new THREE.Sprite(spriteMat);
-        sprite.scale.set(36, 36, 1);
-        sprite.position.set(0, 20, 0);
-        group.add(sprite);
+            const spriteMat = new THREE.SpriteMaterial({
+                map: texture,
+                transparent: true,
+                depthTest: true,
+                sizeAttenuation: true
+            });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.scale.set(36, 36, 1);
+            sprite.position.set(0, 20, 0);
+            group.add(sprite);
+        }
 
         // Health bar (if damaged)
         if (unit.health < 100) {
@@ -1032,19 +1694,84 @@ export class Renderer {
             group.add(hpBar);
         }
 
-        // Fortified indicator
+        // Fortified indicator - defensive barricades
         if (unit.isFortified) {
-            const shieldGeo = new THREE.RingGeometry(10, 14, 6);
-            const shieldMat = new THREE.MeshBasicMaterial({
-                color: 0x44aaff,
-                transparent: true,
-                opacity: 0.4,
-                side: THREE.DoubleSide
+            const fortGroup = new THREE.Group();
+            
+            // Create wooden barricades around the unit
+            const woodMat = new THREE.MeshStandardMaterial({
+                color: 0x6b5533,
+                roughness: 0.9,
+                metalness: 0.0
             });
-            const shield = new THREE.Mesh(shieldGeo, shieldMat);
-            shield.rotation.x = -Math.PI / 2;
-            shield.position.set(0, 2, 0);
-            group.add(shield);
+            
+            // Wooden stakes in a circle
+            const stakeCount = 8;
+            for (let i = 0; i < stakeCount; i++) {
+                const angle = (i / stakeCount) * Math.PI * 2;
+                const radius = 11;
+                const sx = Math.cos(angle) * radius;
+                const sz = Math.sin(angle) * radius;
+                
+                // Vertical stake
+                const stakeGeo = new THREE.CylinderGeometry(0.6, 0.8, 8, 6);
+                const stake = new THREE.Mesh(stakeGeo, woodMat);
+                stake.position.set(sx, 4, sz);
+                stake.castShadow = true;
+                fortGroup.add(stake);
+                
+                // Pointed top
+                const tipGeo = new THREE.ConeGeometry(0.8, 2, 6);
+                const tip = new THREE.Mesh(tipGeo, woodMat);
+                tip.position.set(sx, 9, sz);
+                tip.castShadow = true;
+                fortGroup.add(tip);
+            }
+            
+            // Horizontal connecting beams
+            for (let i = 0; i < stakeCount; i++) {
+                const angle1 = (i / stakeCount) * Math.PI * 2;
+                const angle2 = ((i + 1) / stakeCount) * Math.PI * 2;
+                const radius = 11;
+                
+                const x1 = Math.cos(angle1) * radius;
+                const z1 = Math.sin(angle1) * radius;
+                const x2 = Math.cos(angle2) * radius;
+                const z2 = Math.sin(angle2) * radius;
+                
+                const beamLength = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(z2 - z1, 2));
+                const beamGeo = new THREE.CylinderGeometry(0.4, 0.4, beamLength, 6);
+                const beam = new THREE.Mesh(beamGeo, woodMat);
+                
+                beam.position.set((x1 + x2) / 2, 6, (z1 + z2) / 2);
+                beam.rotation.z = Math.PI / 2;
+                beam.rotation.y = -angle1 - Math.PI / stakeCount;
+                beam.castShadow = true;
+                fortGroup.add(beam);
+            }
+            
+            // Sandbags at base
+            const sandMat = new THREE.MeshStandardMaterial({
+                color: 0xc2b280,
+                roughness: 0.95,
+                metalness: 0.0
+            });
+            
+            for (let i = 0; i < stakeCount; i++) {
+                const angle = (i / stakeCount) * Math.PI * 2;
+                const radius = 10;
+                const bx = Math.cos(angle) * radius;
+                const bz = Math.sin(angle) * radius;
+                
+                const bagGeo = new THREE.BoxGeometry(3, 1.5, 2);
+                const bag = new THREE.Mesh(bagGeo, sandMat);
+                bag.position.set(bx, 0.75, bz);
+                bag.rotation.y = -angle;
+                bag.castShadow = true;
+                fortGroup.add(bag);
+            }
+            
+            group.add(fortGroup);
         }
 
         group.position.set(worldPos.x, baseY, worldPos.z);
@@ -1059,29 +1786,77 @@ export class Renderer {
         if (!game) return;
 
         const player = game.getCurrentPlayer();
-
-        // Remove old city meshes
-        for (const [, group] of this.cityMeshes) {
-            this.scene.remove(group);
-            group.traverse(child => {
-                if (child.geometry) child.geometry.dispose();
-                if (child.material) {
-                    if (child.material.map) child.material.map.dispose();
-                    child.material.dispose();
-                }
-            });
-        }
-        this.cityMeshes.clear();
+        const currentCities = new Set();
 
         for (const p of game.players) {
             for (const city of p.cities) {
-                if (player && !player.discoveredTiles.has(`${city.q},${city.r}`)) continue;
+                const cityKey = `${p.id}_${city.name}`;
+                currentCities.add(cityKey);
+                
+                if (player && !player.discoveredTiles.has(`${city.q},${city.r}`)) {
+                    // Remove if exists but now invisible
+                    const existing = this.cityMeshes.get(cityKey);
+                    if (existing) {
+                        this.scene.remove(existing);
+                        this._disposeCityMesh(existing);
+                        this.cityMeshes.delete(cityKey);
+                    }
+                    continue;
+                }
 
-                const group = this._createCityMesh(city);
-                this.cityMeshes.set(city, group);
-                this.scene.add(group);
+                let group = this.cityMeshes.get(cityKey);
+                
+                // Create city mesh if it doesn't exist
+                if (!group) {
+                    group = this._createCityMesh(city);
+                    this.cityMeshes.set(cityKey, group);
+                    this.scene.add(group);
+                }
+                
+                // Animate flag
+                group.traverse(child => {
+                    if (child.userData.isFlag) {
+                        const wave = Math.sin(this.time * 3 + child.position.x * 0.1) * 0.15;
+                        child.rotation.z = wave;
+                    }
+                    
+                    // Animate particles
+                    if (child.userData.isParticles && child.geometry) {
+                        const positions = child.geometry.attributes.position.array;
+                        for (let i = 0; i < positions.length / 3; i++) {
+                            // Rise and wrap around
+                            positions[i * 3 + 1] += 0.15;
+                            if (positions[i * 3 + 1] > 50) {
+                                positions[i * 3 + 1] = 15 + Math.random() * 5;
+                            }
+                            // Slight drift
+                            positions[i * 3] += Math.sin(this.time * 2 + i) * 0.08;
+                            positions[i * 3 + 2] += Math.cos(this.time * 2 + i) * 0.08;
+                        }
+                        child.geometry.attributes.position.needsUpdate = true;
+                    }
+                });
             }
         }
+
+        // Remove city meshes that no longer exist
+        for (const [key, mesh] of this.cityMeshes) {
+            if (!currentCities.has(key)) {
+                this.scene.remove(mesh);
+                this._disposeCityMesh(mesh);
+                this.cityMeshes.delete(key);
+            }
+        }
+    }
+
+    _disposeCityMesh(mesh) {
+        mesh.traverse(child => {
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (child.material.map) child.material.map.dispose();
+                child.material.dispose();
+            }
+        });
     }
 
     _createCityMesh(city) {
@@ -1092,22 +1867,22 @@ export class Renderer {
         const worldPos = this.hexToWorld(city.q, city.r, elevation);
         const baseY = Math.max(worldPos.y, this.heightScale * 0.35) + 2;
 
-        // City base platform
-        const baseGeo = new THREE.CylinderGeometry(22, 25, 6, 8);
+        // City base platform - larger and more prominent
+        const baseGeo = new THREE.CylinderGeometry(28, 32, 8, 8);
         const baseMat = new THREE.MeshStandardMaterial({
             color: new THREE.Color(city.owner.color),
             roughness: 0.5,
             metalness: 0.2,
             emissive: new THREE.Color(city.owner.color),
-            emissiveIntensity: 0.15
+            emissiveIntensity: 0.2
         });
         const baseMesh = new THREE.Mesh(baseGeo, baseMat);
         baseMesh.position.set(0, 0, 0);
         baseMesh.castShadow = true;
         group.add(baseMesh);
 
-        // Main building (more detailed: walls + roof + windows)
-        const bldgHeight = 12 + Math.min(city.population, 20) * 2;
+        // Main building (more detailed: walls + roof + windows) - taller and more castle-like
+        const bldgHeight = 18 + Math.min(city.population, 20) * 2.5;
 
         const wallColor = new THREE.Color(0xccc2b8).lerp(new THREE.Color(city.owner.color), 0.08);
         const wallMat = new THREE.MeshStandardMaterial({
@@ -1116,20 +1891,77 @@ export class Renderer {
             metalness: 0.05
         });
 
-        const bldgGeo = new THREE.BoxGeometry(14, bldgHeight, 14);
+        const bldgGeo = new THREE.BoxGeometry(18, bldgHeight, 18);
         const bldg = new THREE.Mesh(bldgGeo, wallMat);
-        bldg.position.set(0, 3 + bldgHeight / 2, 0);
+        bldg.position.set(0, 4 + bldgHeight / 2, 0);
         bldg.castShadow = true;
         bldg.receiveShadow = true;
         group.add(bldg);
 
-        // Roof (pyramid-like cone with 4 segments) colored by owner for identity
+        // Add battlements/crenellations on top of main building
+        const battlementMat = new THREE.MeshStandardMaterial({ color: 0xa09080, roughness: 0.9, metalness: 0.0 });
+        const battlementGeo = new THREE.BoxGeometry(2, 2.5, 2);
+        const battlementCount = 8;
+        for (let i = 0; i < battlementCount; i++) {
+            const angle = (i / battlementCount) * Math.PI * 2;
+            const radius = 10;
+            const bx = Math.cos(angle) * radius;
+            const bz = Math.sin(angle) * radius;
+            const battlement = new THREE.Mesh(battlementGeo, battlementMat);
+            battlement.position.set(bx, 4 + bldgHeight + 1.25, bz);
+            battlement.castShadow = true;
+            group.add(battlement);
+        }
+
+        // Corner towers - always present for castle look
+        const towerMat = new THREE.MeshStandardMaterial({ color: 0xbfa78f, roughness: 0.75 });
+        const towerHeight = bldgHeight + 8;
+        const towerRadius = 3.5;
+        const corners = [
+            [10, 10],
+            [10, -10],
+            [-10, 10],
+            [-10, -10]
+        ];
+        
+        for (const [cx, cz] of corners) {
+            // Tower body
+            const towerGeo = new THREE.CylinderGeometry(towerRadius, towerRadius + 0.5, towerHeight, 12);
+            const tower = new THREE.Mesh(towerGeo, towerMat);
+            tower.position.set(cx, 4 + towerHeight / 2, cz);
+            tower.castShadow = true;
+            group.add(tower);
+            
+            // Tower roof (cone)
+            const towerRoofGeo = new THREE.ConeGeometry(towerRadius + 1.5, 6, 12);
+            const towerRoofMat = new THREE.MeshStandardMaterial({ 
+                color: new THREE.Color(city.owner.color).offsetHSL(0, -0.15, -0.08),
+                roughness: 0.7 
+            });
+            const towerRoof = new THREE.Mesh(towerRoofGeo, towerRoofMat);
+            towerRoof.position.set(cx, 4 + towerHeight + 3, cz);
+            towerRoof.castShadow = true;
+            group.add(towerRoof);
+            
+            // Arrow slits on towers
+            const slitGeo = new THREE.BoxGeometry(0.4, 2, 0.4);
+            const slitMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            for (let s = 0; s < 3; s++) {
+                const slitY = 8 + s * 6;
+                const slit = new THREE.Mesh(slitGeo, slitMat);
+                slit.position.set(cx, slitY, cz);
+                slit.lookAt(0, slitY, 0);
+                group.add(slit);
+            }
+        }
+
+        // Roof (pyramid-like cone with 4 segments) colored by owner for identity - larger
         const roofColor = new THREE.Color(city.owner.color).offsetHSL(0, -0.2, -0.06);
         const roofMat = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.6, metalness: 0.05 });
-        const roofGeo = new THREE.ConeGeometry(10, 6, 4);
+        const roofGeo = new THREE.ConeGeometry(13, 8, 4);
         const roof = new THREE.Mesh(roofGeo, roofMat);
         roof.rotation.y = Math.PI / 4; // align square cone with box
-        roof.position.set(0, 3 + bldgHeight + 3, 0);
+        roof.position.set(0, 4 + bldgHeight + 4, 0);
         roof.castShadow = true;
         group.add(roof);
 
@@ -1149,20 +1981,6 @@ export class Renderer {
                 win.castShadow = false;
                 group.add(win);
             }
-        }
-
-        // Add two smaller decorative towers/annexes for larger cities
-        if (city.population >= 3) {
-            const towerMat = new THREE.MeshStandardMaterial({ color: 0xbfa78f, roughness: 0.75 });
-            const towerGeo = new THREE.CylinderGeometry(3.5, 3.5, 10, 10);
-            const t1 = new THREE.Mesh(towerGeo, towerMat);
-            t1.position.set(11, 3 + 5, 6);
-            t1.castShadow = true;
-            group.add(t1);
-
-            const t2 = t1.clone();
-            t2.position.set(-10, 3 + 5, -7);
-            group.add(t2);
         }
 
         // Capital star
@@ -1203,7 +2021,7 @@ export class Renderer {
         pole.castShadow = true;
         group.add(pole);
 
-        // Flag canvas
+        // Flag canvas - will be animated
         const flagCanvas = document.createElement('canvas');
         flagCanvas.width = 128; flagCanvas.height = 80;
         const fctx = flagCanvas.getContext('2d');
@@ -1211,10 +2029,11 @@ export class Renderer {
         fctx.fillStyle = 'rgba(255,255,255,0.15)'; fctx.fillRect(12,12,104,56);
         const flagTex = new THREE.CanvasTexture(flagCanvas);
         const flagMat = new THREE.MeshStandardMaterial({ map: flagTex, side: THREE.DoubleSide, transparent: true });
-        const flagGeo = new THREE.PlaneGeometry(6, 3.5);
+        const flagGeo = new THREE.PlaneGeometry(8, 5);
         const flag = new THREE.Mesh(flagGeo, flagMat);
-        flag.position.set(3.2, 3 + bldgHeight + 8, -8);
+        flag.position.set(4, 4 + bldgHeight + 10, -10);
         flag.rotation.y = Math.PI / 8;
+        flag.userData.isFlag = true; // Mark for animation
         group.add(flag);
 
         // City name label sprite
@@ -1260,7 +2079,7 @@ export class Renderer {
 
         const labelTexture = new THREE.CanvasTexture(labelCanvas);
         labelTexture.needsUpdate = true;
-        labelTexture.encoding = THREE.sRGBEncoding;
+        labelTexture.colorSpace = THREE.SRGBColorSpace;
 
         const labelMat = new THREE.SpriteMaterial({
             map: labelTexture,
@@ -1291,6 +2110,36 @@ export class Renderer {
             const hpBar = new THREE.Mesh(hpGeo, hpMat);
             hpBar.position.set(-(barWidth * (1 - hpRatio)) / 2, -3, 16);
             group.add(hpBar);
+        }
+
+        // Add smoke/activity particles for large cities
+        if (city.population >= 2) {
+            const particleCount = Math.min(city.population, 8);
+            const particleGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount; i++) {
+                const angle = (i / particleCount) * Math.PI * 2;
+                const radius = 8 + Math.random() * 10;
+                positions[i * 3] = Math.cos(angle) * radius;
+                positions[i * 3 + 1] = 15 + Math.random() * 10;
+                positions[i * 3 + 2] = Math.sin(angle) * radius;
+            }
+            
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const particleMat = new THREE.PointsMaterial({
+                color: 0xcccccc,
+                size: 4,
+                transparent: true,
+                opacity: 0.4,
+                sizeAttenuation: true,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particles = new THREE.Points(particleGeo, particleMat);
+            particles.userData.isParticles = true;
+            group.add(particles);
         }
 
         group.position.set(worldPos.x, baseY, worldPos.z);
@@ -1637,6 +2486,27 @@ export class Renderer {
             }
         }
 
+        // Animate trees - gentle swaying
+        for (const instance of this.featureInstances) {
+            if (instance.isInstancedMesh && instance.count > 0) {
+                const dummy = new THREE.Object3D();
+                for (let i = 0; i < instance.count; i++) {
+                    instance.getMatrixAt(i, dummy.matrix);
+                    dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+                    
+                    // Gentle sway based on position and time
+                    const offsetX = dummy.position.x * 0.01;
+                    const offsetZ = dummy.position.z * 0.01;
+                    const sway = Math.sin(this.time * 1.5 + offsetX + offsetZ) * 0.05;
+                    
+                    dummy.rotation.z = sway;
+                    dummy.updateMatrix();
+                    instance.setMatrixAt(i, dummy.matrix);
+                }
+                instance.instanceMatrix.needsUpdate = true;
+            }
+        }
+
         // Update fog of war
         this.updateFogOfWar(player);
 
@@ -1655,23 +2525,39 @@ export class Renderer {
         // Handle highlight for selected entity
         this.clearHighlights();
         if (game) {
-            // Draw reachable tile highlights
+            // Hover highlight - subtle
+            if (game.hoveredTile) {
+                const tile = this.worldMap.getTile(game.hoveredTile.q, game.hoveredTile.r);
+                if (tile) {
+                    this._addHighlightHex(tile, 0xffffff, 0.08);
+                }
+            }
+            
+            // Draw reachable tile highlights with pulsing animation
             if (game.reachableTiles) {
+                const pulse = 0.15 + Math.sin(this.time * 3) * 0.08;
                 for (const key of game.reachableTiles.keys()) {
                     const [q, r] = key.split(',').map(Number);
                     const tile = this.worldMap.getTile(q, r);
                     if (tile) {
-                        this._addHighlightHex(tile, 0x58a6ff, 0.15);
+                        // Check if there's an enemy unit on this tile
+                        const hasEnemy = game.players.flatMap(p => p.units).some(u => 
+                            u.q === q && u.r === r && u.owner !== game.getCurrentPlayer()
+                        );
+                        
+                        const color = hasEnemy ? 0xff4444 : 0x58a6ff;
+                        this._addHighlightHex(tile, color, pulse);
                     }
                 }
             }
 
-            // Selected entity highlight - subtle outline instead of filled white
+            // Selected entity highlight - bright pulsing outline
             if (game.selectedEntity) {
                 const e = game.selectedEntity;
                 const tile = e.tile || this.worldMap.getTile(e.q, e.r);
                 if (tile) {
-                    this._addHighlightOutline(tile, 0xffee44, 0.8);
+                    const pulse = 0.8 + Math.sin(this.time * 4) * 0.2;
+                    this._addHighlightOutline(tile, 0xffee44, pulse);
                 }
             }
         }
@@ -1691,6 +2577,38 @@ export class Renderer {
 
         // Minimap (drawn to separate 2D canvas)
         this.drawMiniMap();
+    }
+
+    _addHighlightHex(tile, color, opacity) {
+        const worldPos = this.hexToWorld(tile.q, tile.r, tile.elevation);
+        const topY = Math.max(worldPos.y, this.heightScale * 0.35) + 1.5;
+
+        // Create filled hex overlay
+        const hexShape = new THREE.Shape();
+        for (let i = 0; i < 6; i++) {
+            const angle = (60 * i) * Math.PI / 180;
+            const vx = this.hexSize * 0.90 * Math.cos(angle);
+            const vz = this.hexSize * 0.90 * Math.sin(angle);
+            if (i === 0) hexShape.moveTo(vx, vz);
+            else hexShape.lineTo(vx, vz);
+        }
+        hexShape.closePath();
+
+        const fillGeo = new THREE.ShapeGeometry(hexShape);
+        fillGeo.rotateX(-Math.PI / 2);
+
+        const fillMat = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: opacity,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const fill = new THREE.Mesh(fillGeo, fillMat);
+        fill.position.set(worldPos.x, topY + 0.2, worldPos.z);
+        this.scene.add(fill);
+        this.highlightMeshes.push(fill);
     }
 
     _addHighlightOutline(tile, color, opacity) {

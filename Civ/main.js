@@ -68,6 +68,7 @@ class Game {
 
         this.selectedEntity = null;
         this.reachableTiles = new Map();
+        this.hoveredTile = null;
 
         // Raycaster for 3D hex picking
         this.raycaster = new THREE.Raycaster();
@@ -126,16 +127,34 @@ class Game {
             if (startTile) {
                 new Unit(UnitType.SETTLER, startTile.q, startTile.r, player);
                 const neighbors = this.worldMap.getNeighbors(startTile.q, startTile.r);
-                const safe = neighbors.find(n => !n.terrain.impassable && n.terrain.name !== 'Ocean');
-                if (safe) {
-                    new Unit(UnitType.WARRIOR, safe.q, safe.r, player);
+                const safe = neighbors.filter(n => 
+                    !n.terrain.impassable && 
+                    n.terrain.name !== 'Ocean' && 
+                    n.terrain.name !== 'Coast'
+                );
+                
+                // Place warrior on first safe neighbor
+                if (safe.length > 0) {
+                    new Unit(UnitType.WARRIOR, safe[0].q, safe[0].r, player);
                 } else {
                     new Unit(UnitType.WARRIOR, startTile.q, startTile.r, player);
                 }
-                new Unit(UnitType.SCOUT, startTile.q, startTile.r, player);
+                
+                // Place scout on second safe neighbor, or same as warrior if only one available
+                if (safe.length > 1) {
+                    new Unit(UnitType.SCOUT, safe[1].q, safe[1].r, player);
+                } else if (safe.length > 0) {
+                    new Unit(UnitType.SCOUT, safe[0].q, safe[0].r, player);
+                } else {
+                    new Unit(UnitType.SCOUT, startTile.q, startTile.r, player);
+                }
+                
                 player.updateDiscovery(startTile.q, startTile.r, 5);
             }
         });
+        
+        // Recreate features after units are spawned to exclude unit positions
+        this.renderer.createFeatures();
     }
 
     spawnUnit(type, q, r, owner) {
@@ -143,12 +162,17 @@ class Game {
         let targetR = r;
 
         const allUnits = this.players.flatMap(p => p.units);
+        const targetTile = this.worldMap.getTile(q, r);
         const occupied = allUnits.some(u => u.q === q && u.r === r);
+        const isWater = targetTile && (targetTile.terrain.name === 'Ocean' || targetTile.terrain.name === 'Coast');
 
-        if (occupied) {
+        if (occupied || isWater) {
             const neighbors = this.worldMap.getNeighbors(q, r);
             const empty = neighbors.find(n =>
-                !allUnits.some(u => u.q === n.q && u.r === n.r) && !n.terrain.impassable
+                !allUnits.some(u => u.q === n.q && u.r === n.r) && 
+                !n.terrain.impassable &&
+                n.terrain.name !== 'Ocean' &&
+                n.terrain.name !== 'Coast'
             );
             if (empty) {
                 targetQ = empty.q;
@@ -197,8 +221,10 @@ class Game {
             if (!this.mouseDownPos) {
                 const hex = this.getHexAtScreen(e.clientX, e.clientY);
                 if (hex) {
+                    this.hoveredTile = hex;
                     this.handleHexHover(hex.q, hex.r, e.clientX, e.clientY);
                 } else {
+                    this.hoveredTile = null;
                     this.ui.hideTooltip();
                 }
             }
@@ -390,6 +416,8 @@ class Game {
             entity.owner.updateDiscovery(entity.q, entity.r, 3);
             entity.owner.updateVisibility();
             this.ui.updateHUD(entity.owner);
+            // Remove trees around the new city
+            this.renderer.createFeatures();
         }
 
         // Worker improvements
@@ -476,8 +504,10 @@ class Game {
             entity.isFortified = true;
             entity.movementPoints = 0;
             entity.task = 'Fortified';
-            this.ui.notify('Unit Fortified (+50% Defense)', 'combat');
+            this.ui.notify('Unit Fortified! (+50% Defense) Defensive barricades constructed.', 'combat');
             this.ui.showSelection(entity);
+            // Force visual update by recreating the sprite
+            this.renderer.updateUnits(this);
         }
         if (action === 'Skip Turn' && entity instanceof Unit) {
             entity.movementPoints = 0;

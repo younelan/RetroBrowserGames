@@ -977,12 +977,6 @@ export class UIManager {
 
         // Era check
         this.checkEraAdvancement(player);
-
-        // Auto-save check
-        this.checkAutoSave();
-
-        // Inject save/load buttons in HUD if not present
-        this.ensureSaveLoadButtons();
     }
 
     updateCityList(player) {
@@ -1012,13 +1006,15 @@ export class UIManager {
         const unitsWithMoves = player.units.filter(u => u.movementPoints > 0 && u.task === 'Ready');
 
         if (unitsWithMoves.length > 0) {
-            btn.textContent = 'NEXT UNIT';
+            btn.textContent = `NEXT UNIT (${unitsWithMoves.length})`;
             btn.classList.add('end-turn-next-unit');
             btn.classList.remove('end-turn-pulse');
+            btn.title = `${unitsWithMoves.length} unit(s) still have moves. Click to select next unit.`;
         } else {
             btn.textContent = 'END TURN';
             btn.classList.remove('end-turn-next-unit');
             btn.classList.add('end-turn-pulse');
+            btn.title = 'All units have moved. Click to end your turn.';
         }
     }
 
@@ -2081,6 +2077,7 @@ export class UIManager {
                             <tr><td><span class="help-kbd">Tab</span></td><td>Cycle units</td></tr>
                             <tr><td><span class="help-kbd">Esc</span></td><td>Close modal</td></tr>
                         </table>
+                        <p style="margin-top:12px;font-size:0.82rem;color:var(--text-dim);"><strong>Note:</strong> The button in the <strong>TOP-RIGHT corner</strong> (next to the turn counter) changes dynamically:<br>• <strong>"NEXT UNIT (3)"</strong> when you have units with moves left - click to cycle through them<br>• <strong>"END TURN"</strong> when all units are done moving - click to advance to next turn<br>You can also press <strong>Space</strong> to activate either function.</p>
                     </div>
 
                     <div class="help-section">
@@ -2361,40 +2358,8 @@ export class UIManager {
     }
 
     // ========================================================================
-    //  SAVE / LOAD
+    //  SAVE / LOAD (Disabled - not fully functional)
     // ========================================================================
-
-    ensureSaveLoadButtons() {
-        if (document.getElementById('save-load-menu')) return;
-
-        const turnGroup = document.querySelector('.turn-group');
-        if (!turnGroup) return;
-
-        const menu = document.createElement('div');
-        menu.id = 'save-load-menu';
-        menu.className = 'save-menu';
-
-        const saveBtn = document.createElement('button');
-        saveBtn.className = 'save-menu-btn';
-        saveBtn.textContent = 'SAVE';
-        saveBtn.onclick = () => this.saveGame();
-
-        const loadBtn = document.createElement('button');
-        loadBtn.className = 'save-menu-btn';
-        loadBtn.textContent = 'LOAD';
-        loadBtn.onclick = () => this.loadGame();
-
-        menu.appendChild(saveBtn);
-        menu.appendChild(loadBtn);
-
-        // Insert before the end turn button
-        const endBtn = document.getElementById('end-turn-btn');
-        if (endBtn) {
-            turnGroup.insertBefore(menu, endBtn);
-        } else {
-            turnGroup.appendChild(menu);
-        }
-    }
 
     saveGame(isAutoSave = false) {
         try {

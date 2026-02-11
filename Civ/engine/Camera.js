@@ -16,12 +16,12 @@ export class Camera {
             20000
         );
 
-        // Initial position: above center of map, looking down at angle
+        // Initial position: above center of map, looking down at angle (2x closer zoom)
         const centerWorld = worldMap.hexToWorld(
             Math.floor(worldMap.width / 2),
             Math.floor(worldMap.height / 2)
         );
-        this.camera.position.set(centerWorld.x, 800, centerWorld.z + 600);
+        this.camera.position.set(centerWorld.x, 400, centerWorld.z + 300);
 
         // Orbit controls for pan/rotate/zoom
         this.controls = new OrbitControls(this.camera, canvas);
