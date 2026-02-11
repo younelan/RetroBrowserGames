@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { WorldMap } from './engine/Map.js';
 import { TerrainType, FeatureType, ResourceType } from './engine/Tile.js';
 import { Camera } from './engine/Camera.js';
@@ -10,13 +11,16 @@ import { UIManager } from './ui/UIManager.js';
 import { Pathfinding } from './systems/Pathfinding.js';
 import { TechnologyData, TechTree } from './systems/Research.js';
 import { CombatSystem } from './systems/Combat.js';
+import { DiplomacySystem } from './systems/Diplomacy.js';
 
 class Game {
-    constructor() {
+    constructor(config = {}) {
         window.game = this;
         this.canvas = document.getElementById('game-canvas');
-        this.resize();
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
 
+        // Expose types
         this.UnitType = UnitType;
         this.BuildingType = BuildingType;
         this.TechnologyData = TechnologyData;
@@ -26,38 +30,65 @@ class Game {
         this.WonderType = WonderType;
 
         this.turn = 1;
-        this.players = [
-            new Player(0, 'Player One', '#58a6ff'),
-            new AIPlayer(1, 'Roman Empire', '#ff7b72'),
-            new AIPlayer(2, 'Egyptian Empire', '#f2cc60'),
-            new AIPlayer(3, 'Greek Empire', '#7ee787')
+        this.gameSpeed = config.gameSpeed || 'standard';
+        this.mapWidth = config.mapWidth || 60;
+        this.mapHeight = config.mapHeight || 60;
+        this.numAI = config.numAI || 3;
+
+        // Create players
+        const civs = [
+            { name: 'Player One', color: '#58a6ff' },
+            { name: 'Roman Empire', color: '#ff6b6b' },
+            { name: 'Egyptian Empire', color: '#ffd43b' },
+            { name: 'Greek Empire', color: '#69db7c' },
+            { name: 'Chinese Empire', color: '#da77f2' },
+            { name: 'Persian Empire', color: '#ff922b' }
         ];
+
+        this.players = [new Player(0, civs[0].name, civs[0].color)];
+        for (let i = 1; i <= this.numAI; i++) {
+            this.players.push(new AIPlayer(i, civs[i].name, civs[i].color));
+        }
+
         this.currentPlayerIndex = 0;
         this.isAiTurn = false;
         this.wondersBuilt = new Set();
         this.victoryReached = false;
 
-        this.worldMap = new WorldMap(60, 60);
-        this.camera = new Camera(this.canvas);
+        // Systems
+        this.worldMap = new WorldMap(this.mapWidth, this.mapHeight);
+        this.camera = new Camera(this.canvas, this.worldMap);
         this.renderer = new Renderer(this.canvas, this.camera, this.worldMap);
-        this.ui = new UIManager(this);
         this.techTree = new TechTree();
+        this.diplomacy = new DiplomacySystem();
+
+        // UI (created after systems)
+        this.ui = new UIManager(this);
 
         this.selectedEntity = null;
         this.reachableTiles = new Map();
 
+        // Raycaster for 3D hex picking
+        this.raycaster = new THREE.Raycaster();
+
+        // Combat effects
+        this.combatEffects = [];
+
+        // Click tracking
+        this.mouseDownPos = null;
+        this.isDragging = false;
+
         // Initial Setup
         this.spawnInitialUnits();
         this.autoAssignResearch(this.getCurrentPlayer());
-
         this.setupEvents();
+        this.players.forEach(p => p.updateVisibility());
         this.ui.updateHUD(this.getCurrentPlayer());
 
+        // Center on first unit
         if (this.players[0].units.length > 0) {
-            setTimeout(() => {
-                this.centerOn(this.players[0].units[0]);
-                this.ui.updateHUD(this.getCurrentPlayer());
-            }, 100);
+            const u = this.players[0].units[0];
+            this.camera.jumpTo(u.q, u.r);
         }
 
         this.loop();
@@ -77,164 +108,165 @@ class Game {
     }
 
     spawnInitialUnits() {
-        const p1 = this.players[0];
-        const tiles = Array.from(this.worldMap.tiles.values());
+        const startLocations = this.worldMap.startLocations || [];
 
-        let startTile = tiles.find(t => t.terrain.name === 'Grassland' && t.feature.name === 'None');
-        if (!startTile) startTile = tiles.find(t => t.terrain.name === 'Plains' && t.feature.name === 'None');
-        if (!startTile) startTile = tiles.find(t => !t.terrain.impassable && t.terrain.name !== 'Ocean');
+        this.players.forEach((player, index) => {
+            let startTile = startLocations[index];
 
-        if (startTile) {
-            new Unit(UnitType.SETTLER, startTile.q, startTile.r, p1);
-            new Unit(UnitType.WARRIOR, startTile.q + 1, startTile.r, p1);
-            p1.updateDiscovery(startTile.q, startTile.r, 5); // Increased initial vision
-        }
+            if (!startTile) {
+                const tiles = Array.from(this.worldMap.tiles.values());
+                startTile = tiles.find(t =>
+                    t.terrain.name === 'Grassland' && !t.terrain.impassable &&
+                    (t.feature.name === 'None' || t.feature.name === 'Forest')
+                );
+                if (!startTile) startTile = tiles.find(t => !t.terrain.impassable && t.terrain.name !== 'Ocean');
+            }
+
+            if (startTile) {
+                new Unit(UnitType.SETTLER, startTile.q, startTile.r, player);
+                const neighbors = this.worldMap.getNeighbors(startTile.q, startTile.r);
+                const safe = neighbors.find(n => !n.terrain.impassable && n.terrain.name !== 'Ocean');
+                if (safe) {
+                    new Unit(UnitType.WARRIOR, safe.q, safe.r, player);
+                } else {
+                    new Unit(UnitType.WARRIOR, startTile.q, startTile.r, player);
+                }
+                new Unit(UnitType.SCOUT, startTile.q, startTile.r, player);
+                player.updateDiscovery(startTile.q, startTile.r, 5);
+            }
+        });
     }
 
     spawnUnit(type, q, r, owner) {
         let targetQ = q;
         let targetR = r;
 
-        // Check if occupied
         const allUnits = this.players.flatMap(p => p.units);
         const occupied = allUnits.some(u => u.q === q && u.r === r);
 
         if (occupied) {
             const neighbors = this.worldMap.getNeighbors(q, r);
-            const empty = neighbors.find(n => !allUnits.some(u => u.q === n.q && u.r === n.r));
+            const empty = neighbors.find(n =>
+                !allUnits.some(u => u.q === n.q && u.r === n.r) && !n.terrain.impassable
+            );
             if (empty) {
                 targetQ = empty.q;
                 targetR = empty.r;
             }
         }
 
-        const unit = new Unit(type, targetQ, targetR, owner);
-        return unit;
+        return new Unit(type, targetQ, targetR, owner);
     }
 
     centerOn(target) {
-        const { x, y } = this.camera.hexToScreen(target.q, target.r);
-        // hexToScreen returns current screen pos based on camera.x/y
-        // We want to ADJUST camera.x/y so that hexToScreen returns center screen
-        const dx = (this.canvas.width / 2) - x;
-        const dy = (this.canvas.height / 2) - y;
-        this.camera.x += dx;
-        this.camera.y += dy;
-        this.camera.clamp(this.worldMap.width, this.worldMap.height);
+        this.camera.centerOn(target.q, target.r);
     }
 
     resize() {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
+        this.camera.resize(this.canvas.width, this.canvas.height);
+        this.renderer.resize(this.canvas.width, this.canvas.height);
     }
+
+    // ====================================================================
+    //  EVENT HANDLING (Three.js raycasting for hex picking)
+    // ====================================================================
 
     setupEvents() {
         window.addEventListener('resize', () => this.resize());
 
-        this.canvas.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return;
-            this.camera.isPanning = true;
-            this.camera.lastMousePos = { x: e.clientX, y: e.clientY };
-            this.mouseDownPos = { x: e.clientX, y: e.clientY };
-        });
-
-        window.addEventListener('mousemove', (e) => {
-            if (this.camera.isPanning) {
-                const dx = e.clientX - this.camera.lastMousePos.x;
-                const dy = e.clientY - this.camera.lastMousePos.y;
-                this.camera.x += dx;
-                this.camera.y += dy;
-                this.camera.clamp(this.worldMap.width, this.worldMap.height);
-                this.camera.lastMousePos = { x: e.clientX, y: e.clientY };
+        // Click detection: track mousedown position to distinguish click from drag
+        this.canvas.addEventListener('pointerdown', (e) => {
+            if (e.button === 0) {
+                this.mouseDownPos = { x: e.clientX, y: e.clientY };
+                this.isDragging = false;
             }
         });
 
-        window.addEventListener('mouseup', (e) => {
-            if (this.camera.isPanning) {
-                // Determine if this was a click or a drag
+        this.canvas.addEventListener('pointermove', (e) => {
+            if (this.mouseDownPos) {
                 const dx = Math.abs(e.clientX - this.mouseDownPos.x);
                 const dy = Math.abs(e.clientY - this.mouseDownPos.y);
+                if (dx > 5 || dy > 5) this.isDragging = true;
+            }
 
-                if (dx < 5 && dy < 5) {
-                    const hex = this.camera.screenToHex(e.clientX, e.clientY);
+            // Hover tooltip
+            if (!this.mouseDownPos) {
+                const hex = this.getHexAtScreen(e.clientX, e.clientY);
+                if (hex) {
+                    this.handleHexHover(hex.q, hex.r, e.clientX, e.clientY);
+                } else {
+                    this.ui.hideTooltip();
+                }
+            }
+        });
+
+        this.canvas.addEventListener('pointerup', (e) => {
+            if (e.button === 0 && !this.isDragging && this.mouseDownPos) {
+                const hex = this.getHexAtScreen(e.clientX, e.clientY);
+                if (hex) {
                     this.handleHexClick(hex.q, hex.r);
                 }
             }
-            this.camera.isPanning = false;
+            this.mouseDownPos = null;
+            this.isDragging = false;
         });
 
-        this.canvas.addEventListener('wheel', (e) => {
+        // Right click to deselect
+        this.canvas.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            const delta = e.deltaY > 0 ? 0.95 : 1.05;
-            this.camera.zoom = Math.max(this.camera.minZoom, Math.min(this.camera.maxZoom, this.camera.zoom * delta));
-            this.camera.clamp(this.worldMap.width, this.worldMap.height);
-        }, { passive: false });
+            // Don't deselect if we're using OrbitControls right-click rotation
+            // Only deselect on quick right-click (not drag)
+        });
 
-        // Mini-map interaction
+        // Minimap click
         const mm = document.getElementById('minimap-canvas');
         if (mm) {
             mm.addEventListener('mousedown', (e) => {
                 const rect = mm.getBoundingClientRect();
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
-                const target = this.minimapToWorld(x, y);
-                this.centerOn(target);
+                const r = (y / mm.height) * this.worldMap.height;
+                const q = (x / mm.width) * this.worldMap.width - Math.floor(r / 2);
+                this.camera.centerOn(Math.round(q), Math.round(r));
             });
         }
-
-        // Hover handling for tooltips
-        this.canvas.addEventListener('mousemove', (e) => {
-            if (this.camera.isPanning) return;
-            const hex = this.camera.screenToHex(e.clientX, e.clientY);
-            this.handleHexHover(hex.q, hex.r, e.clientX, e.clientY);
-        });
     }
 
-    minimapToWorld(mmX, mmY) {
-        const mm = document.getElementById('minimap-canvas');
-        const q = (mmX / mm.width) * this.worldMap.width - (this.worldMap.width / 4); // Basic offset correction
-        const r = (mmY / mm.height) * this.worldMap.height;
-        return { q: Math.round(q), r: Math.round(r) };
+    getHexAtScreen(screenX, screenY) {
+        return this.camera.screenToHex(screenX, screenY, this.raycaster, this.renderer.hexMeshes);
     }
 
-    screenToMinimap(sx, sy) {
-        const mm = document.getElementById('minimap-canvas');
-        if (!mm) return { x: 0, y: 0 };
-        const hex = this.camera.screenToHex(sx, sy);
-        const pSize = mm.width / this.worldMap.width;
-        const ySize = mm.height / this.worldMap.height;
-        return {
-            x: (hex.q + (hex.r / 2)) * pSize,
-            y: hex.r * ySize
-        };
-    }
+    // ====================================================================
+    //  HEX INTERACTION
+    // ====================================================================
 
     handleHexHover(q, r, x, y) {
         const tile = this.worldMap.getTile(q, r);
-        if (!tile) {
-            this.ui.hideTooltip();
-            return;
-        }
+        if (!tile) { this.ui.hideTooltip(); return; }
 
         const player = this.getCurrentPlayer();
-        const isDiscovered = player.discoveredTiles.has(`${q},${r}`);
-
-        if (!isDiscovered) {
-            this.ui.hideTooltip();
-            return;
-        }
+        if (!player.discoveredTiles.has(`${q},${r}`)) { this.ui.hideTooltip(); return; }
 
         let content = `<strong>${tile.terrain.name}</strong>`;
-        if (tile.feature.name !== 'None') content += `<br><em>${tile.feature.name}</em>`;
-        if (tile.resource.name !== 'None') content += `<br><span style="color:var(--gold)">${tile.resource.name}</span>`;
-        if (tile.improvement) content += `<br><span style="color:var(--food)">${tile.improvement.name}</span>`;
+        if (tile.feature.name !== 'None') content += ` <em>(${tile.feature.name})</em>`;
+        if (tile.resource.name !== 'None') content += `<br><span style="color:var(--gold)">${tile.resource.icon} ${tile.resource.name}</span>`;
+        if (tile.improvement) content += `<br><span style="color:var(--food)">${tile.improvement.icon} ${tile.improvement.name}</span>`;
+        if (tile.hasRoad) content += `<br><span style="color:var(--text-dim)">Road</span>`;
 
-        // Add city or unit info
+        const yields = tile.getYield();
+        content += `<br><span style="font-size:0.7rem;color:var(--text-dim)">F:${yields.food} P:${yields.production} G:${yields.gold}</span>`;
+
+        if (tile.getDefenseBonus() > 0) content += `<br><span style="font-size:0.7rem;color:#69db7c">Defense: +${Math.round(tile.getDefenseBonus() * 100)}%</span>`;
+
         const city = this.players.flatMap(p => p.cities).find(c => c.q === q && c.r === r);
         if (city) content += `<br><hr>City: ${city.name} (${city.owner.name})`;
 
         const unit = this.players.flatMap(p => p.units).find(u => u.q === q && u.r === r);
-        if (unit) content += `<br><hr>${unit.type.name} - ${unit.owner.name}`;
+        if (unit) content += `<br><hr>${unit.type.icon} ${unit.type.name} - ${unit.owner.name}<br>HP: ${Math.round(unit.health)}% | STR: ${unit.type.strength}`;
+
+        if (tile.owner) content += `<br><span style="font-size:0.7rem;color:${tile.owner.color}">Territory: ${tile.owner.name}</span>`;
 
         this.ui.showTooltip(content, x, y);
     }
@@ -245,10 +277,11 @@ class Game {
 
         const player = this.getCurrentPlayer();
 
+        // Movement / Combat
         if (this.selectedEntity instanceof Unit && this.reachableTiles.has(`${q},${r}`)) {
             const cost = this.reachableTiles.get(`${q},${r}`);
 
-            // Check for combat
+            // Combat check
             const enemy = this.players.flatMap(p => p.units).find(u => u.q === q && u.r === r && u.owner !== player);
             if (enemy) {
                 if (this.selectedEntity.type.category === 'military') {
@@ -257,26 +290,33 @@ class Game {
                     this.ui.showSelection(this.selectedEntity);
                     return;
                 } else {
-                    this.ui.notify('Civilian units cannot attack!');
+                    this.ui.notify('Civilian units cannot attack!', 'error');
                     return;
                 }
             }
 
-            // Check for City Capture
+            // City capture
             const enemyCity = this.players.flatMap(p => p.cities).find(c => c.q === q && c.r === r && c.owner !== player);
             if (enemyCity) {
                 if (this.selectedEntity.type.category === 'military') {
-                    this.captureCity(enemyCity, player);
+                    if (enemyCity.cityHP <= 0) {
+                        this.captureCity(enemyCity, player);
+                    } else {
+                        this.resolveCombat(this.selectedEntity, enemyCity);
+                        this.selectedEntity.movementPoints = 0;
+                        this.ui.showSelection(this.selectedEntity);
+                        return;
+                    }
                 } else {
-                    this.ui.notify('Civilian units cannot capture cities!');
+                    this.ui.notify('Civilian units cannot capture cities!', 'error');
                     return;
                 }
             }
 
             if (this.selectedEntity.move(q, r, cost)) {
                 player.updateDiscovery(q, r, 2);
+                player.updateVisibility();
 
-                // Check for collecting village
                 if (tile && tile.village) {
                     this.collectVillageReward(player);
                     tile.village = false;
@@ -285,12 +325,31 @@ class Game {
                 this.checkForMeetings(player);
                 this.ui.updateSelection();
 
-                this.reachableTiles = Pathfinding.getReachableTiles(this.worldMap.getTile(this.selectedEntity.q, this.selectedEntity.r), this.worldMap, this.selectedEntity.movementPoints);
+                this.reachableTiles = Pathfinding.getReachableTiles(
+                    this.worldMap.getTile(this.selectedEntity.q, this.selectedEntity.r),
+                    this.worldMap, this.selectedEntity.movementPoints
+                );
                 this.ui.showSelection(this.selectedEntity);
                 return;
             }
         }
 
+        // Ranged attack check
+        if (this.selectedEntity instanceof Unit && this.selectedEntity.type.range) {
+            const enemy = this.players.flatMap(p => p.units).find(u => u.q === q && u.r === r && u.owner !== player);
+            const enemyCity = this.players.flatMap(p => p.cities).find(c => c.q === q && c.r === r && c.owner !== player);
+            const target = enemy || enemyCity;
+
+            if (target && CombatSystem.canAttack(this.selectedEntity, q, r)) {
+                this.resolveCombat(this.selectedEntity, target);
+                this.selectedEntity.attacksThisTurn++;
+                if (!this.selectedEntity.type.range) this.selectedEntity.movementPoints = 0;
+                this.ui.showSelection(this.selectedEntity);
+                return;
+            }
+        }
+
+        // Select unit
         const unit = player.units.find(u => u.q === q && u.r === r);
         if (unit) {
             this.selectedEntity = unit;
@@ -299,6 +358,7 @@ class Game {
             return;
         }
 
+        // Select city
         const city = player.cities.find(c => c.q === q && c.r === r);
         if (city) {
             this.selectedEntity = city;
@@ -307,11 +367,15 @@ class Game {
             return;
         }
 
-        // Just select the tile if nothing else
+        // Select tile / deselect
         this.selectedEntity = { type: 'tile', tile: tile };
         this.reachableTiles = new Map();
         this.ui.showSelection(this.selectedEntity);
     }
+
+    // ====================================================================
+    //  ACTIONS
+    // ====================================================================
 
     handleAction(entity, action) {
         if (action === 'Settle' && entity instanceof Unit) {
@@ -320,61 +384,89 @@ class Game {
             entity.owner.units = entity.owner.units.filter(u => u !== entity);
             this.selectedEntity = city;
             this.ui.showSelection(city);
-            this.ui.notify(`Established the city of ${cityName}!`);
+            this.ui.notify(`Established the city of ${cityName}!`, 'production');
             entity.owner.updateDiscovery(entity.q, entity.r, 3);
+            entity.owner.updateVisibility();
             this.ui.updateHUD(entity.owner);
         }
 
-        // Worker Improvements
+        // Worker improvements
         if (entity instanceof Unit && entity.type.name === 'Worker') {
             const tile = this.worldMap.getTile(entity.q, entity.r);
-            if (action === 'Build Farm') {
-                entity.task = 'Building Farm';
-                entity.workRemaining = 3; // Example: 3 turns to build a farm
-                entity.workCallback = () => {
-                    tile.improvement = { name: 'Farm', icon: '🚜', food: 1, prod: 0, gold: 0 };
-                    this.ui.notify('Farm Built');
-                };
+            const workerActions = {
+                'Build Farm': { task: 'Building Farm', turns: 3, cb: () => { tile.improvement = { name: 'Farm', icon: '🚜', food: 2, prod: 0, gold: 0 }; this.ui.notify('Farm built!', 'production'); } },
+                'Build Mine': { task: 'Building Mine', turns: 4, cb: () => { tile.improvement = { name: 'Mine', icon: '⚒️', food: 0, prod: 2, gold: 0 }; this.ui.notify('Mine built!', 'production'); } },
+                'Build Pasture': { task: 'Building Pasture', turns: 3, cb: () => { tile.improvement = { name: 'Pasture', icon: '🛖', food: 1, prod: 1, gold: 0 }; this.ui.notify('Pasture built!', 'production'); } },
+                'Build Road': { task: 'Building Road', turns: 2, cb: () => { tile.hasRoad = true; this.ui.notify('Road built!', 'production'); } },
+                'Build Trading Post': { task: 'Building Trading Post', turns: 3, cb: () => { tile.improvement = { name: 'Trading Post', icon: '🏪', food: 0, prod: 0, gold: 3 }; this.ui.notify('Trading Post built!', 'production'); } },
+                'Build Lumber Mill': { task: 'Building Lumber Mill', turns: 3, cb: () => { tile.improvement = { name: 'Lumber Mill', icon: '🪵', food: 0, prod: 2, gold: 0 }; this.ui.notify('Lumber Mill built!', 'production'); } },
+                'Build Plantation': { task: 'Building Plantation', turns: 3, cb: () => { tile.improvement = { name: 'Plantation', icon: '🏵️', food: 0, prod: 0, gold: 3 }; this.ui.notify('Plantation built!', 'production'); } },
+            };
+
+            const wa = workerActions[action];
+            if (wa) {
+                entity.task = wa.task;
+                entity.workRemaining = wa.turns;
+                entity.workCallback = wa.cb;
                 entity.movementPoints = 0;
-                this.ui.notify(`Worker started building a Farm (${entity.workRemaining} turns)`);
+                this.ui.notify(`Worker: ${wa.task} (${wa.turns} turns)`, 'production');
             }
-            if (action === 'Build Mine') {
-                entity.task = 'Building Mine';
-                entity.workRemaining = 4; // Example: 4 turns to build a mine
-                entity.workCallback = () => {
-                    tile.improvement = { name: 'Mine', icon: '⚒️', food: 0, prod: 2, gold: 0 };
-                    this.ui.notify('Mine Built');
-                };
-                entity.movementPoints = 0;
-                this.ui.notify(`Worker started building a Mine (${entity.workRemaining} turns)`);
-            }
-            if (action === 'Build Pasture') {
-                entity.task = 'Building Pasture';
-                entity.workRemaining = 3;
-                entity.workCallback = () => {
-                    tile.improvement = { name: 'Pasture', icon: '🛖', food: 1, prod: 1, gold: 0 };
-                    this.ui.notify('Pasture Built');
-                };
-                entity.movementPoints = 0;
-                this.ui.notify(`Worker started building a Pasture (${entity.workRemaining} turns)`);
-            }
+
             if (action === 'Harvest Resource' && tile.resource.name !== 'None') {
                 const goldGained = 150;
                 entity.owner.gold += goldGained;
-                this.ui.notify(`Harvested ${tile.resource.name}! (+${goldGained} Gold)`);
+                this.ui.notify(`Harvested ${tile.resource.name}! (+${goldGained} Gold)`, 'production');
                 tile.resource = ResourceType.NONE;
                 entity.movementPoints = 0;
-                entity.task = 'Harvested';
             }
             if (action === 'Clear Forest' && tile.feature.name === 'Forest') {
                 const city = entity.owner.cities[0];
                 if (city) city.productionStored += 30;
-                this.ui.notify('Forest Cleared (+30 Production)');
+                this.ui.notify('Forest Cleared (+30 Production)', 'production');
                 tile.feature = FeatureType.NONE;
                 entity.movementPoints = 0;
-                entity.task = 'Cleared Forest';
             }
             this.ui.showSelection(entity);
+        }
+
+        // Great Person actions
+        if (entity instanceof Unit && entity.type.category === 'great_person') {
+            const tile = this.worldMap.getTile(entity.q, entity.r);
+            if (action === 'Academy') {
+                tile.improvement = { name: 'Academy', icon: '🎓', food: 0, prod: 0, gold: 0, science: 8 };
+                entity.owner.units = entity.owner.units.filter(u => u !== entity);
+                this.ui.notify('Academy created! (+8 Science)', 'research');
+            } else if (action === 'Eureka') {
+                entity.owner.science += 200;
+                entity.owner.units = entity.owner.units.filter(u => u !== entity);
+                this.ui.notify('Eureka! (+200 Science)', 'research');
+            } else if (action === 'Custom House') {
+                tile.improvement = { name: 'Custom House', icon: '🏦', food: 0, prod: 0, gold: 8 };
+                entity.owner.units = entity.owner.units.filter(u => u !== entity);
+                this.ui.notify('Custom House created! (+8 Gold)', 'production');
+            } else if (action === 'Trade Mission') {
+                entity.owner.gold += 350;
+                entity.owner.units = entity.owner.units.filter(u => u !== entity);
+                this.ui.notify('Trade Mission! (+350 Gold)', 'production');
+            } else if (action === 'Manufactory') {
+                tile.improvement = { name: 'Manufactory', icon: '🏭', food: 0, prod: 6, gold: 0 };
+                entity.owner.units = entity.owner.units.filter(u => u !== entity);
+                this.ui.notify('Manufactory created! (+6 Production)', 'production');
+            } else if (action === 'Rush Wonder') {
+                const city = entity.owner.cities.find(c => c.q === entity.q && c.r === entity.r);
+                if (city) city.productionStored += 300;
+                entity.owner.units = entity.owner.units.filter(u => u !== entity);
+                this.ui.notify('Great Engineer rushes production! (+300)', 'production');
+            } else if (action === 'Citadel') {
+                tile.improvement = { name: 'Citadel', icon: '🏰', food: 0, prod: 0, gold: 0 };
+                tile.owner = entity.owner;
+                entity.owner.units = entity.owner.units.filter(u => u !== entity);
+                this.ui.notify('Citadel created! (claims territory)', 'combat');
+            }
+            if (this.selectedEntity === entity) {
+                this.selectedEntity = null;
+                this.ui.hideSelection();
+            }
         }
 
         // Military Actions
@@ -382,84 +474,85 @@ class Game {
             entity.isFortified = true;
             entity.movementPoints = 0;
             entity.task = 'Fortified';
-            this.ui.notify('Unit Fortified (+50% Defense)');
+            this.ui.notify('Unit Fortified (+50% Defense)', 'combat');
             this.ui.showSelection(entity);
         }
         if (action === 'Skip Turn' && entity instanceof Unit) {
             entity.movementPoints = 0;
             entity.task = 'Sentry';
             this.ui.showSelection(entity);
-            this.ui.notify('Turn Skipped');
         }
         if (action === 'Explore' && entity instanceof Unit) {
             this.autoMove(entity);
         }
 
-        // Dynamic City Production
+        // City Production
         if (action.startsWith('Build ') && entity instanceof City) {
             const name = action.substring(6);
             const unitType = Object.values(this.UnitType).find(u => u.name === name);
             const buildingType = Object.values(this.BuildingType).find(b => b.name === name);
 
             if (unitType) {
-                // Check Resource Requirement
                 if (unitType.resourceRequired) {
-                    const res = unitType.resourceRequired.toUpperCase();
-                    if (entity.owner.strategicResources[res] <= 0) {
-                        this.ui.notify(`Need ${res} to build ${name}!`, 'error');
+                    if (entity.owner.strategicResources[unitType.resourceRequired] <= 0) {
+                        this.ui.notify(`Need ${unitType.resourceRequired} to build ${name}!`, 'error');
                         return;
                     }
                 }
                 entity.addToQueue(unitType);
-                this.ui.notify(`Queued ${name}`);
+                this.ui.notify(`Queued ${name}`, 'production');
             } else if (buildingType) {
                 entity.addToQueue(buildingType);
-                this.ui.notify(`Queued ${name}`);
+                this.ui.notify(`Queued ${name}`, 'production');
             } else if (name === 'Wealth' || name === 'Research') {
                 entity.addToQueue({ name, cost: 0, icon: name === 'Wealth' ? '💰' : '🔬' });
-                this.ui.notify(`City focus set to ${name}`);
+                this.ui.notify(`City focus set to ${name}`, 'production');
             }
         }
     }
 
+    // ====================================================================
+    //  EXPLORATION & VILLAGES
+    // ====================================================================
+
     autoMove(unit) {
         const neighbors = this.worldMap.getNeighbors(unit.q, unit.r);
-        const undiscovered = neighbors.filter(n => !unit.owner.discoveredTiles.has(`${n.q},${n.r}`) && !n.terrain.impassable);
+        const undiscovered = neighbors.filter(n =>
+            !unit.owner.discoveredTiles.has(`${n.q},${n.r}`) && !n.terrain.impassable && n.terrain.name !== 'Ocean'
+        );
 
         const target = undiscovered.length > 0
             ? undiscovered[Math.floor(Math.random() * undiscovered.length)]
-            : neighbors.find(n => !n.terrain.impassable);
+            : neighbors.find(n => !n.terrain.impassable && n.terrain.name !== 'Ocean');
 
         if (target) {
-            this.handleHexClick(target.q, target.r);
+            unit.move(target.q, target.r, 1);
+            unit.owner.updateDiscovery(target.q, target.r, 2);
+            unit.owner.updateVisibility();
         } else {
-            unit.movementPoints = 0; // Stuck
-            this.ui.notify('Unit cannot move further');
+            unit.movementPoints = 0;
         }
     }
 
     collectVillageReward(player) {
         const rewards = [
-            { name: 'Gold', value: 50, apply: p => p.gold += 50 },
-            { name: 'Large Map', value: 0, apply: p => p.updateDiscovery(this.selectedEntity.q, this.selectedEntity.r, 8) },
-            {
-                name: 'Survivors', value: 0, apply: p => {
-                    const city = p.cities[0];
-                    if (city) city.population++;
-                }
-            },
-            {
-                name: 'Advanced Weaponry', value: 0, apply: p => {
-                    new Unit(UnitType.ARCHER, this.selectedEntity.q, this.selectedEntity.r, p);
-                }
-            }
+            { name: 'Gold', apply: p => { p.gold += 80; } },
+            { name: 'Large Map', apply: p => p.updateDiscovery(this.selectedEntity.q, this.selectedEntity.r, 8) },
+            { name: 'Survivors', apply: p => { const city = p.cities[0]; if (city) city.population++; } },
+            { name: 'Free Warrior', apply: p => new Unit(UnitType.WARRIOR, this.selectedEntity.q, this.selectedEntity.r, p) },
+            { name: 'Technology Boost', apply: p => { p.science += 40; } },
+            { name: 'Cultural Artifacts', apply: p => { p.culture += 30; } }
         ];
 
         const reward = rewards[Math.floor(Math.random() * rewards.length)];
         reward.apply(player);
-        this.ui.notify(`Tribal Village rewarded you with: ${reward.name}!`);
+        this.ui.notify(`Tribal Village: ${reward.name}!`, 'diplomacy');
         this.ui.updateHUD(player);
     }
+
+    // ====================================================================
+    //  COMBAT & CITY CAPTURE
+    // ====================================================================
 
     captureCity(city, newOwner) {
         const oldOwner = city.owner;
@@ -467,21 +560,60 @@ class Game {
         city.owner = newOwner;
         newOwner.cities.push(city);
 
-        // Convert territory
         city.territory.forEach(key => {
             const tile = this.worldMap.getTile(...key.split(',').map(Number));
             if (tile) tile.owner = newOwner;
         });
 
-        this.ui.notify(`CITY CAPTURED! ${city.name} is now yours.`);
+        city.cityHP = city.maxCityHP;
+        city.population = Math.max(1, Math.floor(city.population / 2));
+
+        this.ui.notify(`CITY CAPTURED! ${city.name} is now yours.`, 'combat');
         this.ui.updateHUD(newOwner);
+
+        if (oldOwner.cities.length === 0) {
+            this.ui.notify(`${oldOwner.name} has been eliminated!`, 'combat');
+            this.checkVictory(newOwner);
+        }
     }
+
+    resolveCombat(attacker, defender) {
+        const attackerTile = this.worldMap.getTile(attacker.q, attacker.r);
+        const defenderTile = this.worldMap.getTile(defender.q || defender.q, defender.r || defender.r);
+
+        const result = CombatSystem.resolveCombat(attacker, defender, attackerTile, defenderTile);
+
+        // Combat effect
+        if (this.renderer.addCombatEffect) {
+            this.renderer.addCombatEffect(defender.q, defender.r, '#ff4444');
+        }
+
+        const defName = defender.isCity ? defender.name : defender.type.name;
+        this.ui.notify(`Combat! ${attacker.type.name} vs ${defName} (-${result.defenderDamage} / -${result.attackerDamage})`, 'combat');
+
+        if (result.killed.attacker) {
+            attacker.owner.units = attacker.owner.units.filter(u => u !== attacker);
+            this.selectedEntity = null;
+            this.ui.notify(`${attacker.type.name} destroyed!`, 'combat');
+        }
+        if (result.killed.defender) {
+            if (defender.isCity) {
+                this.ui.notify(`${defender.name} defenses destroyed! Move in to capture!`, 'combat');
+            } else {
+                defender.owner.units = defender.owner.units.filter(u => u !== defender);
+                this.ui.notify(`${defName} defeated!`, 'combat');
+            }
+        }
+    }
+
+    // ====================================================================
+    //  DIPLOMACY & MEETINGS
+    // ====================================================================
 
     checkForMeetings(player) {
         this.players.forEach(other => {
             if (player === other || player.metPlayers.has(other.id)) return;
 
-            // Check if any of player's units are near other's units/cities
             const isNear = player.units.some(u => {
                 return other.units.some(ou => this.worldMap.getDistance(u.q, u.r, ou.q, ou.r) <= 2) ||
                     other.cities.some(oc => this.worldMap.getDistance(u.q, u.r, oc.q, oc.r) <= 3);
@@ -490,56 +622,89 @@ class Game {
             if (isNear) {
                 player.metPlayers.add(other.id);
                 other.metPlayers.add(player.id);
-                this.ui.showDiplomacy(other);
+                if (player === this.getCurrentPlayer()) {
+                    this.ui.showDiplomacy(other);
+                }
             }
         });
     }
 
-    async endTurn() {
-        const player = this.getCurrentPlayer();
+    // ====================================================================
+    //  TURN MANAGEMENT
+    // ====================================================================
 
-        // Reset and update current player
+    async endTurn() {
+        if (this.isAiTurn) return;
+
+        const player = this.getCurrentPlayer();
         player.units.forEach(u => u.resetTurn());
         player.cities.forEach(c => c.update());
+        player.updateVisibility();
         player.updateYields();
 
-        // Move to next player
         this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
         const nextPlayer = this.getCurrentPlayer();
 
         if (nextPlayer instanceof AIPlayer) {
             this.isAiTurn = true;
-            this.ui.notify(`${nextPlayer.name}'s turn...`);
-            await new Promise(resolve => setTimeout(resolve, 800)); // Pause for dramatic effect
+            await new Promise(resolve => setTimeout(resolve, 200));
             nextPlayer.takeTurn(this);
-            this.endTurn(); // Recursive call for next AI or Player
+            this.endTurn();
         } else {
             this.isAiTurn = false;
             this.turn++;
+
+            this.diplomacy.updateTurn();
             this.spawnBarbarians();
             this.checkVictory(nextPlayer);
+
+            if (this.turn % 10 === 0) {
+                this.autoSave();
+            }
+
             this.ui.updateHUD(nextPlayer);
-            this.ui.notify(`Turn ${this.turn} started`);
+            this.ui.notify(`Turn ${this.turn}`, 'info');
+
+            const newEra = this.techTree.getCurrentEra(nextPlayer.unlockedTechs);
+            if (newEra !== nextPlayer.currentEra) {
+                nextPlayer.currentEra = newEra;
+                this.ui.showEraNotification(newEra);
+            }
         }
     }
+
+    // ====================================================================
+    //  VICTORY CONDITIONS
+    // ====================================================================
 
     checkVictory(player) {
         if (this.victoryReached) return;
 
-        // Science Victory
-        if (player.unlockedTechs.size >= 10) { // Should be all techs
-            this.handleVictory(player, 'SCIENCE');
+        const playersWithCities = this.players.filter(p => p.cities.length > 0);
+        if (playersWithCities.length === 1) {
+            this.handleVictory(playersWithCities[0], 'DOMINATION');
+            return;
         }
 
-        // Score Victory
-        if (this.turn >= 200) {
-            const winner = this.players.reduce((a, b) => this.getScore(a) > this.getScore(b) ? a : b);
+        const totalTechs = Object.keys(TechnologyData).length;
+        if (player.unlockedTechs.size >= totalTechs) {
+            this.handleVictory(player, 'SCIENCE');
+            return;
+        }
+
+        if (player.totalCulture >= 1000) {
+            this.handleVictory(player, 'CULTURAL');
+            return;
+        }
+
+        if (this.turn >= 300) {
+            const winner = this.players.reduce((a, b) => a.calculateScore() > b.calculateScore() ? a : b);
             this.handleVictory(winner, 'SCORE');
         }
     }
 
     getScore(player) {
-        return (player.cities.length * 50) + (player.units.length * 10) + (player.unlockedTechs.size * 20) + (player.gold / 10);
+        return player.calculateScore();
     }
 
     handleVictory(player, type) {
@@ -547,91 +712,108 @@ class Game {
         this.ui.showVictoryModal(player, type);
     }
 
+    // ====================================================================
+    //  BARBARIANS
+    // ====================================================================
+
     spawnBarbarians() {
-        const barbarianPlayer = this.players[2];
-        if (this.turn % 5 === 0) {
+        if (this.turn % 7 === 0 && this.turn > 5) {
             const tiles = Array.from(this.worldMap.tiles.values());
             const possibleSpawns = tiles.filter(t =>
                 !this.players[0].discoveredTiles.has(`${t.q},${t.r}`) &&
-                t.terrain.name !== 'Ocean' &&
-                t.terrain.name !== 'Mountain'
+                !t.terrain.impassable && t.terrain.name !== 'Ocean' && t.terrain.name !== 'Coast'
             );
 
             if (possibleSpawns.length > 0) {
-                const spawnTile = possibleSpawns[Math.floor(Math.random() * possibleSpawns.length)];
-                new Unit(UnitType.WARRIOR, spawnTile.q, spawnTile.r, barbarianPlayer);
-                this.ui.notify('BARBARIANS SPOTTED!');
-            }
-        }
-
-        // AI Move & Attack
-        barbarianPlayer.units.forEach(u => {
-            const nearestCity = this.players[0].cities[0];
-            if (nearestCity) {
-                const dist = Math.max(Math.abs(u.q - nearestCity.q), Math.abs(u.r - nearestCity.r));
-
-                // Attack if adjacent
-                if (dist <= 1) {
-                    const targetCity = this.players[0].cities.find(c => Math.max(Math.abs(u.q - c.q), Math.abs(u.r - c.r)) <= 1);
-                    if (targetCity) {
-                        targetCity.population = Math.max(1, targetCity.population - 1);
-                        this.ui.notify(`Barbarians are raiding ${targetCity.name}!`);
-                        u.movementPoints = 0;
-                        return;
-                    }
+                let barbPlayer = this.players.find(p => p.name === 'Barbarians');
+                if (!barbPlayer) {
+                    barbPlayer = new AIPlayer(99, 'Barbarians', '#888888');
                 }
 
-                const neighbors = this.worldMap.getNeighbors(u.q, u.r);
-                let best = neighbors[0];
-                let minDist = 999;
-                neighbors.forEach(n => {
-                    const d = Math.max(Math.abs(n.q - nearestCity.q), Math.abs(n.r - nearestCity.r));
-                    if (d < minDist) {
-                        minDist = d;
-                        best = n;
-                    }
-                });
-                if (best) u.move(best.q, best.r, 1);
+                const spawnTile = possibleSpawns[Math.floor(Math.random() * possibleSpawns.length)];
+                new Unit(UnitType.WARRIOR, spawnTile.q, spawnTile.r, barbPlayer);
             }
-        });
-    }
-
-    resolveCombat(attacker, defender) {
-        const attackerTile = this.worldMap.getTile(attacker.q, attacker.r);
-        const defenderTile = this.worldMap.getTile(defender.q, defender.r);
-
-        const result = CombatSystem.resolveCombat(attacker, defender, attackerTile, defenderTile);
-
-        this.ui.notify(`Combat! ${attacker.type.name} vs ${defender.type.name}`);
-
-        if (result.killed.attacker) {
-            attacker.owner.units = attacker.owner.units.filter(u => u !== attacker);
-            this.selectedEntity = null;
-            this.ui.notify(`${attacker.type.name} destroyed!`);
-        }
-        if (result.killed.defender) {
-            defender.owner.units = defender.owner.units.filter(u => u !== defender);
-            this.ui.notify(`${defender.type.name} defeated!`);
         }
     }
 
-    loop() {
-        this.renderer.draw();
+    // ====================================================================
+    //  UNIT CYCLING
+    // ====================================================================
+
+    getNextUnit() {
+        const player = this.getCurrentPlayer();
+        const unitsWithMoves = player.units.filter(u => u.movementPoints > 0 && u.task === 'Ready');
+        if (unitsWithMoves.length === 0) return null;
 
         if (this.selectedEntity instanceof Unit) {
-            this.renderer.ctx.save();
-            for (const key of this.reachableTiles.keys()) {
-                const [q, r] = key.split(',').map(Number);
-                const tile = this.worldMap.getTile(q, r);
-                if (tile) this.renderer.drawHighlight(tile, 'rgba(88, 166, 255, 0.15)');
-            }
-            this.renderer.ctx.restore();
+            const idx = unitsWithMoves.indexOf(this.selectedEntity);
+            return unitsWithMoves[(idx + 1) % unitsWithMoves.length];
         }
+        return unitsWithMoves[0];
+    }
+
+    selectNextUnit() {
+        const next = this.getNextUnit();
+        if (next) {
+            this.selectedEntity = next;
+            this.centerOn(next);
+            const tile = this.worldMap.getTile(next.q, next.r);
+            this.reachableTiles = Pathfinding.getReachableTiles(tile, this.worldMap, next.movementPoints);
+            this.ui.showSelection(next);
+        }
+    }
+
+    // ====================================================================
+    //  SAVE / LOAD
+    // ====================================================================
+
+    autoSave() {
+        try {
+            const saveData = this.serialize();
+            localStorage.setItem('civ_autosave', JSON.stringify(saveData));
+        } catch (e) {
+            console.warn('Auto-save failed:', e);
+        }
+    }
+
+    serialize() {
+        return {
+            turn: this.turn,
+            timestamp: Date.now(),
+            playerData: this.players.map(p => ({
+                id: p.id, name: p.name, gold: p.gold, science: p.science,
+                cities: p.cities.length, units: p.units.length,
+                techs: Array.from(p.unlockedTechs)
+            }))
+        };
+    }
+
+    // ====================================================================
+    //  MAIN LOOP
+    // ====================================================================
+
+    loop() {
+        this.camera.update();
+
+        // Pass game state to renderer
+        this.renderer.draw(this);
 
         requestAnimationFrame(() => this.loop());
     }
 }
 
+// ========================================================================
+//  STARTUP
+// ========================================================================
+
 window.addEventListener('DOMContentLoaded', () => {
-    window.game = new Game();
+    const startScreen = document.getElementById('start-screen');
+    if (startScreen) {
+        window.startGame = (config) => {
+            startScreen.style.display = 'none';
+            window.game = new Game(config);
+        };
+    } else {
+        window.game = new Game();
+    }
 });

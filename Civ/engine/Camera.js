@@ -1,77 +1,159 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 export class Camera {
-    constructor(canvas) {
+    constructor(canvas, worldMap) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.x = 0;
-        this.y = 0;
-        this.zoom = 1;
-        this.minZoom = 0.2;
-        this.maxZoom = 3;
+        this.worldMap = worldMap;
+        this.hexSize = worldMap.hexSize || 40;
+        this.heightScale = 80;
 
-        this.hexSize = 40; // Base size of a hex
+        // Perspective camera – angled top-down (like Civ 5)
+        this.camera = new THREE.PerspectiveCamera(
+            50,
+            canvas.width / canvas.height,
+            10,
+            20000
+        );
 
-        this.isPanning = false;
-        this.lastMousePos = { x: 0, y: 0 };
+        // Initial position: above center of map, looking down at angle
+        const centerWorld = worldMap.hexToWorld(
+            Math.floor(worldMap.width / 2),
+            Math.floor(worldMap.height / 2)
+        );
+        this.camera.position.set(centerWorld.x, 800, centerWorld.z + 600);
+
+        // Orbit controls for pan/rotate/zoom
+        this.controls = new OrbitControls(this.camera, canvas);
+        this.controls.target.set(centerWorld.x, 0, centerWorld.z);
+        this.controls.enableDamping = true;
+        this.controls.dampingFactor = 0.1;
+        this.controls.screenSpacePanning = true;
+
+        // Zoom limits
+        this.controls.minDistance = 100;
+        this.controls.maxDistance = 4000;
+
+        // Angle limits (keep it strategy-view, not looking up)
+        this.controls.maxPolarAngle = Math.PI * 0.42; // Max ~75 degrees from top
+        this.controls.minPolarAngle = Math.PI * 0.05;  // Min ~9 degrees
+
+        // Pan speed
+        this.controls.panSpeed = 1.5;
+        this.controls.rotateSpeed = 0.5;
+        this.controls.zoomSpeed = 1.2;
+
+        // Mouse buttons: left=pan, middle=rotate, right=rotate
+        this.controls.mouseButtons = {
+            LEFT: THREE.MOUSE.PAN,
+            MIDDLE: THREE.MOUSE.ROTATE,
+            RIGHT: THREE.MOUSE.ROTATE
+        };
+
+        // Enable keyboard panning (arrow keys)
+        this.controls.keys = {
+            LEFT: 'ArrowLeft',
+            UP: 'ArrowUp',
+            RIGHT: 'ArrowRight',
+            BOTTOM: 'ArrowDown'
+        };
+        this.controls.listenToKeyEvents(window);
+
+        this.controls.update();
+
+        // Smooth centering animation
+        this.targetPos = null;
+        this.targetLookAt = null;
+        this.animating = false;
+        this.animSpeed = 0.08;
     }
 
-    // Convert axial q,r to screen x,y
+    // Smoothly center camera on a hex position
+    centerOn(q, r) {
+        const pos = this.worldMap.hexToWorld(q, r);
+        const y = 0;
+
+        // Calculate camera offset from current target
+        const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
+
+        this.targetLookAt = new THREE.Vector3(pos.x, y, pos.z);
+        this.targetPos = new THREE.Vector3(pos.x + offset.x, offset.y, pos.z + offset.z);
+        this.animating = true;
+    }
+
+    // Instantly jump to a position
+    jumpTo(q, r) {
+        const pos = this.worldMap.hexToWorld(q, r);
+        const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
+        this.controls.target.set(pos.x, 0, pos.z);
+        this.camera.position.set(pos.x + offset.x, offset.y, pos.z + offset.z);
+        this.controls.update();
+    }
+
+    // Update each frame
+    update() {
+        // Smooth centering animation
+        if (this.animating && this.targetPos && this.targetLookAt) {
+            const t = this.animSpeed;
+            this.camera.position.lerp(this.targetPos, t);
+            this.controls.target.lerp(this.targetLookAt, t);
+
+            const dx = this.camera.position.distanceTo(this.targetPos);
+            if (dx < 2) {
+                this.camera.position.copy(this.targetPos);
+                this.controls.target.copy(this.targetLookAt);
+                this.animating = false;
+                this.targetPos = null;
+                this.targetLookAt = null;
+            }
+        }
+
+        this.controls.update();
+    }
+
+    // Resize handler
+    resize(width, height) {
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+    }
+
+    // Get zoom level (distance from target, normalized)
+    getZoom() {
+        return this.camera.position.distanceTo(this.controls.target);
+    }
+
+    // Legacy compatibility - hex to screen position (for UI overlay positioning)
     hexToScreen(q, r) {
-        const x = this.hexSize * (3 / 2 * q);
-        const y = this.hexSize * (Math.sqrt(3) / 2 * q + Math.sqrt(3) * r);
+        const world = this.worldMap.hexToWorld(q, r);
+        const tile = this.worldMap.getTile(q, r);
+        const y = tile ? tile.elevation * this.heightScale : 0;
+
+        const vec = new THREE.Vector3(world.x, y + 5, world.z);
+        vec.project(this.camera);
+
         return {
-            x: (x * this.zoom) + this.x,
-            y: (y * this.zoom) + this.y
+            x: (vec.x * 0.5 + 0.5) * this.canvas.width,
+            y: (-vec.y * 0.5 + 0.5) * this.canvas.height
         };
     }
 
-    // Convert screen x,y to axial q,r (approximate)
-    screenToHex(screenX, screenY) {
-        const lx = (screenX - this.x) / this.zoom;
-        const ly = (screenY - this.y) / this.zoom;
+    // Convert screen position to hex coordinates via raycasting
+    screenToHex(screenX, screenY, raycaster, hexMeshes) {
+        const mouse = new THREE.Vector2(
+            (screenX / this.canvas.width) * 2 - 1,
+            -(screenY / this.canvas.height) * 2 + 1
+        );
 
-        const q = (2 / 3 * lx) / this.hexSize;
-        const r = (-1 / 3 * lx + Math.sqrt(3) / 3 * ly) / this.hexSize;
+        raycaster.setFromCamera(mouse, this.camera);
+        const meshArray = Array.from(hexMeshes.values());
+        const intersects = raycaster.intersectObjects(meshArray);
 
-        return this.hexRound(q, r);
-    }
-
-    hexRound(q, r) {
-        let x = q;
-        let z = r;
-        let y = -x - z;
-
-        let rx = Math.round(x);
-        let ry = Math.round(y);
-        let rz = Math.round(z);
-
-        const x_diff = Math.abs(rx - x);
-        const y_diff = Math.abs(ry - y);
-        const z_diff = Math.abs(rz - z);
-
-        if (x_diff > y_diff && x_diff > z_diff) {
-            rx = -ry - rz;
-        } else if (y_diff > z_diff) {
-            ry = -rx - rz;
-        } else {
-            rz = -rx - ry;
+        if (intersects.length > 0) {
+            const mesh = intersects[0].object;
+            if (mesh.userData && mesh.userData.q !== undefined) {
+                return { q: mesh.userData.q, r: mesh.userData.r };
+            }
         }
-
-        return { q: rx, r: rz };
-    }
-
-    clamp(worldWidth, worldHeight) {
-        const mapW = worldWidth * this.hexSize * 1.5 * this.zoom;
-        const mapH = worldHeight * this.hexSize * Math.sqrt(3) * this.zoom;
-        const margin = 100;
-
-        const limitX = Math.max(0, mapW - this.canvas.width);
-        this.x = Math.max(-limitX - margin, Math.min(margin, this.x));
-
-        const limitY = Math.max(0, mapH - this.canvas.height);
-        this.y = Math.max(-limitY - margin, Math.min(margin, this.y));
-    }
-
-    apply(ctx) {
-        // Transformations are handled in hexToScreen
+        return null;
     }
 }

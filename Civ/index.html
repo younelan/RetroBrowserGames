@@ -4,11 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Retro Civ - Empire Builder</title>
+    <title>Civilization - Empire Builder</title>
     <link rel="stylesheet" href="main.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@400;700&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+    <!-- Three.js import map for ES modules -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
 </head>
 
 <body>
@@ -23,15 +31,11 @@
                     <span id="game-year">4000 BC</span>
                 </div>
                 <div class="stats-group">
-                    <div class="stat" title="Gold"><span class="icon">💰</span> <span id="stat-gold">0</span> <span
-                            class="rate">(+0)</span></div>
-                    <div class="stat" title="Science"><span class="icon">🔬</span> <span id="stat-science">0</span>
-                        <span class="rate">(+0)</span>
-                    </div>
-                    <div class="stat" title="Happiness"><span class="icon">😊</span> <span id="stat-happiness">10</span>
-                    </div>
-                    <div class="stat" title="Strategic Resources"><span class="icon">⚔️</span> <span
-                            id="stat-resources">0</span></div>
+                    <div class="stat" title="Gold"><span class="icon">💰</span> <span id="stat-gold">0</span> <span class="rate">(+0)</span></div>
+                    <div class="stat" title="Science"><span class="icon">🔬</span> <span id="stat-science">0</span> <span class="rate">(+0)</span></div>
+                    <div class="stat" title="Happiness"><span class="icon">😊</span> <span id="stat-happiness">10</span></div>
+                    <div class="stat" title="Culture"><span class="icon">🎭</span> <span id="stat-culture">0</span></div>
+                    <div class="stat" title="Strategic Resources"><span class="icon">⚔️</span> <span id="stat-resources">0</span></div>
                 </div>
                 <div class="turn-group">
                     <button id="help-btn" class="premium-btn">HELP</button>
@@ -49,12 +53,8 @@
                         <div id="selection-sub">Player One</div>
                     </div>
                 </div>
-                <div id="selection-stats" class="stats-grid">
-                    <!-- Stats like HP, Strength, Move -->
-                </div>
-                <div id="selection-actions" class="actions-grid">
-                    <!-- Buttons for Settle, Fortify, etc. -->
-                </div>
+                <div id="selection-stats" class="stats-grid"></div>
+                <div id="selection-actions" class="actions-grid"></div>
             </div>
 
             <!-- Notifications -->
@@ -76,8 +76,11 @@
 
             <!-- Mini-map -->
             <div id="minimap-container" class="glass-panel">
-                <canvas id="minimap-canvas"></canvas>
+                <canvas id="minimap-canvas" width="240" height="180"></canvas>
             </div>
+
+            <!-- Tooltip -->
+            <div id="tooltip" class="glass-panel"></div>
         </div>
 
         <!-- Overlays -->
@@ -88,9 +91,7 @@
                     <button class="close-modal">×</button>
                 </header>
                 <div class="modal-content">
-                    <div id="modal-content-body">
-                        <!-- Content injected here -->
-                    </div>
+                    <div id="modal-content-body"></div>
                 </div>
             </div>
         </div>
