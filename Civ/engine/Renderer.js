@@ -71,6 +71,7 @@ export class Renderer {
         this.highlightMeshes = [];
         this.borderLines = null;
         this.featureInstances = [];
+        this.resourceInstances = [];
         this.riverMeshes = [];
 
         // Use the camera from Camera.js wrapper (Three.js PerspectiveCamera)
@@ -799,6 +800,19 @@ export class Renderer {
     // ========================================================================
 
     createResources() {
+        // Clean up old resource meshes
+        for (const inst of this.resourceInstances) {
+            this.scene.remove(inst);
+            if (inst.traverse) inst.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (child.material.map) child.material.map.dispose();
+                    child.material.dispose();
+                }
+            });
+        }
+        this.resourceInstances = [];
+
         // Render resource icons on tiles that have them
         for (const [key, tile] of this.worldMap.tiles) {
             if (!tile.resource || tile.resource.name === 'None') continue;
@@ -860,8 +874,9 @@ export class Renderer {
             group.add(iconSprite);
 
             group.position.set(worldPos.x, topY, worldPos.z);
+            group.userData.tileKey = key;
             this.scene.add(group);
-            this.featureInstances.push(group);
+            this.resourceInstances.push(group);
         }
     }
 
@@ -934,11 +949,13 @@ export class Renderer {
 
         const positions = [];
         const colors = [];
-        const player = game.getCurrentPlayer();
+        // Always render from human player's perspective (independent of whose turn it is)
+        const humanPlayer = game.players[0];
 
         for (const [key, tile] of this.worldMap.tiles) {
             if (!tile.owner) continue;
-            if (player && !player.discoveredTiles.has(key)) continue;
+            // Only show borders on discovered tiles
+            if (humanPlayer && !humanPlayer.discoveredTiles.has(key)) continue;
 
             const worldPos = this.hexToWorld(tile.q, tile.r, tile.elevation);
             const topY = Math.max(worldPos.y, this.heightScale * 0.35) + 2;
@@ -983,23 +1000,42 @@ export class Renderer {
     // ========================================================================
     //  UNIT SPRITES
     // ========================================================================
+    // ========================================================================
+    //  UNIT RENDERING
+    //
+    //  CRITICAL: Units are rendered based on GRID LOCATION and FOG OF WAR only.
+    //  This is COMPLETELY INDEPENDENT of whose turn it is.
+    //  
+    //  Visibility rules:
+    //  - Human units: Visible on all discovered tiles
+    //  - Enemy units: Visible only on tiles with current vision
+    //  - Turn cycling does NOT affect what units are rendered
+    // ========================================================================
 
     updateUnits(game) {
         if (!game) return;
 
-        const player = game.getCurrentPlayer();
+        // Always render from human player's perspective (player[0])
+        // This never changes based on whose turn it is - only based on fog of war
+        const humanPlayer = game.players[0];
         const currentUnits = new Set();
 
-        // Update existing units and create new ones
+        // Render ALL units from ALL civilizations based on visibility
         for (const p of game.players) {
             for (let i = 0; i < p.units.length; i++) {
                 const unit = p.units[i];
                 const unitKey = `${p.id}_${i}`;
                 currentUnits.add(unitKey);
 
-                // Visibility check
-                const isVisible = (!player || unit.owner === player || player.visibleTiles.has(`${unit.q},${unit.r}`))
-                    && (!player || player.discoveredTiles.has(`${unit.q},${unit.r}`));
+                // Visibility rules (INDEPENDENT of whose turn it is):
+                // - Human's own units: always visible on discovered tiles
+                // - Enemy units: only visible if tile is in current vision
+                // - Tile must be discovered by human player to see anything
+                const isOwnUnit = unit.owner === humanPlayer;
+                const tileDiscovered = !humanPlayer || humanPlayer.discoveredTiles.has(`${unit.q},${unit.r}`);
+                const tileCurrentlyVisible = !humanPlayer || humanPlayer.visibleTiles.has(`${unit.q},${unit.r}`);
+                
+                const isVisible = tileDiscovered && (isOwnUnit || tileCurrentlyVisible);
 
                 if (!isVisible) {
                     // Remove if exists but now invisible
@@ -1785,15 +1821,18 @@ export class Renderer {
     updateCities(game) {
         if (!game) return;
 
-        const player = game.getCurrentPlayer();
+        // Always render from human player's perspective (independent of whose turn it is)
+        const humanPlayer = game.players[0];
         const currentCities = new Set();
 
+        // Render ALL cities from ALL civilizations based on discovery
         for (const p of game.players) {
             for (const city of p.cities) {
                 const cityKey = `${p.id}_${city.name}`;
                 currentCities.add(cityKey);
                 
-                if (player && !player.discoveredTiles.has(`${city.q},${city.r}`)) {
+                // Cities are visible if the human player has discovered that tile
+                if (humanPlayer && !humanPlayer.discoveredTiles.has(`${city.q},${city.r}`)) {
                     // Remove if exists but now invisible
                     const existing = this.cityMeshes.get(cityKey);
                     if (existing) {
@@ -2372,7 +2411,8 @@ export class Renderer {
         const pSize = mm.width / w;
         const ySize = mm.height / h;
 
-        const player = window.game?.getCurrentPlayer();
+        // Always render from human player's perspective (independent of whose turn it is)
+        const humanPlayer = window.game?.players?.[0];
 
         // Terrain colors for minimap
         const mmColors = {
@@ -2382,7 +2422,7 @@ export class Renderer {
         };
 
         for (const [key, tile] of this.worldMap.tiles) {
-            const isDiscovered = !player || player.discoveredTiles.has(key);
+            const isDiscovered = !humanPlayer || humanPlayer.discoveredTiles.has(key);
 
             if (!isDiscovered) {
                 ctx.fillStyle = '#0a0a12';
@@ -2406,7 +2446,7 @@ export class Renderer {
         if (window.game) {
             for (const p of window.game.players) {
                 for (const city of p.cities) {
-                    if (player && !player.discoveredTiles.has(`${city.q},${city.r}`)) continue;
+                    if (humanPlayer && !humanPlayer.discoveredTiles.has(`${city.q},${city.r}`)) continue;
                     const cx = (city.q + (city.r / 2)) * pSize;
                     const cy = city.r * ySize;
                     ctx.fillStyle = city.owner.color;
@@ -2417,7 +2457,7 @@ export class Renderer {
                 }
 
                 for (const unit of p.units) {
-                    const isVis = !player || player.visibleTiles.has(`${unit.q},${unit.r}`) || unit.owner === player;
+                    const isVis = !humanPlayer || humanPlayer.visibleTiles.has(`${unit.q},${unit.r}`) || unit.owner === humanPlayer;
                     if (!isVis) continue;
                     const ux = (unit.q + (unit.r / 2)) * pSize;
                     const uy = unit.r * ySize;
@@ -2456,7 +2496,12 @@ export class Renderer {
         this.time += 0.016;
 
         const game = gameRef || window.game;
-        const player = game?.getCurrentPlayer();
+        // IMPORTANT: Always render from human player's perspective, even during AI turns
+        // Rendering is INDEPENDENT of whose turn it is - it only depends on:
+        // 1. What tiles are in camera view
+        // 2. What the human player has discovered (fog of war)
+        // 3. What the human player can currently see (vision)
+        const player = game?.players?.[0] || game?.getCurrentPlayer();
 
         // Sync 3D camera from 2D camera wrapper
         this._syncCamera();
@@ -2507,10 +2552,10 @@ export class Renderer {
             }
         }
 
-        // Update fog of war
+        // Update fog of war (always from human player's perspective, regardless of turn)
         this.updateFogOfWar(player);
 
-        // Update dynamic objects
+        // Update dynamic objects (render all visible units/cities, regardless of whose turn it is)
         this.updateUnits(game);
         this.updateCities(game);
 
@@ -2540,9 +2585,9 @@ export class Renderer {
                     const [q, r] = key.split(',').map(Number);
                     const tile = this.worldMap.getTile(q, r);
                     if (tile) {
-                        // Check if there's an enemy unit on this tile
+                        // Check if there's an enemy unit on this tile (always from human player perspective)
                         const hasEnemy = game.players.flatMap(p => p.units).some(u => 
-                            u.q === q && u.r === r && u.owner !== game.getCurrentPlayer()
+                            u.q === q && u.r === r && u.owner !== game.players[0]
                         );
                         
                         const color = hasEnemy ? 0xff4444 : 0x58a6ff;
@@ -2709,8 +2754,17 @@ export class Renderer {
         // Dispose features
         for (const inst of this.featureInstances) {
             this.scene.remove(inst);
-            inst.geometry.dispose();
-            inst.material.dispose();
+            if (inst.geometry) inst.geometry.dispose();
+            if (inst.material) inst.material.dispose();
+        }
+
+        // Dispose resources
+        for (const inst of this.resourceInstances) {
+            this.scene.remove(inst);
+            if (inst.traverse) inst.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+            });
         }
 
         // Dispose borders

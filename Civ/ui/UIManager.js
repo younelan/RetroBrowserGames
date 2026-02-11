@@ -48,8 +48,17 @@ export class UIManager {
     // ========================================================================
 
     setupListeners() {
+        // Next Unit button
+        document.getElementById('next-unit-btn').addEventListener('click', () => {
+            if (this.startScreenActive) return;
+            if (this.game.isAiTurn) return; // Block during AI turns
+            this.game.selectNextUnit();
+        });
+
+        // End Turn button
         document.getElementById('end-turn-btn').addEventListener('click', () => {
             if (this.startScreenActive) return;
+            if (this.game.isAiTurn) return; // Block during AI turns
             this.handleEndTurnClick();
         });
 
@@ -69,6 +78,9 @@ export class UIManager {
     setupKeyboardShortcuts() {
         window.addEventListener('keydown', (e) => {
             if (this.startScreenActive) return;
+            
+            // BLOCK ALL INPUT DURING AI TURNS - UI is from human perspective only
+            if (this.game.isAiTurn) return;
 
             // Ignore if typing in an input
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -924,29 +936,43 @@ export class UIManager {
         hEl.textContent = Math.round(player.happiness);
         hEl.style.color = player.happiness < 0 ? '#ff7b72' : '#7ee787';
 
-        // Resources
+        // Resources — all strategic + luxury count
         const statsGroup = document.querySelector('.stats-group');
         let resEl = document.getElementById('hud-resources');
         if (!resEl) {
             resEl = document.createElement('div');
             resEl.id = 'hud-resources';
-            resEl.style.display = 'flex';
-            resEl.style.gap = '12px';
-            resEl.style.alignItems = 'center';
+            resEl.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:0.75rem';
             statsGroup.appendChild(resEl);
         }
         resEl.innerHTML = '';
-        const resources = [
-            { label: 'Iron',   key: 'IRON',   icon: '&#9874;' },
-            { label: 'Horses', key: 'HORSES', icon: '&#128014;' }
+        const strategicRes = [
+            { label: 'Iron',   key: 'IRON',   icon: '\u2699' },
+            { label: 'Horses', key: 'HORSES', icon: '\uD83D\uDC0E' },
+            { label: 'Coal',   key: 'COAL',   icon: '\u2668' },
+            { label: 'Oil',    key: 'OIL',    icon: '\uD83D\uDEE2' },
+            { label: 'Niter',  key: 'NITER',  icon: '\uD83D\uDCA5' }
         ];
-        resources.forEach(r => {
+        strategicRes.forEach(r => {
+            const count = player.strategicResources[r.key] || 0;
+            if (count > 0) {
+                const d = document.createElement('div');
+                d.className = 'stat';
+                d.title = `${r.label} (Strategic)`;
+                d.innerHTML = `<span class="icon">${r.icon}</span>${count}`;
+                resEl.appendChild(d);
+            }
+        });
+        // Luxury resources
+        const luxCount = player.luxuryResources ? player.luxuryResources.size : 0;
+        if (luxCount > 0) {
             const d = document.createElement('div');
             d.className = 'stat';
-            d.title = `${r.label} (Strategic)`;
-            d.innerHTML = `<span class="icon">${r.icon}</span> ${player.strategicResources[r.key]}`;
+            d.title = `${luxCount} Luxury resource${luxCount > 1 ? 's' : ''} (+${luxCount * 4} Happiness)`;
+            d.innerHTML = `<span class="icon">\uD83D\uDC8E</span>${luxCount}`;
+            d.style.color = '#ffdd55';
             resEl.appendChild(d);
-        });
+        }
 
         // Turn
         document.getElementById('stat-turn').textContent = `TURN ${this.game.turn}`;
@@ -1000,33 +1026,36 @@ export class UIManager {
     }
 
     updateEndTurnButton(player) {
-        const btn = document.getElementById('end-turn-btn');
-        if (!btn) return;
+        const endTurnBtn = document.getElementById('end-turn-btn');
+        const nextUnitBtn = document.getElementById('next-unit-btn');
+
+        if (!endTurnBtn || !nextUnitBtn) return;
 
         const unitsWithMoves = player.units.filter(u => u.movementPoints > 0 && u.task === 'Ready');
 
+        // Update Next Unit button
         if (unitsWithMoves.length > 0) {
-            btn.textContent = `NEXT UNIT (${unitsWithMoves.length})`;
-            btn.classList.add('end-turn-next-unit');
-            btn.classList.remove('end-turn-pulse');
-            btn.title = `${unitsWithMoves.length} unit(s) still have moves. Click to select next unit.`;
+            nextUnitBtn.textContent = `NEXT UNIT (${unitsWithMoves.length})`;
+            nextUnitBtn.disabled = false;
+            nextUnitBtn.style.opacity = '1';
         } else {
-            btn.textContent = 'END TURN';
-            btn.classList.remove('end-turn-next-unit');
-            btn.classList.add('end-turn-pulse');
-            btn.title = 'All units have moved. Click to end your turn.';
+            nextUnitBtn.textContent = 'NEXT UNIT (0)';
+            nextUnitBtn.disabled = true;
+            nextUnitBtn.style.opacity = '0.5';
+        }
+
+        // End Turn button is always just "END TURN"
+        endTurnBtn.textContent = 'END TURN';
+        if (unitsWithMoves.length === 0) {
+            endTurnBtn.classList.add('end-turn-pulse');
+        } else {
+            endTurnBtn.classList.remove('end-turn-pulse');
         }
     }
 
     handleEndTurnClick() {
-        const player = this.game.getCurrentPlayer();
-        const unitsWithMoves = player.units.filter(u => u.movementPoints > 0 && u.task === 'Ready');
-
-        if (unitsWithMoves.length > 0) {
-            this.selectNextUnitWithMoves();
-        } else {
-            this.game.endTurn();
-        }
+        // End turn button always ends turn, no longer checks for units
+        this.game.endTurn();
     }
 
     // ========================================================================
@@ -1185,6 +1214,27 @@ export class UIManager {
             };
             actions.appendChild(btn);
         });
+
+        // Upgrade button
+        if (unit.owner === this.game.getCurrentPlayer()) {
+            const target = unit.getUpgradeType();
+            if (target) {
+                const cost = unit.getUpgradeCost();
+                const canDo = unit.canUpgrade();
+                const btn = document.createElement('button');
+                btn.className = 'premium-btn';
+                btn.style.cssText = canDo
+                    ? 'background:rgba(126,231,135,0.15);border-color:rgba(126,231,135,0.4);color:#7ee787;min-height:44px'
+                    : 'opacity:0.4;min-height:44px';
+                btn.innerHTML = `UPGRADE: ${target.name} <span style="font-size:0.7rem">(${cost}g)</span>`;
+                btn.disabled = !canDo;
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.game.handleAction(unit, 'Upgrade');
+                };
+                actions.appendChild(btn);
+            }
+        }
     }
 
     renderPromotionUI(unit, container) {
@@ -1222,56 +1272,75 @@ export class UIManager {
     }
 
     renderCitySelection(city, icon, header, sub, stats, actions) {
-        icon.textContent = city.isCapital ? '&#127984;' : '&#127984;';
+        // Safety check: verify city belongs to current player
+        const currentPlayer = this.game.getCurrentPlayer();
+        const isOwnCity = city.owner === currentPlayer;
+        
+        // Fix emoji rendering - use innerHTML instead of textContent
+        icon.innerHTML = city.isCapital ? '⭐' : '🏛️';
         header.textContent = city.name.toUpperCase();
-        sub.textContent = `${city.owner.name} | Pop ${city.population}`;
+        sub.textContent = `Population ${city.population}${!isOwnCity ? ` (${city.owner.name})` : ''}`;
+
+        // If not our city, show limited info only
+        if (!isOwnCity) {
+            const warningDiv = document.createElement('div');
+            warningDiv.style.cssText = 'grid-column:1/span 2;background:rgba(255,123,114,0.25);padding:16px;border-radius:8px;border:2px solid #ff7b72;margin-bottom:16px;';
+            warningDiv.innerHTML = `<div style="font-weight:700;color:#ff7b72;font-size:0.95rem">⚠️ ENEMY CITY</div><div style="font-size:0.72rem;color:var(--text-dim);margin-top:6px">You cannot control this city</div>`;
+            stats.appendChild(warningDiv);
+            return;
+        }
 
         const yields = city.calculateYields();
 
-        this.addStat(stats, 'FOOD', `+${Math.floor(yields.food)}`, 'var(--food)');
-        this.addStat(stats, 'PROD', `+${Math.floor(yields.production)}`, 'var(--production)');
-        this.addStat(stats, 'GOLD', `+${Math.floor(yields.gold)}`, 'var(--gold)');
-        this.addStat(stats, 'SCIENCE', `+${Math.floor(yields.science)}`, 'var(--science)');
-        this.addStat(stats, 'CULTURE', `+${Math.floor(yields.culture)}`, 'var(--culture)');
-        this.addStat(stats, 'HAPPINESS', `${yields.happiness >= 0 ? '+' : ''}${yields.happiness}`);
-
-        const foodNeeded = 15 + Math.pow(city.population, 1.8);
-        this.addStat(stats, 'GROWTH', `${Math.floor(city.food)}/${Math.floor(foodNeeded)}`);
-        this.addStat(stats, 'DEFENSE', `${Math.floor(city.getCityDefense())} (${Math.floor(city.cityHP)}/${city.maxCityHP})`);
-
-        // Production queue
+        // CURRENT PRODUCTION - Make this the most prominent thing
         if (city.productionQueue.length > 0) {
             const current = city.productionQueue[0];
             const qDiv = document.createElement('div');
-            qDiv.style.cssText = 'grid-column:1/span 2;color:var(--production);font-size:0.72rem;margin-top:8px;background:rgba(255,123,114,0.06);padding:8px;border-radius:4px;border:1px solid rgba(255,123,114,0.15);';
-            let html = `<strong>PRODUCING:</strong> ${current.name.toUpperCase()}`;
+            qDiv.style.cssText = 'grid-column:1/span 2;background:linear-gradient(135deg,rgba(88,166,255,0.25),rgba(255,123,114,0.2));padding:16px;border-radius:8px;border:2px solid var(--accent-color);margin-bottom:16px;';
+            let html = `<div style="font-size:0.65rem;color:var(--text-dim);font-weight:700;letter-spacing:1.5px;margin-bottom:6px">CURRENTLY BUILDING</div>`;
+            html += `<div style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:8px">${current.icon || '🏗️'} ${current.name.toUpperCase()}</div>`;
             if (current.cost > 0) {
                 const turnsLeft = Math.max(1, Math.ceil((current.cost - city.productionStored) / Math.max(1, yields.production)));
-                html += ` (${Math.floor(city.productionStored)}/${current.cost} ~ ${turnsLeft} turns)`;
-            }
-            if (city.productionQueue.length > 1) {
-                html += `<br><span style="color:var(--text-dim);font-size:0.62rem">QUEUE: ${city.productionQueue.slice(1).map(i => i.name).join(', ')}</span>`;
+                const pct = Math.min(100, (city.productionStored / current.cost) * 100);
+                html += `<div style="background:rgba(0,0,0,0.4);height:14px;border-radius:7px;overflow:hidden;margin-bottom:8px"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--production),#7ee787);transition:width 0.3s"></div></div>`;
+                html += `<div style="font-size:0.75rem;"><strong style="color:var(--production)">${turnsLeft} turn${turnsLeft > 1 ? 's' : ''} left</strong> • ${Math.floor(city.productionStored)}/${current.cost} hammers</div>`;
             }
             qDiv.innerHTML = html;
             stats.appendChild(qDiv);
+        } else {
+            const qDiv = document.createElement('div');
+            qDiv.style.cssText = 'grid-column:1/span 2;background:rgba(255,123,114,0.25);padding:16px;border-radius:8px;border:2px solid #ff7b72;margin-bottom:16px;';
+            qDiv.innerHTML = `<div style="font-weight:700;color:#ff7b72;font-size:0.95rem">⚠️ CITY IS IDLE</div><div style="font-size:0.72rem;color:var(--text-dim);margin-top:6px">Choose what to build below</div>`;
+            stats.appendChild(qDiv);
         }
 
-        // Buildings detail
-        this.renderCityBuildingYields(city, stats);
+        // Compact yields in single line
+        const yieldDiv = document.createElement('div');
+        yieldDiv.style.cssText = 'grid-column:1/span 2;display:flex;gap:16px;flex-wrap:wrap;font-size:0.8rem;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.04);border-radius:6px;';
+        yieldDiv.innerHTML = `
+            <span title="Food">🍎 <strong style="color:var(--food)">${Math.floor(yields.food)}</strong></span>
+            <span title="Production">⚙️ <strong style="color:var(--production)">${Math.floor(yields.production)}</strong></span>
+            <span title="Gold">💰 <strong style="color:var(--gold)">${Math.floor(yields.gold)}</strong></span>
+            <span title="Science">🔬 <strong style="color:var(--science)">${Math.floor(yields.science)}</strong></span>
+            <span title="Culture">🎭 <strong style="color:var(--culture)">${Math.floor(yields.culture)}</strong></span>
+            <span title="Happiness">😊 <strong style="color:${yields.happiness >= 0 ? 'var(--food)' : '#ff7b72'}">${yields.happiness >= 0 ? '+' : ''}${yields.happiness}</strong></span>
+        `;
+        stats.appendChild(yieldDiv);
 
-        // Specialists & Great Person progress
-        this.renderCitySpecialists(city, stats);
+        // Buildings (if any)
+        if (city.buildings.size > 0) {
+            const buildDiv = document.createElement('div');
+            buildDiv.style.cssText = 'grid-column:1/span 2;font-size:0.7rem;color:var(--text-dim);margin-bottom:12px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.06);';
+            const buildList = Array.from(city.buildings).slice(0, 5).map(bId => {
+                const b = BuildingType[bId] || WonderType[bId];
+                return b ? (WonderType[bId] ? `<strong style="color:var(--gold)">${b.name}</strong>` : b.name) : '';
+            }).filter(Boolean).join(', ');
+            const moreCount = city.buildings.size - 5;
+            buildDiv.innerHTML = `<strong>Buildings:</strong> ${buildList}${moreCount > 0 ? ` <span style="color:var(--accent-color)">+${moreCount} more</span>` : ''}`;
+            stats.appendChild(buildDiv);
+        }
 
-        // ---- Actions ----
-
-        // Rename
-        const renameBtn = document.createElement('button');
-        renameBtn.className = 'premium-btn';
-        renameBtn.innerHTML = 'RENAME';
-        renameBtn.onclick = (e) => { e.stopPropagation(); this.showRenameModal(city); };
-        actions.appendChild(renameBtn);
-
-        // Production options - grouped
+        // ---- Actions - Minimal and clean ----
         this.renderCityProductionOptions(city, actions);
     }
 
@@ -1349,22 +1418,93 @@ export class UIManager {
     }
 
     renderCityProductionOptions(city, actions) {
-        // Units
+        // Check if city is coastal
+        const cityNeighbors = this.game.worldMap?.getNeighbors(city.q, city.r) || [];
+        const isCoastal = cityNeighbors.some(n => n.terrain.water);
+
+        // Get available items
         const availableUnits = Object.values(UnitType).filter(u => {
             if (u.techRequired && !city.owner.unlockedTechs.has(u.techRequired)) return false;
+            if (u.naval && !isCoastal) return false;
             return true;
         });
-
-        // Buildings (filtered by canBuild)
         const availableBuildings = Object.entries(BuildingType).filter(([bId]) => city.canBuild(bId)).map(([, b]) => b);
 
-        // Wonders
+        // Show ONLY the top 3 most relevant recommendations
+        let recommendations = [];
+
+        // Priority 1: Essential missing building
+        if (!city.buildings.has('MONUMENT') && availableBuildings.find(b => b.name === 'Monument')) {
+            recommendations.push({ item: BuildingType.MONUMENT, priority: 100 });
+        }
+
+        // Priority 2: Worker if critically needed
+        const workerCount = city.owner.units.filter(u => u.type.name === 'Worker').length;
+        if (workerCount === 0 || (workerCount < city.owner.cities.length && city.population >= 3)) {
+            const worker = availableUnits.find(u => u.name === 'Worker');
+            if (worker) recommendations.push({ item: worker, priority: 90 });
+        }
+
+        // Priority 3: Best military unit
+        const militaryUnits = availableUnits.filter(u => u.category === 'military');
+        if (militaryUnits.length > 0) {
+            recommendations.push({ item: militaryUnits[militaryUnits.length - 1], priority: 80 });
+        }
+
+        // Priority 4: Next building
+        const nextBuilding = availableBuildings.find(b => !city.buildings.has(b.id));
+        if (nextBuilding) recommendations.push({ item: nextBuilding, priority: 70 });
+
+        // Sort and take only top 3
+        recommendations.sort((a, b) => b.priority - a.priority);
+        recommendations = recommendations.slice(0, 3);
+
+        // Render top 3 recommendations if any
+        if (recommendations.length > 0) {
+            recommendations.forEach(({ item }) => {
+                const btn = document.createElement('button');
+                btn.className = 'premium-btn';
+                btn.style.cssText = 'padding:12px;font-size:0.8rem;';
+                btn.innerHTML = `${item.icon || '🏗️'} ${item.name.toUpperCase()} <span style="color:var(--text-dim);font-size:0.7rem">(${item.cost})</span>`;
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.game.handleAction(city, `Build ${item.name}`);
+                    this.showSelection(city);
+                };
+                actions.appendChild(btn);
+            });
+        }
+
+        // "View All" button - single prominent button
+        const viewAllBtn = document.createElement('button');
+        viewAllBtn.className = 'premium-btn primary';
+        viewAllBtn.style.cssText = 'grid-column:1/span 2;background:rgba(88,166,255,0.25);border:2px solid var(--accent-color);margin-top:12px;font-weight:700;padding:14px;';
+        viewAllBtn.innerHTML = '📋 VIEW ALL BUILD OPTIONS';
+        viewAllBtn.onclick = (e) => {
+            e.stopPropagation();
+            this.showAllProductionOptions(city, availableUnits, availableBuildings);
+        };
+        actions.appendChild(viewAllBtn);
+
+        // Specialists button (secondary)
+        const specialistsBtn = document.createElement('button');
+        specialistsBtn.className = 'premium-btn';
+        specialistsBtn.style.cssText = 'grid-column:1/span 2;padding:10px;margin-top:8px;';
+        specialistsBtn.innerHTML = '👥 Manage Specialists';
+        specialistsBtn.onclick = (e) => {
+            e.stopPropagation();
+            this.showSpecialistsModal(city);
+        };
+        actions.appendChild(specialistsBtn);
+    }
+
+    showAllProductionOptions(city, availableUnits, availableBuildings) {
+        // Get wonders here since we need them
         const availableWonders = Object.entries(WonderType).filter(([wId, w]) => {
             if (this.game.wondersBuilt.has(wId)) return false;
             if (city.buildings.has(wId)) return false;
             if (w.tech && !city.owner.unlockedTechs.has(w.tech)) return false;
             if (w.requiresDesert) {
-                // Check city terrain
                 const tile = this.game.worldMap?.getTile(city.q, city.r);
                 if (!tile || tile.terrain.name !== 'Desert') return false;
             }
@@ -1375,45 +1515,126 @@ export class UIManager {
             return true;
         }).map(([, w]) => w);
 
-        // Special focuses
-        const specials = [
-            { name: 'Wealth', cost: 0, icon: '&#128176;', description: 'Convert 25% Production to Gold' },
-            { name: 'Research', cost: 0, icon: '&#128300;', description: 'Convert 25% Production to Science' }
+        let html = '<div style="max-height:70vh;overflow-y:auto;padding:1rem;">';
+
+        // Units section
+        if (availableUnits.length > 0) {
+            html += '<div style="margin-bottom:1.5rem;"><h3 style="color:var(--accent-color);font-size:0.85rem;margin-bottom:0.8rem;letter-spacing:1px;">UNITS</h3>';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">';
+            availableUnits.forEach(u => {
+                html += `<button class="production-option-btn" data-name="${u.name}" style="padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.2s;">
+                    <div style="font-size:0.75rem;font-weight:700;">${u.icon || '⚔️'} ${u.name}</div>
+                    <div style="font-size:0.65rem;color:var(--text-dim);">Cost: ${u.cost}</div>
+                </button>`;
+            });
+            html += '</div></div>';
+        }
+
+        // Buildings section
+        if (availableBuildings.length > 0) {
+            html += '<div style="margin-bottom:1.5rem;"><h3 style="color:var(--accent-color);font-size:0.85rem;margin-bottom:0.8rem;letter-spacing:1px;">BUILDINGS</h3>';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">';
+            availableBuildings.forEach(b => {
+                html += `<button class="production-option-btn" data-name="${b.name}" style="padding:10px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.2s;">
+                    <div style="font-size:0.75rem;font-weight:700;">${b.icon || '🏛️'} ${b.name}</div>
+                    <div style="font-size:0.65rem;color:var(--text-dim);">Cost: ${b.cost}</div>
+                </button>`;
+            });
+            html += '</div></div>';
+        }
+
+        // Wonders section
+        if (availableWonders.length > 0) {
+            html += '<div style="margin-bottom:1.5rem;"><h3 style="color:var(--gold);font-size:0.85rem;margin-bottom:0.8rem;letter-spacing:1px;">WONDERS</h3>';
+            html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;">';
+            availableWonders.forEach(w => {
+                html += `<button class="production-option-btn" data-name="${w.name}" style="padding:10px;background:rgba(255,215,0,0.1);border:2px solid var(--gold);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.2s;">
+                    <div style="font-size:0.75rem;font-weight:700;color:var(--gold);">${w.icon || '🌟'} ${w.name}</div>
+                    <div style="font-size:0.65rem;color:var(--text-dim);">Cost: ${w.cost}</div>
+                </button>`;
+            });
+            html += '</div></div>';
+        }
+
+        html += '</div>';
+        this.openModalContent(html, 'ALL PRODUCTION OPTIONS');
+
+        // Bind click handlers
+        document.querySelectorAll('.production-option-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const name = btn.dataset.name;
+                this.game.handleAction(city, `Build ${name}`);
+                this.closeModal();
+                this.showSelection(city);
+            });
+            // Hover effect
+            btn.addEventListener('mouseenter', () => {
+                btn.style.background = 'rgba(88,166,255,0.2)';
+                btn.style.transform = 'translateY(-2px)';
+            });
+            btn.addEventListener('mouseleave', () => {
+                btn.style.background = btn.dataset.name.includes('Wonder') ? 'rgba(255,215,0,0.1)' : 'rgba(255,255,255,0.05)';
+                btn.style.transform = 'translateY(0)';
+            });
+        });
+    }
+
+    showSpecialistsModal(city) {
+        const specs = city.specialists;
+        const gpPoints = city.greatPersonPoints;
+
+        let html = '<div style="padding:1rem;">';
+        html += '<p style="color:var(--text-dim);font-size:0.75rem;margin-bottom:1rem;">Assign citizens as specialists to generate Great People points. Each specialist provides bonus yields but doesn\'t work tiles.</p>';
+
+        const specTypes = [
+            { key: 'scientist', label: 'Scientist', icon: '🧪', yield: '+3 Science per turn', gpKey: 'scientist' },
+            { key: 'merchant', label: 'Merchant', icon: '💼', yield: '+3 Gold per turn', gpKey: 'merchant' },
+            { key: 'engineer', label: 'Engineer', icon: '🔧', yield: '+2 Production per turn', gpKey: 'engineer' },
+            { key: 'artist', label: 'Artist', icon: '🎨', yield: '+3 Culture per turn', gpKey: null }
         ];
 
-        const allOptions = [
-            ...availableUnits.map(u => ({ ...u, optType: 'unit' })),
-            ...availableBuildings.map(b => ({ ...b, optType: 'building' })),
-            ...availableWonders.map(w => ({ ...w, optType: 'wonder' })),
-            ...specials.map(s => ({ ...s, optType: 'special' }))
-        ];
+        specTypes.forEach(s => {
+            const threshold = city.owner.greatPersonThreshold?.[s.gpKey] || 100;
+            const points = s.gpKey ? (gpPoints[s.gpKey] || 0) : 0;
+            const currentCount = specs[s.key] || 0;
 
-        allOptions.forEach(opt => {
-            const btn = document.createElement('button');
-            const isWonder = opt.optType === 'wonder';
-            btn.className = isWonder ? 'premium-btn primary' : 'premium-btn';
-            if (isWonder) btn.style.borderColor = 'var(--gold)';
+            html += `<div style="background:rgba(255,255,255,0.05);padding:12px;border-radius:8px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div>
+                        <div style="font-weight:700;font-size:0.85rem;">${s.icon} ${s.label}</div>
+                        <div style="font-size:0.7rem;color:var(--text-dim);">${s.yield}</div>
+                        ${s.gpKey ? `<div style="font-size:0.65rem;color:var(--accent-color);margin-top:4px;">GP Progress: ${points}/${threshold}</div>` : ''}
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <button class="spec-btn-minus" data-spec="${s.key}" style="width:32px;height:32px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;cursor:pointer;font-weight:700;">-</button>
+                        <span style="min-width:30px;text-align:center;font-weight:700;font-size:1.1rem;">${currentCount}</span>
+                        <button class="spec-btn-plus" data-spec="${s.key}" style="width:32px;height:32px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:4px;cursor:pointer;font-weight:700;">+</button>
+                    </div>
+                </div>
+            </div>`;
+        });
 
-            const costText = opt.cost > 0 ? ` (${opt.cost})` : '';
-            btn.innerHTML = `<span style="font-size:0.8rem">${opt.icon || '&#127959;'}</span> ${opt.name.toUpperCase()}${costText}`;
-            btn.title = opt.description || `Cost: ${opt.cost} | Shift+Click to purchase`;
+        html += `<div style="margin-top:1rem;padding:10px;background:rgba(88,166,255,0.1);border-radius:6px;font-size:0.7rem;color:var(--text-dim);">
+            💡 TIP: Specialists don't grow your city but provide powerful yields and generate Great People over time.
+        </div>`;
+        html += '</div>';
 
-            btn.onclick = (e) => {
-                e.stopPropagation();
-                if (e.shiftKey && opt.cost > 0) {
-                    if (city.purchaseItem(opt)) {
-                        this.notify(`Purchased ${opt.name}!`, 'production');
-                        this.showSelection(city);
-                        this.updateHUD(city.owner);
-                    } else {
-                        this.notify('Not enough gold!', 'warning');
-                    }
-                } else {
-                    this.game.handleAction(city, `Build ${opt.name}`);
-                    this.showSelection(city);
+        this.openModalContent(html, 'MANAGE SPECIALISTS');
+
+        // Bind specialist buttons
+        document.querySelectorAll('.spec-btn-minus, .spec-btn-plus').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const key = btn.dataset.spec;
+                const dir = btn.classList.contains('spec-btn-plus') ? 1 : -1;
+                const currentVal = city.specialists[key] || 0;
+                const newVal = currentVal + dir;
+
+                if (newVal >= 0 && newVal <= city.population) {
+                    city.specialists[key] = newVal;
+                    this.closeModal();
+                    this.showSpecialistsModal(city); // Refresh modal
                 }
-            };
-            actions.appendChild(btn);
+            });
         });
     }
 
@@ -2296,7 +2517,10 @@ export class UIManager {
     // ========================================================================
 
     selectNextUnitWithMoves() {
-        const player = this.game.getCurrentPlayer();
+        // ALWAYS select human player's units, NEVER AI units. Ignore if AI turn.
+        if (this.game.isAiTurn) return;
+        
+        const player = this.game.players[0]; // ALWAYS human player
         const readyUnits = player.units.filter(u => u.movementPoints > 0 && u.task === 'Ready');
         if (readyUnits.length === 0) return;
 
@@ -2331,7 +2555,11 @@ export class UIManager {
     }
 
     cycleUnits() {
-        const player = this.game.getCurrentPlayer();
+        // Never allow during AI turns
+        if (this.game.isAiTurn) return;
+        
+        // ALWAYS cycle through human player's units
+        const player = this.game.players[0];
         if (player.units.length === 0) return;
 
         this.selectedUnitIndex = (this.selectedUnitIndex + 1) % player.units.length;
@@ -2344,6 +2572,9 @@ export class UIManager {
     }
 
     shortcutFortify() {
+        // Never allow during AI turns
+        if (this.game.isAiTurn) return;
+        
         const entity = this.game.selectedEntity;
         if (entity && entity.type && entity.type.actions?.includes('Fortify')) {
             this.game.handleAction(entity, 'Fortify');
@@ -2351,6 +2582,9 @@ export class UIManager {
     }
 
     shortcutSkipTurn() {
+        // Never allow during AI turns
+        if (this.game.isAiTurn) return;
+        
         const entity = this.game.selectedEntity;
         if (entity && entity.type && entity.type.actions?.includes('Skip Turn')) {
             this.game.handleAction(entity, 'Skip Turn');

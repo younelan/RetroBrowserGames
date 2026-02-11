@@ -51,6 +51,11 @@ class Game {
             this.players.push(new AIPlayer(i, civs[i].name, civs[i].color));
         }
 
+        // Barbarian player — always last, not a real civilization
+        this.barbarianPlayer = new AIPlayer(99, 'Barbarians', '#888888');
+        this.barbarianPlayer.isBarbarian = true;
+        this.players.push(this.barbarianPlayer);
+
         this.currentPlayerIndex = 0;
         this.isAiTurn = false;
         this.wondersBuilt = new Set();
@@ -79,6 +84,13 @@ class Game {
         // Click tracking
         this.mouseDownPos = null;
         this.isDragging = false;
+
+        // Set barbarians at war with all civilizations
+        for (const p of this.players) {
+            if (p !== this.barbarianPlayer) {
+                this.diplomacy.declareWar(this.barbarianPlayer, p);
+            }
+        }
 
         // Initial Setup
         this.spawnInitialUnits();
@@ -113,6 +125,7 @@ class Game {
         const startLocations = this.worldMap.startLocations || [];
 
         this.players.forEach((player, index) => {
+            if (player.isBarbarian) return; // Skip barbarian player
             let startTile = startLocations[index];
 
             if (!startTile) {
@@ -155,6 +168,7 @@ class Game {
         
         // Recreate features after units are spawned to exclude unit positions
         this.renderer.createFeatures();
+        this.renderer.createResources();
     }
 
     spawnUnit(type, q, r, owner) {
@@ -274,7 +288,8 @@ class Game {
         const tile = this.worldMap.getTile(q, r);
         if (!tile) { this.ui.hideTooltip(); return; }
 
-        const player = this.getCurrentPlayer();
+        // ALWAYS show tooltips from human player's perspective
+        const player = this.players[0];
         if (!player.discoveredTiles.has(`${q},${r}`)) { this.ui.hideTooltip(); return; }
 
         let content = `<strong>${tile.terrain.name}</strong>`;
@@ -300,10 +315,14 @@ class Game {
     }
 
     handleHexClick(q, r) {
+        // Block all interactions during AI turns
+        if (this.isAiTurn) return;
+        
         const tile = this.worldMap.getTile(q, r);
         if (!tile) return;
 
-        const player = this.getCurrentPlayer();
+        // ALWAYS use human player for interactions, NEVER AI
+        const player = this.players[0];
 
         // Movement / Combat
         if (this.selectedEntity instanceof Unit && this.reachableTiles.has(`${q},${r}`)) {
@@ -406,18 +425,26 @@ class Game {
     // ====================================================================
 
     handleAction(entity, action) {
+        const isHumanPlayer = entity.owner === this.players[0];
+        
         if (action === 'Settle' && entity instanceof Unit) {
             const cityName = entity.owner.getNextCityName();
             const city = new City(cityName, entity.q, entity.r, entity.owner);
             entity.owner.units = entity.owner.units.filter(u => u !== entity);
-            this.selectedEntity = city;
-            this.ui.showSelection(city);
-            this.ui.notify(`Established the city of ${cityName}!`, 'production');
+            
+            // Only update UI for human player
+            if (isHumanPlayer) {
+                this.selectedEntity = city;
+                this.ui.showSelection(city);
+                this.ui.notify(`Established the city of ${cityName}!`, 'production');
+                this.ui.updateHUD(entity.owner);
+            }
+            
             entity.owner.updateDiscovery(entity.q, entity.r, 3);
             entity.owner.updateVisibility();
-            this.ui.updateHUD(entity.owner);
-            // Remove trees around the new city
+            // Remove trees around the new city and refresh resources
             this.renderer.createFeatures();
+            this.renderer.createResources();
         }
 
         // Worker improvements
@@ -439,24 +466,32 @@ class Game {
                 entity.workRemaining = wa.turns;
                 entity.workCallback = wa.cb;
                 entity.movementPoints = 0;
-                this.ui.notify(`Worker: ${wa.task} (${wa.turns} turns)`, 'production');
+                if (isHumanPlayer) {
+                    this.ui.notify(`Worker: ${wa.task} (${wa.turns} turns)`, 'production');
+                }
             }
 
             if (action === 'Harvest Resource' && tile.resource.name !== 'None') {
                 const goldGained = 150;
                 entity.owner.gold += goldGained;
-                this.ui.notify(`Harvested ${tile.resource.name}! (+${goldGained} Gold)`, 'production');
+                if (isHumanPlayer) {
+                    this.ui.notify(`Harvested ${tile.resource.name}! (+${goldGained} Gold)`, 'production');
+                }
                 tile.resource = ResourceType.NONE;
                 entity.movementPoints = 0;
             }
             if (action === 'Clear Forest' && tile.feature.name === 'Forest') {
                 const city = entity.owner.cities[0];
                 if (city) city.productionStored += 30;
-                this.ui.notify('Forest Cleared (+30 Production)', 'production');
+                if (isHumanPlayer) {
+                    this.ui.notify('Forest Cleared (+30 Production)', 'production');
+                }
                 tile.feature = FeatureType.NONE;
                 entity.movementPoints = 0;
             }
-            this.ui.showSelection(entity);
+            if (isHumanPlayer) {
+                this.ui.showSelection(entity);
+            }
         }
 
         // Great Person actions
@@ -465,35 +500,49 @@ class Game {
             if (action === 'Academy') {
                 tile.improvement = { name: 'Academy', icon: '🎓', food: 0, prod: 0, gold: 0, science: 8 };
                 entity.owner.units = entity.owner.units.filter(u => u !== entity);
-                this.ui.notify('Academy created! (+8 Science)', 'research');
+                if (isHumanPlayer) {
+                    this.ui.notify('Academy created! (+8 Science)', 'research');
+                }
             } else if (action === 'Eureka') {
                 entity.owner.science += 200;
                 entity.owner.units = entity.owner.units.filter(u => u !== entity);
-                this.ui.notify('Eureka! (+200 Science)', 'research');
+                if (isHumanPlayer) {
+                    this.ui.notify('Eureka! (+200 Science)', 'research');
+                }
             } else if (action === 'Custom House') {
                 tile.improvement = { name: 'Custom House', icon: '🏦', food: 0, prod: 0, gold: 8 };
                 entity.owner.units = entity.owner.units.filter(u => u !== entity);
-                this.ui.notify('Custom House created! (+8 Gold)', 'production');
+                if (isHumanPlayer) {
+                    this.ui.notify('Custom House created! (+8 Gold)', 'production');
+                }
             } else if (action === 'Trade Mission') {
                 entity.owner.gold += 350;
                 entity.owner.units = entity.owner.units.filter(u => u !== entity);
-                this.ui.notify('Trade Mission! (+350 Gold)', 'production');
+                if (isHumanPlayer) {
+                    this.ui.notify('Trade Mission! (+350 Gold)', 'production');
+                }
             } else if (action === 'Manufactory') {
                 tile.improvement = { name: 'Manufactory', icon: '🏭', food: 0, prod: 6, gold: 0 };
                 entity.owner.units = entity.owner.units.filter(u => u !== entity);
-                this.ui.notify('Manufactory created! (+6 Production)', 'production');
+                if (isHumanPlayer) {
+                    this.ui.notify('Manufactory created! (+6 Production)', 'production');
+                }
             } else if (action === 'Rush Wonder') {
                 const city = entity.owner.cities.find(c => c.q === entity.q && c.r === entity.r);
                 if (city) city.productionStored += 300;
                 entity.owner.units = entity.owner.units.filter(u => u !== entity);
-                this.ui.notify('Great Engineer rushes production! (+300)', 'production');
+                if (isHumanPlayer) {
+                    this.ui.notify('Great Engineer rushes production! (+300)', 'production');
+                }
             } else if (action === 'Citadel') {
                 tile.improvement = { name: 'Citadel', icon: '🏰', food: 0, prod: 0, gold: 0 };
                 tile.owner = entity.owner;
                 entity.owner.units = entity.owner.units.filter(u => u !== entity);
-                this.ui.notify('Citadel created! (claims territory)', 'combat');
+                if (isHumanPlayer) {
+                    this.ui.notify('Citadel created! (claims territory)', 'combat');
+                }
             }
-            if (this.selectedEntity === entity) {
+            if (isHumanPlayer && this.selectedEntity === entity) {
                 this.selectedEntity = null;
                 this.ui.hideSelection();
             }
@@ -504,18 +553,34 @@ class Game {
             entity.isFortified = true;
             entity.movementPoints = 0;
             entity.task = 'Fortified';
-            this.ui.notify('Unit Fortified! (+50% Defense) Defensive barricades constructed.', 'combat');
-            this.ui.showSelection(entity);
+            if (isHumanPlayer) {
+                this.ui.notify('Unit Fortified! (+50% Defense) Defensive barricades constructed.', 'combat');
+                this.ui.showSelection(entity);
+            }
             // Force visual update by recreating the sprite
             this.renderer.updateUnits(this);
         }
         if (action === 'Skip Turn' && entity instanceof Unit) {
             entity.movementPoints = 0;
             entity.task = 'Sentry';
-            this.ui.showSelection(entity);
+            if (isHumanPlayer) {
+                this.ui.showSelection(entity);
+            }
         }
         if (action === 'Explore' && entity instanceof Unit) {
             this.autoMove(entity);
+        }
+        if (action === 'Upgrade' && entity instanceof Unit) {
+            const target = entity.getUpgradeType();
+            if (target && entity.canUpgrade()) {
+                const cost = entity.getUpgradeCost();
+                entity.upgrade();
+                this.ui.notify(`Upgraded to ${target.name}! (-${cost} Gold)`, 'production');
+                this.ui.showSelection(entity);
+                this.ui.updateHUD(this.getCurrentPlayer());
+            } else {
+                this.ui.notify('Cannot upgrade here!', 'warning');
+            }
         }
 
         // City Production
@@ -600,11 +665,17 @@ class Game {
         city.cityHP = city.maxCityHP;
         city.population = Math.max(1, Math.floor(city.population / 2));
 
-        this.ui.notify(`CITY CAPTURED! ${city.name} is now yours.`, 'combat');
-        this.ui.updateHUD(newOwner);
+        // Only show UI if human player is involved
+        const isHumanPlayer = newOwner === this.players[0] || oldOwner === this.players[0];
+        if (isHumanPlayer) {
+            this.ui.notify(`CITY CAPTURED! ${city.name} is now ${newOwner === this.players[0] ? 'yours' : 'controlled by ' + newOwner.name}.`, 'combat');
+            this.ui.updateHUD(this.players[0]);
+        }
 
         if (oldOwner.cities.length === 0) {
-            this.ui.notify(`${oldOwner.name} has been eliminated!`, 'combat');
+            if (isHumanPlayer) {
+                this.ui.notify(`${oldOwner.name} has been eliminated!`, 'combat');
+            }
             this.checkVictory(newOwner);
         }
     }
@@ -620,20 +691,33 @@ class Game {
             this.renderer.addCombatEffect(defender.q, defender.r, '#ff4444');
         }
 
+        // Only show notifications if human player is involved
+        const isHumanInvolved = attacker.owner === this.players[0] || defender.owner === this.players[0];
+        
         const defName = defender.isCity ? defender.name : defender.type.name;
-        this.ui.notify(`Combat! ${attacker.type.name} vs ${defName} (-${result.defenderDamage} / -${result.attackerDamage})`, 'combat');
+        if (isHumanInvolved) {
+            this.ui.notify(`Combat! ${attacker.type.name} vs ${defName} (-${result.defenderDamage} / -${result.attackerDamage})`, 'combat');
+        }
 
         if (result.killed.attacker) {
             attacker.owner.units = attacker.owner.units.filter(u => u !== attacker);
-            this.selectedEntity = null;
-            this.ui.notify(`${attacker.type.name} destroyed!`, 'combat');
+            if (attacker.owner === this.players[0]) {
+                this.selectedEntity = null;
+            }
+            if (isHumanInvolved) {
+                this.ui.notify(`${attacker.type.name} destroyed!`, 'combat');
+            }
         }
         if (result.killed.defender) {
             if (defender.isCity) {
-                this.ui.notify(`${defender.name} defenses destroyed! Move in to capture!`, 'combat');
+                if (isHumanInvolved) {
+                    this.ui.notify(`${defender.name} defenses destroyed! Move in to capture!`, 'combat');
+                }
             } else {
                 defender.owner.units = defender.owner.units.filter(u => u !== defender);
-                this.ui.notify(`${defName} defeated!`, 'combat');
+                if (isHumanInvolved) {
+                    this.ui.notify(`${defName} defeated!`, 'combat');
+                }
             }
         }
     }
@@ -654,7 +738,8 @@ class Game {
             if (isNear) {
                 player.metPlayers.add(other.id);
                 other.metPlayers.add(player.id);
-                if (player === this.getCurrentPlayer()) {
+                // Only show diplomacy UI if it's the HUMAN player meeting someone
+                if (player === this.players[0]) {
                     this.ui.showDiplomacy(other);
                 }
             }
@@ -663,6 +748,12 @@ class Game {
 
     // ====================================================================
     //  TURN MANAGEMENT
+    //  
+    //  CRITICAL ARCHITECTURE:
+    //  - UI/Camera/Selection: ALWAYS from human player (players[0]) perspective
+    //  - Rendering: ALWAYS shows all visible units based on fog of war
+    //  - During AI turns: Game state updates but NO UI/camera changes
+    //  - Turn cycling only affects who can take actions, not what's displayed
     // ====================================================================
 
     async endTurn() {
@@ -685,33 +776,49 @@ class Game {
                 // ignore errors during auto-move
             }
 
-        this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
-        const nextPlayer = this.getCurrentPlayer();
+        // Clear selection when ending turn to prevent viewing/controlling other civs' entities
+        this.selectedEntity = null;
+        this.reachableTiles = new Map();
 
-        if (nextPlayer instanceof AIPlayer) {
-            this.isAiTurn = true;
-            await new Promise(resolve => setTimeout(resolve, 200));
-            nextPlayer.takeTurn(this);
-            this.endTurn();
-        } else {
-            this.isAiTurn = false;
-            this.turn++;
+        // Loop through all AI players until we return to the human player
+        while (true) {
+            // Cycle to next player, skipping barbarians
+            do {
+                this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
+            } while (this.players[this.currentPlayerIndex].isBarbarian);
+            
+            const nextPlayer = this.getCurrentPlayer();
 
-            this.diplomacy.updateTurn();
-            this.spawnBarbarians();
-            this.checkVictory(nextPlayer);
+            if (nextPlayer instanceof AIPlayer) {
+                // AI turn - process it silently without UI updates
+                this.isAiTurn = true;
+                await new Promise(resolve => setTimeout(resolve, 100));
+                nextPlayer.takeTurn(this);
+                // Loop continues to next player
+            } else {
+                // It's the human player's turn again - exit the loop
+                this.isAiTurn = false;
+                this.turn++;
 
-            if (this.turn % 10 === 0) {
-                this.autoSave();
-            }
+                this.diplomacy.updateTurn();
+                this.spawnBarbarians();
+                this.checkVictory(nextPlayer);
 
-            this.ui.updateHUD(nextPlayer);
-            this.ui.notify(`Turn ${this.turn}`, 'info');
+                if (this.turn % 10 === 0) {
+                    this.autoSave();
+                }
 
-            const newEra = this.techTree.getCurrentEra(nextPlayer.unlockedTechs);
-            if (newEra !== nextPlayer.currentEra) {
-                nextPlayer.currentEra = newEra;
-                this.ui.showEraNotification(newEra);
+                this.ui.updateHUD(nextPlayer);
+                this.ui.hideSelection(); // Hide panel since selection was cleared
+                this.ui.notify(`Turn ${this.turn}`, 'info');
+
+                const newEra = this.techTree.getCurrentEra(nextPlayer.unlockedTechs);
+                if (newEra !== nextPlayer.currentEra) {
+                    nextPlayer.currentEra = newEra;
+                    this.ui.showEraNotification(newEra);
+                }
+                
+                break; // Exit the loop - human's turn now
             }
         }
     }
@@ -784,18 +891,27 @@ class Game {
     // ====================================================================
 
     getNextUnit() {
-        const player = this.getCurrentPlayer();
+        // ALWAYS get human player's units, NEVER AI units
+        const player = this.players[0];
         const unitsWithMoves = player.units.filter(u => u.movementPoints > 0 && u.task === 'Ready');
         if (unitsWithMoves.length === 0) return null;
 
-        if (this.selectedEntity instanceof Unit) {
+        // If current selection is a unit with moves, get the next one
+        if (this.selectedEntity && this.selectedEntity.type && this.selectedEntity.type.name) {
             const idx = unitsWithMoves.indexOf(this.selectedEntity);
-            return unitsWithMoves[(idx + 1) % unitsWithMoves.length];
+            if (idx >= 0) {
+                // Return next unit in the list, wrapping around
+                return unitsWithMoves[(idx + 1) % unitsWithMoves.length];
+            }
         }
+        // Otherwise return first unit with moves
         return unitsWithMoves[0];
     }
 
     selectNextUnit() {
+        // Never allow this during AI turns
+        if (this.isAiTurn) return;
+        
         const next = this.getNextUnit();
         if (next) {
             this.selectedEntity = next;

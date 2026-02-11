@@ -1,6 +1,6 @@
 export const TerrainType = {
-    OCEAN: { name: 'Ocean', color: '#0f2b4a', food: 1, prod: 0, gold: 1, moveCost: 99, icon: '🌊', impassable: true },
-    COAST: { name: 'Coast', color: '#1a4a7a', food: 1, prod: 0, gold: 2, moveCost: 99, icon: '🏖️' },
+    OCEAN: { name: 'Ocean', color: '#0f2b4a', food: 1, prod: 0, gold: 1, moveCost: 99, icon: '🌊', impassable: true, water: true, deepWater: true },
+    COAST: { name: 'Coast', color: '#1a4a7a', food: 1, prod: 0, gold: 2, moveCost: 99, icon: '🏖️', water: true },
     GRASSLAND: { name: 'Grassland', color: '#3d8b37', food: 2, prod: 0, gold: 0, moveCost: 1, icon: '' },
     PLAINS: { name: 'Plains', color: '#b8a44c', food: 1, prod: 1, gold: 0, moveCost: 1, icon: '' },
     HILLS: { name: 'Hills', color: '#7a8a3e', food: 1, prod: 2, gold: 0, moveCost: 2, icon: '⛰️', defense: 0.25 },
@@ -81,7 +81,25 @@ export class HexTile {
         this.cultureLevel = 0;
     }
 
-    getMoveCost() {
+    getMoveCost(unit) {
+        // Naval units move on water, not land
+        if (unit && unit.type.naval) {
+            if (this.terrain.water) {
+                if (this.terrain.deepWater && !unit.type.oceanCapable) return 99;
+                return 1;
+            }
+            return 99; // Naval units can't go on land
+        }
+        // Land units: water tiles cost all movement if embarked (SAILING required)
+        if (this.terrain.water) {
+            if (unit && unit.owner && unit.owner.unlockedTechs.has('SAILING') && !this.terrain.deepWater) {
+                return unit.isEmbarked ? 2 : unit.type.move; // Full movement to embark, 2 once embarked
+            }
+            if (unit && unit.owner && unit.owner.unlockedTechs.has('NAVIGATION') && this.terrain.deepWater) {
+                return unit.isEmbarked ? 2 : unit.type.move;
+            }
+            return 99;
+        }
         let cost = this.terrain.moveCost || 1;
         cost += (this.feature.moveCost || 0);
         if (this.hasRoad) cost = Math.max(0.5, cost * 0.5);

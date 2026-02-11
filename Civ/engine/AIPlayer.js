@@ -14,6 +14,17 @@ export class AIPlayer extends Player {
     }
 
     takeTurn(game) {
+        // Barbarian AI: just move and attack, nothing else
+        if (this.isBarbarian) {
+            const unitsCopy = [...this.units];
+            unitsCopy.forEach(unit => {
+                if (this.units.includes(unit)) {
+                    this.manageBarbarianUnit(unit, game);
+                }
+            });
+            return;
+        }
+
         // 1. Manage Units
         const unitsCopy = [...this.units];
         unitsCopy.forEach(unit => {
@@ -48,6 +59,45 @@ export class AIPlayer extends Player {
         // 6. Update yields
         this.updateVisibility();
         this.updateYields();
+    }
+
+    manageBarbarianUnit(unit, game) {
+        if (unit.movementPoints <= 0) return;
+
+        // Find nearest non-barbarian unit or city within 6 tiles
+        let bestTarget = null;
+        let bestDist = Infinity;
+        for (const p of game.players) {
+            if (p.isBarbarian) continue;
+            for (const u of p.units) {
+                const dist = game.worldMap.getDistance(unit.q, unit.r, u.q, u.r);
+                if (dist < bestDist && dist <= 6) {
+                    bestDist = dist;
+                    bestTarget = { q: u.q, r: u.r, isUnit: true, entity: u };
+                }
+            }
+            for (const c of p.cities) {
+                const dist = game.worldMap.getDistance(unit.q, unit.r, c.q, c.r);
+                if (dist < bestDist && dist <= 6) {
+                    bestDist = dist;
+                    bestTarget = { q: c.q, r: c.r, isUnit: false, entity: c };
+                }
+            }
+        }
+
+        if (bestTarget && bestDist <= 1) {
+            // Attack adjacent target
+            try {
+                game.resolveCombat(unit, bestTarget.entity);
+                unit.movementPoints = 0;
+            } catch (e) { /* ignore combat errors */ }
+        } else if (bestTarget) {
+            // Move toward target
+            this.moveToward(unit, bestTarget.q, bestTarget.r, game);
+        } else {
+            // Wander randomly
+            this.randomMove(unit, game);
+        }
     }
 
     manageUnit(unit, game) {
@@ -366,7 +416,10 @@ export class AIPlayer extends Player {
     moveToward(unit, targetQ, targetR, game) {
         if (unit.movementPoints <= 0) return;
         const neighbors = game.worldMap.getNeighbors(unit.q, unit.r);
-        const passable = neighbors.filter(n => !n.terrain.impassable && n.terrain.name !== 'Ocean');
+        const passable = neighbors.filter(n => {
+            if (unit.type.naval) return n.terrain.water && !(n.terrain.deepWater && !unit.type.oceanCapable);
+            return !n.terrain.impassable && !n.terrain.water;
+        });
         if (passable.length === 0) return;
 
         const target = passable.reduce((best, n) => {
@@ -383,7 +436,10 @@ export class AIPlayer extends Player {
 
     randomMove(unit, game) {
         const neighbors = game.worldMap.getNeighbors(unit.q, unit.r);
-        const passable = neighbors.filter(n => !n.terrain.impassable && n.terrain.name !== 'Ocean');
+        const passable = neighbors.filter(n => {
+            if (unit.type.naval) return n.terrain.water && !(n.terrain.deepWater && !unit.type.oceanCapable);
+            return !n.terrain.impassable && !n.terrain.water;
+        });
         if (passable.length > 0) {
             const target = passable[Math.floor(Math.random() * passable.length)];
             unit.move(target.q, target.r, 1);

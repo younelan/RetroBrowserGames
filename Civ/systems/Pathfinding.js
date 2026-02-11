@@ -1,5 +1,5 @@
 export class Pathfinding {
-    static getReachableTiles(startTile, worldMap, movementPoints) {
+    static getReachableTiles(startTile, worldMap, movementPoints, unit = null) {
         const reachable = new Map();
         const queue = [{ tile: startTile, cost: 0 }];
 
@@ -12,10 +12,16 @@ export class Pathfinding {
 
             const neighbors = worldMap.getNeighbors(tile.q, tile.r);
             for (const neighbor of neighbors) {
-                if (neighbor.terrain.impassable) continue;
+                // Naval units skip impassable land, land units skip impassable water
+                if (unit && unit.type.naval) {
+                    if (!neighbor.terrain.water) continue;
+                    if (neighbor.terrain.deepWater && !unit.type.oceanCapable) continue;
+                } else if (neighbor.terrain.impassable && !neighbor.terrain.water) {
+                    continue;
+                }
 
                 // Calculate terrain-aware movement cost
-                let moveCost = neighbor.getMoveCost ? neighbor.getMoveCost() : 1;
+                let moveCost = neighbor.getMoveCost ? neighbor.getMoveCost(unit) : 1;
 
                 // Minimum of 0.5 for roads
                 moveCost = Math.max(0.5, moveCost);
@@ -36,7 +42,7 @@ export class Pathfinding {
     }
 
     // A* pathfinding for movement path visualization
-    static findPath(startTile, endTile, worldMap) {
+    static findPath(startTile, endTile, worldMap, unit = null) {
         if (!startTile || !endTile) return [];
 
         const openSet = [startTile];
@@ -64,10 +70,15 @@ export class Pathfinding {
 
             const neighbors = worldMap.getNeighbors(current.q, current.r);
             for (const neighbor of neighbors) {
-                if (neighbor.terrain.impassable) continue;
+                if (unit && unit.type.naval) {
+                    if (!neighbor.terrain.water) continue;
+                    if (neighbor.terrain.deepWater && !unit.type.oceanCapable) continue;
+                } else if (neighbor.terrain.impassable && !neighbor.terrain.water) {
+                    continue;
+                }
 
                 const neighborKey = `${neighbor.q},${neighbor.r}`;
-                const moveCost = neighbor.getMoveCost ? neighbor.getMoveCost() : 1;
+                const moveCost = neighbor.getMoveCost ? neighbor.getMoveCost(unit) : 1;
                 const tentativeG = (gScore.get(currentKey) || Infinity) + moveCost;
 
                 if (tentativeG < (gScore.get(neighborKey) || Infinity)) {

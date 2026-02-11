@@ -183,6 +183,8 @@ body {
     bottom: 16px;
     left: 16px;
     width: 420px;
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
     padding: 1.25rem;
     animation: slideUp 0.3s ease-out;
     border-left: 3px solid var(--accent-color);
@@ -242,7 +244,7 @@ body {
 #research-tracker {
     position: absolute;
     top: 80px;
-    left: 16px;
+    right: 16px;
     width: 210px;
     padding: 0.9rem;
     z-index: 20;
@@ -552,4 +554,90 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.25);
+}
+
+/* ================================================================
+   MOBILE RESPONSIVE
+   ================================================================ */
+
+@media (max-width: 768px) {
+    #hud {
+        height: auto;
+        min-height: 44px;
+        padding: 6px 10px;
+        flex-wrap: wrap;
+        gap: 4px;
+        top: 4px;
+        left: 4px;
+        right: 4px;
+    }
+
+    .civ-info {
+        display: none;
+    }
+
+    .stats-group {
+        gap: 0.6rem;
+        flex-wrap: wrap;
+    }
+
+    .stat {
+        font-size: 0.75rem;
+        gap: 0.2rem;
+    }
+
+    .rate {
+        font-size: 0.6rem;
+    }
+
+    .turn-group {
+        gap: 0.5rem;
+    }
+
+    .premium-btn {
+        padding: 6px 10px;
+        font-size: 0.7rem;
+        min-height: 36px;
+    }
+
+    #selection-pane {
+        left: 4px;
+        right: 4px;
+        bottom: 4px;
+        width: auto;
+        max-height: 45vh;
+        overflow-y: auto;
+    }
+
+    #minimap-container {
+        display: none;
+    }
+
+    #cities-panel {
+        display: none;
+    }
+
+    #research-tracker {
+        top: auto;
+        bottom: 4px;
+        left: 4px;
+        right: 4px;
+        width: auto;
+        font-size: 0.7rem;
+    }
+
+    .action-btn {
+        min-height: 44px;
+        font-size: 0.8rem;
+    }
+
+    #tooltip {
+        display: none;
+    }
+
+    .modal-content {
+        width: 95vw !important;
+        height: 90vh !important;
+        margin: 2vh auto;
+    }
 }

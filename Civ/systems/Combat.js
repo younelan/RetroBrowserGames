@@ -3,6 +3,10 @@ export class CombatSystem {
         let attackerStrength = attacker.type.strength * (attacker.health / 100);
         let defenderStrength = defender.type.strength * (defender.health / 100);
 
+        // Embarked units suffer -75% combat strength
+        if (attacker.isEmbarked) attackerStrength *= 0.25;
+        if (defender.isEmbarked) defenderStrength *= 0.25;
+
         // Use ranged strength for ranged units if applicable
         const isRangedAttack = attacker.type.rangedStrength && attacker.type.range;
         if (isRangedAttack) {

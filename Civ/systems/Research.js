@@ -3,7 +3,7 @@ export const TechnologyData = {
     POTTERY: { id: 'POTTERY', name: 'Pottery', cost: 20, era: 'ancient', prerequisites: [], unlocks: ['Granary', 'Shrine'] },
     ANIMAL_HUSBANDRY: { id: 'ANIMAL_HUSBANDRY', name: 'Animal Husbandry', cost: 20, era: 'ancient', prerequisites: [], unlocks: ['Pasture', 'reveals Horses'] },
     MINING: { id: 'MINING', name: 'Mining', cost: 20, era: 'ancient', prerequisites: [], unlocks: ['Mine', 'Quarry'] },
-    SAILING: { id: 'SAILING', name: 'Sailing', cost: 20, era: 'ancient', prerequisites: [], unlocks: ['Coast movement'] },
+    SAILING: { id: 'SAILING', name: 'Sailing', cost: 20, era: 'ancient', prerequisites: [], unlocks: ['Galley', 'Embarkation'] },
 
     ARCHERY: { id: 'ARCHERY', name: 'Archery', cost: 35, era: 'ancient', prerequisites: ['ANIMAL_HUSBANDRY'], unlocks: ['Archer'] },
     WRITING: { id: 'WRITING', name: 'Writing', cost: 35, era: 'ancient', prerequisites: ['POTTERY'], unlocks: ['Library'] },
@@ -41,7 +41,7 @@ export const TechnologyData = {
     ARCHITECTURE: { id: 'ARCHITECTURE', name: 'Architecture', cost: 200, era: 'renaissance', prerequisites: ['BANKING'], unlocks: ['Sistine Chapel', 'Taj Mahal'] },
     CHEMISTRY: { id: 'CHEMISTRY', name: 'Chemistry', cost: 200, era: 'renaissance', prerequisites: ['GUNPOWDER'], unlocks: ['Cannon'] },
     METALLURGY: { id: 'METALLURGY', name: 'Metallurgy', cost: 200, era: 'renaissance', prerequisites: ['GUNPOWDER'], unlocks: ['Lancer'] },
-    NAVIGATION: { id: 'NAVIGATION', name: 'Navigation', cost: 200, era: 'renaissance', prerequisites: ['ASTRONOMY'], unlocks: ['Ocean navigation'] },
+    NAVIGATION: { id: 'NAVIGATION', name: 'Navigation', cost: 200, era: 'renaissance', prerequisites: ['ASTRONOMY'], unlocks: ['Caravel', 'Ocean movement'] },
     ECONOMICS: { id: 'ECONOMICS', name: 'Economics', cost: 200, era: 'renaissance', prerequisites: ['BANKING', 'PRINTING_PRESS'], unlocks: ['Windmill'] },
 
     // ===== INDUSTRIAL ERA =====
@@ -51,7 +51,7 @@ export const TechnologyData = {
     MILITARY_SCIENCE: { id: 'MILITARY_SCIENCE', name: 'Military Science', cost: 300, era: 'industrial', prerequisites: ['CHEMISTRY', 'ECONOMICS'], unlocks: ['Cavalry', 'Military Academy'] },
     BIOLOGY: { id: 'BIOLOGY', name: 'Biology', cost: 300, era: 'industrial', prerequisites: ['SCIENTIFIC_THEORY', 'CHEMISTRY'], unlocks: ['Hospital', 'Zoo'] },
     DYNAMITE: { id: 'DYNAMITE', name: 'Dynamite', cost: 350, era: 'industrial', prerequisites: ['MILITARY_SCIENCE'], unlocks: ['Artillery'] },
-    STEAM_POWER: { id: 'STEAM_POWER', name: 'Steam Power', cost: 300, era: 'industrial', prerequisites: ['INDUSTRIALIZATION', 'SCIENTIFIC_THEORY'], unlocks: ['Ironclad'] },
+    STEAM_POWER: { id: 'STEAM_POWER', name: 'Steam Power', cost: 300, era: 'industrial', prerequisites: ['INDUSTRIALIZATION', 'SCIENTIFIC_THEORY'], unlocks: ['Ironclad', 'Steamship'] },
     REPLACEABLE_PARTS: { id: 'REPLACEABLE_PARTS', name: 'Replaceable Parts', cost: 350, era: 'industrial', prerequisites: ['STEAM_POWER'], unlocks: ['Statue of Liberty'] },
     ELECTRICITY: { id: 'ELECTRICITY', name: 'Electricity', cost: 350, era: 'industrial', prerequisites: ['STEAM_POWER'], unlocks: ['Stock Exchange'] },
     RADIO: { id: 'RADIO', name: 'Radio', cost: 400, era: 'industrial', prerequisites: ['ELECTRICITY'], unlocks: ['Eiffel Tower', 'Broadcast Tower'] },

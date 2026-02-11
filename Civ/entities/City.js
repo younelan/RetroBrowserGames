@@ -233,11 +233,15 @@ export class City {
             this.population++;
             this.food -= foodNeeded;
             this.owner?.updateDiscovery(this.q, this.r, 2 + Math.floor(this.population / 3));
-            window.game?.ui?.notify(`${this.name} grows to ${this.population}!`);
+            if (window.game?.players && this.owner === window.game.players[0]) {
+                window.game?.ui?.notify(`${this.name} grows to ${this.population}!`);
+            }
         } else if (this.food < 0 && this.population > 1) {
             this.population--;
             this.food = 0;
-            window.game?.ui?.notify(`Starvation in ${this.name}!`);
+            if (window.game?.players && this.owner === window.game.players[0]) {
+                window.game?.ui?.notify(`Starvation in ${this.name}!`);
+            }
         }
 
         // Culture / Border expansion
@@ -300,7 +304,9 @@ export class City {
                 unit.experience = bonusXP;
             }
 
-            window.game?.ui?.notify(`${item.name} trained in ${this.name}!`);
+            if (window.game?.players && this.owner === window.game.players[0]) {
+                window.game?.ui?.notify(`${item.name} trained in ${this.name}!`);
+            }
         } else {
             // Building or Wonder
             const bId = Object.keys(BuildingType).find(key => BuildingType[key] === item) ||
@@ -316,14 +322,18 @@ export class City {
 
                 if (WonderType[bId]) {
                     window.game.wondersBuilt.add(bId);
-                    window.game?.ui?.notify(`WONDER COMPLETED: ${item.name}!`);
+                    if (window.game?.players && this.owner === window.game.players[0]) {
+                        window.game?.ui?.notify(`WONDER COMPLETED: ${item.name}!`);
+                    }
 
                     // Wonder special effects
                     if (WonderType[bId].freeTech) {
                         const available = window.game.techTree.getAvailableTechs(this.owner.unlockedTechs);
                         if (available.length > 0) {
                             this.owner.unlockedTechs.add(available[0].id);
-                            window.game?.ui?.notify(`Free tech: ${available[0].name}!`);
+                            if (window.game?.players && this.owner === window.game.players[0]) {
+                                window.game?.ui?.notify(`Free tech: ${available[0].name}!`);
+                            }
                         }
                     }
                     if (WonderType[bId].freeBuilding) {
@@ -333,7 +343,9 @@ export class City {
                         this.owner.startGoldenAge();
                     }
                 } else {
-                    window.game?.ui?.notify(`${item.name} completed in ${this.name}`);
+                    if (window.game?.players && this.owner === window.game.players[0]) {
+                        window.game?.ui?.notify(`${item.name} completed in ${this.name}`);
+                    }
                 }
             }
         }

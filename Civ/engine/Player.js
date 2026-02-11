@@ -158,7 +158,9 @@ export class Player {
             if (this.goldenAgeTurns <= 0) {
                 this.goldenAge = false;
                 this.goldenAgeThreshold = Math.floor(this.goldenAgeThreshold * 1.5);
-                window.game?.ui?.notify('Golden Age has ended');
+                if (window.game?.players && this === window.game.players[0]) {
+                    window.game?.ui?.notify('Golden Age has ended');
+                }
             }
         }
 
@@ -176,14 +178,18 @@ export class Player {
         this.goldenAge = true;
         this.goldenAgeTurns = duration;
         this.goldenAgeProgress = 0;
-        window.game?.ui?.notify('GOLDEN AGE BEGINS! (+1 Gold/Production in all cities)');
+        if (window.game?.players && this === window.game.players[0]) {
+            window.game?.ui?.notify('GOLDEN AGE BEGINS! (+1 Gold/Production in all cities)');
+        }
     }
 
     completeResearch() {
         if (!this.currentTech) return;
         this.unlockedTechs.add(this.currentTech.id);
         const name = this.currentTech.name;
-        window.game?.ui?.notify(`Discovered ${name}!`);
+        if (window.game?.players && this === window.game.players[0]) {
+            window.game?.ui?.notify(`Discovered ${name}!`);
+        }
         this.researchProgress = 0;
         this.currentTech = null;
 
@@ -236,7 +242,9 @@ export class Player {
 
         const capital = this.cities[0];
         window.game?.spawnUnit(unitType, capital.q, capital.r, this);
-        window.game?.ui?.notify(`A Great ${type.charAt(0).toUpperCase() + type.slice(1)} has been born!`);
+        if (window.game?.players && this === window.game.players[0]) {
+            window.game?.ui?.notify(`A Great ${type.charAt(0).toUpperCase() + type.slice(1)} has been born!`);
+        }
     }
 
     calculateScore() {
