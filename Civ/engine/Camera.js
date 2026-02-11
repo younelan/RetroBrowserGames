@@ -42,7 +42,7 @@ export class Camera {
         // Pan speed
         this.controls.panSpeed = 1.5;
         this.controls.rotateSpeed = 0.5;
-        this.controls.zoomSpeed = 1.0; // Base speed, will be adaptive
+        this.controls.zoomSpeed = 3.0; // Much faster base zoom speed
         
         // Setup adaptive zoom speed
         this.lastWheelTime = 0;
@@ -75,31 +75,33 @@ export class Camera {
     }
 
     setupAdaptiveZoom() {
-        // Override wheel event for adaptive zoom speed
+        // Adaptive zoom: scales smoothly with scroll magnitude
         this.canvas.addEventListener('wheel', (event) => {
-            const now = Date.now();
-            const timeDelta = now - this.lastWheelTime;
-            this.lastWheelTime = now;
-            
-            // Calculate wheel velocity (how fast user is scrolling)
             const wheelDelta = Math.abs(event.deltaY);
             
-            // Adaptive zoom: faster scrolling = higher speed multiplier
-            if (timeDelta < 100) {
-                // Quick successive scrolls - increase velocity
-                this.wheelVelocity = Math.min(this.wheelVelocity + wheelDelta * 0.02, 5.0);
+            // Scale zoom speed based on scroll magnitude
+            // Small scrolls: 1.5-3x, medium: 3-5x, large: 5-8x base speed
+            let zoomMultiplier;
+            if (wheelDelta < 10) {
+                // Very small scroll: gentle zoom
+                zoomMultiplier = 1.5 + (wheelDelta / 10) * 1.5;
+            } else if (wheelDelta < 50) {
+                // Medium scroll: moderate zoom
+                zoomMultiplier = 3.0 + ((wheelDelta - 10) / 40) * 2.0;
+            } else if (wheelDelta < 100) {
+                // Large scroll: fast zoom
+                zoomMultiplier = 5.0 + ((wheelDelta - 50) / 50) * 3.0;
             } else {
-                // Slow scroll - use lower speed
-                this.wheelVelocity = Math.max(wheelDelta * 0.01, 0.3);
+                // Very large scroll: maximum zoom speed
+                zoomMultiplier = 8.0 + Math.min((wheelDelta - 100) / 100, 4.0);
             }
             
-            // Apply adaptive speed (0.5x to 4x base speed)
-            this.controls.zoomSpeed = 0.5 + this.wheelVelocity * 0.7;
+            this.controls.zoomSpeed = zoomMultiplier;
             
-            // Decay velocity over time
+            // Reset to base speed after a moment
             setTimeout(() => {
-                this.wheelVelocity *= 0.85;
-            }, 50);
+                this.controls.zoomSpeed = 3.0;
+            }, 150);
         }, { passive: true });
     }
 
@@ -144,6 +146,11 @@ export class Camera {
         }
 
         this.controls.update();
+        
+        // Prevent camera target from going below ground
+        if (this.controls.target.y < 0) {
+            this.controls.target.y = 0;
+        }
     }
 
     // Resize handler

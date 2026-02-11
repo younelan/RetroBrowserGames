@@ -54,10 +54,10 @@ export class Renderer {
         this.threeRenderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.threeRenderer.toneMappingExposure = 1.1;
 
-        // Scene
+        // Scene with sky
         this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x08080c);
-        this.scene.fog = new THREE.FogExp2(0x0a1525, 0.00015);
+        this.createSkyGradient();
+        this.scene.fog = new THREE.FogExp2(0x8ab8e0, 0.00012);
 
         // Constants
         this.hexSize = worldMap.hexSize || 40;
@@ -139,6 +139,50 @@ export class Renderer {
     }
 
     // ========================================================================
+    //  SKY & ATMOSPHERE
+    // ========================================================================
+
+    createSkyGradient() {
+        // Create hemisphere background with gradient
+        const vertexShader = `
+            varying vec3 vWorldPosition;
+            void main() {
+                vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+                vWorldPosition = worldPosition.xyz;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        
+        const fragmentShader = `
+            uniform vec3 topColor;
+            uniform vec3 bottomColor;
+            varying vec3 vWorldPosition;
+            void main() {
+                float h = normalize(vWorldPosition).y;
+                gl_FragColor = vec4(mix(bottomColor, topColor, max(h, 0.0)), 1.0);
+            }
+        `;
+        
+        const uniforms = {
+            topColor: { value: new THREE.Color(0x5599dd) },    // Sky blue
+            bottomColor: { value: new THREE.Color(0x8ab8e0) }  // Lighter horizon
+        };
+        
+        const skyGeo = new THREE.SphereGeometry(15000, 32, 15);
+        const skyMat = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            side: THREE.BackSide
+        });
+        
+        const sky = new THREE.Mesh(skyGeo, skyMat);
+        this.scene.add(sky);
+    }
+
+
+
+    // ========================================================================
     //  LIGHTING
     // ========================================================================
 
@@ -155,16 +199,7 @@ export class Renderer {
         // Main directional sun light - bright midday sun
         const sun = new THREE.DirectionalLight(0xfffaf0, 2.0);
         sun.position.set(800, 1200, -400);
-        sun.castShadow = true;
-        sun.shadow.mapSize.width = 2048;
-        sun.shadow.mapSize.height = 2048;
-        sun.shadow.camera.left = -3000;
-        sun.shadow.camera.right = 3000;
-        sun.shadow.camera.top = 3000;
-        sun.shadow.camera.bottom = -3000;
-        sun.shadow.camera.near = 100;
-        sun.shadow.camera.far = 5000;
-        sun.shadow.bias = -0.0005;
+        sun.castShadow = false; // Disabled to prevent shadow artifacts
         this.scene.add(sun);
         this.sunLight = sun;
 
@@ -194,13 +229,13 @@ export class Renderer {
             maxZ = Math.max(maxZ, worldPos.z);
         }
 
-        // Add a small margin around the map
-        const margin = this.hexSize * 4;
+        // Add a larger margin to blend terrain edges
+        const margin = this.hexSize * 8;
         const totalW = (maxX - minX) + margin * 2;
         const totalH = (maxZ - minZ) + margin * 2;
 
         // Resolution for the terrain plane - higher for better detail
-        const res = 200;
+        const res = 240;
         const geometry = new THREE.PlaneGeometry(totalW, totalH, res, res);
         geometry.rotateX(-Math.PI / 2);
 
@@ -222,13 +257,13 @@ export class Renderer {
         const fbmNoise = (x, z) => {
             let total = 0;
             let amplitude = 1;
-            let frequency = 0.05;
-            for (let i = 0; i < 3; i++) {
+            let frequency = 0.04;
+            for (let i = 0; i < 4; i++) {
                 total += noise(x, z, frequency) * amplitude;
                 amplitude *= 0.5;
-                frequency *= 2.1;
+                frequency *= 2.3;
             }
-            return total / 1.75;
+            return total / 1.93;
         };
 
         for (let i = 0; i < posAttr.count; i++) {
@@ -244,7 +279,8 @@ export class Renderer {
 
             // Add layered terrain detail variations (very gentle but visible)
             const terrainDetail = fbmNoise(vx, vz) - 0.5;
-            const heightVariation = terrainDetail * 2.5;
+            const fineDetail = noise(vx * 2.5, vz * 2.5, 0.35) - 0.5;
+            const heightVariation = terrainDetail * 2.8 + fineDetail * 0.8;
 
             // Biome color sampling
             const hq = Math.round(fq);
@@ -257,15 +293,20 @@ export class Renderer {
                 
                 const tName = tile.terrain.name;
                 if (tName === 'Ocean' || tName === 'Coast') {
-                    terrainColor.multiplyScalar(0.7);
+                    // Ocean tiles get depth-based shading
+                    const depthFactor = 0.6 + (elevation - 0.3) * 0.4;
+                    terrainColor.multiplyScalar(depthFactor);
                 } else {
                     // Add multi-scale color variation for natural texture
                     const colorDetail = fbmNoise(vx * 1.5, vz * 1.5) - 0.5;
                     const microColor = noise(vx, vz, 0.22) - 0.5;
+                    const fineColor = noise(vx * 3.2, vz * 3.2, 0.45) - 0.5;
+                    
+                    // Vary hue, saturation, and lightness for rich texture
                     terrainColor.offsetHSL(
-                        microColor * 0.02,
-                        colorDetail * 0.25,
-                        (colorDetail * 0.12) + (elevation - 0.5) * 0.1
+                        microColor * 0.015,
+                        colorDetail * 0.3 + fineColor * 0.15,
+                        (colorDetail * 0.15 + fineColor * 0.08) + (elevation - 0.5) * 0.12
                     );
                 }
             }
@@ -286,11 +327,11 @@ export class Renderer {
 
         const material = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            roughness: 0.88,
-            metalness: 0.01,
+            roughness: 0.9,
+            metalness: 0.0,
             flatShading: false,
-            normalScale: new THREE.Vector2(0.5, 0.5),
-            envMapIntensity: 0.4
+            normalScale: new THREE.Vector2(0.6, 0.6),
+            envMapIntensity: 0.3
         });
 
         const terrainMesh = new THREE.Mesh(geometry, material);
@@ -307,7 +348,11 @@ export class Renderer {
 
     createPickingMeshes() {
         const pickingGeo = new THREE.CylinderGeometry(this.hexSize, this.hexSize, 10, 6);
-        const pickingMat = new THREE.MeshBasicMaterial({ visible: false });
+        const pickingMat = new THREE.MeshBasicMaterial({ 
+            visible: false,
+            colorWrite: false,
+            depthWrite: false
+        });
 
         for (const [key, tile] of this.worldMap.tiles) {
             const worldPos = this.hexToWorld(tile.q, tile.r, tile.elevation);
@@ -315,6 +360,9 @@ export class Renderer {
             mesh.position.set(worldPos.x, worldPos.y, worldPos.z);
             mesh.userData.q = tile.q;
             mesh.userData.r = tile.r;
+            mesh.userData.isPickingMesh = true; // Mark as picking mesh
+            mesh.visible = false; // Ensure mesh itself is invisible
+            mesh.renderOrder = -999; // Render early and skip
             this.scene.add(mesh);
             this.hexMeshes.set(key, mesh);
         }
@@ -347,29 +395,45 @@ export class Renderer {
     // ========================================================================
 
     createWater() {
-        // Large water plane at coast level
+        // Very large water plane to extend beyond visible horizon
         const waterLevel = this.heightScale * 0.38;
+        
+        // Calculate map center to position water properly
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+        for (const [key, tile] of this.worldMap.tiles) {
+            const worldPos = this.hexToWorld(tile.q, tile.r, 0);
+            minX = Math.min(minX, worldPos.x);
+            maxX = Math.max(maxX, worldPos.x);
+            minZ = Math.min(minZ, worldPos.z);
+            maxZ = Math.max(maxZ, worldPos.z);
+        }
+        const centerX = (minX + maxX) * 0.5;
+        const centerZ = (minZ + maxZ) * 0.5;
+        
         const width = this.worldMap.width;
         const height = this.worldMap.height;
-        const size = Math.max(width, height) * this.hexSize * 3;
+        const size = Math.max(width, height) * this.hexSize * 10;
 
-        const waterGeo = new THREE.PlaneGeometry(size, size, 64, 64);
+        const waterGeo = new THREE.PlaneGeometry(size, size, 32, 32);
         waterGeo.rotateX(-Math.PI / 2);
 
         const waterMat = new THREE.MeshStandardMaterial({
-            color: 0x1a6090,
+            color: 0x165a82,
             transparent: true,
-            opacity: 0.7,
-            roughness: 0.05,
-            metalness: 0.5,
-            emissive: 0x0a1a2a,
-            emissiveIntensity: 0.2,
-            side: THREE.FrontSide // Use FrontSide only to fix "black patches"
+            opacity: 0.85,
+            roughness: 0.95,
+            metalness: 0.0,
+            emissive: 0x0a2030,
+            emissiveIntensity: 0.18,
+            side: THREE.DoubleSide,
+            flatShading: false,
+            fog: false
         });
 
         this.waterMesh = new THREE.Mesh(waterGeo, waterMat);
-        this.waterMesh.position.y = waterLevel;
-        this.waterMesh.receiveShadow = true;
+        this.waterMesh.position.set(centerX, waterLevel, centerZ);
+        this.waterMesh.receiveShadow = false;
+        this.waterMesh.castShadow = false;
         this.scene.add(this.waterMesh);
 
         this.waterBaseY = waterLevel;
@@ -737,6 +801,9 @@ export class Renderer {
 
                 const mesh = this.hexMeshes.get(key);
                 if (!mesh) continue;
+                
+                // Skip picking meshes - they should always be invisible
+                if (mesh.userData.isPickingMesh) continue;
 
                 if (newState === 'hidden') {
                     mesh.visible = false;
@@ -1545,21 +1612,28 @@ export class Renderer {
         // Sync 3D camera from 2D camera wrapper
         this._syncCamera();
 
-        // Animate water
+        // Animate water with smooth continuous waves
         if (this.waterMesh) {
-            this.waterMesh.position.y = this.waterBaseY + Math.sin(this.time * 0.8) * 0.5;
+            // Gentle rise and fall of overall water level
+            this.waterMesh.position.y = this.waterBaseY + Math.sin(this.time * 0.4) * 0.25;
 
-            // Subtle vertex animation for waves
+            // Smooth vertex animation for continuous ocean waves
             const posAttr = this.waterMesh.geometry.attributes.position;
             if (posAttr) {
                 for (let i = 0; i < posAttr.count; i++) {
                     const x = posAttr.getX(i);
                     const z = posAttr.getZ(i);
-                    const waveY = Math.sin(x * 0.005 + this.time * 1.2) * 1.5
-                        + Math.cos(z * 0.007 + this.time * 0.9) * 1.0;
-                    posAttr.setY(i, waveY);
+                    
+                    // Smoother wave patterns with gradual transitions
+                    const wave1 = Math.sin(x * 0.002 + z * 0.0015 + this.time * 0.8) * 1.0;
+                    const wave2 = Math.cos(x * 0.005 - z * 0.004 + this.time * 1.2) * 0.6;
+                    const wave3 = Math.sin(x * 0.008 + z * 0.006 - this.time * 0.6) * 0.4;
+                    const ripple = Math.cos(x * 0.015 - z * 0.012 + this.time * 1.5) * 0.15;
+                    
+                    posAttr.setY(i, wave1 + wave2 + wave3 + ripple);
                 }
                 posAttr.needsUpdate = true;
+                this.waterMesh.geometry.computeVertexNormals();
             }
         }
 
@@ -1592,12 +1666,12 @@ export class Renderer {
                 }
             }
 
-            // Selected entity highlight
+            // Selected entity highlight - subtle outline instead of filled white
             if (game.selectedEntity) {
                 const e = game.selectedEntity;
                 const tile = e.tile || this.worldMap.getTile(e.q, e.r);
                 if (tile) {
-                    this._addHighlightHex(tile, 0xffffff, 0.4);
+                    this._addHighlightOutline(tile, 0xffee44, 0.8);
                 }
             }
         }
@@ -1605,11 +1679,11 @@ export class Renderer {
         // Golden age glow (adjust scene tint)
         if (player && player.goldenAge) {
             const pulse = 0.08 + Math.sin(this.time * 1.5) * 0.03;
-            this.scene.fog.color.set(0x2a1800);
-            this.scene.fog.density = 0.00008;
+            this.scene.fog.color.set(0xf5e6cc);
+            this.scene.fog.density = 0.00009;
         } else {
-            this.scene.fog.color.set(0x0a1525);
-            this.scene.fog.density = 0.00015;
+            this.scene.fog.color.set(0xb8d8f0);
+            this.scene.fog.density = 0.00012;
         }
 
         // Render the 3D scene
@@ -1619,36 +1693,31 @@ export class Renderer {
         this.drawMiniMap();
     }
 
-    _addHighlightHex(tile, color, opacity) {
+    _addHighlightOutline(tile, color, opacity) {
         const worldPos = this.hexToWorld(tile.q, tile.r, tile.elevation);
         const topY = Math.max(worldPos.y, this.heightScale * 0.35) + 1.5;
 
-        // Filled hex overlay
-        const hexShape = new THREE.Shape();
-        for (let i = 0; i < 6; i++) {
+        // Create hex outline (ring)
+        const points = [];
+        for (let i = 0; i <= 6; i++) {
             const angle = (60 * i) * Math.PI / 180;
             const vx = this.hexSize * 0.95 * Math.cos(angle);
             const vz = this.hexSize * 0.95 * Math.sin(angle);
-            if (i === 0) hexShape.moveTo(vx, vz);
-            else hexShape.lineTo(vx, vz);
+            points.push(new THREE.Vector3(vx, 0, vz));
         }
-        hexShape.closePath();
 
-        const fillGeo = new THREE.ShapeGeometry(hexShape);
-        fillGeo.rotateX(-Math.PI / 2);
-
-        const fillMat = new THREE.MeshBasicMaterial({
+        const outlineGeo = new THREE.BufferGeometry().setFromPoints(points);
+        const outlineMat = new THREE.LineBasicMaterial({
             color: color,
             transparent: true,
             opacity: opacity,
-            side: THREE.DoubleSide,
-            depthWrite: false
+            linewidth: 3
         });
 
-        const fill = new THREE.Mesh(fillGeo, fillMat);
-        fill.position.set(worldPos.x, topY + 0.3, worldPos.z);
-        this.scene.add(fill);
-        this.highlightMeshes.push(fill);
+        const outline = new THREE.LineLoop(outlineGeo, outlineMat);
+        outline.position.set(worldPos.x, topY + 0.3, worldPos.z);
+        this.scene.add(outline);
+        this.highlightMeshes.push(outline);
     }
 
     // ========================================================================
