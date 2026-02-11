@@ -31,8 +31,9 @@ export class Camera {
         this.controls.screenSpacePanning = true;
 
         // Zoom limits
-        this.controls.minDistance = 100;
-        this.controls.maxDistance = 4000;
+        // Zoom limits — allow much closer and farther zoom for flexibility
+        this.controls.minDistance = 40;
+        this.controls.maxDistance = 8000;
 
         // Angle limits (keep it strategy-view, not looking up)
         this.controls.maxPolarAngle = Math.PI * 0.42; // Max ~75 degrees from top
@@ -41,7 +42,12 @@ export class Camera {
         // Pan speed
         this.controls.panSpeed = 1.5;
         this.controls.rotateSpeed = 0.5;
-        this.controls.zoomSpeed = 1.2;
+        this.controls.zoomSpeed = 1.0; // Base speed, will be adaptive
+        
+        // Setup adaptive zoom speed
+        this.lastWheelTime = 0;
+        this.wheelVelocity = 0;
+        this.setupAdaptiveZoom();
 
         // Mouse buttons: left=pan, middle=rotate, right=rotate
         this.controls.mouseButtons = {
@@ -66,6 +72,35 @@ export class Camera {
         this.targetLookAt = null;
         this.animating = false;
         this.animSpeed = 0.08;
+    }
+
+    setupAdaptiveZoom() {
+        // Override wheel event for adaptive zoom speed
+        this.canvas.addEventListener('wheel', (event) => {
+            const now = Date.now();
+            const timeDelta = now - this.lastWheelTime;
+            this.lastWheelTime = now;
+            
+            // Calculate wheel velocity (how fast user is scrolling)
+            const wheelDelta = Math.abs(event.deltaY);
+            
+            // Adaptive zoom: faster scrolling = higher speed multiplier
+            if (timeDelta < 100) {
+                // Quick successive scrolls - increase velocity
+                this.wheelVelocity = Math.min(this.wheelVelocity + wheelDelta * 0.02, 5.0);
+            } else {
+                // Slow scroll - use lower speed
+                this.wheelVelocity = Math.max(wheelDelta * 0.01, 0.3);
+            }
+            
+            // Apply adaptive speed (0.5x to 4x base speed)
+            this.controls.zoomSpeed = 0.5 + this.wheelVelocity * 0.7;
+            
+            // Decay velocity over time
+            setTimeout(() => {
+                this.wheelVelocity *= 0.85;
+            }, 50);
+        }, { passive: true });
     }
 
     // Smoothly center camera on a hex position
@@ -139,9 +174,11 @@ export class Camera {
 
     // Convert screen position to hex coordinates via raycasting
     screenToHex(screenX, screenY, raycaster, hexMeshes) {
+        // Use the canvas DOM rect (CSS pixels) so clicks align with displayed size
+        const rect = this.canvas.getBoundingClientRect();
         const mouse = new THREE.Vector2(
-            (screenX / this.canvas.width) * 2 - 1,
-            -(screenY / this.canvas.height) * 2 + 1
+            ((screenX - rect.left) / rect.width) * 2 - 1,
+            -((screenY - rect.top) / rect.height) * 2 + 1
         );
 
         raycaster.setFromCamera(mouse, this.camera);

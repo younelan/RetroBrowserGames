@@ -17,8 +17,9 @@ class Game {
     constructor(config = {}) {
         window.game = this;
         this.canvas = document.getElementById('game-canvas');
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        const size = Math.min(window.innerWidth, window.innerHeight);
+        this.canvas.width = size;
+        this.canvas.height = size;
 
         // Expose types
         this.UnitType = UnitType;
@@ -163,8 +164,9 @@ class Game {
     }
 
     resize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        const size = Math.min(window.innerWidth, window.innerHeight);
+        this.canvas.width = size;
+        this.canvas.height = size;
         this.camera.resize(this.canvas.width, this.canvas.height);
         this.renderer.resize(this.canvas.width, this.canvas.height);
     }
@@ -641,6 +643,17 @@ class Game {
         player.cities.forEach(c => c.update());
         player.updateVisibility();
         player.updateYields();
+
+            // Auto-explore: units with task 'Explore' move one tile automatically on end-turn
+            try {
+                for (const u of [...player.units]) {
+                    if (u.task === 'Explore' && u.movementPoints > 0) {
+                        this.autoMove(u);
+                    }
+                }
+            } catch (e) {
+                // ignore errors during auto-move
+            }
 
         this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
         const nextPlayer = this.getCurrentPlayer();

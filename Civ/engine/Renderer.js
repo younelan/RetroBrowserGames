@@ -9,17 +9,17 @@ import { TerrainType } from './Tile.js';
 const SQRT3 = Math.sqrt(3);
 console.log("--- ANTIGRAVITY OVERHAUL V11 LOADED ---");
 
-// Terrain color palette
+// Terrain color palette - vibrant and realistic colors
 const TERRAIN_COLORS = {
-    'Ocean': 0x0a2a4a,
-    'Coast': 0x1a5a8a,
-    'Grassland': 0x4da643,
-    'Plains': 0xc8b44a,
-    'Hills': 0x7a8a3e,
-    'Desert': 0xdcc060,
-    'Tundra': 0x8a9a9a,
-    'Snow': 0xe0eaf0,
-    'Mountain': 0x5a5a5a
+    'Ocean': 0x1e4d7a,
+    'Coast': 0x2c6ba0,
+    'Grassland': 0x5cb85c,
+    'Plains': 0xd4c87f,
+    'Hills': 0x8b9d5f,
+    'Desert': 0xe6d19a,
+    'Tundra': 0xb4bdc4,
+    'Snow': 0xf0f4f7,
+    'Mountain': 0x6b6b6b
 };
 
 // Hex direction vectors (flat-top orientation)
@@ -143,17 +143,17 @@ export class Renderer {
     // ========================================================================
 
     setupLighting() {
-        // Ambient light for base illumination
-        const ambient = new THREE.AmbientLight(0x6688aa, 0.6);
+        // Brighter ambient light for clear visibility
+        const ambient = new THREE.AmbientLight(0xb0c4de, 1.2);
         this.scene.add(ambient);
 
-        // Hemisphere light for sky/ground color variation
-        const hemi = new THREE.HemisphereLight(0x87ceeb, 0x3a5a2a, 0.5);
+        // Hemisphere light for natural sky/ground color
+        const hemi = new THREE.HemisphereLight(0x87ceeb, 0x4a5a2a, 0.7);
         hemi.position.set(0, 500, 0);
         this.scene.add(hemi);
 
-        // Main directional sun light with shadows
-        const sun = new THREE.DirectionalLight(0xfff4d6, 1.2);
+        // Main directional sun light - bright midday sun
+        const sun = new THREE.DirectionalLight(0xfffaf0, 2.0);
         sun.position.set(800, 1200, -400);
         sun.castShadow = true;
         sun.shadow.mapSize.width = 2048;
@@ -164,7 +164,7 @@ export class Renderer {
         sun.shadow.camera.bottom = -3000;
         sun.shadow.camera.near = 100;
         sun.shadow.camera.far = 5000;
-        sun.shadow.bias = -0.001;
+        sun.shadow.bias = -0.0005;
         this.scene.add(sun);
         this.sunLight = sun;
 
@@ -199,8 +199,8 @@ export class Renderer {
         const totalW = (maxX - minX) + margin * 2;
         const totalH = (maxZ - minZ) + margin * 2;
 
-        // Resolution for the terrain plane
-        const res = 160;
+        // Resolution for the terrain plane - higher for better detail
+        const res = 200;
         const geometry = new THREE.PlaneGeometry(totalW, totalH, res, res);
         geometry.rotateX(-Math.PI / 2);
 
@@ -211,6 +211,25 @@ export class Renderer {
 
         const posAttr = geometry.attributes.position;
         const colors = [];
+
+        // Multi-layered noise function for realistic terrain detail
+        const noise = (x, z, scale) => {
+            const s = Math.sin(x * scale + z * scale * 0.7) * 0.5 + 0.5;
+            const c = Math.cos(x * scale * 1.3 - z * scale) * 0.5 + 0.5;
+            return (s + c) * 0.5;
+        };
+        
+        const fbmNoise = (x, z) => {
+            let total = 0;
+            let amplitude = 1;
+            let frequency = 0.05;
+            for (let i = 0; i < 3; i++) {
+                total += noise(x, z, frequency) * amplitude;
+                amplitude *= 0.5;
+                frequency *= 2.1;
+            }
+            return total / 1.75;
+        };
 
         for (let i = 0; i < posAttr.count; i++) {
             const vx = posAttr.getX(i);
@@ -223,6 +242,10 @@ export class Renderer {
             // DIRECT NOISE SAMPLING (No more "blurred hexagons")
             const elevation = this.worldMap.sampleElevation(fq, fr);
 
+            // Add layered terrain detail variations (very gentle but visible)
+            const terrainDetail = fbmNoise(vx, vz) - 0.5;
+            const heightVariation = terrainDetail * 2.5;
+
             // Biome color sampling
             const hq = Math.round(fq);
             const hr = Math.round(fr);
@@ -231,24 +254,43 @@ export class Renderer {
             let terrainColor = new THREE.Color(0x0a2a4a);
             if (tile) {
                 terrainColor.setHex(TERRAIN_COLORS[tile.terrain.name] || 0x4da643);
-                // Subtle shading based on height
+                
                 const tName = tile.terrain.name;
-                if (tName === 'Ocean' || tName === 'Coast') terrainColor.multiplyScalar(0.7);
-                else terrainColor.offsetHSL(0, 0, (elevation - 0.5) * 0.1);
+                if (tName === 'Ocean' || tName === 'Coast') {
+                    terrainColor.multiplyScalar(0.7);
+                } else {
+                    // Add multi-scale color variation for natural texture
+                    const colorDetail = fbmNoise(vx * 1.5, vz * 1.5) - 0.5;
+                    const microColor = noise(vx, vz, 0.22) - 0.5;
+                    terrainColor.offsetHSL(
+                        microColor * 0.02,
+                        colorDetail * 0.25,
+                        (colorDetail * 0.12) + (elevation - 0.5) * 0.1
+                    );
+                }
             }
 
-            posAttr.setY(i, elevation * this.heightScale);
+            posAttr.setY(i, elevation * this.heightScale + heightVariation);
             colors.push(terrainColor.r, terrainColor.g, terrainColor.b);
         }
 
         geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
         geometry.computeVertexNormals();
 
+        // Create procedural detail for terrain texture
+        const uvs = [];
+        for (let i = 0; i < posAttr.count; i++) {
+            uvs.push(posAttr.getX(i) * 0.01, posAttr.getZ(i) * 0.01);
+        }
+        geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+
         const material = new THREE.MeshStandardMaterial({
             vertexColors: true,
-            roughness: 0.8,
-            metalness: 0.1,
-            flatShading: false
+            roughness: 0.88,
+            metalness: 0.01,
+            flatShading: false,
+            normalScale: new THREE.Vector2(0.5, 0.5),
+            envMapIntensity: 0.4
         });
 
         const terrainMesh = new THREE.Mesh(geometry, material);
@@ -283,8 +325,10 @@ export class Renderer {
     // ========================================================================
 
     getHexAtPosition(screenX, screenY) {
-        this.mouse.x = (screenX / this.canvas.width) * 2 - 1;
-        this.mouse.y = -(screenY / this.canvas.height) * 2 + 1;
+        // Normalize using canvas DOM rect so coordinates match displayed size
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouse.x = ((screenX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((screenY - rect.top) / rect.height) * 2 + 1;
 
         this.raycaster.setFromCamera(this.mouse, this.threeCamera);
 
@@ -344,14 +388,16 @@ export class Renderer {
         }
         this.riverMeshes = [];
 
+        // River material - flat ribbon with realistic water color
         const riverMaterial = new THREE.MeshStandardMaterial({
-            color: 0x3377bb,
+            color: 0x4a90c8,
             transparent: true,
-            opacity: 0.8,
-            roughness: 0.1,
-            metalness: 0.5,
-            emissive: 0x112244,
-            emissiveIntensity: 0.3
+            opacity: 0.85,
+            roughness: 0.15,
+            metalness: 0.3,
+            emissive: 0x1a4a6a,
+            emissiveIntensity: 0.15,
+            side: THREE.DoubleSide
         });
 
         if (!this.worldMap.riverPaths || this.worldMap.riverPaths.length === 0) return;
@@ -365,7 +411,8 @@ export class Renderer {
                 if (!tile) continue;
 
                 const pos = this.hexToWorld(tile.q, tile.r, tile.elevation);
-                const pCenter = new THREE.Vector3(pos.x, pos.y + 0.6, pos.z);
+                // Rivers are carved into land - below terrain level
+                const pCenter = new THREE.Vector3(pos.x, pos.y - 2.5, pos.z);
 
                 points.push(pCenter);
 
@@ -374,11 +421,11 @@ export class Renderer {
                     const nextTile = this.worldMap.getTileByCoords(nextKey);
                     if (nextTile) {
                         const nextPos = this.hexToWorld(nextTile.q, nextTile.r, nextTile.elevation);
-                        const pNext = new THREE.Vector3(nextPos.x, nextPos.y + 0.6, nextPos.z);
+                        const pNext = new THREE.Vector3(nextPos.x, nextPos.y - 2.5, nextPos.z);
                         const mid = new THREE.Vector3().lerpVectors(pCenter, pNext, 0.5);
 
                         // Deterministic meander
-                        const bendAmount = 14;
+                        const bendAmount = 10;
                         const seedX = (tile.q + nextTile.q) * 0.5;
                         const seedZ = (tile.r + nextTile.r) * 0.3;
                         mid.x += Math.sin(seedX * 1.6 + seedZ) * bendAmount;
@@ -391,10 +438,49 @@ export class Renderer {
 
             if (points.length < 2) continue;
 
+            // Create flat ribbon river instead of tube (looks like actual river)
             const curve = new THREE.CatmullRomCurve3(points);
-            const tubeGeo = new THREE.TubeGeometry(curve, points.length * 10, 3.2, 8, false);
-            const riverMesh = new THREE.Mesh(tubeGeo, riverMaterial);
-
+            const curvePoints = curve.getPoints(points.length * 8);
+            const riverShape = new THREE.Shape();
+            
+            // Create flat plane geometry along curve
+            const riverWidth = 6;
+            const vertices = [];
+            const uvs = [];
+            
+            for (let i = 0; i < curvePoints.length; i++) {
+                const pt = curvePoints[i];
+                const tangent = curve.getTangent(i / (curvePoints.length - 1));
+                const perpendicular = new THREE.Vector3(-tangent.z, 0, tangent.x).normalize();
+                
+                const left = pt.clone().add(perpendicular.clone().multiplyScalar(riverWidth / 2));
+                const right = pt.clone().add(perpendicular.clone().multiplyScalar(-riverWidth / 2));
+                
+                vertices.push(left.x, left.y, left.z);
+                vertices.push(right.x, right.y, right.z);
+                
+                const u = i / (curvePoints.length - 1);
+                uvs.push(0, u);
+                uvs.push(1, u);
+            }
+            
+            const indices = [];
+            for (let i = 0; i < curvePoints.length - 1; i++) {
+                const a = i * 2;
+                const b = a + 1;
+                const c = a + 2;
+                const d = a + 3;
+                indices.push(a, b, c);
+                indices.push(b, d, c);
+            }
+            
+            const ribbonGeo = new THREE.BufferGeometry();
+            ribbonGeo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            ribbonGeo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+            ribbonGeo.setIndex(indices);
+            ribbonGeo.computeVertexNormals();
+            
+            const riverMesh = new THREE.Mesh(ribbonGeo, riverMaterial);
             riverMesh.receiveShadow = true;
             this.scene.add(riverMesh);
             this.riverMeshes.push(riverMesh);
@@ -432,85 +518,195 @@ export class Renderer {
         if (jungleTiles.length > 0) {
             this._createTreeInstances(jungleTiles, 'jungle');
         }
+
+        // Optional debug: place a single non-instanced test tree to verify lighting/placement
+        try {
+            if (typeof window !== 'undefined' && window.location && window.location.search.includes('debugTree')) {
+                const sample = (forestTiles.length > 0 ? forestTiles[0] : (jungleTiles.length > 0 ? jungleTiles[0] : null));
+                const tile = sample || Array.from(this.worldMap.tiles.values())[Math.floor(this.worldMap.tiles.size/2)];
+                if (tile) this._addDebugTreeAt(tile.q, tile.r, tile.elevation);
+            }
+        } catch (e) {
+            // ignore in non-browser env
+        }
+    }
+
+    _addDebugTreeAt(q, r, elevation = 0) {
+        const worldPos = this.hexToWorld(q, r, elevation);
+        const group = new THREE.Group();
+
+        // Trunk
+        const trunkGeo = new THREE.CylinderGeometry(1.8, 1.8, 8, 8);
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.9 });
+        const trunk = new THREE.Mesh(trunkGeo, trunkMat);
+        trunk.position.set(0, 4, 0);
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        group.add(trunk);
+
+        // Lower foliage
+        const lowGeo = new THREE.ConeGeometry(5, 8, 12);
+        const lowMat = new THREE.MeshStandardMaterial({ color: 0x3b8f2a, roughness: 0.6, side: THREE.DoubleSide, emissive: 0x052605, emissiveIntensity: 0.06 });
+        const low = new THREE.Mesh(lowGeo, lowMat);
+        low.position.set(0, 8, 0);
+        low.castShadow = true;
+        low.receiveShadow = false;
+        group.add(low);
+
+        // Upper foliage
+        const highGeo = new THREE.ConeGeometry(3.5, 6, 10);
+        const highMat = lowMat.clone();
+        const high = new THREE.Mesh(highGeo, highMat);
+        high.position.set(0, 11, 0);
+        high.castShadow = true;
+        group.add(high);
+
+        group.position.set(worldPos.x, Math.max(worldPos.y, this.heightScale * 0.34) + 1, worldPos.z);
+        this.scene.add(group);
+        this.featureInstances.push(group);
     }
 
     _createTreeInstances(tiles, type) {
         const treesPerHex = 3;
-        const count = tiles.length * treesPerHex;
 
-        let geometry, material;
+        // Filter out water tiles
+        const usableTiles = tiles.filter(tile => {
+            const tName = tile.terrain.name;
+            return tName !== 'Ocean' && tName !== 'Coast';
+        });
 
+        const count = usableTiles.length * treesPerHex;
+        if (count === 0) return;
+
+        // Create separate instanced meshes for trunks (brown) and foliage (green)
+        const trunkHeightBase = type === 'forest' ? 8 : 5;
+        const foliageHeightBase = type === 'forest' ? 10 : 7;
+
+        // Brown tree trunks - lighter, more visible brown
+        const trunkGeo = new THREE.CylinderGeometry(1.5, 1.8, 1, 8);
+        const trunkMat = new THREE.MeshStandardMaterial({
+            color: 0xb08050,
+            roughness: 0.85,
+            metalness: 0.0,
+            flatShading: false,
+            emissive: 0x402010,
+            emissiveIntensity: 0.15
+        });
+
+        let foliageGeoLow, foliageGeoHigh;
+        // Use cone shapes for more tree-like appearance
         if (type === 'forest') {
-            geometry = new THREE.ConeGeometry(4, 16, 6);
-            material = new THREE.MeshStandardMaterial({
-                color: 0x2d6b1e,
-                roughness: 0.9,
-                metalness: 0.0,
-                flatShading: true
-            });
+            // Pine tree style - layered cone
+            foliageGeoLow = new THREE.ConeGeometry(4.5, 8, 10);
+            foliageGeoHigh = new THREE.ConeGeometry(3.5, 6, 8);
         } else {
-            geometry = new THREE.SphereGeometry(5, 6, 4);
-            material = new THREE.MeshStandardMaterial({
-                color: 0x1a8a2a,
-                roughness: 0.85,
-                metalness: 0.0,
-                flatShading: true
-            });
+            // Jungle: dense round canopy with wider cone
+            foliageGeoLow = new THREE.ConeGeometry(6, 7, 12);
+            foliageGeoHigh = new THREE.ConeGeometry(4.5, 5, 10);
         }
 
-        const instMesh = new THREE.InstancedMesh(geometry, material, count);
-        instMesh.castShadow = true;
-        instMesh.receiveShadow = true;
+        // Bright, vibrant green foliage with varied colors
+        const foliageMat = new THREE.MeshStandardMaterial({
+            color: type === 'forest' ? 0x4db84d : 0x3bc83b,
+            roughness: 0.7,
+            metalness: 0.0,
+            flatShading: false,
+            side: THREE.DoubleSide,
+            emissive: new THREE.Color(0x1a6b1a),
+            emissiveIntensity: 0.25
+        });
+
+        const trunkInst = new THREE.InstancedMesh(trunkGeo, trunkMat, count);
+        trunkInst.castShadow = true;
+        trunkInst.receiveShadow = true;
+
+        let foliageInstLow = new THREE.InstancedMesh(foliageGeoLow, foliageMat, count);
+        foliageInstLow.castShadow = true;
+        foliageInstLow.receiveShadow = true;
+
+        let foliageInstHigh = null;
+        if (foliageGeoHigh) {
+            foliageInstHigh = new THREE.InstancedMesh(foliageGeoHigh, foliageMat, count);
+            foliageInstHigh.castShadow = true;
+            foliageInstHigh.receiveShadow = true;
+        }
 
         const dummy = new THREE.Object3D();
         let idx = 0;
 
-        for (const tile of tiles) {
-            // Robust name checking
-            const tName = tile.terrain.name;
-            if (tName === 'Ocean' || tName === 'Coast') continue;
-
+        for (const tile of usableTiles) {
             const worldPos = this.hexToWorld(tile.q, tile.r, tile.elevation);
             const baseY = Math.max(worldPos.y, this.heightScale * 0.34) + 1;
 
             for (let t = 0; t < treesPerHex; t++) {
-                // Scatter within the hex using deterministic pseudo-random
                 const seed = tile.q * 137 + tile.r * 251 + t * 79;
                 const angle = ((seed * 2654435761) % 1000) / 1000 * Math.PI * 2;
                 const dist = ((seed * 1103515245 + 12345) % 1000) / 1000 * this.hexSize * 0.5;
-
                 const ox = Math.cos(angle) * dist;
                 const oz = Math.sin(angle) * dist;
 
-                // Size variation
                 const scaleFactor = 0.7 + ((seed * 48271) % 1000) / 1000 * 0.8;
 
-                dummy.position.set(
-                    worldPos.x + ox,
-                    baseY + (type === 'forest' ? 8 * scaleFactor : 5 * scaleFactor),
-                    worldPos.z + oz
-                );
-                dummy.scale.set(scaleFactor, scaleFactor, scaleFactor);
+                // Trunk
+                const trunkH = trunkHeightBase * scaleFactor;
+                dummy.position.set(worldPos.x + ox, baseY + trunkH / 2, worldPos.z + oz);
+                dummy.scale.set(1 * scaleFactor * 0.7, trunkH, 1 * scaleFactor * 0.7);
                 dummy.updateMatrix();
-                instMesh.setMatrixAt(idx, dummy.matrix);
+                trunkInst.setMatrixAt(idx, dummy.matrix);
 
-                // Color variation per instance
-                const colorVar = 0.85 + ((seed * 16807) % 1000) / 1000 * 0.3;
-                const col = new THREE.Color(type === 'forest' ? 0x2d6b1e : 0x1a8a2a);
-                col.r *= colorVar;
-                col.g *= colorVar;
-                col.b *= colorVar;
-                instMesh.setColorAt(idx, col);
+                // Lighter brown trunk with slight variation
+                const trunkVar = 0.95 + ((seed * 9301) % 1000) / 1000 * 0.15;
+                const trunkCol = new THREE.Color(0xb08050);
+                trunkCol.r *= trunkVar; trunkCol.g *= trunkVar; trunkCol.b *= trunkVar;
+                trunkInst.setColorAt(idx, trunkCol);
+
+
+                // Foliage layers - positioned at TOP of trunk
+                const foliageBaseY = baseY + trunkH + (type === 'forest' ? 4 : 3) * scaleFactor;
+
+                // Lower foliage layer (bigger)
+                dummy.position.set(worldPos.x + ox, foliageBaseY, worldPos.z + oz);
+                const foliageScaleLow = scaleFactor * (type === 'forest' ? 0.95 : 1.0);
+                dummy.scale.set(foliageScaleLow, foliageScaleLow, foliageScaleLow);
+                dummy.updateMatrix();
+                foliageInstLow.setMatrixAt(idx, dummy.matrix);
+
+                // Upper foliage layer (smaller)
+                if (foliageInstHigh) {
+                    dummy.position.set(worldPos.x + ox, foliageBaseY + (type === 'forest' ? 5 : 4) * scaleFactor, worldPos.z + oz);
+                    const foliageScaleHigh = scaleFactor * 0.75;
+                    dummy.scale.set(foliageScaleHigh, foliageScaleHigh, foliageScaleHigh);
+                    dummy.updateMatrix();
+                    foliageInstHigh.setMatrixAt(idx, dummy.matrix);
+                }
+
+                // Vibrant green color variation for foliage - highly visible
+                const colorVar = 0.9 + ((seed * 16807) % 1000) / 1000 * 0.3;
+                const col = new THREE.Color(type === 'forest' ? 0x5dd35d : 0x4dd34d);
+                col.r *= colorVar; col.g *= colorVar; col.b *= colorVar;
+                foliageInstLow.setColorAt(idx, col);
+                if (foliageInstHigh) foliageInstHigh.setColorAt(idx, col);
 
                 idx++;
             }
         }
 
-        instMesh.instanceMatrix.needsUpdate = true;
-        if (instMesh.instanceColor) instMesh.instanceColor.needsUpdate = true;
+        trunkInst.instanceMatrix.needsUpdate = true;
+        if (trunkInst.instanceColor) trunkInst.instanceColor.needsUpdate = true;
 
-        this.scene.add(instMesh);
-        this.featureInstances.push(instMesh);
+        foliageInstLow.instanceMatrix.needsUpdate = true;
+        if (foliageInstLow.instanceColor) foliageInstLow.instanceColor.needsUpdate = true;
+
+        this.scene.add(trunkInst);
+        this.scene.add(foliageInstLow);
+        this.featureInstances.push(trunkInst, foliageInstLow);
+
+        if (foliageInstHigh) {
+            foliageInstHigh.instanceMatrix.needsUpdate = true;
+            if (foliageInstHigh.instanceColor) foliageInstHigh.instanceColor.needsUpdate = true;
+            this.scene.add(foliageInstHigh);
+            this.featureInstances.push(foliageInstHigh);
+        }
     }
 
     // ========================================================================
@@ -676,12 +872,15 @@ export class Renderer {
 
         // Colored base disc
         const discGeo = new THREE.CylinderGeometry(12, 12, 3, 16);
+        // Slightly darken the disc so light-colored civ colors remain visible
+        const ownerCol = new THREE.Color(unit.owner.color);
+        const discColor = ownerCol.clone().multiplyScalar(0.75);
         const discMat = new THREE.MeshStandardMaterial({
-            color: new THREE.Color(unit.owner.color),
-            roughness: 0.4,
-            metalness: 0.3,
-            emissive: new THREE.Color(unit.owner.color),
-            emissiveIntensity: 0.3
+            color: discColor,
+            roughness: 0.45,
+            metalness: 0.15,
+            emissive: ownerCol.clone().multiplyScalar(0.15),
+            emissiveIntensity: 0.4
         });
         const disc = new THREE.Mesh(discGeo, discMat);
         disc.position.set(0, 0, 0);
@@ -694,23 +893,44 @@ export class Renderer {
         spriteCanvas.height = 128;
         const sctx = spriteCanvas.getContext('2d');
 
-        // Background circle
+        // Background circle with shadow to improve contrast
+        sctx.clearRect(0, 0, 128, 128);
+        sctx.save();
+        sctx.shadowColor = 'rgba(0,0,0,0.6)';
+        sctx.shadowBlur = 8;
         sctx.beginPath();
         sctx.arc(64, 64, 58, 0, Math.PI * 2);
         sctx.fillStyle = unit.owner.color;
         sctx.fill();
+        sctx.restore();
+
+        // Outer white ring for separation
+        sctx.beginPath();
+        sctx.arc(64, 64, 58, 0, Math.PI * 2);
         sctx.strokeStyle = '#ffffff';
-        sctx.lineWidth = 4;
+        sctx.lineWidth = 5;
         sctx.stroke();
 
-        // Emoji icon
-        sctx.font = '56px serif';
+        // Emoji icon with dark outline (multi-pass) then bright fill
+        const emojiY = 68;
+        sctx.font = '64px serif';
         sctx.textAlign = 'center';
         sctx.textBaseline = 'middle';
-        sctx.fillText(unit.type.icon, 64, 68);
+
+        // Draw outline by drawing the emoji several times in black slight offsets
+        sctx.fillStyle = 'black';
+        const offs = [
+            [-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, -1], [-1, 1], [1, 1]
+        ];
+        for (const o of offs) sctx.fillText(unit.type.icon, 64 + o[0], emojiY + o[1]);
+
+        // Main white fill
+        sctx.fillStyle = '#ffffff';
+        sctx.fillText(unit.type.icon, 64, emojiY);
 
         const texture = new THREE.CanvasTexture(spriteCanvas);
         texture.needsUpdate = true;
+        texture.encoding = THREE.sRGBEncoding;
 
         const spriteMat = new THREE.SpriteMaterial({
             map: texture,
@@ -719,8 +939,8 @@ export class Renderer {
             sizeAttenuation: true
         });
         const sprite = new THREE.Sprite(spriteMat);
-        sprite.scale.set(28, 28, 1);
-        sprite.position.set(0, 18, 0);
+        sprite.scale.set(36, 36, 1);
+        sprite.position.set(0, 20, 0);
         group.add(sprite);
 
         // Health bar (if damaged)
@@ -819,33 +1039,63 @@ export class Renderer {
         baseMesh.castShadow = true;
         group.add(baseMesh);
 
-        // Main building (scaled by population)
+        // Main building (more detailed: walls + roof + windows)
         const bldgHeight = 12 + Math.min(city.population, 20) * 2;
-        const bldgGeo = new THREE.BoxGeometry(14, bldgHeight, 14);
-        const bldgMat = new THREE.MeshStandardMaterial({
-            color: 0xccbbaa,
-            roughness: 0.7,
-            metalness: 0.1,
-            flatShading: true
+
+        const wallColor = new THREE.Color(0xccc2b8).lerp(new THREE.Color(city.owner.color), 0.08);
+        const wallMat = new THREE.MeshStandardMaterial({
+            color: wallColor,
+            roughness: 0.72,
+            metalness: 0.05
         });
-        const bldg = new THREE.Mesh(bldgGeo, bldgMat);
+
+        const bldgGeo = new THREE.BoxGeometry(14, bldgHeight, 14);
+        const bldg = new THREE.Mesh(bldgGeo, wallMat);
         bldg.position.set(0, 3 + bldgHeight / 2, 0);
         bldg.castShadow = true;
+        bldg.receiveShadow = true;
         group.add(bldg);
 
-        // Smaller side buildings for larger cities
-        if (city.population >= 4) {
-            const sideH = 8 + Math.min(city.population, 15);
-            const sideGeo = new THREE.BoxGeometry(8, sideH, 8);
-            const side1 = new THREE.Mesh(sideGeo, bldgMat);
-            side1.position.set(10, 3 + sideH / 2, 5);
-            side1.castShadow = true;
-            group.add(side1);
+        // Roof (pyramid-like cone with 4 segments) colored by owner for identity
+        const roofColor = new THREE.Color(city.owner.color).offsetHSL(0, -0.2, -0.06);
+        const roofMat = new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.6, metalness: 0.05 });
+        const roofGeo = new THREE.ConeGeometry(10, 6, 4);
+        const roof = new THREE.Mesh(roofGeo, roofMat);
+        roof.rotation.y = Math.PI / 4; // align square cone with box
+        roof.position.set(0, 3 + bldgHeight + 3, 0);
+        roof.castShadow = true;
+        group.add(roof);
 
-            const side2 = new THREE.Mesh(sideGeo, bldgMat);
-            side2.position.set(-8, 3 + sideH / 2, -6);
-            side2.castShadow = true;
-            group.add(side2);
+        // Windows: simple emissive quads placed on four sides for visual life
+        const winMat = new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0xffe58a, emissiveIntensity: 0.9 });
+        const winGeo = new THREE.BoxGeometry(2.4, 2.4, 0.2);
+        const windowRows = Math.max(1, Math.floor((bldgHeight - 6) / 4));
+        for (let side = 0; side < 4; side++) {
+            const angle = side * (Math.PI / 2);
+            for (let r = 0; r < windowRows; r++) {
+                const wx = Math.cos(angle) * 7.2;
+                const wz = Math.sin(angle) * 7.2;
+                const wy = 6 + r * 3.6;
+                const win = new THREE.Mesh(winGeo, winMat);
+                win.position.set(wx, wy, wz);
+                win.lookAt(0, wy, 0);
+                win.castShadow = false;
+                group.add(win);
+            }
+        }
+
+        // Add two smaller decorative towers/annexes for larger cities
+        if (city.population >= 3) {
+            const towerMat = new THREE.MeshStandardMaterial({ color: 0xbfa78f, roughness: 0.75 });
+            const towerGeo = new THREE.CylinderGeometry(3.5, 3.5, 10, 10);
+            const t1 = new THREE.Mesh(towerGeo, towerMat);
+            t1.position.set(11, 3 + 5, 6);
+            t1.castShadow = true;
+            group.add(t1);
+
+            const t2 = t1.clone();
+            t2.position.set(-10, 3 + 5, -7);
+            group.add(t2);
         }
 
         // Capital star
@@ -863,6 +1113,42 @@ export class Renderer {
             star.castShadow = true;
             group.add(star);
         }
+
+        // Defensive low wall ring (decorative) around city base
+        const wallPieceGeo = new THREE.BoxGeometry(4, 3, 2);
+        const wallPieceMat = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1.0 });
+        for (let i = 0; i < 8; i++) {
+            const ang = (i / 8) * Math.PI * 2;
+            const x = Math.cos(ang) * (this.hexSize * 0.35);
+            const z = Math.sin(ang) * (this.hexSize * 0.35);
+            const wp = new THREE.Mesh(wallPieceGeo, wallPieceMat);
+            wp.position.set(x, 1.5, z);
+            wp.rotation.y = -ang;
+            wp.castShadow = true;
+            group.add(wp);
+        }
+
+        // Flagpole with flag showing owner color for easy identification
+        const poleGeo = new THREE.CylinderGeometry(0.25, 0.25, 10, 6);
+        const poleMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
+        const pole = new THREE.Mesh(poleGeo, poleMat);
+        pole.position.set(0, 3 + bldgHeight + 6, -8);
+        pole.castShadow = true;
+        group.add(pole);
+
+        // Flag canvas
+        const flagCanvas = document.createElement('canvas');
+        flagCanvas.width = 128; flagCanvas.height = 80;
+        const fctx = flagCanvas.getContext('2d');
+        fctx.fillStyle = city.owner.color; fctx.fillRect(0,0,128,80);
+        fctx.fillStyle = 'rgba(255,255,255,0.15)'; fctx.fillRect(12,12,104,56);
+        const flagTex = new THREE.CanvasTexture(flagCanvas);
+        const flagMat = new THREE.MeshStandardMaterial({ map: flagTex, side: THREE.DoubleSide, transparent: true });
+        const flagGeo = new THREE.PlaneGeometry(6, 3.5);
+        const flag = new THREE.Mesh(flagGeo, flagMat);
+        flag.position.set(3.2, 3 + bldgHeight + 8, -8);
+        flag.rotation.y = Math.PI / 8;
+        group.add(flag);
 
         // City name label sprite
         const labelCanvas = document.createElement('canvas');
@@ -896,14 +1182,18 @@ export class Renderer {
         lctx.textBaseline = 'middle';
         lctx.fillText(String(city.population), startX + 35, 57);
 
-        // City name
+        // City name (larger, outlined for readability)
         lctx.fillStyle = '#ffffff';
-        lctx.font = 'bold 26px sans-serif';
+        lctx.font = 'bold 36px sans-serif';
         lctx.textAlign = 'center';
-        lctx.fillText(city.name.toUpperCase(), 256 + 15, 58);
+        lctx.lineWidth = 6;
+        lctx.strokeStyle = 'rgba(0,0,0,0.9)';
+        lctx.strokeText(city.name.toUpperCase(), 256 + 15, 64);
+        lctx.fillText(city.name.toUpperCase(), 256 + 15, 64);
 
         const labelTexture = new THREE.CanvasTexture(labelCanvas);
         labelTexture.needsUpdate = true;
+        labelTexture.encoding = THREE.sRGBEncoding;
 
         const labelMat = new THREE.SpriteMaterial({
             map: labelTexture,
@@ -912,8 +1202,9 @@ export class Renderer {
             sizeAttenuation: true
         });
         const label = new THREE.Sprite(labelMat);
-        label.scale.set(80, 20, 1);
-        label.position.set(0, 3 + bldgHeight + 22, 0);
+        // Larger scale to match higher font size
+        label.scale.set(140, 36, 1);
+        label.position.set(0, 3 + bldgHeight + 28, 0);
         group.add(label);
 
         // HP bar if damaged
@@ -1108,9 +1399,10 @@ export class Renderer {
     // ========================================================================
 
     getHexAtPosition(screenX, screenY) {
-        // Normalize to [-1, 1]
-        this.mouse.x = (screenX / this.canvas.width) * 2 - 1;
-        this.mouse.y = -(screenY / this.canvas.height) * 2 + 1;
+        // Use canvas DOM rect (CSS pixels) for accurate client coord mapping
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouse.x = ((screenX - rect.left) / rect.width) * 2 - 1;
+        this.mouse.y = -((screenY - rect.top) / rect.height) * 2 + 1;
 
         this.raycaster.setFromCamera(this.mouse, this.threeCamera);
 

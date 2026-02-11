@@ -79,7 +79,8 @@ export class Unit {
         this.health = 100;
         this.movementPoints = type.move;
         this.isFortified = false;
-        this.task = 'Ready';
+        // Default task: scouts auto-explore, settlers remain ready
+        this.task = (type.name === 'Scout') ? 'Explore' : 'Ready';
         this.workRemaining = 0;
         this.workCallback = null;
 
