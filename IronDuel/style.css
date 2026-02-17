@@ -1,0 +1,301 @@
+:root {
+    --iron: #7b8a91;
+    --steel: #b0bfc6;
+    --chrome: #e8eef1;
+    --coal: #121415;
+    --blood: #a30000;
+    --gold: #d4af37;
+    --glass: rgba(0, 0, 0, 0.85);
+    --border-iron: 2px solid var(--iron);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: #050506;
+    color: var(--chrome);
+    font-family: 'Cinzel', serif;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    width: 100vmin;
+    height: 100vmin;
+    display: flex;
+    flex-direction: column;
+    background: radial-gradient(circle at center, #1a1c1e 0%, #000 100%);
+    border: 6px solid #2a2d30;
+    box-shadow: 0 0 100px rgba(0, 0, 0, 1), inset 0 0 50px rgba(0, 0, 0, 0.8);
+    position: relative;
+}
+
+#game-container::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: url('https://www.transparenttextures.com/patterns/brushed-alum.png');
+    opacity: 0.1;
+    z-index: 5;
+}
+
+/* HUD Styling */
+#hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 3vmin;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 10;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent);
+    pointer-events: none;
+}
+
+.player-stats {
+    width: 38%;
+}
+
+.player-stats .name {
+    font-size: 3.2vmin;
+    font-weight: 900;
+    color: var(--chrome);
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3), 2px 2px 0px rgba(0, 0, 0, 1);
+    letter-spacing: 0.3vmin;
+    margin-bottom: 0.8vmin;
+    text-transform: uppercase;
+}
+
+.health-bar-container,
+.stamina-bar-container {
+    width: 100%;
+    height: 1.4vmin;
+    background: #0a0a0b;
+    border: 1px solid #3a3d40;
+    margin-bottom: 0.6vmin;
+    position: relative;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 1);
+}
+
+.health-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #600, #b00, #ff0);
+    transition: width 0.3s cubic-bezier(0.17, 0.67, 0.13, 0.94);
+    box-shadow: 0 0 15px rgba(255, 0, 0, 0.4);
+    border-right: 2px solid #fff;
+}
+
+.stamina-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #445, var(--steel), var(--chrome));
+    transition: width 0.1s linear;
+}
+
+#match-timer {
+    font-family: 'MedievalSharp', cursive;
+    font-size: 6vmin;
+    color: var(--parchment);
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+/* Stage & Canvas */
+#stage-wrapper {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#game-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* Overlays */
+#overlay-msg {
+    position: absolute;
+    inset: 0;
+    background: var(--glass);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(8px);
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+}
+
+#overlay-msg:not(.hidden) {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#victory-text {
+    font-size: 10vmin;
+    color: var(--gold);
+    letter-spacing: 2vmin;
+    margin-bottom: 4vmin;
+    text-shadow: 0 0 30px var(--gold-glow);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Footer & Status */
+footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 6vmin;
+    padding: 0 2vmin;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+    font-size: 2vmin;
+    letter-spacing: 0.2vmin;
+    color: rgba(255, 255, 255, 0.5);
+    z-index: 10;
+}
+
+#status-msg {
+    color: var(--gold);
+    font-weight: 700;
+}
+
+/* Mobile Controls Overlay */
+#mobile-controls {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    display: none;
+    /* Shown via JS or Media Query */
+    z-index: 50;
+    padding: 3vmin;
+}
+
+@media (pointer: coarse) {
+    #mobile-controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+
+    .controls-hint .desktop {
+        display: none;
+    }
+}
+
+#mobile-controls button {
+    pointer-events: auto;
+    background: linear-gradient(135deg, #2a2d30, #0a0a0b);
+    border: 2px solid #5a5d60;
+    color: var(--chrome);
+    font-family: 'Cinzel', serif;
+    font-weight: 700;
+    backdrop-filter: blur(4px);
+    transition: all 0.1s ease;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+}
+
+#mobile-controls button:active {
+    background: var(--chrome);
+    color: #000;
+    transform: scale(0.95);
+    border-color: #fff;
+}
+
+/* Pro Move Zone (Invisible Gesture Area) */
+#move-zone {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 45%;
+    height: 100%;
+    pointer-events: auto;
+    z-index: 60;
+}
+
+.action-pad {
+    position: absolute;
+    right: 3vmin;
+    bottom: 3vmin;
+    display: flex;
+    justify-content: flex-end;
+    pointer-events: auto;
+}
+
+.action-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5vmin;
+}
+
+.act-btn {
+    padding: 1vmin;
+    border-radius: 4px;
+    /* Sharp corners for Iron feel */
+    font-size: 2.8vmin;
+    width: 11vmin;
+    height: 11vmin;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #2a2d30, #0a0a0b);
+    border: 2px solid #5a5d60;
+    color: var(--chrome);
+    backdrop-filter: blur(4px);
+}
+
+.act-btn.primary {
+    background: linear-gradient(135deg, #a00, #400) !important;
+    border-color: #f00 !important;
+    font-size: 2vmin;
+}
+
+.act-btn.primary:active {
+    background: #ff0 !important;
+}
+
+.act-btn.circ {
+    border-radius: 50%;
+}
+
+.controls-hint span {
+    display: block;
+}
+
+@media (hover: none) {
+    .desktop {
+        display: none;
+    }
+}
+
+@media (hover: hover) {
+    .mobile {
+        display: none;
+    }
+}

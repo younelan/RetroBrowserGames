@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Iron Duel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;700;900&family=MedievalSharp&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="theme-luxury">
+    <div id="game-container">
+        <!-- HUD Layer -->
+        <div id="hud">
+            <div class="player-stats" id="p1-stats">
+                <div class="name">IRON WARRIOR</div>
+                <div class="health-bar-container">
+                    <div class="health-bar" id="p1-health" style="width: 100%;"></div>
+                </div>
+                <div class="stamina-bar-container">
+                    <div class="stamina-bar" id="p1-stamina" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div id="match-timer">99</div>
+
+            <div class="player-stats" id="p2-stats">
+                <div class="name">SENTINEL</div>
+                <div class="health-bar-container">
+                    <div class="health-bar" id="p2-health" style="width: 100%;"></div>
+                </div>
+                <div class="stamina-bar-container">
+                    <div class="stamina-bar" id="p2-stamina" style="width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Canvas -->
+        <div id="stage-wrapper">
+            <canvas id="game-canvas"></canvas>
+
+            <!-- Mobile Virtual Overlay -->
+            <div id="mobile-controls">
+                <div id="move-zone"></div>
+                <div class="action-pad">
+                    <div class="action-grid">
+                        <button id="btn-jump" class="act-btn circ">J</button>
+                        <button id="btn-high" class="act-btn">H</button>
+                        <button id="btn-mid" class="act-btn">M</button>
+                        <button id="btn-low" class="act-btn">L</button>
+                        <button id="btn-duck" class="act-btn circ">D</button>
+                        <button id="btn-kick" class="act-btn primary">KICK</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="overlay-msg" class="hidden">
+                <h1 id="victory-text">VICTORY</h1>
+                <p>Tap to play again</p>
+            </div>
+        </div>
+
+        <!-- Controls Footer (Optional status/credits) -->
+        <footer>
+            <div id="status-msg">HEALED AND READY</div>
+            <div class="controls-hint">
+                <span class="desktop">WASD/Arrows | ZXC Tags</span>
+                <span class="mobile">DRAG TO MOVE | TAP TO STRIKE</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="input.js"></script>
+    <script src="fighter.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>
