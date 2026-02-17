@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Submarine Commander - 100% Pure Canvas</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-wrapper">
+        <canvas id="gameCanvas" width="640" height="640"></canvas>
+
+        <div id="start-screen" class="overlay hidden">
+            <h1 style="color: #3366ff; margin: 0; font-size: 18px; letter-spacing: 5px;">THORN EMI</h1>
+            <h2 style="color: #ffff00; font-size: 32px; margin: 20px 0;">SUBMARINE COMMANDER</h2>
+            <div style="font-size: 14px; color: #aaa; margin-top: 40px;">[ CLICK TO BEGIN MISSION ]</div>
+        </div>
+
+        <div id="game-over" class="overlay hidden">
+            <h1 style="color: #ff0000;">MISSION FAILED</h1>
+            <h2 id="final-score" style="color: #ffff00;"></h2>
+            <button class="start-btn" onclick="startMission()">RETRY</button>
+        </div>
+    </div>
+    <script src="js/game.js"></script>
+</body>
+
+</html>

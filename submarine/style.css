@@ -1,0 +1,70 @@
+:root {
+    --atari-blue-med: #003399;
+    --atari-blue-light: #3366ff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: #000;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    font-family: 'Share Tech Mono', monospace;
+}
+
+#game-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#gameCanvas {
+    display: block;
+    image-rendering: pixelated;
+    background: #000;
+    touch-action: none;
+    /* Critical for dragging */
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    text-align: center;
+    color: #fff;
+    padding: 20px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+button.start-btn {
+    background: var(--atari-blue-med);
+    color: #fff;
+    border: 2px solid var(--atari-blue-light);
+    padding: 12px 30px;
+    font-size: 20px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s;
+}
+
+button.start-btn:active {
+    background: var(--atari-blue-light);
+}
