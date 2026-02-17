@@ -1,0 +1,191 @@
+:root {
+    --apple-black: #000;
+    --apple-white: #fff;
+    --apple-green: #00A300;
+    --apple-violet: #A300FF;
+    --apple-blue: #0000FF;
+    --apple-orange: #FF4F00;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    image-rendering: pixelated;
+}
+
+body {
+    background-color: #000;
+    color: var(--apple-white);
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 640px;
+    height: 100vh;
+    max-height: 100vh;
+    background: #111;
+    position: relative;
+}
+
+#screen-wrapper {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    max-width: 100vw;
+    max-height: 100vh;
+    background-color: var(--apple-black);
+    border-bottom: 4px solid #333;
+    margin: 0 auto;
+}
+
+#game-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 1.2vmin;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+}
+
+#score-board {
+    display: flex;
+    justify-content: space-around;
+    font-size: clamp(12px, 2.2vmin, 20px);
+    font-weight: bold;
+    text-shadow: 2px 2px 0 #000;
+    color: var(--apple-green);
+}
+
+#controls {
+    position: absolute;
+    right: 12px;
+    bottom: env(safe-area-inset-bottom, 0px);
+    left: auto;
+    transform: none;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    z-index: 9999;
+    pointer-events: auto;
+    box-sizing: border-box;
+    max-width: 46%;
+    width: auto;
+    flex-shrink: 0;
+}
+
+#dpad {
+    display: grid;
+    grid-template-areas:
+        ". up ."
+        "left . right"
+        ". down .";
+    gap: 10px;
+}
+
+#btn-up {
+    grid-area: up;
+}
+
+#btn-left {
+    grid-area: left;
+}
+
+#btn-right {
+    grid-area: right;
+}
+
+#btn-down {
+    grid-area: down;
+}
+
+#ctrl-btn {
+    /* unused but keep selector to avoid breaking references */
+}
+
+#action-btns {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    align-items: center;
+}
+
+.action-btn {
+    width: clamp(40px, 10vmin, 64px);
+    height: clamp(40px, 10vmin, 64px);
+    border-radius: 50%;
+    background: #500;
+    border: 3px solid #700;
+    color: white;
+    font-weight: bold;
+    font-size: clamp(12px, 3vmin, 16px);
+    box-shadow: 0 3px 0 #300;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: none;
+    pointer-events: auto;
+}
+
+.action-btn:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #300;
+    background: #700;
+}
+
+@media (orientation: landscape) {
+    #game-container {
+        flex-direction: row;
+        max-width: 100vw;
+    }
+
+    #screen-wrapper {
+        max-height: 100vh;
+        width: auto;
+        height: auto;
+    }
+
+    /* Keep controls compact on landscape/desktop: bottom-right overlay */
+    #controls {
+        position: absolute;
+        right: 12px;
+        bottom: 0px;
+        left: auto;
+        transform: none;
+        height: auto;
+        flex-direction: row;
+        width: auto;
+        padding: 0;
+        background: transparent;
+    }
+}
+
+/* Desktop: keep controls visible but cap sizes so they don't get huge */
+@media (min-width: 900px) {
+    .action-btn { width: 56px; height: 56px; font-size: 14px; }
+    #controls { max-width: 220px; }
+}
+
+/* Touch devices: make buttons comfortable but bounded */
+@media (hover: none) and (pointer: coarse) {
+    .action-btn { width: clamp(48px, 12vmin, 88px); height: clamp(48px, 12vmin, 88px); font-size: clamp(14px, 4vmin, 20px); }
+}

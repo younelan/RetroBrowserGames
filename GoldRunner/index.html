@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lode Runner Classic - Apple II</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div id="game-container">
+        <div id="screen-wrapper">
+            <canvas id="game-canvas"></canvas>
+            <div id="ui-overlay">
+                <div id="score-board">
+                    <span>SCORE: <span id="score">000000</span></span>
+                    <span>MEN: <span id="lives">00</span></span>
+                    <span>LEVEL: <span id="level">01</span></span>
+                </div>
+            </div>
+
+            <div id="controls">
+                <div id="action-btns">
+                    <button id="btn-dig-left" class="action-btn">DIG L</button>
+                    <button id="btn-dig-right" class="action-btn">DIG R</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="levels.js"></script>
+    <script>
+        document.write('<script src="game.js?v=' + Date.now() + '"><\/script>');
+    </script>
+</body>
+
+</html>
