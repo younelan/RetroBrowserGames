@@ -1,6 +1,14 @@
-const canvas = document.getElementById('editor-canvas');
+// Prefer editor canvas, but fall back to game canvas when running from index.html
+let canvas = document.getElementById('editor-canvas') || document.getElementById('game-canvas');
+if (!canvas) {
+  // If no canvas present, create one and append to body
+  canvas = document.createElement('canvas');
+  canvas.id = 'editor-canvas';
+  canvas.width = 800; canvas.height = 1200;
+  document.body.appendChild(canvas);
+}
 const ctx = canvas.getContext('2d');
-const levelDataTextarea = document.getElementById('level-data');
+const levelDataTextarea = document.getElementById('level-data') || null;
 
 let level = {
   description: 'New Level',
@@ -8,6 +16,7 @@ let level = {
   wallColor: '#ffffff',
   wallLight: '#ffffff',
   wallDark: '#777777',
+  flipperColor: '#00888a',
   backgroundImage: null,
   backgroundAlpha: 1,
   launchRandomness: 0,
@@ -15,9 +24,23 @@ let level = {
   elements: []
 };
 
+// If loader provided a level via window.LEVELS, use it (normalize for safety)
+if (typeof window !== 'undefined' && window.LEVELS && window.LEVELS[0]) {
+  try {
+    level = normalizeLevel(window.LEVELS[0]);
+  } catch (e) {
+    // If normalizeLevel isn't available yet for some reason, shallow-assign
+    level = Object.assign(level, window.LEVELS[0] || {});
+  }
+  // Ensure background image is loaded if present
+  try { ensureBgImageLoaded(); } catch (e) { /* ignore */ }
+}
+
 // Background image cache
 let _bgImage = null;
 let _bgImageSrc = null;
+// Track failed background URLs to avoid repeated 404 retries
+let _bgImageFailed = new Set();
 
 // Plunger state (shooter lane on right side)
 let plungerActive = false;
@@ -34,6 +57,11 @@ let dragOffset = { x: 0, y: 0 };
 let pointerDownPos = null;
 let movedDuringDrag = false;
 let suppressNextClick = false;
+// Temporary flipper state for mouse/touch (holds keys while pressed)
+let _tempFlipper = null; // 'left' | 'right' | null (legacy, kept for mousedown/mouseup)
+let _tempFlipperTouchId = null;
+let _leftFlipperTouchId = null;  // touch id holding left flipper
+let _rightFlipperTouchId = null; // touch id holding right flipper
 
 // Physics State
 let isPlaying = false;
@@ -42,6 +70,7 @@ let ball = { x: 770, y: 1100, vx: 0, vy: 0, r: 15, trail: [] };
 let physicsInterval = null;
 let keys = {};
 let score = 0;
+let lives = 5;
 const SUB_STEPS = 8;
 const GRAVITY = 2200;
 const RESTITUTION = 0.6;
@@ -63,13 +92,15 @@ function ensureBgImageLoaded() {
   if (!level.backgroundImage) {
     _bgImage = null; _bgImageSrc = null; return;
   }
+  // If we already failed to load this image, don't retry
+  if (_bgImageFailed.has(level.backgroundImage)) { _bgImage = null; _bgImageSrc = null; return; }
   if (_bgImageSrc === level.backgroundImage && _bgImage) return;
   _bgImageSrc = level.backgroundImage;
   _bgImage = new Image();
   _bgImage.crossOrigin = 'anonymous';
   _bgImage.onload = () => { /* loaded */ };
-  // Fail silently if image cannot be loaded — fall back to background color
-  _bgImage.onerror = () => { _bgImage = null; _bgImageSrc = null; };
+  // Fail silently if image cannot be loaded — record failure so we don't retry
+  _bgImage.onerror = () => { _bgImageFailed.add(_bgImageSrc); _bgImage = null; _bgImageSrc = null; };
   _bgImage.src = _bgImageSrc;
 }
 
@@ -144,12 +175,15 @@ function drawProceduralBackground(ctx) {
 
 // --- Toolbar and Load/Save (No Changes) ---
 const toolbar = document.getElementById('toolbar');
-toolbar.addEventListener('click', (e) => {
-  if (e.target.tagName === 'BUTTON') {
-    const tool = e.target.id.replace('-tool', '');
-    selectTool(tool);
-  }
-});
+const _hasToolbar = !!toolbar;
+if (toolbar) {
+  toolbar.addEventListener('click', (e) => {
+    if (e.target.tagName === 'BUTTON') {
+      const tool = e.target.id.replace('-tool', '');
+      selectTool(tool);
+    }
+  });
+}
 const _loadBtn = document.getElementById('load-button'); if (_loadBtn) _loadBtn.addEventListener('click', loadLevel);
 const _saveBtn = document.getElementById('save-button'); if (_saveBtn) _saveBtn.addEventListener('click', saveLevel);
 // New: load level.json directly
@@ -165,6 +199,7 @@ const _loadFileBtn = document.getElementById('load-file-button'); if (_loadFileB
       // new: separate wall light/dark picks
       if (document.getElementById('wall-light')) document.getElementById('wall-light').value = level.wallLight || '#ffffff';
       if (document.getElementById('wall-dark')) document.getElementById('wall-dark').value = level.wallDark || '#777777';
+      if (document.getElementById('flipper-color')) document.getElementById('flipper-color').value = level.flipperColor || '#00888a';
   } catch (err) {
     alert('Failed to load level.json');
     console.error(err);
@@ -178,11 +213,21 @@ const wallLightInput = document.getElementById('wall-light');
 const wallDarkInput = document.getElementById('wall-dark');
 if (wallLightInput) wallLightInput.addEventListener('input', e => { level.wallLight = e.target.value; });
 if (wallDarkInput) wallDarkInput.addEventListener('input', e => { level.wallDark = e.target.value; });
+// Flipper color control
+const flipperColorInput = document.getElementById('flipper-color');
+if (flipperColorInput) flipperColorInput.addEventListener('input', e => { level.flipperColor = e.target.value; });
 const _bgImageInput = document.getElementById('bg-image'); if (_bgImageInput) _bgImageInput.addEventListener('change', e => { level.backgroundImage = e.target.value; ensureBgImageLoaded(); });
 const _bgAlpha = document.getElementById('bg-alpha'); if (_bgAlpha) _bgAlpha.addEventListener('input', e => { level.backgroundAlpha = parseFloat(e.target.value); });
 const _launchRandom = document.getElementById('launch-random'); if (_launchRandom) _launchRandom.addEventListener('input', e => { level.launchRandomness = parseFloat(e.target.value); });
 
 const _playToggle = document.getElementById('play-mode-toggle'); if (_playToggle) _playToggle.addEventListener('click', togglePlayMode);
+
+// If the page doesn't include the editor toolbar (e.g. running from index.html),
+// auto-start play mode so the page behaves like the game view.
+if (!_hasToolbar) {
+  // Defer to allow other init to complete
+  setTimeout(() => { if (!isPlaying) togglePlayMode(); }, 50);
+}
 
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
@@ -203,12 +248,10 @@ function togglePlayMode() {
   isPlaying = !isPlaying;
   const btn = document.getElementById('play-mode-toggle');
   if (isPlaying) {
-    btn.classList.add('playing');
-    btn.innerText = 'Stop';
+    if (btn) { btn.classList.add('playing'); btn.innerText = 'Stop'; }
     startPhysics();
   } else {
-    btn.classList.remove('playing');
-    btn.innerText = 'Play';
+    if (btn) { btn.classList.remove('playing'); btn.innerText = 'Play'; }
     stopPhysics();
   }
 }
@@ -216,6 +259,10 @@ function togglePlayMode() {
 function startPhysics() {
   score = 0;
   keys = {}; // Clear stale keys
+  _leftFlipperTouchId = null;
+  _rightFlipperTouchId = null;
+  // Initialize lives / balls from level (default 5)
+  lives = (typeof level.startBalls === 'number') ? level.startBalls : (level.balls ?? level.lives ?? 5);
   // Explicitly reset flippers to rest position
   level.elements.forEach(el => {
     if (el.type === 'flipper') {
@@ -304,41 +351,27 @@ function updatePhysics() {
     // Bounds
     if (ball.x < ball.r) { ball.x = ball.r; ball.vx *= -0.8; }
     if (ball.x > canvas.width - ball.r) { ball.x = canvas.width - ball.r; ball.vx *= -0.8; }
-    if (ball.y < ball.r) { ball.y = ball.r; ball.vy *= -0.5; }
-    if (ball.y > canvas.height + 100) {
-      stopPhysics();
-      togglePlayMode();
-      console.log("Game Over - Ball Drained");
-      return;
-    }
-
-    // Wall Collisions
-    level.walls.forEach(wall => {
-      const pts = wall.points;
-      if (!pts || pts.length < 2) return;
-      for (let i = 0; i < pts.length - 1; i++) {
-        const p1 = pts[i];
-        const p2 = pts[i + 1];
-        const startHas = !!(p1.controls && p1.controls.c2);
-        const endHas = !!(p2.controls && p2.controls.c1);
-        if (startHas || endHas) {
-          const c2 = startHas ? p1.controls.c2 : p1;
-          const c1 = endHas ? p2.controls.c1 : p2;
-          const samples = 48;
-          let prev = { x: p1.x, y: p1.y };
-          for (let sm = 1; sm <= samples; sm++) {
-            const t = sm / samples;
-            const curr = cubic(p1, c2, c1, p2, t);
-            collideBallWithSegment(ball, prev, curr, RESTITUTION, FRICTION);
-            prev = curr;
-          }
+      if (ball.y < ball.r) { ball.y = ball.r; ball.vy *= -0.5; }
+      if (ball.y > canvas.height + 100) {
+        // Ball drained: reduce lives and either respawn or end game
+        lives = Math.max(0, (lives || 0) - 1);
+        if (lives > 0) {
+          // Respawn ball at plunger, keep play mode
+          const startX = Math.min(canvas.width - (ball.r || 10) - 6, PLUNGER_X);
+          const startBaseY = (canvas.height - 80) - 40; // matches drawPlungerUnderlay baseY
+          const startY = startBaseY - (ball.r || 10) - 6;
+          ball = { x: startX, y: startY, vx: 0, vy: 0, r: 15, waiting: true, trail: [] };
+          plungerPull = 0;
+          return;
         } else {
-          collideBallWithSegment(ball, p1, p2, RESTITUTION, FRICTION);
+          stopPhysics();
+          togglePlayMode();
+          console.log("Game Over - Ball Drained");
+          return;
         }
       }
-    });
 
-    // Element Collisions
+    // Element Collisions (flippers/bumper priority before walls to avoid flipper-line overlap issues)
     level.elements.forEach(el => {
       if (el.type === 'bumper') {
         const dist = Math.hypot(ball.x - el.position.x, ball.y - el.position.y);
@@ -361,7 +394,9 @@ function updatePhysics() {
         }
       } else if (el.type === 'flipper') {
         const isRight = !!el.isRight;
-        const active = isRight ? (keys['ArrowRight'] || keys['KeyM'] || keys['m']) : (keys['ArrowLeft'] || keys['KeyZ'] || keys['z']);
+        const active = isRight
+          ? (keys['ArrowRight'] || keys['KeyK'] || keys['k'] || keys['KeyL'] || keys['l'] || keys['KeyM'] || keys['m'])
+          : (keys['ArrowLeft'] || keys['KeyS'] || keys['s'] || keys['KeyD'] || keys['d'] || keys['KeyF'] || keys['f']);
         const p1 = el.position;
         const L = el.length || 70;
         const p2 = { x: p1.x + Math.cos(el.currentRot) * L, y: p1.y + Math.sin(el.currentRot) * L };
@@ -372,19 +407,63 @@ function updatePhysics() {
         if (d < ball.r + thickness) {
           const savedR = ball.r;
           ball.r = savedR + thickness;
-          collideBallWithSegment(ball, p1, p2, 0.4, 0.02);
+          // Use higher restitution when the flipper is active to simulate a stronger bounce
+          const flipperRest = active ? 1.0 : 0.6;
+          collideBallWithSegment(ball, p1, p2, flipperRest, 0.02);
           ball.r = savedR;
 
-          // Velocity pulse based on flipper speed
-          if (active) {
-            const dx = ball.x - p1.x, dy = ball.y - p1.y;
-            const dist = Math.hypot(dx, dy) || 1;
-            const nx = dx / dist, ny = dy / dist;
-            // Impulse scaled for substeps (total ~800 px/s over one frame)
-            const boost = 800 * (1 / steps);
-            ball.vx += nx * boost;
-            ball.vy += ny * boost;
+          // Apply an impulse along the flipper normal (so ball is kicked away from the flipper surface)
+          // Compute normalized segment normal
+          const sx = p2.x - p1.x, sy = p2.y - p1.y;
+          let nx = -sy, ny = sx;
+          const nlen = Math.hypot(nx, ny) || 1;
+          nx /= nlen; ny /= nlen;
+          // Ensure normal points from flipper toward the ball
+          const midx = (p1.x + p2.x) * 0.5, midy = (p1.y + p2.y) * 0.5;
+          const toBallX = ball.x - midx, toBallY = ball.y - midy;
+          if ((toBallX * nx + toBallY * ny) < 0) { nx = -nx; ny = -ny; }
+
+          // Base boost scaled per sub-step; raise magnitude for a snappier flipper
+              // Stronger base boost for snappy flipper response
+              const baseBoost = 2600 * (1 / steps);
+              // Small extra from recent rotation (if available)
+              const rotDelta = el._lastRot !== undefined ? (el.currentRot - el._lastRot) : 0;
+              const angBoost = Math.min(4000, Math.abs(rotDelta) * 5200) * (1 / steps);
+              let boost = baseBoost + angBoost;
+              // Clamp boost so it doesn't explode on very large substep counts
+              boost = Math.min(boost, 4200 * (1 / Math.max(1, steps)));
+
+          ball.vx += nx * boost;
+          ball.vy += ny * boost;
+
+          // store last rotation for next frame's angBoost calc
+          el._lastRot = el.currentRot;
+        }
+      }
+    });
+
+    // Wall Collisions (processed after element collisions)
+    level.walls.forEach(wall => {
+      const pts = wall.points;
+      if (!pts || pts.length < 2) return;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const startHas = !!(p1.controls && p1.controls.c2);
+        const endHas = !!(p2.controls && p2.controls.c1);
+        if (startHas || endHas) {
+          const c2 = startHas ? p1.controls.c2 : p1;
+          const c1 = endHas ? p2.controls.c1 : p2;
+          const samples = 48;
+          let prev = { x: p1.x, y: p1.y };
+          for (let sm = 1; sm <= samples; sm++) {
+            const t = sm / samples;
+            const curr = cubic(p1, c2, c1, p2, t);
+            collideBallWithSegment(ball, prev, curr, RESTITUTION, FRICTION);
+            prev = curr;
           }
+        } else {
+          collideBallWithSegment(ball, p1, p2, RESTITUTION, FRICTION);
         }
       }
     });
@@ -442,7 +521,7 @@ function draw() {
     ctx.fillStyle = level.backgroundColor || '#000000';
   }
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawGrid();
+  if (_hasToolbar) drawGrid();
 
   // Background Image (Always at bottom)
   ensureBgImageLoaded();
@@ -460,7 +539,7 @@ function draw() {
 
   level.walls.forEach(wall => drawWall(wall, level.wallColor || 'black'));
 
-  if (currentWall) {
+  if (_hasToolbar && currentWall) {
     drawWall(currentWall, 'blue');
     // "If I click, the point doesnt appear immediately. Make sure points are visible in a different color"
     currentWall.points.forEach(p => {
@@ -470,7 +549,11 @@ function draw() {
       ctx.fill();
     });
   }
-  level.elements.forEach(element => drawElement(element));
+
+  // Draw non-flipper elements first so flippers render on top of walls
+  level.elements.filter(el => el.type !== 'flipper').forEach(element => drawElement(element));
+  // Draw flippers last to ensure they are visually above walls
+  level.elements.filter(el => el.type === 'flipper').forEach(element => drawElement(element));
 
   if (isPlaying) {
     // Draw Trail
@@ -537,17 +620,15 @@ function draw() {
 
     ctx.restore();
 
-    // HUD
+    // HUD: Score + Lives
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 24px "Courier New", monospace';
     ctx.shadowBlur = 4;
     ctx.shadowColor = '#000';
     ctx.fillText('SCORE: ' + score.toString().padStart(6, '0'), 30, 50);
-
-    // Debug Monitor (Small and unobtrusive)
-    ctx.font = '12px Courier New';
-    ctx.shadowBlur = 0;
-    ctx.fillText(`X:${Math.round(ball.x)} Y:${Math.round(ball.y)} | VX:${ball.vx.toFixed(1)} VY:${ball.vy.toFixed(1)}`, 30, 80);
+    ctx.font = 'bold 20px "Courier New", monospace';
+    ctx.shadowBlur = 2;
+    ctx.fillText('LIVES: ' + (lives || 0), 30, 80);
 
     // Instructions when waiting for launch
     if (ball.waiting) {
@@ -568,7 +649,7 @@ function draw() {
     }
   }
 
-  if (selectedItem) {
+  if (_hasToolbar && selectedItem) {
     ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
     ctx.lineWidth = 1;
     if (selectedItem.wall) {
@@ -666,6 +747,7 @@ function normalizeLevel(src) {
     backgroundImage: src?.backgroundImage || null,
     backgroundAlpha: typeof src?.backgroundAlpha === 'number' ? src.backgroundAlpha : 1,
     launchRandomness: typeof src?.launchRandomness === 'number' ? src.launchRandomness : 0,
+    startBalls: typeof src?.startBalls === 'number' ? src.startBalls : (typeof src?.balls === 'number' ? src.balls : undefined),
     walls: [],
     elements: []
   };
@@ -729,7 +811,14 @@ function drawWall(wall, color) {
   };
 
   // Layer 1: Thick neon base with glow
-  ctx.strokeStyle = baseColor;
+  // Compute bounding box for gradient direction
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  (wall.points || []).forEach(p => { if (p.x < minX) minX = p.x; if (p.y < minY) minY = p.y; if (p.x > maxX) maxX = p.x; if (p.y > maxY) maxY = p.y; });
+  if (!isFinite(minX)) { minX = 0; minY = 0; maxX = canvas.width; maxY = canvas.height; }
+  const grad = ctx.createLinearGradient(minX, minY, maxX, maxY);
+  grad.addColorStop(0, dark);
+  grad.addColorStop(1, light);
+  ctx.strokeStyle = grad;
   ctx.lineWidth = 14;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -738,9 +827,12 @@ function drawWall(wall, color) {
   path();
   ctx.stroke();
 
-  // Layer 2: Inner highlight using wallLight
+  // Layer 2: Inner highlight using wallLight (subtle gradient)
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = hexToRgba(light, 0.7);
+  const grad2 = ctx.createLinearGradient(minX, minY, maxX, maxY);
+  grad2.addColorStop(0, hexToRgba(shadeHex(light, -10), 0.85));
+  grad2.addColorStop(1, hexToRgba(light, 0.6));
+  ctx.strokeStyle = grad2;
   ctx.lineWidth = 6;
   path();
   ctx.stroke();
@@ -763,6 +855,22 @@ function hexToRgba(hex, alpha = 1) {
   const g = (bigint >> 8) & 255;
   const b = bigint & 255;
   return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// Utility: shade hex color by percent (-100..100)
+function shadeHex(hex, percent) {
+  if (!hex) return hex;
+  let h = hex.replace('#','');
+  if (h.length === 3) h = h.split('').map(c=>c+c).join('');
+  const num = parseInt(h,16);
+  let r = (num >> 16) & 0xFF;
+  let g = (num >> 8) & 0xFF;
+  let b = num & 0xFF;
+  const p = percent / 100;
+  r = Math.min(255, Math.max(0, Math.round(r + (p * (255 - r)))));
+  g = Math.min(255, Math.max(0, Math.round(g + (p * (255 - g)))));
+  b = Math.min(255, Math.max(0, Math.round(b + (p * (255 - b)))));
+  return `#${((1<<24) + (r<<16) + (g<<8) + b).toString(16).slice(1)}`;
 }
 
 function drawElement(element) {
@@ -870,11 +978,16 @@ function drawElement(element) {
     ctx.shadowBlur = 12;
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
 
+    // Flipper color (from level) with computed highlights/shadows
+    const base = level.flipperColor || '#00888a';
+    const lightCol = shadeHex(base, 25);
+    const midCol = shadeHex(base, 5);
+    const darkCol = shadeHex(base, -35);
     const fGrad = ctx.createLinearGradient(0, 0, L, 0);
-    fGrad.addColorStop(0, '#005f6b');
-    fGrad.addColorStop(0.35, '#00b8c4');
-    fGrad.addColorStop(0.7, '#00888a');
-    fGrad.addColorStop(1, '#004d52');
+    fGrad.addColorStop(0, darkCol);
+    fGrad.addColorStop(0.35, midCol);
+    fGrad.addColorStop(0.7, lightCol);
+    fGrad.addColorStop(1, darkCol);
     ctx.fillStyle = fGrad;
 
     ctx.beginPath();
@@ -1051,13 +1164,19 @@ canvas.addEventListener('mousedown', (e) => {
   }
   // Bottom tap area to trigger flippers (quick play control)
   if (isPlaying && pos.y > canvas.height - 140) {
+    // Hold flipper keys while mouse is pressed; release on mouseup
     if (pos.x < canvas.width / 2) {
-      triggerTempKeys(['ArrowLeft', 'KeyZ', 'z'], 160);
+      _tempFlipper = 'left';
+      keys['ArrowLeft'] = true; keys['KeyS'] = true; keys['s'] = true; keys['KeyD'] = true; keys['d'] = true; keys['KeyF'] = true; keys['f'] = true;
     } else {
-      triggerTempKeys(['ArrowRight', 'KeyM', 'm'], 160);
+      _tempFlipper = 'right';
+      keys['ArrowRight'] = true; keys['KeyK'] = true; keys['k'] = true; keys['KeyL'] = true; keys['l'] = true; keys['KeyM'] = true; keys['m'] = true;
     }
     return;
   }
+  // If we don't have the editor UI, ignore editor interactions (clicks should not add elements)
+  if (!_hasToolbar) return;
+
   pointerDownPos = pos;
   movedDuringDrag = false;
 
@@ -1111,6 +1230,8 @@ canvas.addEventListener('mousemove', (e) => {
     plungerPull = Math.max(0, Math.min(PLUNGER_MAX_PULL, pos.y - plungerStartY));
     return;
   }
+
+  if (!_hasToolbar) return; // Ignore editing drags when in play-only mode
 
   if (dragging && selectedItem) {
     if (pointerDownPos && !movedDuringDrag) {
@@ -1169,6 +1290,14 @@ canvas.addEventListener('mouseup', (e) => {
     e.preventDefault();
     return;
   }
+  // Clear temporary flipper keys if mouse released
+  if (_tempFlipper === 'left') {
+    keys['ArrowLeft'] = false; keys['KeyS'] = false; keys['s'] = false; keys['KeyD'] = false; keys['d'] = false; keys['KeyF'] = false; keys['f'] = false;
+  } else if (_tempFlipper === 'right') {
+    keys['ArrowRight'] = false; keys['KeyK'] = false; keys['k'] = false; keys['KeyL'] = false; keys['l'] = false; keys['KeyM'] = false; keys['m'] = false;
+  }
+  _tempFlipper = null;
+  _tempFlipperTouchId = null;
   dragging = false;
   pointerDownPos = null;
 });
@@ -1176,29 +1305,32 @@ canvas.addEventListener('mouseup', (e) => {
 // Touch controls for Plunger / Mobile
 canvas.addEventListener('touchstart', (e) => {
   if (!isPlaying) return;
-  const t = e.touches[0];
   const rect = canvas.getBoundingClientRect();
-  const tx = (t.clientX - rect.left) * (canvas.width / rect.width);
-  const ty = (t.clientY - rect.top) * (canvas.height / rect.height);
 
-  // Plunger touch (shooter lane)
-  if (ball.waiting && tx > canvas.width - 65) {
-    plungerActive = true;
-    plungerStartY = ty;
-    plungerPull = 0;
-    e.preventDefault();
-    return;
-  }
+  for (const t of e.changedTouches) {
+    const tx = (t.clientX - rect.left) * (canvas.width / rect.width);
+    const ty = (t.clientY - rect.top) * (canvas.height / rect.height);
 
-  // Bottom tap areas: left/right to toggle flippers briefly
-  if (ty > canvas.height - 140) {
-    if (tx < canvas.width / 2) {
-      triggerTempKeys(['ArrowLeft', 'KeyZ', 'z'], 160);
-    } else {
-      triggerTempKeys(['ArrowRight', 'KeyM', 'm'], 160);
+    // Plunger touch (shooter lane)
+    if (ball.waiting && tx > canvas.width - 65) {
+      plungerActive = true;
+      plungerStartY = ty;
+      plungerPull = 0;
+      e.preventDefault();
+      continue;
     }
-    e.preventDefault();
-    return;
+
+    // Bottom half: left/right to hold flippers
+    if (ty > canvas.height / 2) {
+      if (tx < canvas.width / 2) {
+        _leftFlipperTouchId = t.identifier;
+        keys['ArrowLeft'] = true; keys['KeyS'] = true; keys['s'] = true; keys['KeyZ'] = true; keys['z'] = true;
+      } else {
+        _rightFlipperTouchId = t.identifier;
+        keys['ArrowRight'] = true; keys['KeyM'] = true; keys['m'] = true; keys['Slash'] = true;
+      }
+      e.preventDefault();
+    }
   }
 }, { passive: false });
 
@@ -1213,7 +1345,7 @@ canvas.addEventListener('touchmove', (e) => {
 }, { passive: false });
 
 canvas.addEventListener('touchend', (e) => {
-    if (isPlaying && plungerActive) {
+  if (isPlaying && plungerActive) {
     if (plungerPull > 6 && ball.waiting) {
       const p = Math.max(0, Math.min(1, plungerPull / PLUNGER_MAX_PULL));
       launchBallFromPull(p);
@@ -1221,9 +1353,31 @@ canvas.addEventListener('touchend', (e) => {
     plungerActive = false;
     plungerPull = 0;
   }
+  // Release flipper keys when the touch that activated them ends
+  for (const t of e.changedTouches) {
+    if (t.identifier === _leftFlipperTouchId) {
+      keys['ArrowLeft'] = false; keys['KeyS'] = false; keys['s'] = false; keys['KeyZ'] = false; keys['z'] = false;
+      _leftFlipperTouchId = null;
+    }
+    if (t.identifier === _rightFlipperTouchId) {
+      keys['ArrowRight'] = false; keys['KeyM'] = false; keys['m'] = false; keys['Slash'] = false;
+      _rightFlipperTouchId = null;
+    }
+  }
 }, { passive: false });
 
+// Safety net: if a touch is cancelled (e.g. system gesture), release flippers
+canvas.addEventListener('touchcancel', () => {
+  keys['ArrowLeft'] = false; keys['KeyS'] = false; keys['s'] = false; keys['KeyZ'] = false; keys['z'] = false;
+  keys['ArrowRight'] = false; keys['KeyM'] = false; keys['m'] = false; keys['Slash'] = false;
+  _leftFlipperTouchId = null;
+  _rightFlipperTouchId = null;
+  plungerActive = false;
+  plungerPull = 0;
+});
+
 canvas.addEventListener('dblclick', (e) => {
+  if (!_hasToolbar) return;
   if (selectedTool === 'wall' && currentWall) {
     if (currentWall.points.length > 1) level.walls.push(currentWall);
     currentWall = null;
@@ -1231,6 +1385,7 @@ canvas.addEventListener('dblclick', (e) => {
 });
 
 canvas.addEventListener('click', (e) => {
+  if (!_hasToolbar) return;
   if (suppressNextClick) { suppressNextClick = false; return; }
 
   const pos = getMousePos(e);

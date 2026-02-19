@@ -7,15 +7,20 @@ const W = canvas.width, H = canvas.height;
 // Background image cache
 let _bgImage = null;
 let _bgImageSrc = null;
+// Track failed background URLs to avoid repeated 404 retries
+let _bgImageFailed = new Set();
 
 function ensureBgImageLoaded() {
   if (!level.backgroundImage) {
     _bgImage = null; _bgImageSrc = null; return;
   }
+  if (_bgImageFailed.has(level.backgroundImage)) { _bgImage = null; _bgImageSrc = null; return; }
   if (_bgImageSrc === level.backgroundImage && _bgImage) return;
   _bgImageSrc = level.backgroundImage;
   _bgImage = new Image();
   _bgImage.crossOrigin = 'anonymous';
+  _bgImage.onload = () => { /* loaded */ };
+  _bgImage.onerror = () => { _bgImageFailed.add(_bgImageSrc); _bgImage = null; _bgImageSrc = null; };
   _bgImage.src = _bgImageSrc;
 }
 
@@ -60,14 +65,15 @@ function initFlippers() {
     }
   }
 }
+// Level (loaded by loader.js into window.LEVELS)
+const level = (window.LEVELS && window.LEVELS[0]) || { description: 'Empty', walls: [], elements: [] };
+
 // For backward compatibility if level.json doesn't have flippers yet
-if (level.elements.filter(el => el.type === 'flipper').length === 0) {
+if ((level.elements || []).filter(el => el.type === 'flipper').length === 0) {
+  level.elements = level.elements || [];
   level.elements.push({ type: 'flipper', position: { x: 260, y: 1080 }, isRight: false });
   level.elements.push({ type: 'flipper', position: { x: 540, y: 1080 }, isRight: true });
 }
-
-// Level (loaded by loader.js into window.LEVELS)
-const level = (window.LEVELS && window.LEVELS[0]) || { description: 'Empty', walls: [], elements: [] };
 
 // Initialize flippers after we have the level
 initFlippers();
