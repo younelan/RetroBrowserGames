@@ -6,6 +6,8 @@ let level = {
   description: 'New Level',
   backgroundColor: '#000000',
   wallColor: '#ffffff',
+  wallLight: '#ffffff',
+  wallDark: '#777777',
   backgroundImage: null,
   backgroundAlpha: 1,
   launchRandomness: 0,
@@ -66,7 +68,8 @@ function ensureBgImageLoaded() {
   _bgImage = new Image();
   _bgImage.crossOrigin = 'anonymous';
   _bgImage.onload = () => { /* loaded */ };
-  _bgImage.onerror = () => { console.warn('Failed to load background:', _bgImageSrc); _bgImage = null; _bgImageSrc = null; };
+  // Fail silently if image cannot be loaded — fall back to background color
+  _bgImage.onerror = () => { _bgImage = null; _bgImageSrc = null; };
   _bgImage.src = _bgImageSrc;
 }
 
@@ -147,10 +150,10 @@ toolbar.addEventListener('click', (e) => {
     selectTool(tool);
   }
 });
-document.getElementById('load-button').addEventListener('click', loadLevel);
-document.getElementById('save-button').addEventListener('click', saveLevel);
+const _loadBtn = document.getElementById('load-button'); if (_loadBtn) _loadBtn.addEventListener('click', loadLevel);
+const _saveBtn = document.getElementById('save-button'); if (_saveBtn) _saveBtn.addEventListener('click', saveLevel);
 // New: load level.json directly
-document.getElementById('load-file-button').addEventListener('click', async () => {
+const _loadFileBtn = document.getElementById('load-file-button'); if (_loadFileBtn) _loadFileBtn.addEventListener('click', async () => {
   try {
     const res = await fetch('level.json', { cache: 'no-cache' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -158,8 +161,10 @@ document.getElementById('load-file-button').addEventListener('click', async () =
     level = normalizeLevel(data); // normalize after fetch
     levelDataTextarea.value = JSON.stringify(level, null, 2);
     // Update color inputs
-    document.getElementById('bg-color').value = level.backgroundColor;
-    document.getElementById('wall-color').value = level.wallColor;
+      document.getElementById('bg-color').value = level.backgroundColor;
+      // new: separate wall light/dark picks
+      if (document.getElementById('wall-light')) document.getElementById('wall-light').value = level.wallLight || '#ffffff';
+      if (document.getElementById('wall-dark')) document.getElementById('wall-dark').value = level.wallDark || '#777777';
   } catch (err) {
     alert('Failed to load level.json');
     console.error(err);
@@ -167,24 +172,17 @@ document.getElementById('load-file-button').addEventListener('click', async () =
 });
 
 // Update HUD and background controls
-document.getElementById('bg-color').addEventListener('input', e => {
-  level.backgroundColor = e.target.value;
-});
-document.getElementById('wall-color').addEventListener('input', e => {
-  level.wallColor = e.target.value;
-});
-document.getElementById('bg-image').addEventListener('change', e => {
-  level.backgroundImage = e.target.value;
-  ensureBgImageLoaded();
-});
-document.getElementById('bg-alpha').addEventListener('input', e => {
-  level.backgroundAlpha = parseFloat(e.target.value);
-});
-document.getElementById('launch-random').addEventListener('input', e => {
-  level.launchRandomness = parseFloat(e.target.value);
-});
+const _bgColor = document.getElementById('bg-color'); if (_bgColor) _bgColor.addEventListener('input', e => { level.backgroundColor = e.target.value; });
+// wall light/dark controls (if present in DOM)
+const wallLightInput = document.getElementById('wall-light');
+const wallDarkInput = document.getElementById('wall-dark');
+if (wallLightInput) wallLightInput.addEventListener('input', e => { level.wallLight = e.target.value; });
+if (wallDarkInput) wallDarkInput.addEventListener('input', e => { level.wallDark = e.target.value; });
+const _bgImageInput = document.getElementById('bg-image'); if (_bgImageInput) _bgImageInput.addEventListener('change', e => { level.backgroundImage = e.target.value; ensureBgImageLoaded(); });
+const _bgAlpha = document.getElementById('bg-alpha'); if (_bgAlpha) _bgAlpha.addEventListener('input', e => { level.backgroundAlpha = parseFloat(e.target.value); });
+const _launchRandom = document.getElementById('launch-random'); if (_launchRandom) _launchRandom.addEventListener('input', e => { level.launchRandomness = parseFloat(e.target.value); });
 
-document.getElementById('play-mode-toggle').addEventListener('click', togglePlayMode);
+const _playToggle = document.getElementById('play-mode-toggle'); if (_playToggle) _playToggle.addEventListener('click', togglePlayMode);
 
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
@@ -419,7 +417,8 @@ function loadLevel() {
     const parsed = JSON.parse(levelDataTextarea.value);
     level = normalizeLevel(parsed); // normalize after paste
     document.getElementById('bg-color').value = level.backgroundColor;
-    document.getElementById('wall-color').value = level.wallColor;
+    if (document.getElementById('wall-light')) document.getElementById('wall-light').value = level.wallLight || '#ffffff';
+    if (document.getElementById('wall-dark')) document.getElementById('wall-dark').value = level.wallDark || '#777777';
     document.getElementById('bg-image').value = level.backgroundImage || '';
     document.getElementById('bg-alpha').value = level.backgroundAlpha ?? 1;
     document.getElementById('launch-random').value = level.launchRandomness ?? 0;
@@ -704,7 +703,10 @@ function normalizeLevel(src) {
 
 function drawWall(wall, color) {
   ctx.save();
-  const baseColor = color === 'blue' ? '#4488ff' : '#00ffff';
+  // Use separate dark/light wall colors for metallic gradient
+  const dark = level.wallDark || '#777777';
+  const light = level.wallLight || '#ffffff';
+  const baseColor = dark;
 
   // Define the path once for multiple strokes
   const path = () => {
@@ -736,9 +738,9 @@ function drawWall(wall, color) {
   path();
   ctx.stroke();
 
-  // Layer 2: Transparent inner highlight for "texture"
+  // Layer 2: Inner highlight using wallLight
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+  ctx.strokeStyle = hexToRgba(light, 0.7);
   ctx.lineWidth = 6;
   path();
   ctx.stroke();
@@ -750,6 +752,17 @@ function drawWall(wall, color) {
   ctx.stroke();
 
   ctx.restore();
+}
+
+// Utility: convert hex color to rgba string with alpha
+function hexToRgba(hex, alpha = 1) {
+  if (!hex) return `rgba(0,0,0,${alpha})`;
+  const h = hex.replace('#', '');
+  const bigint = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 function drawElement(element) {
@@ -1025,7 +1038,7 @@ function deleteSelectedItem() {
   selectedItem = null;
 }
 
-document.getElementById('delete-tool').addEventListener('click', deleteSelectedItem);
+const _delBtn = document.getElementById('delete-tool'); if (_delBtn) _delBtn.addEventListener('click', deleteSelectedItem);
 
 canvas.addEventListener('mousedown', (e) => {
   const pos = getMousePos(e);

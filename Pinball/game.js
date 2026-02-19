@@ -65,10 +65,12 @@ if (level.elements.filter(el => el.type === 'flipper').length === 0) {
   level.elements.push({ type: 'flipper', position: { x: 260, y: 1080 }, isRight: false });
   level.elements.push({ type: 'flipper', position: { x: 540, y: 1080 }, isRight: true });
 }
-initFlippers();
 
-// Level
+// Level (loaded by loader.js into window.LEVELS)
 const level = (window.LEVELS && window.LEVELS[0]) || { description: 'Empty', walls: [], elements: [] };
+
+// Initialize flippers after we have the level
+initFlippers();
 
 // Build render + collision segments from walls (bezier sampling if needed)
 let wallSegments = [];
