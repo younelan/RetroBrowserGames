@@ -1,32 +1,201 @@
+:root {
+  --bg-color: #0b0e14;
+  --panel-color: #1a1e26;
+  --accent-neon: #00ffff;
+  --accent-pink: #ff00ff;
+  --accent-red: #ff3333;
+  --text-primary: #e0e6ed;
+  --text-muted: #94a3b8;
+  --shadow-neon: 0 0 10px rgba(0, 255, 255, 0.4);
+}
+
 body {
-  font-family: sans-serif;
-  background-color: #f0f0f0;
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-primary);
   margin: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #toolbar {
-  margin: 10px;
-  padding: 10px;
-  background-color: #ddd;
-  border-radius: 5px;
+  width: 250px;
+  padding: 24px;
+  background-color: var(--panel-color);
+  border-right: 1px solid #2d313a;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  height: 100vh;
+  box-sizing: border-box;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+}
+
+#toolbar h2 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin: 20px 0 4px 0;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
 }
 
 #toolbar button {
-  margin: 0 5px;
-  padding: 5px 10px;
-  border: 1px solid #999;
-  border-radius: 3px;
+  padding: 12px 16px;
+  background-color: #2d313a;
+  color: var(--text-primary);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
   cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#toolbar button:hover {
+  background-color: #383e4a;
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 #toolbar button.active {
-  background-color: #99f;
+  background-color: rgba(0, 255, 255, 0.08);
+  border-color: var(--accent-neon);
+  color: var(--accent-neon);
+  box-shadow: var(--shadow-neon);
+}
+
+#play-mode-toggle.playing {
+  background-color: rgba(0, 255, 255, 0.15);
+  border-color: var(--accent-neon);
+  color: var(--accent-neon);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+}
+
+#delete-tool {
+  background-color: rgba(255, 51, 51, 0.05);
+  border-color: rgba(255, 51, 51, 0.2);
+  color: var(--accent-red);
+}
+
+#delete-tool:hover {
+  background-color: rgba(255, 51, 51, 0.15);
+  border-color: var(--accent-red);
+  box-shadow: 0 0 15px rgba(255, 51, 51, 0.3);
+}
+
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 32px;
+  gap: 20px;
+  overflow: auto;
+  align-items: center;
+  background: radial-gradient(circle at center, #1a1e26 0%, #0b0e14 100%);
 }
 
 #editor-canvas {
-  background-color: #fff;
-  border: 1px solid #ccc;
+  background-color: #05070a;
+  border: 1px solid #2d313a;
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  max-width: 100%;
+  max-height: calc(100vh - 64px);
+  height: auto;
+  width: auto;
+  object-fit: contain;
+  image-rendering: crisp-edges;
+}
+
+.controls-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.color-picker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #bbb;
+}
+
+.color-picker-item input {
+  background: none;
+  border: none;
+  padding: 0;
+  width: 30px;
+  height: 20px;
+  cursor: pointer;
+}
+
+#level-data {
+  width: 100%;
+  height: 180px;
+  background-color: #1a1a1a;
+  color: #0d0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 5px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.7rem;
+  resize: vertical;
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.button-grid button {
+  padding: 8px 4px;
+  font-size: 0.75rem;
+  text-align: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background-color: #383838;
+}
+
+.data-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.data-row button {
+  flex: 1;
+  padding: 10px 4px;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #444;
+  font-weight: 500;
+}
+
+.data-row button:hover {
+  background-color: #555;
+  color: #fff;
+  border-color: #888;
+}
+
+#toolbar hr {
+  border: none;
+  border-top: 1px solid #444;
+  margin: 15px 0;
 }

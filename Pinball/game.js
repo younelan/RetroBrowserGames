@@ -14,7 +14,7 @@ const STEP = 1 / 60;
 
 // Flippers
 function toRad(deg) { return deg * Math.PI / 180; }
-function makeFlipper({pivot, length, restDeg, activeDeg, isRight}) {
+function makeFlipper({ pivot, length, restDeg, activeDeg, isRight }) {
   return {
     pivot, length, isRight,
     angle: toRad(restDeg),
@@ -27,8 +27,30 @@ function makeFlipper({pivot, length, restDeg, activeDeg, isRight}) {
     omega: 0
   };
 }
-const leftFlipper  = makeFlipper({ pivot: {x: 260, y: 1080}, length: 140, restDeg: 20,  activeDeg: 70,  isRight: false });
-const rightFlipper = makeFlipper({ pivot: {x: 540, y: 1080}, length: 140, restDeg: 160, activeDeg: 110, isRight: true });
+const flippers = [];
+function initFlippers() {
+  flippers.length = 0;
+  for (const el of level.elements) {
+    if (el.type === 'flipper') {
+      const isRight = !!el.isRight;
+      const restDeg = isRight ? 160 : 20;
+      const activeDeg = isRight ? 110 : 70;
+      flippers.push(makeFlipper({
+        pivot: { x: el.position.x, y: el.position.y },
+        length: el.length || 140,
+        restDeg: el.restDeg || restDeg,
+        activeDeg: el.activeDeg || activeDeg,
+        isRight: isRight
+      }));
+    }
+  }
+}
+// For backward compatibility if level.json doesn't have flippers yet
+if (level.elements.filter(el => el.type === 'flipper').length === 0) {
+  level.elements.push({ type: 'flipper', position: { x: 260, y: 1080 }, isRight: false });
+  level.elements.push({ type: 'flipper', position: { x: 540, y: 1080 }, isRight: true });
+}
+initFlippers();
 
 // Level
 const level = (window.LEVELS && window.LEVELS[0]) || { description: 'Empty', walls: [], elements: [] };
@@ -37,8 +59,8 @@ const level = (window.LEVELS && window.LEVELS[0]) || { description: 'Empty', wal
 let wallSegments = [];
 function cubic(p0, p1, p2, p3, t) {
   const it = 1 - t;
-  const x = it*it*it*p0.x + 3*it*it*t*p1.x + 3*it*t*t*p2.x + t*t*t*p3.x;
-  const y = it*it*it*p0.y + 3*it*it*t*p1.y + 3*it*t*t*p2.y + t*t*t*p3.y;
+  const x = it * it * it * p0.x + 3 * it * it * t * p1.x + 3 * it * t * t * p2.x + t * t * t * p3.x;
+  const y = it * it * it * p0.y + 3 * it * it * t * p1.y + 3 * it * t * t * p2.y + t * t * t * p3.y;
   return { x, y };
 }
 function rebuildSegments() {
@@ -48,12 +70,12 @@ function rebuildSegments() {
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[i], b = pts[i + 1];
       const hasStart = !!(a.controls && a.controls.c2);
-      const hasEnd   = !!(b.controls && b.controls.c1);
+      const hasEnd = !!(b.controls && b.controls.c1);
       if (hasStart || hasEnd) {
-        const c2 = hasStart ? a.controls.c2 : {x: a.x, y: a.y};
-        const c1 = hasEnd   ? b.controls.c1 : {x: b.x, y: b.y};
+        const c2 = hasStart ? a.controls.c2 : { x: a.x, y: a.y };
+        const c1 = hasEnd ? b.controls.c1 : { x: b.x, y: b.y };
         const samples = 18;
-        let prev = {x: a.x, y: a.y};
+        let prev = { x: a.x, y: a.y };
         for (let s = 1; s <= samples; s++) {
           const t = s / samples;
           const p = cubic(a, c2, c1, b, t);
@@ -61,7 +83,7 @@ function rebuildSegments() {
           prev = p;
         }
       } else {
-        wallSegments.push({ a: {x: a.x, y: a.y}, b: {x: b.x, y: b.y} });
+        wallSegments.push({ a: { x: a.x, y: a.y }, b: { x: b.x, y: b.y } });
       }
     }
   }
@@ -91,12 +113,24 @@ const plungerMax = 220; // was 160
 // Input
 const keys = new Set();
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowLeft') { leftFlipper.pressed = true; keys.add('left'); }
-  if (e.key === 'ArrowRight') { rightFlipper.pressed = true; keys.add('right'); }
+  if (e.key === 'ArrowLeft') {
+    flippers.forEach(f => { if (!f.isRight) f.pressed = true; });
+    keys.add('left');
+  }
+  if (e.key === 'ArrowRight') {
+    flippers.forEach(f => { if (f.isRight) f.pressed = true; });
+    keys.add('right');
+  }
 });
 window.addEventListener('keyup', (e) => {
-  if (e.key === 'ArrowLeft') { leftFlipper.pressed = false; keys.delete('left'); }
-  if (e.key === 'ArrowRight') { rightFlipper.pressed = false; keys.delete('right'); }
+  if (e.key === 'ArrowLeft') {
+    flippers.forEach(f => { if (!f.isRight) f.pressed = false; });
+    keys.delete('left');
+  }
+  if (e.key === 'ArrowRight') {
+    flippers.forEach(f => { if (f.isRight) f.pressed = false; });
+    keys.delete('right');
+  }
 });
 
 canvas.addEventListener('mousedown', (e) => {
@@ -132,8 +166,8 @@ canvas.addEventListener('touchstart', (e) => {
       plungerStartY = p.y;
       plungerPull = 0;
     } else {
-      if (p.x < W * 0.5) leftFlipper.pressed = true;
-      else rightFlipper.pressed = true;
+      if (p.x < W * 0.5) flippers.forEach(f => { if (!f.isRight) f.pressed = true; });
+      else flippers.forEach(f => { if (f.isRight) f.pressed = true; });
     }
   }
   e.preventDefault();
@@ -159,8 +193,8 @@ canvas.addEventListener('touchend', (e) => {
       plungerTouchId = null;
       plungerPull = 0;
     } else {
-      if (p.x < W * 0.5) leftFlipper.pressed = false;
-      else rightFlipper.pressed = false;
+      if (p.x < W * 0.5) flippers.forEach(f => { if (!f.isRight) f.pressed = false; });
+      else flippers.forEach(f => { if (f.isRight) f.pressed = false; });
     }
   }
   e.preventDefault();
@@ -202,8 +236,7 @@ requestAnimationFrame(loop);
 
 // Update
 function update(dt) {
-  updateFlipper(leftFlipper, dt);
-  updateFlipper(rightFlipper, dt);
+  flippers.forEach(f => updateFlipper(f, dt));
 
   // Gravity
   if (!ball.inShooter) ball.vy += GRAVITY * dt;
@@ -218,8 +251,7 @@ function update(dt) {
   }
 
   // Collide with flippers
-  collideWithFlipper(ball, leftFlipper);
-  collideWithFlipper(ball, rightFlipper);
+  flippers.forEach(f => collideWithFlipper(ball, f));
 
   // Collide with bumpers
   for (const el of level.elements) {
@@ -248,10 +280,10 @@ function updateFlipper(f, dt) {
   const prev = f.angle;
   if (f.pressed) {
     if (f.isRight) f.angle = Math.max(target, f.angle - f.upSpeed * dt);
-    else           f.angle = Math.min(target, f.angle + f.upSpeed * dt);
+    else f.angle = Math.min(target, f.angle + f.upSpeed * dt);
   } else {
     if (f.isRight) f.angle = Math.min(target, f.angle + f.downSpeed * dt);
-    else           f.angle = Math.max(target, f.angle - f.downSpeed * dt);
+    else f.angle = Math.max(target, f.angle - f.downSpeed * dt);
   }
   f.omega = (f.angle - prev) / dt;
 }
@@ -265,21 +297,27 @@ function draw() {
   for (const el of level.elements) drawElement(el);
 
   // Draw flippers
-  drawFlipper(leftFlipper);
-  drawFlipper(rightFlipper);
+  flippers.forEach(f => drawFlipper(f));
 
   // Draw ball
+  ctx.save();
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-  ctx.fillStyle = '#444';
+  const grad = ctx.createRadialGradient(ball.x - 4, ball.y - 4, 2, ball.x, ball.y, ball.r);
+  grad.addColorStop(0, '#fff');
+  grad.addColorStop(1, '#999');
+  ctx.fillStyle = grad;
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = 'rgba(255,255,255,0.3)';
   ctx.fill();
+  ctx.restore();
 
   // Draw plunger pull indicator
   if (ball.inShooter) {
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    ctx.fillRect(740, 900, 50, 280); // matches shorter inner wall and exit gap
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.fillRect(740, 900, 50, 280);
     if (plungerActive && plungerPull > 0) {
-      ctx.fillStyle = 'rgba(0,0,255,0.25)';
+      ctx.fillStyle = 'rgba(74, 144, 226, 0.4)';
       ctx.fillRect(740, 900 + (plungerMax - plungerPull), 50, plungerPull);
     }
   }
@@ -287,11 +325,11 @@ function draw() {
 
 function drawTable() {
   // Background
-  ctx.fillStyle = '#fafafa';
+  ctx.fillStyle = level.backgroundColor || '#000000';
   ctx.fillRect(0, 0, W, H);
 
   // Walls
-  ctx.strokeStyle = '#000';
+  ctx.strokeStyle = level.wallColor || '#ffffff';
   ctx.lineWidth = 3;
   ctx.beginPath();
   for (const wall of level.walls) {
@@ -301,10 +339,10 @@ function drawTable() {
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[i], b = pts[i + 1];
       const hasStart = !!(a.controls && a.controls.c2);
-      const hasEnd   = !!(b.controls && b.controls.c1);
+      const hasEnd = !!(b.controls && b.controls.c1);
       if (hasStart || hasEnd) {
-        const c2 = hasStart ? a.controls.c2 : {x: a.x, y: a.y};
-        const c1 = hasEnd   ? b.controls.c1 : {x: b.x, y: b.y};
+        const c2 = hasStart ? a.controls.c2 : { x: a.x, y: a.y };
+        const c1 = hasEnd ? b.controls.c1 : { x: b.x, y: b.y };
         ctx.bezierCurveTo(c2.x, c2.y, c1.x, c1.y, b.x, b.y);
       } else {
         ctx.lineTo(b.x, b.y);

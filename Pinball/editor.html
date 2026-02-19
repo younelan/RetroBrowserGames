@@ -1,30 +1,61 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+  <meta charset="UTF-8">
   <title>Pinball Level Editor</title>
   <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
-  <h1>Pinball Level Editor</h1>
   <div id="toolbar">
-    <button id="select-tool">Select</button>
-    <button id="wall-tool">Wall</button>
-    <button id="flipper-tool">Flipper</button>
-    <button id="bumper-tool">Bumper</button>
-    <button id="slingshot-tool">Slingshot</button>
-    <button id="rollover-tool">Rollover</button>
-    <button id="target-tool">Target</button>
-    <button id="hole-tool">Hole/Trap</button>
-    <button id="ramp-tool">Ramp</button>
+    <h2>Tools</h2>
+    <div class="button-grid">
+      <button id="wall-tool" class="active">Wall</button>
+      <button id="play-mode-toggle">Play</button>
+      <button id="delete-tool">Delete</button>
+    </div>
+
+    <h2>Elements</h2>
+    <div class="button-grid">
+      <button id="left-flipper-tool">L.Flipper</button>
+      <button id="right-flipper-tool">R.Flipper</button>
+      <button id="bumper-tool">Bumper</button>
+      <button id="slingshot-tool">Slingshot</button>
+      <button id="rollover-tool">Rollover</button>
+      <button id="target-tool">Target</button>
+      <button id="hole-tool">Hole</button>
+      <button id="ramp-tool">Ramp</button>
+    </div>
+
+    <h2>Appearance</h2>
+    <div class="controls-group">
+      <div class="color-picker-item">
+        <label for="bg-color">Background</label>
+        <input type="color" id="bg-color" value="#000000">
+      </div>
+      <div class="color-picker-item">
+        <label for="wall-color">Wall Color</label>
+        <input type="color" id="wall-color" value="#ffffff">
+      </div>
+    </div>
+
+    <h2>Level Data</h2>
+    <textarea id="level-data" rows="10" spellcheck="false" placeholder="JSON data here..."></textarea>
+    <div class="data-row">
+      <button id="load-button" title="Load JSON">📂 Load</button>
+      <button id="save-button" title="Save JSON">💾 Save</button>
+    </div>
+    <div class="data-row">
+      <button id="load-file-button" title="Load level.json">📄 level.json</button>
+    </div>
   </div>
-  <canvas id="editor-canvas" width="800" height="1200"></canvas>
-  <div>
-    <textarea id="level-data" rows="10" cols="80"></textarea>
-    <br>
-    <button id="load-button">Load Level</button>
-    <button id="save-button">Save Level</button>
-    <button id="load-file-button">Load level.json</button>
+
+  <div class="editor-container">
+    <canvas id="editor-canvas" width="800" height="1200"></canvas>
   </div>
+
   <script src="editor.js"></script>
 </body>
+
 </html>
