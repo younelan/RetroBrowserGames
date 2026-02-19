@@ -4,6 +4,21 @@ const ctx = canvas.getContext('2d');
 const HUD = document.getElementById('hud');
 const W = canvas.width, H = canvas.height;
 
+// Background image cache
+let _bgImage = null;
+let _bgImageSrc = null;
+
+function ensureBgImageLoaded() {
+  if (!level.backgroundImage) {
+    _bgImage = null; _bgImageSrc = null; return;
+  }
+  if (_bgImageSrc === level.backgroundImage && _bgImage) return;
+  _bgImageSrc = level.backgroundImage;
+  _bgImage = new Image();
+  _bgImage.crossOrigin = 'anonymous';
+  _bgImage.src = _bgImageSrc;
+}
+
 // Game constants
 const GRAVITY = 2200;            // px/s^2
 const RESTITUTION = 0.6;         // wall bounce
@@ -328,6 +343,16 @@ function drawTable() {
   ctx.fillStyle = level.backgroundColor || '#000000';
   ctx.fillRect(0, 0, W, H);
 
+  ensureBgImageLoaded();
+  if (_bgImage && _bgImage.complete) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, level.backgroundAlpha ?? 1));
+    const scale = W / _bgImage.width;
+    const h = _bgImage.height * scale;
+    ctx.drawImage(_bgImage, 0, 0, W, h);
+    ctx.restore();
+  }
+
   // Walls
   ctx.strokeStyle = level.wallColor || '#ffffff';
   ctx.lineWidth = 3;
@@ -457,8 +482,8 @@ function collideWithFlipper(ball, f) {
     const dy = ball.y - f.pivot.y;
     const d = Math.hypot(dx, dy) || 1;
     const nx = dx / d, ny = dy / d;
-    const boost = Math.max(0, (f.isRight ? -omega : omega)) * 320;
-    ball.vx += nx * boost;
+    const boost = Math.max(0, (f.isRight ? -omega : omega)) * 450;
+    ball.vx += nx * boost * 0.1; // Balanced impulse
     ball.vy += ny * boost;
   }
   ball.r = savedR;

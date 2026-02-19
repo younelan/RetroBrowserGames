@@ -6,9 +6,23 @@ let level = {
   description: 'New Level',
   backgroundColor: '#000000',
   wallColor: '#ffffff',
+  backgroundImage: null,
+  backgroundAlpha: 1,
+  launchRandomness: 0,
   walls: [],
   elements: []
 };
+
+// Background image cache
+let _bgImage = null;
+let _bgImageSrc = null;
+
+// Plunger state (shooter lane on right side)
+let plungerActive = false;
+let plungerStartY = 0;
+let plungerPull = 0;
+const PLUNGER_MAX_PULL = 140;
+const PLUNGER_X = 770; // visual x position for plunger
 
 let selectedTool = 'wall';
 let currentWall = null;
@@ -21,11 +35,17 @@ let suppressNextClick = false;
 
 // Physics State
 let isPlaying = false;
-let ball = { x: 770, y: 1100, vx: 0, vy: 0, r: 10, trail: [] };
+// Make the ball 1.5x larger (default 15) and keep trail data
+let ball = { x: 770, y: 1100, vx: 0, vy: 0, r: 15, trail: [] };
 let physicsInterval = null;
 let keys = {};
 let score = 0;
 const SUB_STEPS = 8;
+const GRAVITY = 2200;
+const RESTITUTION = 0.6;
+const FRICTION = 0.02;
+const BUMPER_RESTITUTION = 1.2;
+// `launchRandomness` on the level controls initial horizontal jitter (0 => straight)
 
 function getMousePos(e) {
   const rect = canvas.getBoundingClientRect();
@@ -35,6 +55,88 @@ function getMousePos(e) {
     x: (e.clientX - rect.left) * scaleX,
     y: (e.clientY - rect.top) * scaleY
   };
+}
+
+function ensureBgImageLoaded() {
+  if (!level.backgroundImage) {
+    _bgImage = null; _bgImageSrc = null; return;
+  }
+  if (_bgImageSrc === level.backgroundImage && _bgImage) return;
+  _bgImageSrc = level.backgroundImage;
+  _bgImage = new Image();
+  _bgImage.crossOrigin = 'anonymous';
+  _bgImage.onload = () => { /* loaded */ };
+  _bgImage.onerror = () => { console.warn('Failed to load background:', _bgImageSrc); _bgImage = null; _bgImageSrc = null; };
+  _bgImage.src = _bgImageSrc;
+}
+
+// Launch helper: accepts pull in range [0..1]
+function launchBallFromPull(pullNorm) {
+  const p = Math.max(0, Math.min(1, pullNorm || 0));
+  // Use velocities (px/s) consistent with `game.js` scale so the ball moves up
+  const minVy = 1200, maxVy = 3800;
+  const launchVy = minVy + p * (maxVy - minVy);
+  const jitter = (level.launchRandomness || 0) * (Math.random() * 2 - 1) * 2;
+  ball.waiting = false;
+  ball.vy = -launchVy;
+  ball.vx = jitter;
+  // keep ball near shooter lane to avoid tunnelling; align center with plunger
+  ball.x = Math.min(canvas.width - ball.r - 6, PLUNGER_X);
+  plungerActive = false;
+  plungerPull = 0;
+}
+
+// Helper: temporarily press keys for touch/flipper taps
+function triggerTempKeys(keysArr, duration = 150) {
+  const prev = {};
+  keysArr.forEach(k => { prev[k] = keys[k]; keys[k] = true; if (k.length === 1) keys[k.toLowerCase()] = true; });
+  setTimeout(() => { keysArr.forEach(k => { keys[k] = !!prev[k]; if (k.length === 1) keys[k.toLowerCase()] = !!prev[k.toLowerCase()]; }); }, duration);
+}
+
+// Draw plunger rails and bar (draw this under walls)
+function drawPlungerUnderlay() {
+  const railX = PLUNGER_X;
+  const railTop = 140;
+  const railBottom = canvas.height - 80;
+  ctx.save();
+  // rails
+  ctx.fillStyle = '#2b2b2b';
+  ctx.fillRect(railX - 10, railTop, 6, railBottom - railTop);
+  ctx.fillRect(railX + 4, railTop, 6, railBottom - railTop);
+  // Plunger base/shaft (visible in shooter lane)
+  const px = PLUNGER_X - 5;
+  const baseY = railBottom - 40;
+  const pull = isPlaying ? plungerPull : 0;
+  ctx.fillStyle = '#444';
+  ctx.fillRect(px - 10, baseY + pull, 30, 100);
+  // Metallic tip
+  const pGrad = ctx.createLinearGradient(px - 15, 0, px + 15, 0);
+  pGrad.addColorStop(0, '#888'); pGrad.addColorStop(0.5, '#fff'); pGrad.addColorStop(1, '#888');
+  ctx.fillStyle = pGrad;
+  ctx.fillRect(px - 7, baseY + pull - 5, 24, 15);
+  // plunger bar (rest or pulled)
+  const barY = baseY + Math.max(0, Math.min(PLUNGER_MAX_PULL, pull));
+  const barW = 18, barH = 36;
+  const g = ctx.createLinearGradient(railX - 6, barY, railX + 6, barY + barH);
+  g.addColorStop(0, '#dddddd'); g.addColorStop(0.5, '#888888'); g.addColorStop(1, '#cccccc');
+  ctx.fillStyle = g;
+  const rx = railX - barW / 2, ry = barY, rw = barW, rh = barH, r = 4;
+  ctx.beginPath();
+  ctx.moveTo(rx + r, ry);
+  ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, r);
+  ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, r);
+  ctx.arcTo(rx, ry + rh, rx, ry, r);
+  ctx.arcTo(rx, ry, rx + rw, ry, r);
+  ctx.closePath();
+  ctx.fill();
+  // small specular
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(railX - 6, barY + 4, 6, 6);
+  ctx.restore();
+}
+
+function drawProceduralBackground(ctx) {
+  // Removed as requested
 }
 
 // --- Toolbar and Load/Save (No Changes) ---
@@ -64,11 +166,35 @@ document.getElementById('load-file-button').addEventListener('click', async () =
   }
 });
 
+// Update HUD and background controls
+document.getElementById('bg-color').addEventListener('input', e => {
+  level.backgroundColor = e.target.value;
+});
+document.getElementById('wall-color').addEventListener('input', e => {
+  level.wallColor = e.target.value;
+});
+document.getElementById('bg-image').addEventListener('change', e => {
+  level.backgroundImage = e.target.value;
+  ensureBgImageLoaded();
+});
+document.getElementById('bg-alpha').addEventListener('input', e => {
+  level.backgroundAlpha = parseFloat(e.target.value);
+});
+document.getElementById('launch-random').addEventListener('input', e => {
+  level.launchRandomness = parseFloat(e.target.value);
+});
+
 document.getElementById('play-mode-toggle').addEventListener('click', togglePlayMode);
 
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
   keys[e.key.toLowerCase()] = true;
+  // Spacebar quick-launch: behave like full plunger pull if not dragging
+  if (e.code === 'Space' && isPlaying && ball.waiting) {
+    const p = Math.max(0, Math.min(1, plungerPull / PLUNGER_MAX_PULL)) || 1;
+    launchBallFromPull(p);
+    e.preventDefault();
+  }
 });
 window.addEventListener('keyup', e => {
   keys[e.code] = false;
@@ -100,7 +226,14 @@ function startPhysics() {
     }
   });
   // Position ball at bottom of shooter lane
-  ball = { x: 770, y: 1100, vx: 0, vy: 0, r: 10, waiting: true, trail: [] };
+  // Place ball just above the plunger so it cannot fall below it while waiting
+  // Position ball directly above the plunger center
+  const startX = Math.min(canvas.width - (ball.r || 10) - 6, PLUNGER_X);
+  const startBaseY = (canvas.height - 80) - 40; // matches drawPlungerUnderlay baseY
+  const startY = startBaseY - (ball.r || 10) - 6;
+  // Ball starts slightly larger (metallic feel)
+  ball = { x: startX, y: startY, vx: 0, vy: 0, r: 15, waiting: true, trail: [] };
+  if (physicsInterval) clearInterval(physicsInterval);
   physicsInterval = setInterval(updatePhysics, 16); // ~60fps
 }
 
@@ -110,73 +243,76 @@ function stopPhysics() {
 }
 
 function updatePhysics() {
-  // Update Flipper State (Always even when waiting)
+  // keep a short history to recover from numerical issues on launch
+  if (!ball._history) ball._history = [];
+  if (!ball._lastValid) ball._lastValid = { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy };
+  // 1. Update flipper rotation (Always, even if waiting)
   level.elements.forEach(el => {
     if (el.type === 'flipper') {
       const isRight = !!el.isRight;
-      // Map both Arrow keys and Z/M (case insensitive)
-      const active = isRight ? (keys['ArrowRight'] || keys['KeyM'] || keys['m']) : (keys['ArrowLeft'] || keys['KeyZ'] || keys['z']);
-
-      // RESTING: Left=20deg, Right=160deg. ACTIVE: 40deg flip
+      const active = isRight
+        ? (keys['ArrowRight'] || keys['KeyK'] || keys['k'] || keys['KeyL'] || keys['l'] || keys['KeyM'] || keys['m'])
+        : (keys['ArrowLeft'] || keys['KeyS'] || keys['s'] || keys['KeyD'] || keys['d'] || keys['KeyF'] || keys['f']);
       let restRot = isRight ? (160 * Math.PI / 180) : (20 * Math.PI / 180);
       let activeRot = isRight ? (200 * Math.PI / 180) : (-20 * Math.PI / 180);
       el.currentRot = el.currentRot || restRot;
       const targetRot = active ? activeRot : restRot;
-      const rotSpeed = 0.6;
+      const rotSpeed = active ? 0.25 : 0.18; // Closer to game.js rad/frame
       if (el.currentRot < targetRot) el.currentRot = Math.min(targetRot, el.currentRot + rotSpeed);
       if (el.currentRot > targetRot) el.currentRot = Math.max(targetRot, el.currentRot - rotSpeed);
     }
   });
 
+  // 2. Launch Wait
   if (ball.waiting) {
-    if (keys['Space']) {
-      ball.waiting = false;
-      ball.vy = -35;
-      ball.vx = -1 + Math.random() * 2;
+    if (plungerPull === 0 && keys['Space']) {
+      // Allow space as a fallback for full launch if not dragging
+      plungerPull = PLUNGER_MAX_PULL;
     }
+    // Launch logic is handled by mouseup/touchend
     return;
   }
 
-  for (let s = 0; s < SUB_STEPS; s++) {
-    // Gravity (scaled by sub-steps)
-    ball.vy += 0.25 / SUB_STEPS;
+  // 3. Sub-steps loop
+  // Adaptive sub-steps: increase resolution when ball is fast to avoid tunnelling
+  const speed = Math.hypot(ball.vx, ball.vy);
+  const steps = Math.max(SUB_STEPS, Math.min(64, Math.ceil(speed * 0.05)));
+  const dt = 0.016 / steps; // Time step per sub-step (assuming 60fps)
 
-    // Air friction (continuous approximation)
-    ball.vx *= Math.pow(0.992, 1 / SUB_STEPS);
-    ball.vy *= Math.pow(0.992, 1 / SUB_STEPS);
+  for (let s = 0; s < steps; s++) {
+    ball.vy += GRAVITY * dt;
+    // Removed air friction as requested (slow-motion fix)
 
-    // Update trail occasionally
     if (s === 0) {
       ball.trail.push({ x: ball.x, y: ball.y });
-      if (ball.trail.length > 20) ball.trail.shift();
+      if (ball.trail.length > 30) ball.trail.shift();
     }
 
-    // Move
-    ball.x += ball.vx / SUB_STEPS;
-    ball.y += ball.vy / SUB_STEPS;
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
 
-    // Boundary Guards: reset if NaN or extreme out of bounds
-    if (isNaN(ball.x) || isNaN(ball.y) || Math.abs(ball.vx) > 500) {
-      console.warn("Physics reset: Ball entered invalid state");
-      ball.x = 770; ball.y = 1100; ball.vx = 0; ball.vy = 0; ball.waiting = true;
-      return;
+    // Safety Guard: if we detect invalid numbers, restore last valid state and damp velocities
+    if (!isFinite(ball.x) || !isFinite(ball.y) || Math.abs(ball.vx) > 5000 || Math.abs(ball.vy) > 5000) {
+      console.warn("Physics detected invalid ball state during sub-step", {
+        step: s, pos: { x: ball.x, y: ball.y }, vel: { vx: ball.vx, vy: ball.vy }, lastValid: ball._lastValid, history: ball._history.slice(-8)
+      });
+      // restore last valid and damp velocities to avoid immediate re-trigger
+      ball.x = ball._lastValid.x; ball.y = ball._lastValid.y;
+      ball.vx = (ball._lastValid.vx || 0) * 0.3; ball.vy = (ball._lastValid.vy || 0) * 0.3;
+      // do not force waiting; allow play to continue
+      break;
     }
 
-    // Screen Bounds (with bounce)
-    if (ball.x < ball.r) { ball.x = ball.r; ball.vx *= -0.5; }
-    if (ball.x > canvas.width - ball.r) { ball.x = canvas.width - ball.r; ball.vx *= -0.5; }
-    // Top bounce - prevent disappearing off top!
+    // Bounds
+    if (ball.x < ball.r) { ball.x = ball.r; ball.vx *= -0.8; }
+    if (ball.x > canvas.width - ball.r) { ball.x = canvas.width - ball.r; ball.vx *= -0.8; }
     if (ball.y < ball.r) { ball.y = ball.r; ball.vy *= -0.5; }
-
     if (ball.y > canvas.height + 100) {
       stopPhysics();
       togglePlayMode();
-      alert('Game Over! Score: ' + score);
+      console.log("Game Over - Ball Drained");
       return;
     }
-
-    // Use the robust collision logic (shared with game.js)
-    collideBallWithSegment(ball, { x: 0, y: 0 }, { x: 0, y: 0 }, 0, 0); // Placeholder to show it's here
 
     // Wall Collisions
     level.walls.forEach(wall => {
@@ -185,23 +321,21 @@ function updatePhysics() {
       for (let i = 0; i < pts.length - 1; i++) {
         const p1 = pts[i];
         const p2 = pts[i + 1];
-
         const startHas = !!(p1.controls && p1.controls.c2);
         const endHas = !!(p2.controls && p2.controls.c1);
-
         if (startHas || endHas) {
           const c2 = startHas ? p1.controls.c2 : p1;
           const c1 = endHas ? p2.controls.c1 : p2;
-          const samples = 48; // Significantly increased for curves
+          const samples = 48;
           let prev = { x: p1.x, y: p1.y };
-          for (let s = 1; s <= samples; s++) {
-            const t = s / samples;
+          for (let sm = 1; sm <= samples; sm++) {
+            const t = sm / samples;
             const curr = cubic(p1, c2, c1, p2, t);
-            collideBallWithSegment(ball, prev, curr, 0.5, 0.05);
+            collideBallWithSegment(ball, prev, curr, RESTITUTION, FRICTION);
             prev = curr;
           }
         } else {
-          collideBallWithSegment(ball, p1, p2, 0.5, 0.05);
+          collideBallWithSegment(ball, p1, p2, RESTITUTION, FRICTION);
         }
       }
     });
@@ -210,41 +344,60 @@ function updatePhysics() {
     level.elements.forEach(el => {
       if (el.type === 'bumper') {
         const dist = Math.hypot(ball.x - el.position.x, ball.y - el.position.y);
-        const r_hit = ball.r + (el.radius || 20);
+        const r_hit = ball.r + (el.radius || 25);
         if (dist < r_hit) {
           const nx = (ball.x - el.position.x) / dist;
           const ny = (ball.y - el.position.y) / dist;
+
+          // Positional correction (Prevent sinking)
+          const pen = r_hit - dist;
+          ball.x += nx * pen;
+          ball.y += ny * pen;
+
           const vn = ball.vx * nx + ball.vy * ny;
-          ball.vx -= 2.2 * vn * nx;
-          ball.vy -= 2.2 * vn * ny;
-          ball.vx += nx * 8; ball.vy += ny * 8; // Extra kick
-          score += 10;
+          if (vn < 0) {
+            ball.vx -= (1 + BUMPER_RESTITUTION) * vn * nx;
+            ball.vy -= (1 + BUMPER_RESTITUTION) * vn * ny;
+            score += 10;
+          }
         }
       } else if (el.type === 'flipper') {
         const isRight = !!el.isRight;
         const active = isRight ? (keys['ArrowRight'] || keys['KeyM'] || keys['m']) : (keys['ArrowLeft'] || keys['KeyZ'] || keys['z']);
-
-        const L = el.length || 70;
         const p1 = el.position;
+        const L = el.length || 70;
         const p2 = { x: p1.x + Math.cos(el.currentRot) * L, y: p1.y + Math.sin(el.currentRot) * L };
+
+        // Flipper "thickness" padding for collision
+        const thickness = 10;
         const d = distPointToSeg(ball.x, ball.y, p1.x, p1.y, p2.x, p2.y);
-        if (d < ball.r + 10) {
+        if (d < ball.r + thickness) {
+          const savedR = ball.r;
+          ball.r = savedR + thickness;
           collideBallWithSegment(ball, p1, p2, 0.4, 0.02);
+          ball.r = savedR;
+
+          // Velocity pulse based on flipper speed
           if (active) {
-            // Kick the ball
-            ball.vy -= 18;
-            ball.vx += (ball.x - p1.x) * 0.1;
+            const dx = ball.x - p1.x, dy = ball.y - p1.y;
+            const dist = Math.hypot(dx, dy) || 1;
+            const nx = dx / dist, ny = dy / dist;
+            // Impulse scaled for substeps (total ~800 px/s over one frame)
+            const boost = 800 * (1 / steps);
+            ball.vx += nx * boost;
+            ball.vy += ny * boost;
           }
         }
       }
     });
-
-    if (ball.x > 750 && ball.y > 1050 && keys['Space']) {
-      ball.vy = -35;
-      ball.vx = -1 + Math.random() * 2;
-    }
   }
+
+  // Update history / last valid after completing sub-steps
+  ball._history.push({ x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy, t: Date.now() });
+  if (ball._history.length > 120) ball._history.shift();
+  if (isFinite(ball.x) && isFinite(ball.y)) ball._lastValid = { x: ball.x, y: ball.y, vx: ball.vx, vy: ball.vy };
 }
+
 
 // --- End Physics ---
 // --- End Toolbar and Load/Save ---
@@ -267,7 +420,11 @@ function loadLevel() {
     level = normalizeLevel(parsed); // normalize after paste
     document.getElementById('bg-color').value = level.backgroundColor;
     document.getElementById('wall-color').value = level.wallColor;
-  } catch (e) { alert('Invalid JSON data!'); }
+    document.getElementById('bg-image').value = level.backgroundImage || '';
+    document.getElementById('bg-alpha').value = level.backgroundAlpha ?? 1;
+    document.getElementById('launch-random').value = level.launchRandomness ?? 0;
+    ensureBgImageLoaded();
+  } catch (e) { console.error('Invalid JSON data!'); }
 }
 
 function saveLevel() {
@@ -283,10 +440,24 @@ function draw() {
     grad.addColorStop(1, '#000000');
     ctx.fillStyle = grad;
   } else {
-    ctx.fillStyle = bg;
+    ctx.fillStyle = level.backgroundColor || '#000000';
   }
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   drawGrid();
+
+  // Background Image (Always at bottom)
+  ensureBgImageLoaded();
+  if (_bgImage && _bgImage.complete) {
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, level.backgroundAlpha || 1));
+    const scale = canvas.width / _bgImage.width;
+    const h = _bgImage.height * scale;
+    ctx.drawImage(_bgImage, 0, 0, canvas.width, h);
+    ctx.restore();
+  }
+
+  // Draw plunger under walls so it doesn't appear above wall geometry
+  drawPlungerUnderlay();
 
   level.walls.forEach(wall => drawWall(wall, level.wallColor || 'black'));
 
@@ -300,7 +471,6 @@ function draw() {
       ctx.fill();
     });
   }
-
   level.elements.forEach(element => drawElement(element));
 
   if (isPlaying) {
@@ -319,35 +489,83 @@ function draw() {
     }
 
 
-    // Draw ball (Neon Style orb)
+    // Draw ball (Metallic chrome finish)
+    // Ground shadow (subtle)
     ctx.save();
-    ctx.shadowBlur = 25; // More glow
-    ctx.shadowColor = '#0ff';
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.beginPath();
-    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
-    const bGrad = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 2, ball.x, ball.y, ball.r);
-    bGrad.addColorStop(0, '#fff');
-    bGrad.addColorStop(0.3, '#0ff');
-    bGrad.addColorStop(1, '#0088bb');
-    ctx.fillStyle = bGrad;
+    ctx.ellipse(ball.x + 3, ball.y + 6, ball.r * 0.9, ball.r * 0.35, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
+    // Main metallic body
+    ctx.save();
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+    const bGrad = ctx.createRadialGradient(ball.x - ball.r * 0.25, ball.y - ball.r * 0.25, ball.r * 0.05, ball.x, ball.y, ball.r * 1.2);
+    bGrad.addColorStop(0, '#ffffff');
+    bGrad.addColorStop(0.2, '#e6e6e6');
+    bGrad.addColorStop(0.5, '#bfbfbf');
+    bGrad.addColorStop(0.85, '#6e6e6e');
+    bGrad.addColorStop(1, '#2f2f2f');
+    ctx.fillStyle = bGrad;
+    ctx.fill();
+
+    // Thin rim highlight
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.stroke();
+
+    // Specular highlight (small, sharp)
+    const hx = ball.x - ball.r * 0.28, hy = ball.y - ball.r * 0.36;
+    ctx.beginPath();
+    ctx.ellipse(hx, hy, ball.r * 0.28, ball.r * 0.18, -0.6, 0, Math.PI * 2);
+    const spec = ctx.createRadialGradient(hx - 1, hy - 1, 0, hx, hy, ball.r * 0.4);
+    spec.addColorStop(0, 'rgba(255,255,255,0.98)');
+    spec.addColorStop(0.5, 'rgba(255,255,255,0.35)');
+    spec.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = spec;
+    ctx.fill();
+
+    // Subtle lower reflection band to add chrome feel
+    ctx.beginPath();
+    const bandY = ball.y + ball.r * 0.25;
+    ctx.ellipse(ball.x, bandY, ball.r * 0.85, ball.r * 0.18, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fill();
+
+    ctx.restore();
+
     // HUD
-    ctx.fillStyle = '#0ff';
-    ctx.font = 'bold 28px "Courier New", monospace';
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = '#0ff';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 24px "Courier New", monospace';
+    ctx.shadowBlur = 4;
+    ctx.shadowColor = '#000';
     ctx.fillText('SCORE: ' + score.toString().padStart(6, '0'), 30, 50);
 
+    // Debug Monitor (Small and unobtrusive)
+    ctx.font = '12px Courier New';
+    ctx.shadowBlur = 0;
+    ctx.fillText(`X:${Math.round(ball.x)} Y:${Math.round(ball.y)} | VX:${ball.vx.toFixed(1)} VY:${ball.vy.toFixed(1)}`, 30, 80);
+
+    // Instructions when waiting for launch
     if (ball.waiting) {
-      ctx.font = 'bold 20px Arial';
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      ctx.fillText('Press SPACE to Launch', canvas.width / 2, 800);
-      ctx.font = '16px Arial';
-      ctx.fillText('Use ARROW KEYS or Z / M for Flippers', canvas.width / 2, 830);
-      ctx.textAlign = 'left';
+      const pull = plungerPull;
+      // Instructions if not dragging
+      if (pull < 5) {
+        ctx.save();
+        ctx.font = 'bold 36px sans-serif';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#fff';
+        ctx.fillText('PULL DOWN TO LAUNCH', canvas.width / 2, canvas.height / 2 + 100);
+        ctx.font = '20px sans-serif';
+        ctx.fillText('Z / M or Arrows to Flip', canvas.width / 2, canvas.height / 2 + 150);
+        ctx.restore();
+      }
     }
   }
 
@@ -393,10 +611,10 @@ function draw() {
 
 function collideBallWithSegment(b, A, B, e, mu) {
   const ABx = B.x - A.x, ABy = B.y - A.y;
-  const APx = b.x - A.x, ABy_p = b.y - A.y;
+  const APx = b.x - A.x, APy = b.y - A.y;
   const ab2 = ABx * ABx + ABy * ABy;
   if (ab2 === 0) return;
-  let t_val = (APx * ABx + ABy_p * ABy) / ab2;
+  let t_val = (APx * ABx + APy * ABy) / ab2;
   t_val = Math.max(0, Math.min(1, t_val));
   const Cx = A.x + ABx * t_val, Cy = A.y + ABy * t_val;
   let nx = b.x - Cx, ny = b.y - Cy;
@@ -446,6 +664,9 @@ function normalizeLevel(src) {
     description: src?.description || 'Level',
     backgroundColor: src?.backgroundColor || '#000000',
     wallColor: src?.wallColor || '#ffffff',
+    backgroundImage: src?.backgroundImage || null,
+    backgroundAlpha: typeof src?.backgroundAlpha === 'number' ? src.backgroundAlpha : 1,
+    launchRandomness: typeof src?.launchRandomness === 'number' ? src.launchRandomness : 0,
     walls: [],
     elements: []
   };
@@ -535,24 +756,61 @@ function drawElement(element) {
   ctx.save();
   const pos = element.position;
   if (element.type === 'bumper') {
-    ctx.shadowBlur = 30;
-    ctx.shadowColor = '#ff00ff';
+    // Pseudo-3D bumper with rim, inner glow and specular
+    const R = element.radius || 25;
+    // Outer rim (dark)
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 25, 0, 2 * Math.PI); // Slightly larger
-    const grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 25);
+    ctx.arc(pos.x, pos.y, R + 4, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(30,0,30,0.85)';
+    ctx.fill();
+    ctx.restore();
+
+    // Slight elevation shadow
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(pos.x + 2, pos.y + R * 0.45, R * 0.9, R * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Main colorful core
+    ctx.save();
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = '#ff66ff';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, R, 0, Math.PI * 2);
+    const grad = ctx.createRadialGradient(pos.x - R * 0.25, pos.y - R * 0.35, 0, pos.x, pos.y, R);
     grad.addColorStop(0, '#fff');
-    grad.addColorStop(0.2, '#ffbbff');
-    grad.addColorStop(1, '#ff00ff');
+    grad.addColorStop(0.15, '#ffd6ff');
+    grad.addColorStop(0.45, '#ff88ff');
+    grad.addColorStop(1, '#b00088');
     ctx.fillStyle = grad;
     ctx.fill();
-    ctx.strokeStyle = '#fff';
+
+    // Thin chrome rim
     ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
     ctx.stroke();
-    // Inner ring
+
+    // Inner ring for depth
     ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 18, 0, 2 * Math.PI);
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.arc(pos.x, pos.y, R * 0.65, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+    ctx.lineWidth = 2;
     ctx.stroke();
+
+    // Specular crescent highlight
+    ctx.beginPath();
+    ctx.ellipse(pos.x - R * 0.32, pos.y - R * 0.45, R * 0.55, R * 0.28, -0.6, 0, Math.PI * 2);
+    const spec = ctx.createLinearGradient(pos.x - R, pos.y - R, pos.x + R, pos.y + R);
+    spec.addColorStop(0, 'rgba(255,255,255,0.85)');
+    spec.addColorStop(0.6, 'rgba(255,255,255,0.05)');
+    spec.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = spec;
+    ctx.fill();
+
+    ctx.restore();
   } else if (element.type === 'slingshot') {
     ctx.shadowBlur = 25;
     ctx.shadowColor = '#ff8800';
@@ -593,13 +851,17 @@ function drawElement(element) {
     const L = element.length || 70;
     const W = 14; // Slightly wider flipper
 
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = '#0ff';
+    // Main body with depth: darker base + highlight strip
+    ctx.save();
+    // soft shadow under flipper for elevation
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
 
-    // Glassmorphism/Gradient effect for flipper body
     const fGrad = ctx.createLinearGradient(0, 0, L, 0);
-    fGrad.addColorStop(0, '#0ff');
-    fGrad.addColorStop(1, '#008888');
+    fGrad.addColorStop(0, '#005f6b');
+    fGrad.addColorStop(0.35, '#00b8c4');
+    fGrad.addColorStop(0.7, '#00888a');
+    fGrad.addColorStop(1, '#004d52');
     ctx.fillStyle = fGrad;
 
     ctx.beginPath();
@@ -610,17 +872,40 @@ function drawElement(element) {
     ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = '#fff';
+    // Thin bright edge on top
+    ctx.beginPath();
+    ctx.moveTo(6, -W * 0.6);
+    ctx.lineTo(L - 6, -W * 0.6);
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Subtle inner highlight strip
+    ctx.beginPath();
+    ctx.moveTo(10, -W * 0.2);
+    ctx.lineTo(L - 10, -W * 0.2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 8;
+    ctx.stroke();
+
+    // Outline
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Pivot Detail
+    ctx.restore();
+
+    // Pivot Detail (metallic)
     ctx.beginPath();
-    ctx.arc(0, 0, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff';
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    const pGrad = ctx.createRadialGradient(-2, -2, 1, 0, 0, 8);
+    pGrad.addColorStop(0, '#fff');
+    pGrad.addColorStop(0.5, '#cfcfcf');
+    pGrad.addColorStop(1, '#666');
+    ctx.fillStyle = pGrad;
     ctx.fill();
-    ctx.strokeStyle = '#0ff';
     ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
     ctx.stroke();
   } else if (element.type === 'rollover') {
     ctx.shadowBlur = 15;
@@ -635,19 +920,42 @@ function drawElement(element) {
     ctx.lineWidth = 1;
     ctx.strokeRect(pos.x - 20, pos.y - 4, 40, 8);
   } else if (element.type === 'target') {
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = '#0f0';
-    const tGrad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 20);
-    tGrad.addColorStop(0, '#fff');
-    tGrad.addColorStop(0.3, '#0f0');
-    tGrad.addColorStop(1, '#004400');
+    // Beveled target with inset and shiny top band
+    const S = 30;
+    ctx.save();
+    // Shadow to lift target
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = 'rgba(0, 80, 0, 0.5)';
+    const tGrad = ctx.createLinearGradient(pos.x - S / 2, pos.y - S / 2, pos.x + S / 2, pos.y + S / 2);
+    tGrad.addColorStop(0, '#e8ffe8');
+    tGrad.addColorStop(0.35, '#c8ffcc');
+    tGrad.addColorStop(1, '#117711');
     ctx.fillStyle = tGrad;
     ctx.beginPath();
-    ctx.roundRect(pos.x - 15, pos.y - 15, 30, 30, 5);
+    ctx.roundRect(pos.x - 15, pos.y - 15, 30, 30, 6);
     ctx.fill();
-    ctx.strokeStyle = '#fff';
+
+    // Thin outer rim
     ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
     ctx.stroke();
+
+    // Inner inset to suggest depth
+    ctx.beginPath();
+    ctx.roundRect(pos.x - 11, pos.y - 11, 22, 22, 4);
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fill();
+
+    // Shiny top band
+    ctx.beginPath();
+    ctx.roundRect(pos.x - 12, pos.y - 15, 24, 10, 4);
+    const shine = ctx.createLinearGradient(0, pos.y - 15, 0, pos.y - 5);
+    shine.addColorStop(0, 'rgba(255,255,255,0.85)');
+    shine.addColorStop(1, 'rgba(255,255,255,0.05)');
+    ctx.fillStyle = shine;
+    ctx.fill();
+
+    ctx.restore();
   } else if (element.type === 'hole') {
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, 18, 0, 2 * Math.PI);
@@ -721,6 +1029,22 @@ document.getElementById('delete-tool').addEventListener('click', deleteSelectedI
 
 canvas.addEventListener('mousedown', (e) => {
   const pos = getMousePos(e);
+
+  if (isPlaying && ball.waiting && pos.x > canvas.width - 65) {
+    plungerActive = true;
+    plungerStartY = pos.y;
+    plungerPull = 0;
+    return;
+  }
+  // Bottom tap area to trigger flippers (quick play control)
+  if (isPlaying && pos.y > canvas.height - 140) {
+    if (pos.x < canvas.width / 2) {
+      triggerTempKeys(['ArrowLeft', 'KeyZ', 'z'], 160);
+    } else {
+      triggerTempKeys(['ArrowRight', 'KeyM', 'm'], 160);
+    }
+    return;
+  }
   pointerDownPos = pos;
   movedDuringDrag = false;
 
@@ -770,6 +1094,11 @@ canvas.addEventListener('mousedown', (e) => {
 canvas.addEventListener('mousemove', (e) => {
   const pos = getMousePos(e);
 
+  if (isPlaying && plungerActive) {
+    plungerPull = Math.max(0, Math.min(PLUNGER_MAX_PULL, pos.y - plungerStartY));
+    return;
+  }
+
   if (dragging && selectedItem) {
     if (pointerDownPos && !movedDuringDrag) {
       const dx0 = pos.x - pointerDownPos.x;
@@ -780,6 +1109,9 @@ canvas.addEventListener('mousemove', (e) => {
     if (selectedItem.control) {
       const point = selectedItem.point;
       const control = selectedItem.control;
+      // Be defensive: ensure controls object and the specific control exist
+      if (!point.controls) point.controls = {};
+      if (!point.controls[control]) point.controls[control] = { x: point.x, y: point.y };
       point.controls[control].x = pos.x - dragOffset.x;
       point.controls[control].y = pos.y - dragOffset.y;
     } else if (selectedItem.point) {
@@ -791,8 +1123,8 @@ canvas.addEventListener('mousemove', (e) => {
       selectedItem.point.y = newY;
       // Move handles with the point to keep them attached
       if (selectedItem.point.controls) {
-        selectedItem.point.controls.c1.x += dx; selectedItem.point.controls.c1.y += dy;
-        selectedItem.point.controls.c2.x += dx; selectedItem.point.controls.c2.y += dy;
+        if (selectedItem.point.controls.c1) { selectedItem.point.controls.c1.x += dx; selectedItem.point.controls.c1.y += dy; }
+        if (selectedItem.point.controls.c2) { selectedItem.point.controls.c2.x += dx; selectedItem.point.controls.c2.y += dy; }
       }
     } else if (selectedItem.wall) {
       const dx = (pos.x - dragOffset.x) - selectedItem.wall.points[0].x;
@@ -800,8 +1132,8 @@ canvas.addEventListener('mousemove', (e) => {
       selectedItem.wall.points.forEach(p => {
         p.x += dx; p.y += dy;
         if (p.controls) {
-          p.controls.c1.x += dx; p.controls.c1.y += dy;
-          p.controls.c2.x += dx; p.controls.c2.y += dy;
+          if (p.controls.c1) { p.controls.c1.x += dx; p.controls.c1.y += dy; }
+          if (p.controls.c2) { p.controls.c2.x += dx; p.controls.c2.y += dy; }
         }
       });
     } else if (selectedItem.position) {
@@ -814,17 +1146,69 @@ canvas.addEventListener('mousemove', (e) => {
 });
 
 canvas.addEventListener('mouseup', (e) => {
-  // If we dragged, suppress the click that follows so we don't toggle handles off.
-  if (dragging && movedDuringDrag) suppressNextClick = true;
-
-  if (dragging && selectedItem && selectedItem.control) {
-    const point = selectedItem.point;
-    // Keep the point selected (handles visible)
-    selectedItem = { wall: selectedItem.wall, point: point };
+  if (isPlaying && plungerActive) {
+    if (plungerPull > 6 && ball.waiting) {
+      const p = Math.max(0, Math.min(1, plungerPull / PLUNGER_MAX_PULL));
+      launchBallFromPull(p);
+    }
+    plungerActive = false;
+    plungerPull = 0;
+    e.preventDefault();
+    return;
   }
   dragging = false;
   pointerDownPos = null;
 });
+
+// Touch controls for Plunger / Mobile
+canvas.addEventListener('touchstart', (e) => {
+  if (!isPlaying) return;
+  const t = e.touches[0];
+  const rect = canvas.getBoundingClientRect();
+  const tx = (t.clientX - rect.left) * (canvas.width / rect.width);
+  const ty = (t.clientY - rect.top) * (canvas.height / rect.height);
+
+  // Plunger touch (shooter lane)
+  if (ball.waiting && tx > canvas.width - 65) {
+    plungerActive = true;
+    plungerStartY = ty;
+    plungerPull = 0;
+    e.preventDefault();
+    return;
+  }
+
+  // Bottom tap areas: left/right to toggle flippers briefly
+  if (ty > canvas.height - 140) {
+    if (tx < canvas.width / 2) {
+      triggerTempKeys(['ArrowLeft', 'KeyZ', 'z'], 160);
+    } else {
+      triggerTempKeys(['ArrowRight', 'KeyM', 'm'], 160);
+    }
+    e.preventDefault();
+    return;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (isPlaying && plungerActive) {
+    const t = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const ty = (t.clientY - rect.top) * (canvas.height / rect.height);
+    plungerPull = Math.max(0, Math.min(PLUNGER_MAX_PULL, ty - plungerStartY));
+    e.preventDefault();
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    if (isPlaying && plungerActive) {
+    if (plungerPull > 6 && ball.waiting) {
+      const p = Math.max(0, Math.min(1, plungerPull / PLUNGER_MAX_PULL));
+      launchBallFromPull(p);
+    }
+    plungerActive = false;
+    plungerPull = 0;
+  }
+}, { passive: false });
 
 canvas.addEventListener('dblclick', (e) => {
   if (selectedTool === 'wall' && currentWall) {
