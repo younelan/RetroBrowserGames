@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chopper Rescue: Desert Strike</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=JetBrains+Mono&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="ui-layer">
+            <div id="hud">
+                <div class="stat-box">
+                    <span class="label">RESCUED</span>
+                    <span id="saved-count" class="value">00 / 16</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">ON BOARD</span>
+                    <span id="onboard-count" class="value">00 / 16</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">REMAINING</span>
+                    <span id="remaining-count" class="value">64</span>
+                </div>
+                <div class="stat-box">
+                    <span class="label">HELOS</span>
+                    <span id="lives-count" class="value">05</span>
+                </div>
+            </div>
+
+            <div id="start-screen" class="overlay">
+                <div class="title-card">
+                    <h1>CHOPPER RESCUE</h1>
+                    <p class="subtitle">DESERT STRIKE</p>
+                    <div class="mission-briefing">
+                        <p>MISSION: RECOVER ALL 64 POWs FROM ENEMY TERRITORY.</p>
+                        <p>WATCH FOR TANKS AND ANTI-AIR DEFENSES.</p>
+                        <p>LAND NEAR SURVIVORS TO BOARD.</p>
+                    </div>
+                    <button id="start-btn">ENGAGE MISSION</button>
+                </div>
+            </div>
+
+            <div id="game-over" class="overlay hidden">
+                <div class="title-card">
+                    <h2 id="end-title">MISSION COMPLETED</h2>
+                    <p id="end-stats">64 SURVIVORS RESCUED</p>
+                    <button id="restart-btn">NEW MISSION</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="game.js" type="module"></script>
+</body>
+
+</html>

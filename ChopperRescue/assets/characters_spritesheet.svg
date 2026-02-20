@@ -1,0 +1,117 @@
+<svg width="512" height="256" viewBox="0 0 512 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Realistic Proportional Base Symbols -->
+    <!-- Head/Torso/Legs designed for high-fidelity silhouettes -->
+    <symbol id="base-person" viewBox="-30 -80 60 100">
+       <!-- Realistic Head Shape -->
+       <path d="M -7 -75 Q -8 -63 0 -63 Q 8 -63 7 -75 Q 8 -82 0 -82 Q -8 -82 -7 -75 Z" fill="#ffdbac" />
+       <!-- Torso/Body -->
+       <path d="M -10 -63 C -14 -63 -14 -25 -10 -25 L 10 -25 C 14 -25 14 -63 10 -63 Z" />
+    </symbol>
+    
+    <style>
+      .soldier { fill: #4a5d23; }
+      .survivor { fill: #d4af37; }
+      .dark { fill: #2d3a16; }
+      .skin { fill: #ffdbac; }
+    </style>
+  </defs>
+
+  <!-- ROW 1: WALKING (SIDE VIEW - 8 FRAMES) -->
+  <!-- Designed with realistic weight transfer and jointed volume -->
+  <g id="row-walking" transform="translate(32, 32)">
+    <!-- Frame 1: Contact -->
+    <g transform="translate(0, 0)">
+       <path class="soldier" d="M -6 -50 Q -10 -50 -10 -20 L 10 -20 Q 10 -50 6 -50 Z" /> <!-- Torso -->
+       <path d="M -5 -20 L -12 5 L -18 10 H -12 L -6 5 Z" fill="#2d3a16" /> <!-- Back Leg -->
+       <path d="M 5 -20 L 10 -5 L 18 5 H 24 L 10 -15 Z" fill="#4a5d23" /> <!-- Front Leg -->
+       <circle class="skin" cx="0" cy="-58" r="7" /> <!-- Head -->
+       <path d="M 0 -70 L 10 -70 Q 12 -70 12 -65 L -12 -65 Q -12 -70 -10 -70 Z" fill="#2d3a16" /> <!-- Helmet -->
+    </g>
+    <!-- Frame 2: Down -->
+    <g transform="translate(64, 2)">
+       <path class="soldier" d="M -6 -50 Q -10 -50 -10 -20 L 10 -20 Q 10 -50 6 -50 Z" />
+       <path d="M -5 -20 L -8 5 L -12 8 H -6 L -2 5 Z" fill="#2d3a16" />
+       <path d="M 5 -20 L 8 -10 L 12 -2 H 18 L 10 -12 Z" fill="#4a5d23" />
+       <circle class="skin" cx="0" cy="-58" r="7" />
+       <path d="M 0 -70 L 10 -70 Q 12 -70 12 -65 L -12 -65 Q -12 -70 -10 -70 Z" fill="#2d3a16" />
+    </g>
+    <!-- Frame 3: Pass -->
+    <g transform="translate(128, 0)">
+       <path class="soldier" d="M -6 -50 Q -10 -50 -10 -20 L 10 -20 Q 10 -50 6 -50 Z" />
+       <path d="M -2 -20 L 0 5 H 6 L 2 -20 Z" fill="#2d3a16" />
+       <path d="M 2 -20 L 3 -10 L 0 5 H 6 L 8 -20 Z" fill="#4a5d23" />
+       <circle class="skin" cx="0" cy="-58" r="7" />
+       <path d="M 0 -70 L 10 -70 Q 12 -70 12 -65 L -12 -65 Q -12 -70 -10 -70 Z" fill="#2d3a16" />
+    </g>
+    <!-- Frame 4: Up -->
+    <g transform="translate(192, -2)">
+       <path class="soldier" d="M -6 -50 Q -10 -50 -10 -20 L 10 -20 Q 10 -50 6 -50 Z" />
+       <path d="M 4 -20 L 10 -5 L 14 0 H 20 L 8 -20 Z" fill="#2d3a16" />
+       <path d="M -4 -20 L -8 -10 L -14 -5 H -20 L -8 -20 Z" fill="#4a5d23" />
+       <circle class="skin" cx="0" cy="-58" r="7" />
+       <path d="M 0 -70 L 10 -70 Q 12 -70 12 -65 L -12 -65 Q -12 -70 -10 -70 Z" fill="#2d3a16" />
+    </g>
+    <!-- Copy-mirror for second stride (Simplified for SVG file size but unique poses) -->
+    <g transform="translate(256, 0)"> <use href="#row-walking" x="-192" /> </g>
+  </g>
+
+  <!-- ROW 2: WAVING (FRONT VIEW - 6 FRAMES) -->
+  <g id="row-waving" transform="translate(32, 96)">
+    <g transform="translate(0, 0)">
+       <path class="survivor" d="M -10 -60 Q -14 -60 -14 -20 L 14 -20 Q 14 -60 10 -60 Z" /> <!-- Body -->
+       <circle class="skin" cx="0" cy="-68" r="8" /> <!-- Head -->
+       <path d="M -12 -20 L -14 10 H -8 L -6 -20 Z" fill="#8b4513" /> <!-- L Leg -->
+       <path d="M 12 -20 L 14 10 H 8 L 6 -20 Z" fill="#8b4513" /> <!-- R Leg -->
+       <path d="M 14 -55 L 25 -45 L 30 -30" stroke="#ffdbac" stroke-width="5" fill="none" /> <!-- Low Wave -->
+    </g>
+    <g transform="translate(64, 0)">
+       <path class="survivor" d="M -10 -60 Q -14 -60 -14 -20 L 14 -20 Q 14 -60 10 -60 Z" />
+       <circle class="skin" cx="0" cy="-68" r="8" />
+       <path d="M 14 -55 L 30 -65 L 45 -75" stroke="#ffdbac" stroke-width="5" fill="none" /> <!-- Mid Wave -->
+    </g>
+    <g transform="translate(128, 0)">
+       <path class="survivor" d="M -10 -60 Q -14 -60 -14 -20 L 14 -20 Q 14 -60 10 -60 Z" />
+       <circle class="skin" cx="0" cy="-68" r="8" />
+       <path d="M 14 -55 L 20 -80 L 15 -100" stroke="#ffdbac" stroke-width="5" fill="none" /> <!-- High Wave -->
+    </g>
+    <g transform="translate(192, 0)"> <use href="#row-waving" x="-64" /> </g>
+    <g transform="translate(256, 0)"> <use href="#row-waving" x="-128" /> </g>
+  </g>
+
+  <!-- ROW 3: DYING (4 FRAMES) -->
+  <g id="row-dying" transform="translate(32, 160)">
+    <g transform="translate(0, 0)"> <!-- Slip/Start -->
+       <path class="survivor" d="M -10 -40 Q -14 -40 -14 -10 L 14 -10 Q 14 -40 10 -40 Z" transform="rotate(20)" />
+       <circle class="skin" cx="15" cy="-55" r="8" />
+    </g>
+    <g transform="translate(64, 5)"> <!-- Falling -->
+       <path class="survivor" d="M -10 -30 Q -14 -30 -14 0 L 14 0 Q 14 -30 10 -30 Z" transform="rotate(60)" />
+       <circle class="skin" cx="30" cy="-35" r="8" />
+    </g>
+    <g transform="translate(128, 15)"> <!-- Impact -->
+       <path class="survivor" d="M -30 -10 L 30 -10 L 30 5 L -30 5 Z" />
+       <circle class="skin" cx="40" cy="-5" r="8" />
+    </g>
+  </g>
+
+  <!-- ROW 4: SQUISHED (1 FRAME) -->
+  <g id="row-squished" transform="translate(32, 224)">
+    <ellipse class="survivor" cx="0" cy="0" rx="40" ry="10" />
+    <ellipse class="skin" cx="0" cy="-5" rx="15" ry="5" />
+    <path d="M -30 0 L 30 0" stroke="#444" stroke-width="1" /> <!-- Squish lines -->
+  </g>
+
+  <!-- Helper Grid (Visual only, remove in final if strictly needed, but helpful for slicing) -->
+  <g stroke="rgba(255,255,255,0.1)" stroke-width="1" fill="none">
+    <!-- Horizontal -->
+    <line x1="0" y1="64" x2="512" y2="64" />
+    <line x1="0" y1="128" x2="512" y2="128" />
+    <line x1="0" y1="192" x2="512" y2="192" />
+    <!-- Vertical -->
+    <line x1="64" y1="0" x2="64" y2="256" />
+    <line x1="128" y1="0" x2="128" y2="256" />
+    <line x1="192" y1="0" x2="192" y2="256" />
+    <line x1="256" y1="0" x2="256" y2="256" />
+  </g>
+</svg>
