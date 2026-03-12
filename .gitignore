@@ -15,6 +15,9 @@ local.properties
 .classpath
 .settings/
 .loadpath
+.vscode
+.claude
+.agents
 
 # External tool builders
 .externalToolBuilders/
