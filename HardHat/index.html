@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hard Hat Mac</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="hud">
+            <div id="hud-top">
+                <span class="hud-item">SCORE: <span id="score">000000</span></span>
+                <span class="hud-item">LEVEL: <span id="level-val">1</span></span>
+                <span class="hud-item">LIVES: <span id="lives">3</span></span>
+            </div>
+            <div id="hud-bottom">
+                <span class="hud-item">TIME: <span id="time">120</span></span>
+                <span class="hud-item" id="bonus-info">BONUS: 0000</span>
+            </div>
+        </div>
+        <canvas id="gameCanvas" width="500" height="500"></canvas>
+        <div id="instructions">
+            <p>ARROWS / DRAG to move | SPACE / DRAG UP to jump</p>
+            <p>COLLECT beams, FILL gaps, RIVET with jackhammer!</p>
+        </div>
+        <div id="overlay" class="hidden">
+            <div id="overlay-content">
+                <h1 id="overlay-title">GAME OVER</h1>
+                <p id="overlay-msg">DIAGNOSTIC: COLLISION</p>
+                <button id="restartBtn">RETRY</button>
+            </div>
+        </div>
+        <button id="startBtn">START GAME</button>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,158 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: #1a202c;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#game-container {
+    text-align: center;
+    width: 100%;
+    max-width: 500px;
+    position: relative;
+}
+
+h1 {
+    color: #f6e05e;
+    margin-bottom: 10px;
+    text-shadow: 3px 3px 6px rgba(0,0,0,0.5);
+    font-size: 32px;
+    letter-spacing: 2px;
+}
+
+#hud {
+    color: #fff;
+    font-size: 18px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border: 1px solid #0ff;
+}
+
+#hud-top, #hud-bottom {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.hud-item {
+    font-weight: bold;
+}
+
+span[id] {
+    color: #0ff;
+    text-shadow: 0 0 5px #0ff;
+}
+
+#time {
+    color: #f00 !important;
+    text-shadow: 0 0 5px #f00 !important;
+}
+
+canvas {
+    border: 2px solid #555;
+    background-color: #000;
+    image-rendering: pixelated;
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+#instructions {
+    color: #aaa;
+    margin-top: 15px;
+    font-size: 14px;
+    background: #222; /* Darker background for retro feel */
+    padding: 12px 20px;
+    border-radius: 0; /* Blocky style */
+    display: inline-block;
+}
+
+#instructions p {
+    margin: 4px 0;
+}
+
+#startBtn {
+    margin-top: 15px;
+    padding: 10px 30px;
+    font-size: 20px;
+    font-family: inherit; /* Use the blocky font */
+    background-color: #0ff; /* Cyan for retro feel */
+    color: #000;
+    border: none;
+    border-radius: 0; /* Blocky style */
+    cursor: pointer;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: background-color 0.2s; /* Simpler transition */
+    box-shadow: none; /* Blocky style */
+}
+
+#startBtn:hover {
+    box-shadow: 0 6px 20px rgba(237, 137, 54, 0.5);
+}
+
+#startBtn:active {
+    transform: translateY(0);
+}
+
+.hidden { display: none !important; }
+
+#overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 90%;
+    max-width: 400px;
+    background: rgba(0, 0, 0, 0.9);
+    border: 3px solid #0ff;
+    padding: 40px;
+    z-index: 100;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+    backdrop-filter: blur(5px);
+}
+
+#overlay-title {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #f00;
+    text-shadow: 0 0 10px #f00;
+    animation: flicker 0.1s infinite alternate;
+}
+
+#overlay-msg {
+    color: #fff;
+    font-size: 18px;
+    margin-bottom: 30px;
+}
+
+#restartBtn {
+    padding: 10px 40px;
+    font-size: 24px;
+    background: #0ff;
+    color: #000;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+@keyframes flicker {
+    from { opacity: 0.8; }
+    to { opacity: 1; }
+}
