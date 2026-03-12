@@ -34,7 +34,6 @@ const ASSETS = {
     shrub: 'assets/desert_shrub.png',
     cactus: 'assets/palm_tree.png', // Reusing placeholder for now or generating new
     rock: 'assets/sandbags.png',
-    world: 'assets/world.svg',
     home_base: 'assets/home_base.png'
 };
 
