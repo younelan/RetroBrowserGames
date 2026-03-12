@@ -29,31 +29,38 @@
     </div>
 
     <h2>Appearance</h2>
-    <div class="controls-group">
-      <div class="color-picker-item">
-        <label for="bg-color">Background</label>
+    <button id="colors-btn" class="section-toggle">🎨 Colors <span id="colors-arrow">▸</span></button>
+    <div id="colors-panel" class="section-panel">
+      <div class="panel-row">
+        <label>Background</label>
         <input type="color" id="bg-color" value="#000000">
       </div>
-      <div class="color-picker-item" style="display:flex;align-items:center;gap:8px;">
-        <label for="wall-light" style="min-width:60px;">Wall</label>
-        <input type="color" id="wall-light" value="#ffffff">
-        <input type="color" id="wall-dark" value="#777777">
+      <div class="panel-row">
+        <label>Wall</label>
+        <span class="color-pair">
+          <input type="color" id="wall-light" value="#ffffff">
+          <input type="color" id="wall-dark" value="#777777">
+        </span>
       </div>
-      <div class="color-picker-item">
-        <label for="flipper-color">Flipper</label>
+      <div class="panel-row">
+        <label>Flipper</label>
         <input type="color" id="flipper-color" value="#00888a">
       </div>
-      <div class="color-picker-item">
-        <label for="bg-image">Background URL</label>
-        <input type="text" id="bg-image" placeholder="Image URL...">
+      <div class="panel-row">
+        <label>Bumper</label>
+        <input type="color" id="bumper-color" value="#ff00cc">
       </div>
-      <div class="color-picker-item">
-        <label for="bg-alpha">Background Alpha</label>
-        <input type="range" id="bg-alpha" min="0" max="1" step="0.1" value="1">
+      <div class="panel-row">
+        <label>BG image URL</label>
+        <input type="text" id="bg-image" placeholder="https://..." class="panel-text-input">
       </div>
-      <div class="color-picker-item">
-        <label for="launch-random">Launch Jitter</label>
-        <input type="range" id="launch-random" min="0" max="5" step="1" value="0">
+      <div class="panel-row">
+        <label>BG alpha</label>
+        <input type="range" id="bg-alpha" min="0" max="1" step="0.05" value="1" class="panel-range">
+      </div>
+      <div class="panel-row">
+        <label>Launch jitter</label>
+        <input type="range" id="launch-random" min="0" max="5" step="1" value="0" class="panel-range">
       </div>
     </div>
 

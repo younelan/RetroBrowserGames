@@ -194,31 +194,45 @@ const _loadFileBtn = document.getElementById('load-file-button'); if (_loadFileB
     const data = await res.json();
     level = normalizeLevel(data); // normalize after fetch
     levelDataTextarea.value = JSON.stringify(level, null, 2);
-    // Update color inputs
-      document.getElementById('bg-color').value = level.backgroundColor;
-      // new: separate wall light/dark picks
-      if (document.getElementById('wall-light')) document.getElementById('wall-light').value = level.wallLight || '#ffffff';
-      if (document.getElementById('wall-dark')) document.getElementById('wall-dark').value = level.wallDark || '#777777';
-      if (document.getElementById('flipper-color')) document.getElementById('flipper-color').value = level.flipperColor || '#00888a';
+    // Color inputs are synced lazily when the modal opens — nothing to do here.
   } catch (err) {
     alert('Failed to load level.json');
     console.error(err);
   }
 });
 
-// Update HUD and background controls
-const _bgColor = document.getElementById('bg-color'); if (_bgColor) _bgColor.addEventListener('input', e => { level.backgroundColor = e.target.value; });
-// wall light/dark controls (if present in DOM)
-const wallLightInput = document.getElementById('wall-light');
-const wallDarkInput = document.getElementById('wall-dark');
-if (wallLightInput) wallLightInput.addEventListener('input', e => { level.wallLight = e.target.value; });
-if (wallDarkInput) wallDarkInput.addEventListener('input', e => { level.wallDark = e.target.value; });
-// Flipper color control
-const flipperColorInput = document.getElementById('flipper-color');
-if (flipperColorInput) flipperColorInput.addEventListener('input', e => { level.flipperColor = e.target.value; });
-const _bgImageInput = document.getElementById('bg-image'); if (_bgImageInput) _bgImageInput.addEventListener('change', e => { level.backgroundImage = e.target.value; ensureBgImageLoaded(); });
-const _bgAlpha = document.getElementById('bg-alpha'); if (_bgAlpha) _bgAlpha.addEventListener('input', e => { level.backgroundAlpha = parseFloat(e.target.value); });
-const _launchRandom = document.getElementById('launch-random'); if (_launchRandom) _launchRandom.addEventListener('input', e => { level.launchRandomness = parseFloat(e.target.value); });
+// Color / appearance input listeners (inputs live inside the modal)
+function bindInput(id, fn) { const el = document.getElementById(id); if (el) el.addEventListener('input', fn); }
+bindInput('bg-color',      e => { level.backgroundColor = e.target.value; });
+bindInput('wall-light',    e => { level.wallLight = e.target.value; });
+bindInput('wall-dark',     e => { level.wallDark = e.target.value; });
+bindInput('flipper-color', e => { level.flipperColor = e.target.value; });
+bindInput('bumper-color',  e => { level.bumperColor = e.target.value; });
+bindInput('bg-image',      e => { level.backgroundImage = e.target.value; ensureBgImageLoaded(); });
+bindInput('bg-alpha',      e => { level.backgroundAlpha = parseFloat(e.target.value); });
+bindInput('launch-random', e => { level.launchRandomness = parseFloat(e.target.value); });
+
+// Colors panel toggle
+const _colorsBtn   = document.getElementById('colors-btn');
+const _colorsPanel = document.getElementById('colors-panel');
+if (_colorsBtn && _colorsPanel) {
+  _colorsBtn.addEventListener('click', () => {
+    const open = _colorsPanel.classList.toggle('open');
+    _colorsBtn.classList.toggle('open', open);
+    // Sync inputs from level when opening
+    if (open) {
+      const sync = (id, val) => { const el = document.getElementById(id); if (el) el.value = val ?? el.value; };
+      sync('bg-color',      level.backgroundColor || '#000000');
+      sync('wall-light',    level.wallLight       || '#ffffff');
+      sync('wall-dark',     level.wallDark        || '#777777');
+      sync('flipper-color', level.flipperColor    || '#00888a');
+      sync('bumper-color',  level.bumperColor     || '#ff00cc');
+      sync('bg-image',      level.backgroundImage || '');
+      sync('bg-alpha',      level.backgroundAlpha ?? 1);
+      sync('launch-random', level.launchRandomness ?? 0);
+    }
+  });
+}
 
 const _playToggle = document.getElementById('play-mode-toggle'); if (_playToggle) _playToggle.addEventListener('click', togglePlayMode);
 
@@ -398,11 +412,11 @@ function updatePhysics() {
           ? (keys['ArrowRight'] || keys['KeyK'] || keys['k'] || keys['KeyL'] || keys['l'] || keys['KeyM'] || keys['m'])
           : (keys['ArrowLeft'] || keys['KeyS'] || keys['s'] || keys['KeyD'] || keys['d'] || keys['KeyF'] || keys['f']);
         const p1 = el.position;
-        const L = el.length || 70;
+        const L = el.length || 98;
         const p2 = { x: p1.x + Math.cos(el.currentRot) * L, y: p1.y + Math.sin(el.currentRot) * L };
 
         // Flipper "thickness" padding for collision
-        const thickness = 10;
+        const thickness = 14;
         const d = distPointToSeg(ball.x, ball.y, p1.x, p1.y, p2.x, p2.y);
         if (d < ball.r + thickness) {
           const savedR = ball.r;
@@ -495,13 +509,8 @@ function loadLevel() {
   try {
     const parsed = JSON.parse(levelDataTextarea.value);
     level = normalizeLevel(parsed); // normalize after paste
-    document.getElementById('bg-color').value = level.backgroundColor;
-    if (document.getElementById('wall-light')) document.getElementById('wall-light').value = level.wallLight || '#ffffff';
-    if (document.getElementById('wall-dark')) document.getElementById('wall-dark').value = level.wallDark || '#777777';
-    document.getElementById('bg-image').value = level.backgroundImage || '';
-    document.getElementById('bg-alpha').value = level.backgroundAlpha ?? 1;
-    document.getElementById('launch-random').value = level.launchRandomness ?? 0;
     ensureBgImageLoaded();
+    // Color inputs sync lazily when the modal opens.
   } catch (e) { console.error('Invalid JSON data!'); }
 }
 
@@ -708,8 +717,11 @@ function collideBallWithSegment(b, A, B, e, mu) {
   b.y += ny * penetration;
   const vn = b.vx * nx + b.vy * ny;
   if (vn < 0) {
-    b.vx -= (1 + e) * vn * nx;
-    b.vy -= (1 + e) * vn * ny;
+    // Suppress bounce when the ball is barely hitting (rolling along a surface or
+    // grazing a segment endpoint). This eliminates the phantom bounces at wall joints.
+    const effective_e = Math.abs(vn) < 120 ? 0 : e;
+    b.vx -= (1 + effective_e) * vn * nx;
+    b.vy -= (1 + effective_e) * vn * ny;
     const tx = -ny, ty = nx;
     const vt = b.vx * tx + b.vy * ty;
     b.vx -= mu * vt * tx;
@@ -744,6 +756,10 @@ function normalizeLevel(src) {
     description: src?.description || 'Level',
     backgroundColor: src?.backgroundColor || '#000000',
     wallColor: src?.wallColor || '#ffffff',
+    wallLight: src?.wallLight || '#ffffff',
+    wallDark: src?.wallDark || '#777777',
+    flipperColor: src?.flipperColor || '#00888a',
+    bumperColor: src?.bumperColor || '#ff00cc',
     backgroundImage: src?.backgroundImage || null,
     backgroundAlpha: typeof src?.backgroundAlpha === 'number' ? src.backgroundAlpha : 1,
     launchRandomness: typeof src?.launchRandomness === 'number' ? src.launchRandomness : 0,
@@ -879,11 +895,15 @@ function drawElement(element) {
   if (element.type === 'bumper') {
     // Pseudo-3D bumper with rim, inner glow and specular
     const R = element.radius || 25;
+    const bBase = level.bumperColor || '#ff00cc';
+    const bLight = shadeHex(bBase, 78);
+    const bDark  = shadeHex(bBase, -45);
+
     // Outer rim (dark)
     ctx.save();
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, R + 4, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(30,0,30,0.85)';
+    ctx.fillStyle = hexToRgba(bDark, 0.85);
     ctx.fill();
     ctx.restore();
 
@@ -898,14 +918,14 @@ function drawElement(element) {
     // Main colorful core
     ctx.save();
     ctx.shadowBlur = 30;
-    ctx.shadowColor = '#ff66ff';
+    ctx.shadowColor = shadeHex(bBase, 30);
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, R, 0, Math.PI * 2);
     const grad = ctx.createRadialGradient(pos.x - R * 0.25, pos.y - R * 0.35, 0, pos.x, pos.y, R);
     grad.addColorStop(0, '#fff');
-    grad.addColorStop(0.15, '#ffd6ff');
-    grad.addColorStop(0.45, '#ff88ff');
-    grad.addColorStop(1, '#b00088');
+    grad.addColorStop(0.15, bLight);
+    grad.addColorStop(0.45, bBase);
+    grad.addColorStop(1, bDark);
     ctx.fillStyle = grad;
     ctx.fill();
 
@@ -962,15 +982,15 @@ function drawElement(element) {
 
     // Draw Pivot point first so it's always visible at the "hinge"
     ctx.beginPath();
-    ctx.arc(0, 0, 6, 0, Math.PI * 2);
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
     ctx.fillStyle = '#ff0000';
     ctx.fill();
 
     const rot = (isPlaying && element.currentRot) ? element.currentRot : baseRot;
     ctx.rotate(rot);
 
-    const L = element.length || 70;
-    const W = 14; // Slightly wider flipper
+    const L = element.length || 98;
+    const W = 20;
 
     // Main body with depth: darker base + highlight strip
     ctx.save();
@@ -1000,18 +1020,18 @@ function drawElement(element) {
 
     // Thin bright edge on top
     ctx.beginPath();
-    ctx.moveTo(6, -W * 0.6);
-    ctx.lineTo(L - 6, -W * 0.6);
+    ctx.moveTo(8, -W * 0.6);
+    ctx.lineTo(L - 8, -W * 0.6);
     ctx.strokeStyle = 'rgba(255,255,255,0.25)';
     ctx.lineWidth = 3;
     ctx.stroke();
 
     // Subtle inner highlight strip
     ctx.beginPath();
-    ctx.moveTo(10, -W * 0.2);
-    ctx.lineTo(L - 10, -W * 0.2);
+    ctx.moveTo(13, -W * 0.2);
+    ctx.lineTo(L - 13, -W * 0.2);
     ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 8;
+    ctx.lineWidth = 10;
     ctx.stroke();
 
     // Outline
@@ -1023,8 +1043,8 @@ function drawElement(element) {
 
     // Pivot Detail (metallic)
     ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, Math.PI * 2);
-    const pGrad = ctx.createRadialGradient(-2, -2, 1, 0, 0, 8);
+    ctx.arc(0, 0, 11, 0, Math.PI * 2);
+    const pGrad = ctx.createRadialGradient(-3, -3, 1, 0, 0, 11);
     pGrad.addColorStop(0, '#fff');
     pGrad.addColorStop(0.5, '#cfcfcf');
     pGrad.addColorStop(1, '#666');

@@ -57,6 +57,9 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* Improve touch responsiveness for toolbar buttons */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: rgba(255,255,255,0.06);
 }
 
 #toolbar button:hover {
@@ -113,6 +116,9 @@ body {
   width: auto;
   object-fit: contain;
   image-rendering: crisp-edges;
+  /* Improve touch responsiveness on mobile */
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .controls-group {
@@ -198,4 +204,76 @@ body {
   border: none;
   border-top: 1px solid #444;
   margin: 15px 0;
+}
+
+/* ─── Collapsible section toggle ───────────────────── */
+.section-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 12px;
+  background: #272b34;
+  border: 1px solid #2d313a;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s;
+}
+.section-toggle:hover { background: #2e3340; color: var(--text-primary); }
+.section-toggle.open { color: var(--accent-neon); border-color: rgba(0,255,255,0.2); }
+
+#colors-arrow { font-size: 0.7rem; transition: transform 0.2s; }
+.section-toggle.open #colors-arrow { transform: rotate(90deg); }
+
+.section-panel {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 4px 4px;
+}
+.section-panel.open { display: flex; }
+
+.panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.78rem;
+  color: #aaa;
+}
+.panel-row label { flex: 1; }
+
+.panel-row input[type="color"] {
+  width: 28px;
+  height: 22px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 3px;
+}
+
+.color-pair {
+  display: flex;
+  gap: 5px;
+}
+
+.panel-text-input {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 5px;
+  color: #ccc;
+  font-size: 0.72rem;
+  padding: 3px 6px;
+  width: 110px;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.panel-range {
+  width: 110px;
+  accent-color: var(--accent-neon);
 }
