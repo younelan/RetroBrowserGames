@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7 Families - Card Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="game-container">
+
+        <div id="game-area">
+
+            <!-- Center area -->
+
+                        <div class="titlebar">
+                            <div class="titleheader">7 Families</div>
+                            <div id="top-bar" class="top-bar"></div>
+                                    
+                        </div>
+  
+
+                <div id="deck-info">
+                    <p>Deck: <span id="deck-count">42</span> cards</p>
+                    <p id="turn-indicator">Your Turn</p>
+                </div>
+                <div id="ask-area">
+                    <div class="selection-row">
+                        <select id="family-select" class="family-select">
+                            <option value="">Select Family...</option>
+                        </select>
+                        <select id="member-select" class="member-select" disabled>
+                            <option value="">Select Member...</option>
+                        </select>
+                    </div>
+                    <p id="question-text">Ask for a family member...</p>
+                    <div id="family-buttons" class="family-buttons"></div>
+                    <div id="laydown-area" class="laydown-area"></div>
+                </div>
+            
+            <!-- Player Hand -->
+                <div class="player-header">
+                    <h2>Your Hand</h2>
+                    <div class="player-info">
+                        <span class="hand-count">7 cards</span>
+                        <span class="families-count">0 families</span>
+                    </div>
+                </div>
+                <div id="player-families" class="families"></div>
+                <div id="player-hand" class="hand"></div>
+            
+            <!-- AI Player -->
+            <div id="ai-area">
+                <div class="player-header">
+                    <h2>AI Player</h2>
+                    <div class="player-info">
+                        <span class="hand-count">5 cards</span>
+                        <span class="families-count">0 families</span>
+                    </div>
+                </div>
+                <div id="ai-families" class="families"></div>
+            </div>
+        </div>
+        
+        <div id="game-over" class="hidden">
+            <h2 id="winner-text"></h2>
+            <button id="restart-btn">Play Again</button>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
