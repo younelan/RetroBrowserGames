@@ -18,6 +18,9 @@ local.properties
 .vscode
 .claude
 .agents
+local
+tmp
+data
 
 # External tool builders
 .externalToolBuilders/
