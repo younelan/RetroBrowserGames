@@ -44,6 +44,8 @@
     discard:[],
     lastLayValue:0,
     mustLayFlag:false // when player drew from stock they must lay this turn
+    ,turnDrawn:false,
+    turnsElapsed:0
   };
 
   // DOM refs
@@ -86,6 +88,8 @@
   state.current = 0;
     state.lastLayValue = 0;
     state.mustLayFlag = false;
+    state.turnDrawn = false;
+    state.turnsElapsed = 0;
 
     // prepare deck
     const deck = shuffle(createDeck(true));
@@ -166,6 +170,11 @@
       handEl.innerHTML = '<div class="small">No hand</div>';
       laidSetsEl.innerHTML = '';
     }
+    // enable/disable draw buttons based on per-turn draw rules
+    const canDraw = !state.turnDrawn && state.players && state.players.length>0 && state.current===0; // human only
+    const allowStockDraw = canDraw && (willLayCheckbox.checked || (state.turnsElapsed===0 && state.current===0));
+    drawStockBtn.disabled = !allowStockDraw || state.stock.length===0;
+    drawDiscardBtn.disabled = !canDraw || state.discard.length===0;
   }
 
   function renderPlayer(){
@@ -228,6 +237,7 @@
       // quick-discard handler
       const quick = document.getElementById('quick-discard');
       quick.onclick = ()=>{
+        if(state.mustLayFlag){ alert('You must lay down this turn because you drew from stock.'); return; }
         const p = state.players[state.current];
         if(selectedIndexes.size===0) return;
         // animate removals first to avoid a brief reflow showing original order
@@ -262,6 +272,8 @@
           quick.style.display='none';
           // next player
           state.current = (state.current+1)%state.players.length;
+          state.turnDrawn = false;
+          state.turnsElapsed++;
           renderAll();
           handleAIAfterTurn();
         });
@@ -292,7 +304,11 @@
   function cardToStr(c){return `${c.rank}${c.suit}`}
 
   function drawFromStock(){
+    // only allow one draw per turn
+    if(state.turnDrawn){ alert('You already drew this turn'); return; }
     if(state.stock.length===0){alert('Stock empty');return}
+    // only allowed if player indicated they will lay down, except first overall human turn
+    if(!(willLayCheckbox.checked || (state.turnsElapsed===0 && state.current===0))){ alert('You may only draw from stock if you checked "Will lay down"'); return; }
     // pop the top card and show it briefly as dealt from stock
     const card = state.stock.pop();
     // create a temporary face-up card over the stock to simulate dealing
@@ -323,10 +339,12 @@
   selectedIndexes.clear();
   selectedIndexes.add(p.hand.length - 1);
   state.mustLayFlag = willLayCheckbox.checked;
+  state.turnDrawn = true;
   renderAll();
     }, 220);
   }
   function drawFromDiscard(){
+    if(state.turnDrawn){ alert('You already drew this turn'); return; }
     if(state.discard.length===0){alert('Discard empty');return}
     const card = state.discard.pop();
   const p = state.players[state.current];
@@ -335,10 +353,12 @@
   selectedIndexes.clear();
   selectedIndexes.add(p.hand.length - 1);
   // picking from discard does not set mustLayFlag
+  state.turnDrawn = true;
   renderAll();
   }
 
   function discardSelected(){
+    if(state.mustLayFlag){ alert('You must lay down this turn because you drew from stock.'); return; }
     const p = state.players[state.current];
     if(selectedIndexes.size!==1){alert('Select exactly one card to discard');return}
     const idx = Array.from(selectedIndexes)[0];
@@ -359,6 +379,8 @@
           willLayCheckbox.checked=false; state.mustLayFlag=false;
           // next player
           state.current = (state.current+1)%state.players.length;
+          state.turnDrawn = false;
+          state.turnsElapsed++;
           suppressHandRenders = false;
           renderAll();
           // if next player is AI, let it analyze and play
@@ -384,39 +406,55 @@
   function layDownSelected(){
     const p = state.players[state.current];
     if(selectedIndexes.size<3){alert('Select at least 3 cards to lay down (set or run)');return}
-    const idxsDesc = Array.from(selectedIndexes).sort((a,b)=>b-a); // remove high to low
-    // record removed cards with their original indices so we can restore them
-    // at the same positions if validation fails.
-    const removed = [];
-    for(const i of idxsDesc) removed.push({index:i, card: p.hand.splice(i,1)[0]});
-    const group = removed.map(r=>r.card);
-    // validate group
-    if(!isValidGroup(group)){ alert('Selected cards do not form a valid set or run');
-  // return cards back to their original positions
-  removed.sort((a,b)=>a.index - b.index);
-  for(const r of removed){ p.hand.splice(r.index,0,r.card); }
-      selectedIndexes.clear(); renderAll(); return;
+    // Build an array of selected cards (preserve original indices)
+    const idxsAsc = Array.from(selectedIndexes).sort((a,b)=>a-b);
+    const selCards = idxsAsc.map(i=>p.hand[i]);
+
+    // Try to partition selected cards into one or more valid groups (each >=3 cards)
+    function partitionIntoGroups(cards){
+      if(cards.length===0) return [];
+      const n = cards.length;
+      // try all combinations of size k (3..n) for the first group
+      // to avoid duplicate work, we iterate increasing k
+      function* combinations(arr, k){
+        const idx = Array.from({length:k}, (_,i)=>i);
+        while(true){
+          yield idx.map(i=>arr[i]);
+          // increment
+          let i = k-1;
+          while(i>=0 && idx[i]===arr.length - k + i) i--;
+          if(i<0) break;
+          idx[i]++;
+          for(let j=i+1;j<k;j++) idx[j]=idx[j-1]+1;
+        }
+      }
+      // recursion: try a group, then partition remainder
+      for(let k=3;k<=n;k++){
+        for(const combo of combinations(cards, k)){
+          if(!isValidGroup(combo)) continue;
+          const remaining = cards.filter(c=>!combo.includes(c));
+          const sub = partitionIntoGroups(remaining);
+          if(sub!==null) return [combo].concat(sub);
+        }
+      }
+      return null;
     }
-    const pts = computeGroupPoints(group);
-    if(state.lastLayValue===0){ // first to lay
-      if(pts<71){ alert('Initial lay must be at least 71 points and cannot use jokers');
-  // restore removed cards to their original positions
-  removed.sort((a,b)=>a.index - b.index);
-  for(const r of removed){ p.hand.splice(r.index,0,r.card); }
-        selectedIndexes.clear(); renderAll(); return; }
+
+    const groups = partitionIntoGroups(selCards);
+    if(!groups){ alert('Selected cards do not form valid set(s) or run(s)'); renderAll(); return; }
+    // compute total points for these groups
+    const totalPoints = groups.reduce((s,g)=>s+computeGroupPoints(g),0);
+    if(state.lastLayValue===0){
+      if(totalPoints<71){ alert('Initial lay must total at least 71 points'); renderAll(); return; }
     } else {
-      if(pts<=state.lastLayValue){ alert(`You must lay more points than previous: ${state.lastLayValue}`);
-  removed.sort((a,b)=>a.index - b.index);
-  for(const r of removed){ p.hand.splice(r.index,0,r.card); }
-        selectedIndexes.clear(); renderAll(); return; }
+      if(totalPoints<=state.lastLayValue){ alert(`You must lay more points than previous: ${state.lastLayValue}`); renderAll(); return; }
     }
-    // accept lay
-    p.laid.push(group);
-    state.lastLayValue = pts;
-  // remove the laid cards from the hand (they were already removed into group)
-    selectedIndexes.clear();
-    willLayCheckbox.checked=false; state.mustLayFlag=false;
-    // if player emptied hand they win
+    // Validation passed — remove the selected cards from hand (from high to low indices)
+    for(let i=idxsAsc.length-1;i>=0;i--){ p.hand.splice(idxsAsc[i],1); }
+    // add each group to player's laid sets
+    for(const g of groups) p.laid.push(g);
+    state.lastLayValue = totalPoints;
+    selectedIndexes.clear(); willLayCheckbox.checked=false; state.mustLayFlag=false;
     if(p.hand.length===0){ alert(`${p.name} wins!`); }
     renderAll();
   }
@@ -477,25 +515,88 @@
   function analyzeNextPlay(aiIndex){
     const ai = state.players[aiIndex];
     if(!ai || !ai.ai) return;
-    // AI picks from stock (if available) then discards that same card
-    if(state.stock.length===0){
-      // no stock: just pass back to human
-      state.current = 0;
-      renderAll();
-      return;
+    // Improved AI strategy:
+    // 1) If top of discard helps form any valid group, pick it; otherwise draw from stock.
+    // 2) After drawing, search for any layable group that satisfies the lay requirement
+    //    (initial >=71 or > state.lastLayValue) and lay the best-scoring group.
+    // 3) Discard the lowest-value card.
+    function findBestLay(hand, minPoints){
+      // returns {group: [cards], points} or null
+      const n = hand.length;
+      let best = null;
+      // helper to generate combinations recursively
+      function comb(start, k, acc){
+        if(acc.length===k){
+          if(isValidGroup(acc)){
+            const pts = computeGroupPoints(acc);
+            if(pts>=minPoints && (!best || pts>best.points)) best = {group: acc.slice(), points: pts};
+          }
+          return;
+        }
+        for(let i=start;i<n;i++){ acc.push(hand[i]); comb(i+1,k,acc); acc.pop(); }
+      }
+      // try lengths from 3 up to hand length (cap at 7 for perf)
+      const maxLen = Math.min(n, 7);
+      for(let k=3;k<=maxLen;k++) comb(0,k,[]);
+      return best;
     }
-  const card = state.stock.pop();
-  ai.hand.push(card);
-  // no separate visual order for AI
+
+    // choose whether to draw from discard or stock
+    const topDiscard = state.discard.length? state.discard[state.discard.length-1] : null;
+    let drewFromDiscard = false;
+    if(topDiscard){
+      // test if including topDiscard creates any valid group
+      const testHand = ai.hand.concat([topDiscard]);
+      const possible = findBestLay(testHand, 0); // any valid group
+      if(possible){
+        // draw from discard
+        state.discard.pop();
+        ai.hand.push(topDiscard);
+        drewFromDiscard = true;
+      }
+    }
+    // if didn't draw from discard, draw from stock if available
+    if(!drewFromDiscard){
+      if(state.stock.length===0){
+        // no stock -> pass turn back
+        state.current = 0; renderAll(); return;
+      }
+      const card = state.stock.pop(); ai.hand.push(card);
+    }
     renderAll();
+    // give a brief delay to simulate thinking
     setTimeout(()=>{
-      const discarded = ai.hand.pop();
-  // no separate visual order for AI
-      state.discard.push(discarded);
-      // return turn to human (assumed index 0)
+      // attempt to lay: determine required minimum
+      const required = (state.lastLayValue===0)? 71 : (state.lastLayValue+1);
+      const best = findBestLay(ai.hand, required);
+      if(best){
+        // remove best.group cards from ai.hand (remove first matching instances)
+        for(const c of best.group){
+          const idx = ai.hand.findIndex(h=>h.id===c.id);
+          if(idx>=0) ai.hand.splice(idx,1);
+        }
+        ai.laid.push(best.group);
+        state.lastLayValue = best.points;
+      }
+      // choose a discard: prefer lowest single-card points, avoid breaking laid groups
+      if(ai.hand.length>0){
+        let worstIdx = 0; let worstScore = 1000;
+        for(let i=0;i<ai.hand.length;i++){
+          const c = ai.hand[i];
+          const score = (c.rank==='A')?1:(c.rank==='J'||c.rank==='Q'||c.rank==='K')?10:parseInt(c.rank,10);
+          if(score < worstScore){ worstScore=score; worstIdx=i; }
+        }
+        const discarded = ai.hand.splice(worstIdx,1)[0];
+        state.discard.push(discarded);
+      }
+      // check win
+      if(ai.hand.length===0){ alert(`${ai.name} wins!`); }
+      // return turn to human
       state.current = 0;
+      state.turnDrawn = false;
+      state.turnsElapsed++;
       renderAll();
-    }, 300);
+    }, 350);
   }
 
   window.__rummy = {state, startGame};
