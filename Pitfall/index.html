@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pitfall! Retro Remix</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div id="game-container">
+        <div id="ui-layer">
+            <div class="stats-card glass">
+                <div class="stat">
+                    <span class="label">SCORE</span>
+                    <span id="score-val" class="value">000000</span>
+                </div>
+                <div class="stat">
+                    <span class="label">TIME</span>
+                    <span id="time-val" class="value">20:00</span>
+                </div>
+            </div>
+            <div class="lives-container">
+                <div id="lives-icons"></div>
+            </div>
+            <div id="screen-info" class="glass shrink">SCREEN 0</div>
+        </div>
+        <canvas id="gameCanvas"></canvas>
+        <div id="overlay" class="hidden">
+            <div class="overlay-content glass">
+                <h1 id="overlay-title">PITFALL!</h1>
+                <p id="overlay-msg">PRESS ANY KEY TO START</p>
+                <button id="start-btn">START MISSION</button>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+</body>
+
+</html>
